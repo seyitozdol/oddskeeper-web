@@ -1,3 +1,18 @@
+export type MatchRow = {
+  id: number;
+  source: string;
+  source_match_id: string;
+  created_at: string;
+  home_team: string | null;
+  away_team: string | null;
+  score: string | null;
+  referee: string | null;
+  venue: string | null;
+  competition: string | null;
+  match_url: string | null;
+  season_label: string | null;
+};
+
 export type MatchDetail = {
   id: number;
   source: string;
@@ -38,6 +53,7 @@ export type MatchDetail = {
   match_date_text: string | null;
   attendance_text: string | null;
   match_url: string | null;
+  season_label: string | null;
 
   winner_side: string | null;
   winner_team_source_id: string | null;
@@ -46,6 +62,7 @@ export type MatchDetail = {
   player_stats_sections_count: number;
   opta_points_stats_keys: string[];
 };
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 export async function getHealthStatus() {
@@ -73,22 +90,9 @@ export async function getStagingPreview(): Promise<MatchRow[]> {
   return data.rows || [];
 }
 
-export type MatchDetail = {
-  id: number;
-  source: string;
-  source_match_id: string;
-  created_at: string;
-  home_team: string | null;
-  away_team: string | null;
-  score: string | null;
-  referee: string | null;
-  venue: string | null;
-  match_url: string | null;
-  competition: string | null;
-  season_label: string | null;
-};
-
-export async function getStagingMatchDetail(matchId: number): Promise<MatchDetail> {
+export async function getStagingMatchDetail(
+  matchId: number
+): Promise<MatchDetail> {
   if (!API_BASE_URL) {
     throw new Error("NEXT_PUBLIC_API_BASE_URL tanımlı değil");
   }
