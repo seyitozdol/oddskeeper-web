@@ -1,0 +1,11 @@
+api çalıştırma 
+
+cd C:\Users\zygom\PycharmProjects\oddskeeper-web\api
+.venv\Scripts\activate
+fastapi dev main.py
+
+
+
+frontend 
+cd C:\Users\zygom\PycharmProjects\oddskeeper-web\frontend
+npm run dev
