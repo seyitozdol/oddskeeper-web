@@ -81,14 +81,15 @@ export default function LandingPage() {
             </button>
           </div>
 
-          <div className="relative mx-auto mt-10 max-w-[1180px] md:mt-14">
+          <div className="relative mx-auto mt-10 max-w-[1320px] md:mt-14">
+            <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_center,rgba(168,216,255,0.18)_0%,rgba(168,216,255,0.08)_32%,rgba(233,237,243,0)_72%)] blur-[10px]" />
             <Image
               src="/images/landing/lp_bck001.png"
               alt="Odds Keeper hero visual"
-              width={1600}
-              height={1050}
+              width={1800}
+              height={1200}
               priority
-              className="mx-auto h-auto w-full object-contain"
+              className="mx-auto h-auto w-full object-contain mix-blend-multiply"
             />
           </div>
 
@@ -96,15 +97,15 @@ export default function LandingPage() {
             {featureCards.map((card) => (
               <article
                 key={card.title}
-                className="rounded-[24px] border border-[#dbe2ec] bg-white/82 px-8 py-8 text-center shadow-[0_14px_30px_rgba(37,56,88,0.06)] backdrop-blur-sm md:px-9 md:py-10"
+                className="rounded-[24px] border border-[#dbe2ec] bg-white/88 px-8 py-8 text-center shadow-[0_14px_30px_rgba(37,56,88,0.06)] backdrop-blur-sm md:px-9 md:py-10"
               >
-                <div className="mx-auto flex h-[96px] w-[96px] items-center justify-center md:h-[108px] md:w-[108px]">
+                <div className="mx-auto flex h-[140px] w-[140px] items-center justify-center md:h-[168px] md:w-[168px]">
                   <Image
                     src={card.image}
                     alt={card.alt}
-                    width={108}
-                    height={108}
-                    className="h-auto w-full object-contain"
+                    width={168}
+                    height={168}
+                    className="h-auto w-full scale-[1.12] object-contain"
                   />
                 </div>
 
