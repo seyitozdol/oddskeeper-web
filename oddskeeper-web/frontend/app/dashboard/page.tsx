@@ -6,9 +6,8 @@ import SignOutButton from "./SignOutButton";
 export default async function DashboardPage() {
   const supabase = await createClient();
 
-  const {
-    data: { claims },
-  } = await supabase.auth.getClaims();
+  const claimsResult = await supabase.auth.getClaims();
+  const claims = claimsResult.data?.claims;
 
   if (!claims) {
     redirect("/sign-in");
