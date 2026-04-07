@@ -7,7 +7,7 @@ export default async function FootballTeamStatsPage() {
 
   return (
     <section className="w-full">
-      <div className="rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(12,24,40,0.96),rgba(7,14,24,0.96))] p-8 shadow-[0_0_60px_rgba(34,104,189,0.12)]">
+      <div className="rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(8,14,24,0.96),rgba(5,10,18,0.98))] p-8 shadow-[0_0_50px_rgba(34,104,189,0.08)]">
         <div className="max-w-3xl">
           <p className="mb-3 text-sm font-medium uppercase tracking-[0.25em] text-[#7cbcff]">
             Football Team Stats
@@ -30,25 +30,25 @@ export default async function FootballTeamStatsPage() {
             </div>
           </div>
         ) : (
-          <div className="mt-10 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+          <div className="mt-10 grid grid-cols-2 gap-5 md:grid-cols-3 xl:grid-cols-5">
             {teams.map((team) => (
               <Link
                 key={team.slug}
-                href={`/dashboard/stats-analysis/football/team-stats/${team.slug}`}
-                className="group rounded-[24px] border border-white/10 bg-white/[0.03] p-5 transition hover:border-[#4da2ff]/35 hover:bg-[#0e1d30] hover:shadow-[0_0_30px_rgba(77,162,255,0.10)]"
+                href={`/dashboard/stats-analysis/football/team-stats/detail?team=${team.slug}`}
+                className="group rounded-[26px] border border-white/8 bg-[radial-gradient(circle_at_top,rgba(35,90,180,0.10),rgba(9,17,31,0.96)_62%)] p-6 transition duration-200 hover:-translate-y-1 hover:border-[#4da2ff]/30 hover:bg-[radial-gradient(circle_at_top,rgba(45,110,210,0.16),rgba(10,18,32,0.98)_62%)] hover:shadow-[0_0_28px_rgba(77,162,255,0.10)]"
               >
-                <div className="flex min-h-[170px] flex-col items-center justify-center">
-                  <div className="flex h-24 w-24 items-center justify-center rounded-[22px] border border-white/10 bg-[#0a1320] p-4">
+                <div className="flex min-h-[190px] flex-col items-center justify-center">
+                  <div className="flex h-32 w-32 items-center justify-center rounded-[28px] border border-white/10 bg-[#08111d] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
                     <Image
                       src={team.logoPath}
                       alt={team.name}
-                      width={72}
-                      height={72}
-                      className="h-auto max-h-[72px] w-auto max-w-[72px] object-contain"
+                      width={96}
+                      height={96}
+                      className="h-auto max-h-[96px] w-auto max-w-[96px] object-contain transition duration-200 group-hover:scale-105"
                     />
                   </div>
 
-                  <div className="mt-5 text-center text-sm font-semibold text-white transition group-hover:text-[#9fd3ff]">
+                  <div className="mt-6 text-center text-base font-semibold text-white transition group-hover:text-[#9fd3ff]">
                     {team.name}
                   </div>
                 </div>

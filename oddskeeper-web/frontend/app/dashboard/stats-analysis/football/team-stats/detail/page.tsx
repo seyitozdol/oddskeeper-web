@@ -4,13 +4,22 @@ import { notFound } from "next/navigation";
 import { getFootballTeamBySlug } from "../../../../../../lib/football-teams";
 
 type TeamDetailPageProps = {
-  params: {
-    teamSlug: string;
-  };
+  searchParams: Promise<{
+    team?: string;
+  }>;
 };
 
-export default async function TeamDetailPage({ params }: TeamDetailPageProps) {
-  const team = await getFootballTeamBySlug(params.teamSlug);
+export default async function TeamDetailPage({
+  searchParams,
+}: TeamDetailPageProps) {
+  const resolvedSearchParams = await searchParams;
+  const teamSlug = resolvedSearchParams.team;
+
+  if (!teamSlug) {
+    notFound();
+  }
+
+  const team = await getFootballTeamBySlug(teamSlug);
 
   if (!team) {
     notFound();
@@ -18,7 +27,7 @@ export default async function TeamDetailPage({ params }: TeamDetailPageProps) {
 
   return (
     <section className="w-full">
-      <div className="rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(12,24,40,0.96),rgba(7,14,24,0.96))] p-8 shadow-[0_0_60px_rgba(34,104,189,0.12)]">
+      <div className="rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(8,14,24,0.96),rgba(5,10,18,0.98))] p-8 shadow-[0_0_50px_rgba(34,104,189,0.08)]">
         <Link
           href="/dashboard/stats-analysis/football/team-stats"
           className="inline-flex rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-2 text-sm text-white/70 transition hover:border-[#4da2ff]/30 hover:bg-[#0e1d30] hover:text-white"
@@ -27,13 +36,13 @@ export default async function TeamDetailPage({ params }: TeamDetailPageProps) {
         </Link>
 
         <div className="mt-8 flex flex-col gap-6 lg:flex-row lg:items-center">
-          <div className="flex h-28 w-28 items-center justify-center rounded-[28px] border border-white/10 bg-[#0a1320] p-5">
+          <div className="flex h-32 w-32 items-center justify-center rounded-[30px] border border-white/10 bg-[#08111d] p-5">
             <Image
               src={team.logoPath}
               alt={team.name}
-              width={88}
-              height={88}
-              className="h-auto max-h-[88px] w-auto max-w-[88px] object-contain"
+              width={96}
+              height={96}
+              className="h-auto max-h-[96px] w-auto max-w-[96px] object-contain"
             />
           </div>
 
