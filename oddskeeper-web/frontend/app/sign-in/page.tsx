@@ -80,9 +80,9 @@ export default function SignInPage() {
           </div>
 
           <div className="relative">
-            <div className="absolute inset-x-10 top-10 h-[78%] rounded-[44px] bg-[#0aa8ff]/8 blur-3xl" />
+            <div className="pointer-events-none absolute inset-x-10 top-10 h-[78%] rounded-[44px] bg-[#0aa8ff]/8 blur-3xl" />
 
-            <div className="relative mx-auto w-full max-w-[560px] rounded-[32px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.025))] p-4 shadow-[0_28px_110px_rgba(0,0,0,0.42)] backdrop-blur">
+            <div className="relative z-10 mx-auto w-full max-w-[560px] rounded-[32px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.025))] p-4 shadow-[0_28px_110px_rgba(0,0,0,0.42)] backdrop-blur">
               <div className="rounded-[28px] border border-white/8 bg-[#0a1320]/95 p-5 sm:p-6">
                 <form onSubmit={handleSubmit} className="space-y-5">
                   <div>
@@ -122,7 +122,7 @@ export default function SignInPage() {
                   <button
                     type="submit"
                     disabled={loading}
-                    className="w-full rounded-2xl border border-[#13b0ff]/35 bg-gradient-to-r from-[#0d8fff] to-[#25c8ff] px-6 py-3.5 text-sm font-semibold text-white shadow-[0_0_30px_rgba(19,176,255,0.18)] transition hover:scale-[1.01] disabled:opacity-60"
+                    className="w-full cursor-pointer rounded-2xl border border-[#13b0ff]/35 bg-gradient-to-r from-[#0d8fff] to-[#25c8ff] px-6 py-3.5 text-sm font-semibold text-white shadow-[0_0_30px_rgba(19,176,255,0.18)] transition hover:scale-[1.01] disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {loading ? "Signing In..." : "Sign In"}
                   </button>
