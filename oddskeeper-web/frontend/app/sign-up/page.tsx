@@ -1,6 +1,56 @@
+"use client";
+
 import Link from "next/link";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { createClient } from "../../lib/supabase/client";
 
 export default function SignUpPage() {
+  const router = useRouter();
+  const supabase = createClient();
+
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [errorText, setErrorText] = useState("");
+  const [successText, setSuccessText] = useState("");
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setLoading(true);
+    setErrorText("");
+    setSuccessText("");
+
+    const redirectTo = `${window.location.origin}/auth/callback?next=/dashboard`;
+
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: redirectTo,
+        data: {
+          full_name: fullName,
+        },
+      },
+    });
+
+    if (error) {
+      setErrorText(error.message);
+      setLoading(false);
+      return;
+    }
+
+    if (data.session) {
+      router.replace("/dashboard");
+      router.refresh();
+      return;
+    }
+
+    setSuccessText("Account created. Check your email to confirm your account.");
+    setLoading(false);
+  }
+
   return (
     <main className="min-h-screen bg-[#06111f] px-4 py-10 text-white sm:px-6 lg:px-10">
       <div className="mx-auto max-w-[1420px]">
@@ -51,7 +101,7 @@ export default function SignUpPage() {
 
             <div className="relative mx-auto w-full max-w-[560px] rounded-[32px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.025))] p-4 shadow-[0_28px_110px_rgba(0,0,0,0.42)] backdrop-blur">
               <div className="rounded-[28px] border border-white/8 bg-[#0a1320]/95 p-5 sm:p-6">
-                <div className="space-y-5">
+                <form onSubmit={handleSubmit} className="space-y-5">
                   <div>
                     <label className="mb-2 block text-sm font-medium text-white/80">
                       Full Name
@@ -59,7 +109,10 @@ export default function SignUpPage() {
                     <input
                       type="text"
                       placeholder="Your full name"
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
                       className="w-full rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-white outline-none transition placeholder:text-white/30 focus:border-[#13b0ff]/40"
+                      required
                     />
                   </div>
 
@@ -70,7 +123,10 @@ export default function SignUpPage() {
                     <input
                       type="email"
                       placeholder="you@company.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
                       className="w-full rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-white outline-none transition placeholder:text-white/30 focus:border-[#13b0ff]/40"
+                      required
                     />
                   </div>
 
@@ -81,15 +137,31 @@ export default function SignUpPage() {
                     <input
                       type="password"
                       placeholder="Create a password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
                       className="w-full rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-white outline-none transition placeholder:text-white/30 focus:border-[#13b0ff]/40"
+                      required
                     />
                   </div>
 
+                  {errorText ? (
+                    <div className="rounded-2xl border border-red-400/20 bg-red-400/10 px-4 py-3 text-sm text-red-200">
+                      {errorText}
+                    </div>
+                  ) : null}
+
+                  {successText ? (
+                    <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-200">
+                      {successText}
+                    </div>
+                  ) : null}
+
                   <button
-                    type="button"
-                    className="w-full rounded-2xl border border-[#13b0ff]/35 bg-gradient-to-r from-[#0d8fff] to-[#25c8ff] px-6 py-3.5 text-sm font-semibold text-white shadow-[0_0_30px_rgba(19,176,255,0.18)] transition hover:scale-[1.01]"
+                    type="submit"
+                    disabled={loading}
+                    className="w-full rounded-2xl border border-[#13b0ff]/35 bg-gradient-to-r from-[#0d8fff] to-[#25c8ff] px-6 py-3.5 text-sm font-semibold text-white shadow-[0_0_30px_rgba(19,176,255,0.18)] transition hover:scale-[1.01] disabled:opacity-60"
                   >
-                    Sign Up
+                    {loading ? "Signing Up..." : "Sign Up"}
                   </button>
 
                   <div className="rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-3 text-sm text-white/55">
@@ -101,7 +173,7 @@ export default function SignUpPage() {
                       Sign In
                     </Link>
                   </div>
-                </div>
+                </form>
               </div>
             </div>
           </div>
