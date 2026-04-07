@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 const navItems = [
   { label: "Platform", href: "#platform" },
   { label: "Data Layers", href: "#data-layers" },
@@ -8,8 +10,8 @@ const navItems = [
 export default function Navbar() {
   return (
     <header className="sticky top-0 z-50 border-b border-white/10 bg-[#06111f]/85 backdrop-blur-xl">
-      <div className="mx-auto flex h-16 w-full max-w-[1420px] items-center justify-between px-4 sm:h-18 sm:px-6 lg:h-20 lg:px-10">
-        <a href="#" className="flex items-center gap-3">
+      <div className="mx-auto flex h-16 w-full max-w-[1420px] items-center justify-between px-4 sm:px-6 lg:h-20 lg:px-10">
+        <Link href="/" className="flex items-center gap-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#13b0ff]/40 bg-white/5 shadow-[0_0_30px_rgba(19,176,255,0.12)] sm:h-10 sm:w-10">
             <span className="bg-gradient-to-r from-[#13b0ff] to-[#7de8ff] bg-clip-text text-xs font-semibold text-transparent sm:text-sm">
               OK
@@ -24,7 +26,7 @@ export default function Navbar() {
               Sports Data Intelligence
             </span>
           </div>
-        </a>
+        </Link>
 
         <nav className="hidden items-center gap-8 lg:flex">
           {navItems.map((item) => (
@@ -38,13 +40,27 @@ export default function Navbar() {
           ))}
         </nav>
 
-        <div className="hidden lg:block">
+        <div className="hidden items-center gap-3 lg:flex">
           <a
             href="#contact"
-            className="inline-flex rounded-xl border border-[#13b0ff]/40 bg-gradient-to-r from-[#0d8fff] to-[#25c8ff] px-5 py-2.5 text-sm font-semibold text-white shadow-[0_0_30px_rgba(19,176,255,0.18)] transition hover:scale-[1.02]"
+            className="inline-flex rounded-xl border border-[#13b0ff]/40 bg-gradient-to-r from-[#0d8fff] to-[#25c8ff] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_0_30px_rgba(19,176,255,0.18)] transition hover:scale-[1.02]"
           >
             Request Access
           </a>
+
+          <Link
+            href="/sign-up"
+            className="inline-flex rounded-xl border border-white/12 bg-white/5 px-4 py-2.5 text-sm font-semibold text-white/90 transition hover:bg-white/10"
+          >
+            Sign Up
+          </Link>
+
+          <Link
+            href="/sign-in"
+            className="inline-flex rounded-xl border border-white/12 bg-transparent px-4 py-2.5 text-sm font-semibold text-white/90 transition hover:bg-white/5"
+          >
+            Sign In
+          </Link>
         </div>
 
         <details className="relative lg:hidden">
@@ -56,7 +72,7 @@ export default function Navbar() {
             </span>
           </summary>
 
-          <div className="absolute right-0 mt-3 w-56 rounded-2xl border border-white/10 bg-[#0b1524]/95 p-3 shadow-[0_18px_60px_rgba(0,0,0,0.35)] backdrop-blur">
+          <div className="absolute right-0 mt-3 w-64 rounded-2xl border border-white/10 bg-[#0b1524]/95 p-3 shadow-[0_18px_60px_rgba(0,0,0,0.35)] backdrop-blur">
             <div className="flex flex-col gap-1">
               {navItems.map((item) => (
                 <a
@@ -69,12 +85,28 @@ export default function Navbar() {
               ))}
             </div>
 
-            <a
-              href="#contact"
-              className="mt-3 inline-flex w-full justify-center rounded-xl border border-[#13b0ff]/40 bg-gradient-to-r from-[#0d8fff] to-[#25c8ff] px-4 py-2.5 text-sm font-semibold text-white"
-            >
-              Request Access
-            </a>
+            <div className="mt-3 flex flex-col gap-2">
+              <a
+                href="#contact"
+                className="inline-flex w-full justify-center rounded-xl border border-[#13b0ff]/40 bg-gradient-to-r from-[#0d8fff] to-[#25c8ff] px-4 py-2.5 text-sm font-semibold text-white"
+              >
+                Request Access
+              </a>
+
+              <Link
+                href="/sign-up"
+                className="inline-flex w-full justify-center rounded-xl border border-white/12 bg-white/5 px-4 py-2.5 text-sm font-semibold text-white/90"
+              >
+                Sign Up
+              </Link>
+
+              <Link
+                href="/sign-in"
+                className="inline-flex w-full justify-center rounded-xl border border-white/12 bg-transparent px-4 py-2.5 text-sm font-semibold text-white/90"
+              >
+                Sign In
+              </Link>
+            </div>
           </div>
         </details>
       </div>

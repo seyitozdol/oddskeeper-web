@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 const metricCards = [
   { label: "Data Reliability", value: "98.4%" },
   { label: "Match Coverage", value: "24/7" },
@@ -54,13 +56,19 @@ export default function HeroSection() {
           </p>
 
           <div className="mt-8 flex flex-col gap-3 sm:mt-9 sm:flex-row sm:gap-4">
-            <button className="rounded-2xl border border-[#13b0ff]/35 bg-gradient-to-r from-[#0d8fff] to-[#25c8ff] px-6 py-3.5 text-sm font-semibold text-white shadow-[0_0_30px_rgba(19,176,255,0.18)] transition hover:scale-[1.02]">
+            <a
+              href="#contact"
+              className="inline-flex justify-center rounded-2xl border border-[#13b0ff]/35 bg-gradient-to-r from-[#0d8fff] to-[#25c8ff] px-6 py-3.5 text-sm font-semibold text-white shadow-[0_0_30px_rgba(19,176,255,0.18)] transition hover:scale-[1.02]"
+            >
               Request Access
-            </button>
+            </a>
 
-            <button className="rounded-2xl border border-white/14 bg-white/5 px-6 py-3.5 text-sm font-semibold text-white/90 transition hover:bg-white/10">
+            <Link
+              href="/sign-in"
+              className="inline-flex justify-center rounded-2xl border border-white/14 bg-white/5 px-6 py-3.5 text-sm font-semibold text-white/90 transition hover:bg-white/10"
+            >
               Explore Platform
-            </button>
+            </Link>
           </div>
 
           <p className="mt-5 text-sm text-white/45 sm:mt-6">
