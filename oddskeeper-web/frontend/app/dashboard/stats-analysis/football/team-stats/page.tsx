@@ -37,14 +37,14 @@ export default async function FootballTeamStatsPage() {
                 href={`/dashboard/stats-analysis/football/team-stats/detail?team=${team.slug}`}
                 className="group rounded-[26px] border border-white/8 bg-[radial-gradient(circle_at_top,rgba(35,90,180,0.10),rgba(9,17,31,0.96)_62%)] p-6 transition duration-200 hover:-translate-y-1 hover:border-[#4da2ff]/30 hover:bg-[radial-gradient(circle_at_top,rgba(45,110,210,0.16),rgba(10,18,32,0.98)_62%)] hover:shadow-[0_0_28px_rgba(77,162,255,0.10)]"
               >
-                <div className="flex min-h-[190px] flex-col items-center justify-center">
-                  <div className="flex h-32 w-32 items-center justify-center rounded-[28px] border border-white/10 bg-[#08111d] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
+                <div className="flex min-h-[200px] flex-col items-center justify-center">
+                  <div className="flex h-[120px] items-center justify-center">
                     <Image
                       src={team.logoPath}
                       alt={team.name}
-                      width={96}
-                      height={96}
-                      className="h-auto max-h-[96px] w-auto max-w-[96px] object-contain transition duration-200 group-hover:scale-105"
+                      width={110}
+                      height={110}
+                      className="h-auto max-h-[110px] w-auto max-w-[110px] object-contain transition duration-200 group-hover:scale-105"
                     />
                   </div>
 
