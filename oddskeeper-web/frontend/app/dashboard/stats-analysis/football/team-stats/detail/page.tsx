@@ -46,123 +46,87 @@ export default async function TeamDetailPage({
     { key: "results", label: "Results" },
   ];
 
+  const metaItems = [
+    { label: "Founded", value: "—" },
+    { label: "Stadium", value: "—" },
+    { label: "Head Coach", value: "—" },
+    { label: "Website", value: "—" },
+    { label: "Capacity", value: "—" },
+    { label: "Market Value", value: "—" },
+  ];
+
   return (
     <section className="w-full">
-      <div className="rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(8,14,24,0.96),rgba(5,10,18,0.98))] p-8 shadow-[0_0_50px_rgba(34,104,189,0.08)]">
-        <Link
-          href="/dashboard/stats-analysis/football/team-stats"
-          className="inline-flex rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-2 text-sm text-white/70 transition hover:border-[#4da2ff]/30 hover:bg-[#0e1d30] hover:text-white"
-        >
-          ← Back to teams
-        </Link>
+      <div className="rounded-[22px] border border-white/10 bg-[linear-gradient(180deg,rgba(8,14,24,0.96),rgba(5,10,18,0.98))] px-5 py-4 shadow-[0_0_32px_rgba(34,104,189,0.05)]">
+        <div className="flex flex-col gap-4 2xl:grid 2xl:grid-cols-[minmax(420px,560px)_minmax(320px,1fr)_auto] 2xl:items-center 2xl:gap-6">
+          <div className="min-w-0">
+            <div className="flex items-center gap-4">
+              <div className="flex h-[72px] w-[72px] shrink-0 items-center justify-center rounded-[18px] border border-white/10 bg-[#08111d] p-3">
+                <Image
+                  src={team.logoPath}
+                  alt={team.name}
+                  width={60}
+                  height={60}
+                  className="h-auto max-h-[60px] w-auto max-w-[60px] object-contain"
+                />
+              </div>
 
-        <div className="mt-8 max-w-[1500px]">
-          <div className="flex flex-col gap-8 xl:grid xl:grid-cols-[780px_minmax(560px,1fr)] xl:items-start xl:gap-12">
-            <div className="min-w-0">
-              <div className="flex items-start gap-8">
-                <div className="flex h-36 w-36 shrink-0 items-center justify-center rounded-[30px] border border-white/10 bg-[#08111d] p-5">
-                  <Image
-                    src={team.logoPath}
-                    alt={team.name}
-                    width={110}
-                    height={110}
-                    className="h-auto max-h-[110px] w-auto max-w-[110px] object-contain"
-                  />
-                </div>
+              <div className="min-w-0">
+                <p className="mb-1 text-[10px] font-medium uppercase tracking-[0.28em] text-[#7cbcff]">
+                  Football Team Stats
+                </p>
 
-                <div className="min-w-0 pt-1">
-                  <p className="mb-3 text-sm font-medium uppercase tracking-[0.25em] text-[#7cbcff]">
-                    Football Team Stats
-                  </p>
-
-                  <h1 className="text-3xl font-semibold text-white lg:text-[64px] lg:leading-[1.02]">
-                    {team.name}
-                  </h1>
-
-                  <div className="mt-8 flex flex-wrap gap-3 xl:flex-nowrap">
-                    {tabs.map((tab) => {
-                      const isActive = activeTab === tab.key;
-
-                      return (
-                        <Link
-                          key={tab.key}
-                          href={`/dashboard/stats-analysis/football/team-stats/detail?team=${team.slug}&tab=${tab.key}`}
-                          className={`rounded-2xl border px-5 py-2.5 text-sm font-medium whitespace-nowrap transition ${
-                            isActive
-                              ? "border-[#4da2ff]/40 bg-[#10233b] text-white shadow-[0_0_25px_rgba(77,162,255,0.12)]"
-                              : "border-white/10 bg-white/[0.03] text-white/72 hover:border-[#4da2ff]/25 hover:bg-[#0e1d30] hover:text-white"
-                          }`}
-                        >
-                          {tab.label}
-                        </Link>
-                      );
-                    })}
-                  </div>
-                </div>
+                <h1 className="truncate text-[34px] font-semibold leading-none text-white lg:text-[40px]">
+                  {team.name}
+                </h1>
               </div>
             </div>
 
-            <div className="w-full rounded-[24px] border border-white/10 bg-white/[0.03] p-6 xl:max-w-[760px]">
-              <div className="mb-5 text-sm font-semibold uppercase tracking-[0.18em] text-white/45">
-                Team Overview
-              </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {tabs.map((tab) => {
+                const isActive = activeTab === tab.key;
 
-              <div className="grid grid-cols-1 gap-x-10 gap-y-6 md:grid-cols-3">
-                <div>
-                  <div className="text-xs uppercase tracking-[0.14em] text-white/35">
-                    Founded
-                  </div>
-                  <div className="mt-2 text-sm font-medium text-white">
-                    —
-                  </div>
-                </div>
-
-                <div>
-                  <div className="text-xs uppercase tracking-[0.14em] text-white/35">
-                    Stadium
-                  </div>
-                  <div className="mt-2 text-sm font-medium text-white">
-                    —
-                  </div>
-                </div>
-
-                <div>
-                  <div className="text-xs uppercase tracking-[0.14em] text-white/35">
-                    Head Coach
-                  </div>
-                  <div className="mt-2 text-sm font-medium text-white">
-                    —
-                  </div>
-                </div>
-
-                <div>
-                  <div className="text-xs uppercase tracking-[0.14em] text-white/35">
-                    Website
-                  </div>
-                  <div className="mt-2 break-all text-sm font-medium text-white">
-                    —
-                  </div>
-                </div>
-
-                <div>
-                  <div className="text-xs uppercase tracking-[0.14em] text-white/35">
-                    Capacity
-                  </div>
-                  <div className="mt-2 text-sm font-medium text-white">
-                    —
-                  </div>
-                </div>
-
-                <div>
-                  <div className="text-xs uppercase tracking-[0.14em] text-white/35">
-                    Market Value
-                  </div>
-                  <div className="mt-2 text-sm font-medium text-white">
-                    —
-                  </div>
-                </div>
-              </div>
+                return (
+                  <Link
+                    key={tab.key}
+                    href={`/dashboard/stats-analysis/football/team-stats/detail?team=${team.slug}&tab=${tab.key}`}
+                    className={`rounded-xl border px-3.5 py-1.5 text-sm font-medium whitespace-nowrap transition ${
+                      isActive
+                        ? "border-[#4da2ff]/40 bg-[#10233b] text-white shadow-[0_0_18px_rgba(77,162,255,0.10)]"
+                        : "border-white/10 bg-white/[0.03] text-white/72 hover:border-[#4da2ff]/25 hover:bg-[#0e1d30] hover:text-white"
+                    }`}
+                  >
+                    {tab.label}
+                  </Link>
+                );
+              })}
             </div>
+          </div>
+
+          <div className="min-w-0 2xl:px-2">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+              {metaItems.map((item, index) => (
+                <div
+                  key={item.label}
+                  className="flex items-center gap-2 text-white/55"
+                >
+                  <span className="font-medium text-white/38">{item.label}:</span>
+                  <span className="text-white/82">{item.value}</span>
+                  {index < metaItems.length - 1 && (
+                    <span className="ml-1 text-white/20">•</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="2xl:justify-self-end">
+            <Link
+              href="/dashboard/stats-analysis/football/team-stats"
+              className="inline-flex rounded-xl border border-white/10 bg-white/[0.03] px-3 py-1.5 text-sm text-white/70 transition hover:border-[#4da2ff]/30 hover:bg-[#0e1d30] hover:text-white"
+            >
+              ← Back to teams
+            </Link>
           </div>
         </div>
       </div>
