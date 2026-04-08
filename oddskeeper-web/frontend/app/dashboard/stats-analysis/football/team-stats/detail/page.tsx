@@ -9,8 +9,8 @@ import { getTeamRecentForm } from "../../../../../../features/team-detail/server
 import { getTeamResults } from "../../../../../../features/team-detail/server/getTeamResults";
 import { getTeamStatisticsSplit } from "../../../../../../features/team-detail/server/getTeamStatisticsSplit";
 import { getTeamStatisticsSummary } from "../../../../../../features/team-detail/server/getTeamStatisticsSummary";
+import { VALID_TABS } from "../../../../../../features/team-detail/constants";
 import type { ValidTab } from "../../../../../../features/team-detail/types";
-import { VALID_TABS } from "../../../../../../features/team-detail/types";
 import { getFootballTeamBySlug } from "../../../../../../lib/football-teams";
 
 type TeamDetailPageProps = {

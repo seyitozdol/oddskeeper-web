@@ -1,9 +1,4 @@
-export const VALID_TABS = [
-  "team-statistics",
-  "squad",
-  "fixture",
-  "results",
-] as const;
+import { VALID_TABS } from "./constants";
 
 export type ValidTab = (typeof VALID_TABS)[number];
 
