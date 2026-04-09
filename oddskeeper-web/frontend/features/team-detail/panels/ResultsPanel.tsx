@@ -2,6 +2,7 @@ import type { TeamResultRow } from "../types";
 import { formatDate } from "../utils/formatDate";
 import { ResultBadge } from "../components/ResultBadge";
 import TeamLink from "@/components/links/TeamLink";
+import MatchLink from "@/components/links/MatchLink";
 
 type ResultsPanelProps = {
   rows: TeamResultRow[];
@@ -32,48 +33,68 @@ export function ResultsPanel({ rows }: ResultsPanelProps) {
         </thead>
 
         <tbody>
-          {rows.map((row) => (
-            <tr
-              key={row.source_match_id}
-              className="border-t border-white/10 text-[13px] text-white/80 transition hover:bg-white/[0.018]"
-            >
-              <td className="px-4 py-2 whitespace-nowrap">
-                {formatDate(row.match_datetime)}
-              </td>
+          {rows.map((row) => {
+            const returnTo = `/dashboard/stats-analysis/football/team-stats/detail?team=${encodeURIComponent(
+              row.team_slug
+            )}&tab=results`;
 
-              <td className="px-4 py-2 whitespace-nowrap text-white/60">
-                {row.competition ?? "—"}
-              </td>
+            return (
+              <tr
+                key={row.source_match_id}
+                className="border-t border-white/10 text-[13px] text-white/80 transition hover:bg-white/[0.018]"
+              >
+                <td className="px-4 py-2 whitespace-nowrap">
+                  <MatchLink
+                    sourceMatchId={row.source_match_id}
+                    returnTo={returnTo}
+                    className="transition hover:text-white hover:underline"
+                    title="Open match detail"
+                  >
+                    {formatDate(row.match_datetime)}
+                  </MatchLink>
+                </td>
 
-              <td className="px-4 py-2 whitespace-nowrap">
-                <span className="rounded-md border border-white/10 bg-white/[0.03] px-2 py-[2px] text-[10px] font-medium text-white/72">
-                  {row.is_home ? "Home" : "Away"}
-                </span>
-              </td>
+                <td className="px-4 py-2 whitespace-nowrap text-white/60">
+                  {row.competition ?? "—"}
+                </td>
 
-              <td className="px-4 py-2 min-w-[210px]">
-                <TeamLink
-                  teamSlug={row.opponent_team_slug}
-                  className="font-medium text-white transition hover:text-white hover:underline"
-                  title={row.opponent_name ?? "Opponent"}
-                >
-                  {row.opponent_name ?? "—"}
-                </TeamLink>
-              </td>
+                <td className="px-4 py-2 whitespace-nowrap">
+                  <span className="rounded-md border border-white/10 bg-white/[0.03] px-2 py-[2px] text-[10px] font-medium text-white/72">
+                    {row.is_home ? "Home" : "Away"}
+                  </span>
+                </td>
 
-              <td className="px-4 py-2 whitespace-nowrap font-semibold text-white">
-                {row.score_display ?? "—"}
-              </td>
+                <td className="px-4 py-2 min-w-[210px]">
+                  <TeamLink
+                    teamSlug={row.opponent_team_slug}
+                    className="font-medium text-white transition hover:text-white hover:underline"
+                    title={row.opponent_name ?? "Opponent"}
+                  >
+                    {row.opponent_name ?? "—"}
+                  </TeamLink>
+                </td>
 
-              <td className="px-4 py-2 whitespace-nowrap">
-                <ResultBadge resultCode={row.result_code} compact />
-              </td>
+                <td className="px-4 py-2 whitespace-nowrap font-semibold text-white">
+                  <MatchLink
+                    sourceMatchId={row.source_match_id}
+                    returnTo={returnTo}
+                    className="font-semibold text-white transition hover:text-white hover:underline"
+                    title="Open match detail"
+                  >
+                    {row.score_display ?? "—"}
+                  </MatchLink>
+                </td>
 
-              <td className="px-4 py-2 min-w-[210px] text-white/60">
-                {row.venue ?? "—"}
-              </td>
-            </tr>
-          ))}
+                <td className="px-4 py-2 whitespace-nowrap">
+                  <ResultBadge resultCode={row.result_code} compact />
+                </td>
+
+                <td className="px-4 py-2 min-w-[210px] text-white/60">
+                  {row.venue ?? "—"}
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>

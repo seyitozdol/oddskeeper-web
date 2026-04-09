@@ -3,6 +3,7 @@ import { formatDate } from "../utils/formatDate";
 import { formatDecimal } from "../utils/formatDecimal";
 import { PlayerResultBadge } from "../components/PlayerResultBadge";
 import TeamLink from "@/components/links/TeamLink";
+import MatchLink from "@/components/links/MatchLink";
 
 type PlayerMatchLogPanelProps = {
   rows: PlayerMatchLogRow[];
@@ -37,64 +38,84 @@ export function PlayerMatchLogPanel({ rows }: PlayerMatchLogPanelProps) {
         </thead>
 
         <tbody>
-          {rows.map((row) => (
-            <tr
-              key={`${row.source_match_id}-${row.player_source_id}`}
-              className="border-t border-white/10 text-[13px] text-white/80 transition hover:bg-white/[0.018]"
-            >
-              <td className="px-4 py-2 whitespace-nowrap">
-                {formatDate(row.match_datetime)}
-              </td>
+          {rows.map((row) => {
+            const returnTo = `/dashboard/stats-analysis/football/player-stats/detail?player=${encodeURIComponent(
+              row.player_slug
+            )}&tab=match-log`;
 
-              <td className="px-4 py-2 min-w-[220px]">
-                <TeamLink
-                  teamSlug={row.opponent_team_slug}
-                  className="font-medium text-white transition hover:text-white hover:underline"
-                  title={row.opponent_name ?? "Opponent"}
-                >
-                  {row.opponent_name ?? "—"}
-                </TeamLink>
-              </td>
+            return (
+              <tr
+                key={`${row.source_match_id}-${row.player_source_id}`}
+                className="border-t border-white/10 text-[13px] text-white/80 transition hover:bg-white/[0.018]"
+              >
+                <td className="px-4 py-2 whitespace-nowrap">
+                  <MatchLink
+                    sourceMatchId={row.source_match_id}
+                    returnTo={returnTo}
+                    className="transition hover:text-white hover:underline"
+                    title="Open match detail"
+                  >
+                    {formatDate(row.match_datetime)}
+                  </MatchLink>
+                </td>
 
-              <td className="px-4 py-2 whitespace-nowrap">
-                <span className="rounded-md border border-white/10 bg-white/[0.03] px-2 py-[2px] text-[10px] font-medium text-white/72">
-                  {row.is_home ? "Home" : "Away"}
-                </span>
-              </td>
+                <td className="px-4 py-2 min-w-[220px]">
+                  <TeamLink
+                    teamSlug={row.opponent_team_slug}
+                    className="font-medium text-white transition hover:text-white hover:underline"
+                    title={row.opponent_name ?? "Opponent"}
+                  >
+                    {row.opponent_name ?? "—"}
+                  </TeamLink>
+                </td>
 
-              <td className="px-4 py-2 whitespace-nowrap font-medium text-white">
-                {row.score_display ?? "—"}
-              </td>
+                <td className="px-4 py-2 whitespace-nowrap">
+                  <span className="rounded-md border border-white/10 bg-white/[0.03] px-2 py-[2px] text-[10px] font-medium text-white/72">
+                    {row.is_home ? "Home" : "Away"}
+                  </span>
+                </td>
 
-              <td className="px-4 py-2 whitespace-nowrap">
-                <PlayerResultBadge resultCode={row.result_code} />
-              </td>
+                <td className="px-4 py-2 whitespace-nowrap font-medium text-white">
+                  <MatchLink
+                    sourceMatchId={row.source_match_id}
+                    returnTo={returnTo}
+                    className="font-medium text-white transition hover:text-white hover:underline"
+                    title="Open match detail"
+                  >
+                    {row.score_display ?? "—"}
+                  </MatchLink>
+                </td>
 
-              <td className="px-4 py-2 whitespace-nowrap text-white/70">
-                {row.lineup_status ?? "—"}
-              </td>
+                <td className="px-4 py-2 whitespace-nowrap">
+                  <PlayerResultBadge resultCode={row.result_code} />
+                </td>
 
-              <td className="px-4 py-2 whitespace-nowrap text-white/70">
-                {row.position_code ?? "—"}
-              </td>
+                <td className="px-4 py-2 whitespace-nowrap text-white/70">
+                  {row.lineup_status ?? "—"}
+                </td>
 
-              <td className="px-4 py-2 whitespace-nowrap">
-                {row.minutes_played ?? "—"}
-              </td>
+                <td className="px-4 py-2 whitespace-nowrap text-white/70">
+                  {row.position_code ?? "—"}
+                </td>
 
-              <td className="px-4 py-2 whitespace-nowrap">
-                {row.goals ?? "—"}
-              </td>
+                <td className="px-4 py-2 whitespace-nowrap">
+                  {row.minutes_played ?? "—"}
+                </td>
 
-              <td className="px-4 py-2 whitespace-nowrap">
-                {row.assists ?? "—"}
-              </td>
+                <td className="px-4 py-2 whitespace-nowrap">
+                  {row.goals ?? "—"}
+                </td>
 
-              <td className="px-4 py-2 whitespace-nowrap">
-                {formatDecimal(row.expected_goals, 3)}
-              </td>
-            </tr>
-          ))}
+                <td className="px-4 py-2 whitespace-nowrap">
+                  {row.assists ?? "—"}
+                </td>
+
+                <td className="px-4 py-2 whitespace-nowrap">
+                  {formatDecimal(row.expected_goals, 3)}
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
