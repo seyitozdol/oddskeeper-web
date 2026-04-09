@@ -1,6 +1,7 @@
 import type { TeamResultRow } from "../types";
 import { formatDate } from "../utils/formatDate";
 import { ResultBadge } from "../components/ResultBadge";
+import TeamLink from "@/components/links/TeamLink";
 
 type ResultsPanelProps = {
   rows: TeamResultRow[];
@@ -51,7 +52,13 @@ export function ResultsPanel({ rows }: ResultsPanelProps) {
               </td>
 
               <td className="px-4 py-2 min-w-[210px]">
-                {row.opponent_name ?? "—"}
+                <TeamLink
+                  teamSlug={row.opponent_team_slug}
+                  className="font-medium text-white transition hover:text-white hover:underline"
+                  title={row.opponent_name ?? "Opponent"}
+                >
+                  {row.opponent_name ?? "—"}
+                </TeamLink>
               </td>
 
               <td className="px-4 py-2 whitespace-nowrap font-semibold text-white">

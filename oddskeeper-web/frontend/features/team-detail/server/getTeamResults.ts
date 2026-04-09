@@ -18,6 +18,7 @@ export async function getTeamResults(teamSlug: string) {
         is_home,
         is_away,
         opponent_name,
+        opponent_team_slug,
         opponent_source_team_id,
         team_score,
         opponent_score,

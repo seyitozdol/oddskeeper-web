@@ -23,6 +23,7 @@ export type TeamResultRow = {
   is_home: boolean;
   is_away: boolean;
   opponent_name: string | null;
+  opponent_team_slug: string | null;
   opponent_source_team_id: string | null;
   team_score: number | null;
   opponent_score: number | null;

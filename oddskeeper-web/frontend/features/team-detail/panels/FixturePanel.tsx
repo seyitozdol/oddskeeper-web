@@ -1,6 +1,7 @@
 import type { TeamFixtureRow } from "../types";
 import { formatFixtureDate } from "../utils/formatFixtureDate";
 import { formatKickoffTime } from "../utils/formatKickoffTime";
+import TeamLink from "@/components/links/TeamLink";
 
 type FixturePanelProps = {
   rows: TeamFixtureRow[];
@@ -71,7 +72,13 @@ export function FixturePanel({ rows }: FixturePanelProps) {
               </td>
 
               <td className="px-4 py-2 min-w-[210px] font-medium text-white">
-                {row.opponent_name ?? "—"}
+                <TeamLink
+                  teamSlug={row.opponent_team_slug}
+                  className="font-medium text-white transition hover:text-white hover:underline"
+                  title={row.opponent_name ?? "Opponent"}
+                >
+                  {row.opponent_name ?? "—"}
+                </TeamLink>
               </td>
 
               <td className="px-4 py-2 whitespace-nowrap text-white/70">
