@@ -62,8 +62,8 @@ export default async function FootballPlayerDetailPage({
       <PlayerDetailHeader profile={profile} activeTab={activeTab} />
 
       {activeTab === "overview" ? (
-        <PlayerOverviewPanel profile={profile} />
-      ) : (
+        <PlayerOverviewPanel profile={profile} matchLog={matchLog} />
+) : (
         <PlayerMatchLogPanel rows={matchLog} />
       )}
     </section>
