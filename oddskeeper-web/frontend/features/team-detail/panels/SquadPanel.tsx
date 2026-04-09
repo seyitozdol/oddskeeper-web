@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import type { TeamSquadRow } from "../types";
 import { formatDate } from "../utils/formatDate";
 import { formatDecimal } from "../utils/formatDecimal";
+import PlayerLink from "@/components/links/PlayerLink";
 
 type SquadPanelProps = {
   rows: TeamSquadRow[];
@@ -51,11 +52,7 @@ function compareText(a: string, b: string, direction: SortDirection) {
   return direction === "asc" ? a.localeCompare(b) : b.localeCompare(a);
 }
 
-function compareNumber(
-  a: number,
-  b: number,
-  direction: SortDirection
-) {
+function compareNumber(a: number, b: number, direction: SortDirection) {
   return direction === "asc" ? a - b : b - a;
 }
 
@@ -107,8 +104,12 @@ export function SquadPanel({ rows }: SquadPanelProps) {
       }
 
       if (sortKey === "last_match_datetime") {
-        const aTime = a.last_match_datetime ? new Date(a.last_match_datetime).getTime() : 0;
-        const bTime = b.last_match_datetime ? new Date(b.last_match_datetime).getTime() : 0;
+        const aTime = a.last_match_datetime
+          ? new Date(a.last_match_datetime).getTime()
+          : 0;
+        const bTime = b.last_match_datetime
+          ? new Date(b.last_match_datetime).getTime()
+          : 0;
         return compareNumber(aTime, bTime, sortDirection);
       }
 
@@ -255,7 +256,13 @@ export function SquadPanel({ rows }: SquadPanelProps) {
               className="border-t border-white/10 text-[13px] text-white/80 transition hover:bg-white/[0.018]"
             >
               <td className="px-4 py-2 font-medium text-white whitespace-nowrap">
-                {row.player_name}
+                <PlayerLink
+                  playerSlug={row.player_slug}
+                  className="font-medium text-white transition hover:text-white hover:underline"
+                  title={row.player_name}
+                >
+                  {row.player_name}
+                </PlayerLink>
               </td>
 
               <td className="px-4 py-2 whitespace-nowrap text-white/70">
