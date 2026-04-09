@@ -91,3 +91,26 @@ export type TeamRecentFormRow = {
   result_code: "W" | "D" | "L" | null;
   result_points: number | null;
 };
+
+export type TeamSquadRow = {
+  team_slug: string;
+  team_source_id: string;
+  team_name: string;
+  competition: string | null;
+  season_label: string | null;
+  player_source_id: string;
+  player_name: string;
+  player_slug: string;
+  primary_position_code: string;
+  position_group: string;
+  appearances: number;
+  starts: number;
+  sub_appearances: number;
+  starter_rate_pct: number | string | null;
+  total_minutes: number;
+  avg_minutes: number | string | null;
+  goals: number;
+  assists: number;
+  first_match_datetime: string | null;
+  last_match_datetime: string | null;
+};
