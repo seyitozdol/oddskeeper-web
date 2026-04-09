@@ -29,7 +29,6 @@ export function PlayerMatchLogPanel({ rows }: PlayerMatchLogPanelProps) {
             <th className="px-4 py-2 font-medium">Result</th>
             <th className="px-4 py-2 font-medium">Lineup</th>
             <th className="px-4 py-2 font-medium">Pos</th>
-            <th className="px-4 py-2 font-medium">Pts</th>
             <th className="px-4 py-2 font-medium">Min</th>
             <th className="px-4 py-2 font-medium">G</th>
             <th className="px-4 py-2 font-medium">A</th>
@@ -77,10 +76,6 @@ export function PlayerMatchLogPanel({ rows }: PlayerMatchLogPanelProps) {
 
               <td className="px-4 py-2 whitespace-nowrap text-white/70">
                 {row.position_code ?? "—"}
-              </td>
-
-              <td className="px-4 py-2 whitespace-nowrap">
-                {formatDecimal(row.points, 1)}
               </td>
 
               <td className="px-4 py-2 whitespace-nowrap">
