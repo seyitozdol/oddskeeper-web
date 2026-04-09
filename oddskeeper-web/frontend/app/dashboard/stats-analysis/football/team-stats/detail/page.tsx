@@ -13,6 +13,7 @@ import { VALID_TABS } from "../../../../../../features/team-detail/constants";
 import type { ValidTab } from "../../../../../../features/team-detail/types";
 import { getFootballTeamBySlug } from "../../../../../../lib/football-teams";
 import { getTeamSquad } from "../../../../../../features/team-detail/server/getTeamSquad";
+import { getTeamFixtures } from "../../../../../../features/team-detail/server/getTeamFixtures";
 
 type TeamDetailPageProps = {
   searchParams: Promise<{
@@ -53,6 +54,9 @@ export default async function TeamDetailPage({
 
   const squadRows =
    activeTab === "squad" ? await getTeamSquad(teamSlug) : [];
+
+  const fixtureRows =
+   activeTab === "fixture" ? await getTeamFixtures(teamSlug) : [];
 
   const summary =
     activeTab === "team-statistics"
@@ -97,7 +101,7 @@ export default async function TeamDetailPage({
 
         {activeTab === "squad" && <SquadPanel rows={squadRows} />}
 
-        {activeTab === "fixture" && <FixturePanel />}
+        {activeTab === "fixture" && <FixturePanel rows={fixtureRows} />}
       </div>
     </section>
   );

@@ -114,3 +114,23 @@ export type TeamSquadRow = {
   first_match_datetime: string | null;
   last_match_datetime: string | null;
 };
+export type TeamFixtureRow = {
+  fixture_id: number;
+  competition: string | null;
+  season_label: string | null;
+  round_number: number;
+  fixture_date: string | null;
+  fixture_datetime: string | null;
+  kickoff_time_known: boolean;
+  kickoff_time_text: string | null;
+  fixture_status: "scheduled" | "postponed" | "cancelled" | "completed" | string;
+  venue: string | null;
+  team_slug: string;
+  team_source_id: string;
+  team_name: string;
+  is_home: boolean;
+  is_away: boolean;
+  opponent_team_slug: string;
+  opponent_team_source_id: string;
+  opponent_name: string | null;
+};
