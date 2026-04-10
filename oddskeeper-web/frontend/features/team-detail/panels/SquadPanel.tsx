@@ -7,7 +7,7 @@ import { formatDecimal } from "../utils/formatDecimal";
 import PlayerLink from "@/components/links/PlayerLink";
 
 type SquadPanelProps = {
-  rows: TeamSquadRow[];
+  rows?: TeamSquadRow[];
 };
 
 type SortKey =
@@ -56,6 +56,12 @@ function compareNumber(a: number, b: number, direction: SortDirection) {
   return direction === "asc" ? a - b : b - a;
 }
 
+function toNumber(value: number | string | null | undefined) {
+  if (value === null || value === undefined || value === "") return 0;
+  const numeric = Number(value);
+  return Number.isNaN(numeric) ? 0 : numeric;
+}
+
 function getSortIndicator(
   currentKey: SortKey,
   currentDirection: SortDirection,
@@ -65,7 +71,54 @@ function getSortIndicator(
   return currentDirection === "asc" ? " ↑" : " ↓";
 }
 
-export function SquadPanel({ rows }: SquadPanelProps) {
+function PlayerName({
+  playerSlug,
+  playerName,
+}: {
+  playerSlug: string | null | undefined;
+  playerName: string;
+}) {
+  if (!playerSlug) {
+    return <span>{playerName}</span>;
+  }
+
+  return (
+    <PlayerLink
+      playerSlug={playerSlug}
+      className="font-medium text-white transition hover:text-white hover:underline"
+      title={playerName}
+    >
+      {playerName}
+    </PlayerLink>
+  );
+}
+
+function getMetricSortValue(row: TeamSquadRow, sortKey: SortKey): number {
+  if (sortKey === "last_match_datetime") {
+    return row.last_match_datetime
+      ? new Date(row.last_match_datetime).getTime()
+      : 0;
+  }
+
+  if (sortKey === "starter_rate_pct") {
+    return toNumber(row.starter_rate_pct);
+  }
+
+  if (sortKey === "avg_minutes") {
+    return toNumber(row.avg_minutes);
+  }
+
+  if (sortKey === "appearances") return row.appearances;
+  if (sortKey === "starts") return row.starts;
+  if (sortKey === "sub_appearances") return row.sub_appearances;
+  if (sortKey === "total_minutes") return row.total_minutes;
+  if (sortKey === "goals") return row.goals;
+  if (sortKey === "assists") return row.assists;
+
+  return 0;
+}
+
+export function SquadPanel({ rows = [] }: SquadPanelProps) {
   const [sortKey, setSortKey] = useState<SortKey>("primary_position_code");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
 
@@ -103,18 +156,9 @@ export function SquadPanel({ rows }: SquadPanelProps) {
         return compareText(a.player_name, b.player_name, sortDirection);
       }
 
-      if (sortKey === "last_match_datetime") {
-        const aTime = a.last_match_datetime
-          ? new Date(a.last_match_datetime).getTime()
-          : 0;
-        const bTime = b.last_match_datetime
-          ? new Date(b.last_match_datetime).getTime()
-          : 0;
-        return compareNumber(aTime, bTime, sortDirection);
-      }
+      const aValue = getMetricSortValue(a, sortKey);
+      const bValue = getMetricSortValue(b, sortKey);
 
-      const aValue = Number(a[sortKey] ?? 0);
-      const bValue = Number(b[sortKey] ?? 0);
       const byMetric = compareNumber(aValue, bValue, sortDirection);
       if (byMetric !== 0) return byMetric;
 
@@ -153,7 +197,8 @@ export function SquadPanel({ rows }: SquadPanelProps) {
                 onClick={() => handleSort("primary_position_code")}
                 className="cursor-pointer select-none"
               >
-                Position{getSortIndicator(sortKey, sortDirection, "primary_position_code")}
+                Position
+                {getSortIndicator(sortKey, sortDirection, "primary_position_code")}
               </button>
             </th>
 
@@ -193,7 +238,8 @@ export function SquadPanel({ rows }: SquadPanelProps) {
                 onClick={() => handleSort("starter_rate_pct")}
                 className="cursor-pointer select-none"
               >
-                Starter %{getSortIndicator(sortKey, sortDirection, "starter_rate_pct")}
+                Starter %
+                {getSortIndicator(sortKey, sortDirection, "starter_rate_pct")}
               </button>
             </th>
 
@@ -243,7 +289,8 @@ export function SquadPanel({ rows }: SquadPanelProps) {
                 onClick={() => handleSort("last_match_datetime")}
                 className="cursor-pointer select-none"
               >
-                Last Match{getSortIndicator(sortKey, sortDirection, "last_match_datetime")}
+                Last Match
+                {getSortIndicator(sortKey, sortDirection, "last_match_datetime")}
               </button>
             </th>
           </tr>
@@ -255,14 +302,11 @@ export function SquadPanel({ rows }: SquadPanelProps) {
               key={row.player_source_id}
               className="border-t border-white/10 text-[13px] text-white/80 transition hover:bg-white/[0.018]"
             >
-              <td className="px-4 py-2 font-medium text-white whitespace-nowrap">
-                <PlayerLink
+              <td className="px-4 py-2 font-medium whitespace-nowrap text-white">
+                <PlayerName
                   playerSlug={row.player_slug}
-                  className="font-medium text-white transition hover:text-white hover:underline"
-                  title={row.player_name}
-                >
-                  {row.player_name}
-                </PlayerLink>
+                  playerName={row.player_name}
+                />
               </td>
 
               <td className="px-4 py-2 whitespace-nowrap text-white/70">
