@@ -11,7 +11,7 @@ function formatValue(value: string | number | boolean | null | undefined) {
 }
 
 export default function TeamBenchmarksPanel({ benchmarks = [] }: Props) {
-  if (!benchmarks || benchmarks.length === 0) {
+  if (benchmarks.length === 0) {
     return (
       <section className="rounded-2xl border border-white/10 bg-white/5 p-5">
         <p className="text-sm text-white/70">
@@ -40,6 +40,8 @@ export default function TeamBenchmarksPanel({ benchmarks = [] }: Props) {
               <th className="px-3 py-2 font-medium">League Rank</th>
               <th className="px-3 py-2 font-medium">League Avg</th>
               <th className="px-3 py-2 font-medium">Vs Avg %</th>
+              <th className="px-3 py-2 font-medium">Rank Dir</th>
+              <th className="px-3 py-2 font-medium">Above Avg</th>
             </tr>
           </thead>
           <tbody>
@@ -55,7 +57,13 @@ export default function TeamBenchmarksPanel({ benchmarks = [] }: Props) {
                 <td className="px-3 py-2">{formatValue(row.metric_value)}</td>
                 <td className="px-3 py-2">{formatValue(row.league_rank)}</td>
                 <td className="px-3 py-2">{formatValue(row.league_avg)}</td>
-                <td className="px-3 py-2">{formatValue(row.vs_league_avg_pct)}</td>
+                <td className="px-3 py-2">
+                  {formatValue(row.vs_league_avg_pct)}
+                </td>
+                <td className="px-3 py-2">{formatValue(row.rank_direction)}</td>
+                <td className="px-3 py-2">
+                  {formatValue(row.above_league_avg_flag)}
+                </td>
               </tr>
             ))}
           </tbody>
