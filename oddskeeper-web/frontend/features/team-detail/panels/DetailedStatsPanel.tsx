@@ -11,6 +11,7 @@ type DetailedStatsPanelProps = {
 };
 
 type CategoryFilter = "all" | TeamDetailedCategoryKey;
+type SummaryTone = "neutral" | "positive" | "negative" | "accent" | "warning";
 
 const CATEGORY_ORDER: TeamDetailedCategoryKey[] = [
   "attack",
@@ -159,17 +160,41 @@ function isMeaningfulSummaryMetric(row: TeamDetailedMetricRow) {
   return true;
 }
 
+function getSummaryToneClasses(tone: SummaryTone) {
+  if (tone === "positive") {
+    return "border-emerald-500/20 bg-[linear-gradient(180deg,rgba(16,185,129,0.08),rgba(255,255,255,0.02))] shadow-[0_0_0_1px_rgba(16,185,129,0.04)]";
+  }
+
+  if (tone === "negative") {
+    return "border-rose-500/20 bg-[linear-gradient(180deg,rgba(244,63,94,0.08),rgba(255,255,255,0.02))] shadow-[0_0_0_1px_rgba(244,63,94,0.04)]";
+  }
+
+  if (tone === "accent") {
+    return "border-sky-500/20 bg-[linear-gradient(180deg,rgba(59,130,246,0.08),rgba(255,255,255,0.02))] shadow-[0_0_0_1px_rgba(59,130,246,0.04)]";
+  }
+
+  if (tone === "warning") {
+    return "border-amber-500/20 bg-[linear-gradient(180deg,rgba(245,158,11,0.08),rgba(255,255,255,0.02))] shadow-[0_0_0_1px_rgba(245,158,11,0.04)]";
+  }
+
+  return "border-white/10 bg-white/[0.025]";
+}
+
 function SummaryCard({
   label,
   value,
   subvalue,
+  tone = "neutral",
 }: {
   label: string;
   value: string;
   subvalue?: string;
+  tone?: SummaryTone;
 }) {
   return (
-    <div className="rounded-xl border border-white/10 bg-white/[0.025] px-3 py-3">
+    <div
+      className={`rounded-xl border px-3 py-3 ${getSummaryToneClasses(tone)}`}
+    >
       <div className="text-[9px] uppercase tracking-[0.16em] text-white/38">
         {label}
       </div>
@@ -177,7 +202,7 @@ function SummaryCard({
         {value}
       </div>
       {subvalue ? (
-        <div className="mt-1 text-[11px] leading-4 text-white/52">
+        <div className="mt-1 text-[11px] leading-4 text-white/56">
           {subvalue}
         </div>
       ) : null}
@@ -233,9 +258,20 @@ export default function DetailedStatsPanel({
     if (rows.length === 0) {
       return {
         strongestEdge: "—",
+        strongestEdgeSub: undefined as string | undefined,
+        strongestEdgeTone: "neutral" as SummaryTone,
+
         mainWeakness: "—",
+        mainWeaknessSub: undefined as string | undefined,
+        mainWeaknessTone: "neutral" as SummaryTone,
+
         biggestPositiveDelta: "—",
+        biggestPositiveDeltaSub: undefined as string | undefined,
+        biggestPositiveDeltaTone: "neutral" as SummaryTone,
+
         biggestSplitGap: "—",
+        biggestSplitGapSub: undefined as string | undefined,
+        biggestSplitGapTone: "neutral" as SummaryTone,
       };
     }
 
@@ -309,21 +345,56 @@ export default function DetailedStatsPanel({
       strongestEdge: strongestRow
         ? `${strongestRow.metric_label} (#${strongestRow.league_rank})`
         : "No clear edge",
+      strongestEdgeSub: strongestRow
+        ? `${strongestRow.category_label} • ${formatMetricValue(
+            strongestRow.vs_league_avg_pct,
+            "pct_1"
+          )} vs avg`
+        : "No metric cleared the strength threshold",
+      strongestEdgeTone: strongestRow ? ("positive" as SummaryTone) : ("neutral" as SummaryTone),
+
       mainWeakness: weakestRow
         ? `${weakestRow.metric_label} (#${weakestRow.league_rank})`
         : "No major weakness",
+      mainWeaknessSub: weakestRow
+        ? `${weakestRow.category_label} • ${formatMetricValue(
+            weakestRow.vs_league_avg_pct,
+            "pct_1"
+          )} vs avg`
+        : "No weakness crossed the alert threshold",
+      mainWeaknessTone: weakestRow ? ("negative" as SummaryTone) : ("neutral" as SummaryTone),
+
       biggestPositiveDelta: biggestPositiveDeltaRow
         ? `${biggestPositiveDeltaRow.metric_label} (${formatMetricValue(
             biggestPositiveDeltaRow.vs_league_avg_pct,
             "pct_1"
           )})`
         : "—",
+      biggestPositiveDeltaSub: biggestPositiveDeltaRow
+        ? `${biggestPositiveDeltaRow.category_label} • Rank #${biggestPositiveDeltaRow.league_rank}`
+        : undefined,
+      biggestPositiveDeltaTone: biggestPositiveDeltaRow
+        ? ("accent" as SummaryTone)
+        : ("neutral" as SummaryTone),
+
       biggestSplitGap: biggestGapRow
         ? `${biggestGapRow.metric_label} • ${formatMetricValue(
             biggestGapRow.home_away_gap_abs,
             biggestGapRow.value_format
           )}`
         : "—",
+      biggestSplitGapSub: biggestGapRow
+        ? `Home ${formatMetricValue(
+            biggestGapRow.home_value,
+            biggestGapRow.value_format
+          )} • Away ${formatMetricValue(
+            biggestGapRow.away_value,
+            biggestGapRow.value_format
+          )}`
+        : undefined,
+      biggestSplitGapTone: biggestGapRow
+        ? ("warning" as SummaryTone)
+        : ("neutral" as SummaryTone),
     };
   }, [rows]);
 
@@ -380,13 +451,30 @@ export default function DetailedStatsPanel({
           </div>
 
           <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-            <SummaryCard label="Strongest Edge" value={summary.strongestEdge} />
-            <SummaryCard label="Main Weakness" value={summary.mainWeakness} />
+            <SummaryCard
+              label="Strongest Edge"
+              value={summary.strongestEdge}
+              subvalue={summary.strongestEdgeSub}
+              tone={summary.strongestEdgeTone}
+            />
+            <SummaryCard
+              label="Main Weakness"
+              value={summary.mainWeakness}
+              subvalue={summary.mainWeaknessSub}
+              tone={summary.mainWeaknessTone}
+            />
             <SummaryCard
               label="Biggest Positive Delta"
               value={summary.biggestPositiveDelta}
+              subvalue={summary.biggestPositiveDeltaSub}
+              tone={summary.biggestPositiveDeltaTone}
             />
-            <SummaryCard label="Biggest Split Gap" value={summary.biggestSplitGap} />
+            <SummaryCard
+              label="Biggest Split Gap"
+              value={summary.biggestSplitGap}
+              subvalue={summary.biggestSplitGapSub}
+              tone={summary.biggestSplitGapTone}
+            />
           </div>
         </div>
       </div>
