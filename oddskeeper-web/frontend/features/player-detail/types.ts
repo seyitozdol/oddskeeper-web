@@ -5,33 +5,42 @@ export type ValidPlayerTab = (typeof VALID_PLAYER_TABS)[number];
 export type PlayerProfileRow = {
   team_slug: string;
   team_source_id: string;
+  source_team_id?: string | number | null;
   team_name: string;
+
   competition: string | null;
   season_label: string | null;
+
   player_source_id: string;
   player_name: string;
   player_slug: string;
+
   primary_position_code: string;
   position_group: string;
+
   appearances: number;
   starts: number;
   sub_appearances: number;
   starter_rate_pct: number | string | null;
+
   total_minutes: number;
   avg_minutes: number | string | null;
+
   goals: number;
   assists: number;
+
   first_match_datetime: string | null;
   last_match_datetime: string | null;
 };
 
 export type PlayerMatchLogRow = {
   player_slug: string;
-  player_source_id: string;
+  player_source_id: string | number;
   player_name: string;
 
   team_slug: string | null;
   team_source_id: string | null;
+  source_team_id?: string | number | null;
   team_name: string | null;
 
   source_match_id: string;
@@ -43,10 +52,12 @@ export type PlayerMatchLogRow = {
   is_away: boolean;
 
   opponent_name: string | null;
+  opponent_team_name?: string | null;
   opponent_team_slug: string | null;
 
   score_display: string | null;
   result_code: "W" | "D" | "L" | null;
+  result_label?: string | null;
 
   lineup_status: string | null;
   position_code: string | null;
@@ -55,11 +66,15 @@ export type PlayerMatchLogRow = {
   minutes_played: number | null;
   goals: number | null;
   assists: number | null;
+
   shots_on_target: number | null;
   shots_off_target: number | null;
   shots_blocked: number | null;
+
   passes: number | string | null;
+  accurate_pass: number | null;
   crosses: number | string | null;
+
   tackles: number | null;
   interceptions: number | null;
   fouls_won: number | null;
@@ -69,16 +84,18 @@ export type PlayerMatchLogRow = {
   cards_red: number | null;
   penalties_won: number | null;
   saves_total: number | null;
+
   expected_goals: number | string | null;
-  accurate_pass: number | null;
 };
 
-type PlayerAdvancedMetricValue = string | number | boolean | null;
+export type PlayerAdvancedMetricValue = string | number | boolean | null;
 
 export type PlayerAdvancedOverviewRow = {
   season_label: string | null;
   competition: string | null;
+
   source_team_id: string | number | null;
+  team_source_id?: string | number | null;
   team_slug: string | null;
   team_name: string | null;
 
@@ -112,12 +129,15 @@ export type PlayerAdvancedOverviewRow = {
   secondary_strength_league_rank: number | null;
   secondary_strength_league_percentile: number | null;
   secondary_strength_vs_league_avg_pct: number | null;
+  secondary_strength_vs_league_pct?: number | null;
 };
 
 export type PlayerMetricBenchmarkRow = {
   season_label: string | null;
   competition: string | null;
+
   source_team_id: string | number | null;
+  team_source_id?: string | number | null;
   team_slug: string | null;
   team_name: string | null;
 
