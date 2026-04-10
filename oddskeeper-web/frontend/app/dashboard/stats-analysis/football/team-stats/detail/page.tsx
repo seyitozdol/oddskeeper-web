@@ -111,6 +111,7 @@ export default async function TeamDetailPage({
       <div className="mt-3 rounded-[18px] border border-white/10 bg-[linear-gradient(180deg,rgba(8,14,24,0.90),rgba(5,10,18,0.96))] p-3 shadow-[0_0_16px_rgba(34,104,189,0.03)]">
         {activeTab === "team-statistics" ? (
           <TeamStatisticsPanel
+            teamProfile={teamProfile}
             summary={summary}
             splits={splitRows}
             recentForm={recentFormRows}
