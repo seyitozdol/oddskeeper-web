@@ -17,40 +17,55 @@ export type TeamResultRow = {
   team_slug: string;
   team_source_id: string;
   team_name: string;
+
   source_match_id: string;
   competition: string | null;
   match_datetime: string | null;
+
   is_home: boolean;
   is_away: boolean;
+
   opponent_name: string | null;
+  opponent_team_name?: string | null;
   opponent_team_slug: string | null;
   opponent_source_team_id: string | null;
+
   team_score: number | null;
   opponent_score: number | null;
   score_display: string | null;
+
   result_code: "W" | "D" | "L" | null;
+  result_label?: string | null;
   result_points: number | null;
+
   venue: string | null;
+  venue_label?: string | null;
+  match_date_label?: string | null;
 };
 
 export type TeamStatisticsSummaryRow = {
   team_slug: string;
   team_source_id: string;
   team_name: string;
+
   competition: string | null;
   season_label: string | null;
+
   played: number;
   wins: number;
   draws: number;
   losses: number;
+
   goals_for: number;
   goals_against: number;
   goal_difference: number;
   points: number;
+
   win_rate_pct: number | string | null;
   points_per_game: number | string | null;
   goals_for_per_game: number | string | null;
   goals_against_per_game: number | string | null;
+
   latest_match_datetime: string | null;
 };
 
@@ -58,19 +73,24 @@ export type TeamStatisticsSplitRow = {
   team_slug: string;
   team_source_id: string;
   team_name: string;
+
   competition: string | null;
   season_label: string | null;
+
   split_key: "overall" | "home" | "away";
   split_label: "Overall" | "Home" | "Away";
   sort_order: number;
+
   played: number;
   wins: number;
   draws: number;
   losses: number;
+
   goals_for: number;
   goals_against: number;
   goal_difference: number;
   points: number;
+
   points_per_game: number | string | null;
   win_rate_pct: number | string | null;
 };
@@ -79,16 +99,21 @@ export type TeamRecentFormRow = {
   team_slug: string;
   team_source_id: string;
   team_name: string;
+
   competition: string | null;
   season_label: string | null;
+
   recent_rank: number;
   source_match_id: string;
   match_datetime: string | null;
+
   is_home: boolean;
   opponent_name: string | null;
+
   team_score: number | null;
   opponent_score: number | null;
   score_display: string | null;
+
   result_code: "W" | "D" | "L" | null;
   result_points: number | null;
 };
@@ -97,50 +122,74 @@ export type TeamSquadRow = {
   team_slug: string;
   team_source_id: string;
   team_name: string;
+
   competition: string | null;
   season_label: string | null;
+
   player_source_id: string;
   player_name: string;
   player_slug: string;
+
   primary_position_code: string;
   position_group: string;
+
   appearances: number;
   starts: number;
   sub_appearances: number;
   starter_rate_pct: number | string | null;
+
   total_minutes: number;
   avg_minutes: number | string | null;
+
   goals: number;
   assists: number;
+
   first_match_datetime: string | null;
   last_match_datetime: string | null;
 };
+
 export type TeamFixtureRow = {
   fixture_id: number;
+
   competition: string | null;
   season_label: string | null;
   round_number: number;
+
   fixture_date: string | null;
   fixture_datetime: string | null;
   kickoff_time_known: boolean;
   kickoff_time_text: string | null;
-  fixture_status: "scheduled" | "postponed" | "cancelled" | "completed" | string;
+
+  fixture_status:
+    | "scheduled"
+    | "postponed"
+    | "cancelled"
+    | "completed"
+    | string;
+
   venue: string | null;
+
   team_slug: string;
   team_source_id: string;
   team_name: string;
+
   is_home: boolean;
   is_away: boolean;
+
   opponent_team_slug: string;
   opponent_team_source_id: string;
   opponent_name: string | null;
 };
-type TeamAdvancedMetricValue = string | number | boolean | null;
+
+export type TeamAdvancedMetricValue = string | number | boolean | null;
 
 export type TeamAdvancedOverviewRow = {
   season_label: string | null;
   competition: string | null;
+
   source_team_id: string | number | null;
+  team_source_id?: string | number | null;
+
   team_slug: string | null;
   team_name: string | null;
 
@@ -180,7 +229,10 @@ export type TeamAdvancedOverviewRow = {
 export type TeamMetricBenchmarkRow = {
   season_label: string | null;
   competition: string | null;
+
   source_team_id: string | number | null;
+  team_source_id?: string | number | null;
+
   team_slug: string | null;
   team_name: string | null;
 
@@ -201,5 +253,3 @@ export type TeamMetricBenchmarkRow = {
   vs_league_avg_pct: number | null;
   above_league_avg_flag: boolean | null;
 };
-
-
