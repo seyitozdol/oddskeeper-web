@@ -15,17 +15,19 @@ type CategoryFilter = "all" | TeamDetailedCategoryKey;
 const CATEGORY_ORDER: TeamDetailedCategoryKey[] = [
   "attack",
   "defence",
-  "passing",
+  "build_up",
   "discipline",
-  "match_control",
+  "set_piece",
+  "goal_composition",
 ];
 
 const CATEGORY_LABELS: Record<TeamDetailedCategoryKey, string> = {
   attack: "Attack",
   defence: "Defence",
-  passing: "Passing",
+  build_up: "Build Up",
   discipline: "Discipline",
-  match_control: "Match Control",
+  set_piece: "Set Piece / Restart",
+  goal_composition: "Goal Composition",
 };
 
 function formatRawNumber(value: number, digits = 1) {
@@ -39,7 +41,7 @@ function formatMetricValue(
   value: number | null | undefined,
   valueFormat: string | null | undefined
 ) {
-  if (value === null || value === undefined) {
+  if (value === null || value === undefined || Number.isNaN(value)) {
     return "—";
   }
 
@@ -67,9 +69,94 @@ function formatMetricValue(
   return formatRawNumber(value, 2);
 }
 
-function formatDirection(value: string | null | undefined) {
-  if (!value) return "—";
-  return value === "asc" ? "Lower Better" : "Higher Better";
+function getRankTone(rank: number | null | undefined) {
+  if (rank === null || rank === undefined) {
+    return "text-white/55";
+  }
+
+  if (rank <= 4) {
+    return "text-emerald-300";
+  }
+
+  if (rank >= 15) {
+    return "text-rose-300";
+  }
+
+  if (rank >= 11) {
+    return "text-amber-300";
+  }
+
+  return "text-white/80";
+}
+
+function getDeltaTone(
+  value: number | null | undefined,
+  isHigherBetter: boolean | null | undefined
+) {
+  if (value === null || value === undefined || Number.isNaN(value)) {
+    return "text-white/55";
+  }
+
+  const isPositive = value > 0;
+  const isGood = isHigherBetter ? isPositive : !isPositive;
+
+  if (value === 0) {
+    return "text-white/65";
+  }
+
+  return isGood ? "text-emerald-300" : "text-rose-300";
+}
+
+function formatDirectionBadge(
+  rankDirection: string | null | undefined,
+  isHigherBetter: boolean | null | undefined
+) {
+  if (!rankDirection) {
+    return "—";
+  }
+
+  if (isHigherBetter === false || rankDirection === "asc") {
+    return "Lower better";
+  }
+
+  return "Higher better";
+}
+
+function getMetricAdvantage(row: TeamDetailedMetricRow) {
+  if (
+    row.vs_league_avg_pct === null ||
+    row.vs_league_avg_pct === undefined ||
+    Number.isNaN(row.vs_league_avg_pct)
+  ) {
+    return null;
+  }
+
+  return row.is_higher_better === false
+    ? -row.vs_league_avg_pct
+    : row.vs_league_avg_pct;
+}
+
+function isMeaningfulSummaryMetric(row: TeamDetailedMetricRow) {
+  if (!row.coverage_flag) return false;
+  if (row.league_rank === null || row.league_rank === undefined) return false;
+
+  const blockedKeys = new Set([
+    "team_red_cards",
+    "team_yellow_cards",
+    "team_penalty_goals",
+    "team_freekick_goals",
+    "team_left_foot_goals",
+    "team_right_foot_goals",
+    "team_headed_goals",
+    "team_out_of_box_goals",
+    "team_fouls_won",
+  ]);
+
+  if (blockedKeys.has(row.metric_key)) {
+    return false;
+  }
+
+  return true;
 }
 
 function SummaryCard({
@@ -82,14 +169,37 @@ function SummaryCard({
   subvalue?: string;
 }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-      <div className="text-[10px] uppercase tracking-[0.14em] text-white/38">
+    <div className="rounded-xl border border-white/10 bg-white/[0.025] px-3 py-3">
+      <div className="text-[9px] uppercase tracking-[0.16em] text-white/38">
         {label}
       </div>
-      <div className="mt-2 text-sm font-semibold text-white">{value}</div>
+      <div className="mt-1 text-[15px] font-semibold leading-5 text-white">
+        {value}
+      </div>
       {subvalue ? (
-        <div className="mt-1 text-xs text-white/52">{subvalue}</div>
+        <div className="mt-1 text-[11px] leading-4 text-white/52">
+          {subvalue}
+        </div>
       ) : null}
+    </div>
+  );
+}
+
+function InfoTooltip() {
+  return (
+    <div className="group relative">
+      <button
+        type="button"
+        className="flex h-5 w-5 items-center justify-center rounded-full border border-white/12 bg-white/[0.03] text-[11px] text-white/55 transition hover:border-white/20 hover:text-white"
+      >
+        i
+      </button>
+
+      <div className="pointer-events-none absolute left-0 top-7 z-20 hidden w-[280px] rounded-xl border border-white/10 bg-[#0a1220] px-3 py-2 text-[11px] leading-5 text-white/72 shadow-[0_12px_30px_rgba(0,0,0,0.35)] group-hover:block">
+        League-context deep team metrics. Home and Away columns are per-match
+        split values. Some rate metrics intentionally hide total values where
+        totals are not meaningful.
+      </div>
     </div>
   );
 }
@@ -122,48 +232,69 @@ export default function DetailedStatsPanel({
   const summary = useMemo(() => {
     if (rows.length === 0) {
       return {
-        bestCategory: "—",
-        weakestCategory: "—",
-        bestMetric: "—",
-        worstMetric: "—",
-        biggestGap: "—",
-        coverage: "—",
+        strongestEdge: "—",
+        mainWeakness: "—",
+        biggestPositiveDelta: "—",
+        biggestSplitGap: "—",
       };
     }
 
-    const categoryScores = CATEGORY_ORDER.map((categoryKey) => {
-      const categoryRows = rows.filter((row) => row.category_key === categoryKey);
-      const validPercentiles = categoryRows
-        .map((row) => row.league_percentile)
-        .filter((value): value is number => value !== null && value !== undefined);
+    const meaningfulRows = rows.filter(isMeaningfulSummaryMetric);
 
-      const avgPercentile =
-        validPercentiles.length > 0
-          ? validPercentiles.reduce((sum, value) => sum + value, 0) /
-            validPercentiles.length
-          : null;
+    const strongestCandidates = meaningfulRows.filter((row) => {
+      const advantage = getMetricAdvantage(row);
+      return (
+        advantage !== null &&
+        advantage > 0 &&
+        row.league_rank !== null &&
+        row.league_rank <= 6
+      );
+    });
 
-      return {
-        categoryKey,
-        avgPercentile,
-      };
-    }).filter((row) => row.avgPercentile !== null);
+    const strongestRow = [...strongestCandidates].sort((a, b) => {
+      const aRank = a.league_rank ?? 999;
+      const bRank = b.league_rank ?? 999;
+      if (aRank !== bRank) return aRank - bRank;
 
-    const sortedCategories = [...categoryScores].sort(
-      (a, b) => (b.avgPercentile ?? -1) - (a.avgPercentile ?? -1)
-    );
+      const aAdvantage = getMetricAdvantage(a) ?? -999;
+      const bAdvantage = getMetricAdvantage(b) ?? -999;
+      return bAdvantage - aAdvantage;
+    })[0];
 
-    const rankedRows = rows.filter(
-      (row) => row.league_rank !== null && row.league_rank !== undefined
-    );
+    const weaknessCandidates = meaningfulRows.filter((row) => {
+      const advantage = getMetricAdvantage(row);
+      return (
+        advantage !== null &&
+        advantage < 0 &&
+        row.league_rank !== null &&
+        row.league_rank >= 13
+      );
+    });
 
-    const bestMetricRow = [...rankedRows].sort(
-      (a, b) => (a.league_rank ?? 999) - (b.league_rank ?? 999)
-    )[0];
+    const weakestRow = [...weaknessCandidates].sort((a, b) => {
+      const aAdvantage = getMetricAdvantage(a) ?? 999;
+      const bAdvantage = getMetricAdvantage(b) ?? 999;
+      if (aAdvantage !== bAdvantage) return aAdvantage - bAdvantage;
 
-    const worstMetricRow = [...rankedRows].sort(
-      (a, b) => (b.league_rank ?? -1) - (a.league_rank ?? -1)
-    )[0];
+      const aRank = a.league_rank ?? -1;
+      const bRank = b.league_rank ?? -1;
+      return bRank - aRank;
+    })[0];
+
+    const biggestPositiveDeltaRow = [...meaningfulRows]
+      .filter((row) => {
+        const advantage = getMetricAdvantage(row);
+        return (
+          advantage !== null &&
+          advantage > 0 &&
+          row.metric_key !== strongestRow?.metric_key
+        );
+      })
+      .sort((a, b) => {
+        const aAdvantage = getMetricAdvantage(a) ?? -999;
+        const bAdvantage = getMetricAdvantage(b) ?? -999;
+        return bAdvantage - aAdvantage;
+      })[0];
 
     const biggestGapRow = [...rows]
       .filter(
@@ -174,35 +305,25 @@ export default function DetailedStatsPanel({
         (a, b) => (b.home_away_gap_abs ?? -1) - (a.home_away_gap_abs ?? -1)
       )[0];
 
-    const coveredCount = rows.filter((row) => row.coverage_flag).length;
-    const coveragePct =
-      rows.length > 0 ? (coveredCount / rows.length) * 100 : null;
-
     return {
-      bestCategory:
-        sortedCategories[0]?.categoryKey
-          ? CATEGORY_LABELS[sortedCategories[0].categoryKey]
-          : "—",
-      weakestCategory:
-        sortedCategories[sortedCategories.length - 1]?.categoryKey
-          ? CATEGORY_LABELS[
-              sortedCategories[sortedCategories.length - 1].categoryKey
-            ]
-          : "—",
-      bestMetric: bestMetricRow
-        ? `${bestMetricRow.metric_label} (#${bestMetricRow.league_rank})`
-        : "—",
-      worstMetric: worstMetricRow
-        ? `${worstMetricRow.metric_label} (#${worstMetricRow.league_rank})`
-        : "—",
-      biggestGap: biggestGapRow
-        ? `${biggestGapRow.metric_label} (${formatMetricValue(
-            biggestGapRow.home_away_gap_abs,
-            biggestGapRow.value_format
+      strongestEdge: strongestRow
+        ? `${strongestRow.metric_label} (#${strongestRow.league_rank})`
+        : "No clear edge",
+      mainWeakness: weakestRow
+        ? `${weakestRow.metric_label} (#${weakestRow.league_rank})`
+        : "No major weakness",
+      biggestPositiveDelta: biggestPositiveDeltaRow
+        ? `${biggestPositiveDeltaRow.metric_label} (${formatMetricValue(
+            biggestPositiveDeltaRow.vs_league_avg_pct,
+            "pct_1"
           )})`
         : "—",
-      coverage:
-        coveragePct === null ? "—" : `${formatRawNumber(coveragePct, 1)}%`,
+      biggestSplitGap: biggestGapRow
+        ? `${biggestGapRow.metric_label} • ${formatMetricValue(
+            biggestGapRow.home_away_gap_abs,
+            biggestGapRow.value_format
+          )}`
+        : "—",
     };
   }, [rows]);
 
@@ -214,64 +335,70 @@ export default function DetailedStatsPanel({
     );
   }
 
+  const showCategoryColumn = activeCategory === "all";
+
   return (
-    <div className="space-y-4">
-      <div className="rounded-[18px] border border-white/10 bg-white/[0.03] p-4">
-        <div className="mb-3">
-          <div className="text-xs uppercase tracking-[0.22em] text-white/38">
-            Detailed Team Stats
+    <div className="space-y-3">
+      <div className="rounded-[16px] border border-white/10 bg-white/[0.03] px-4 py-3">
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+            <div className="flex items-center gap-2">
+              <div className="text-[11px] font-medium uppercase tracking-[0.18em] text-white/38">
+                Detailed Team Stats
+              </div>
+              <InfoTooltip />
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setActiveCategory("all")}
+                className={`rounded-lg border px-3 py-1.5 text-[12px] font-medium transition ${
+                  activeCategory === "all"
+                    ? "border-[#4da2ff]/40 bg-[#10335d]/70 text-white"
+                    : "border-white/10 bg-white/[0.03] text-white/72 hover:bg-white/[0.06]"
+                }`}
+              >
+                All
+              </button>
+
+              {availableCategories.map((category) => (
+                <button
+                  key={category}
+                  type="button"
+                  onClick={() => setActiveCategory(category)}
+                  className={`rounded-lg border px-3 py-1.5 text-[12px] font-medium transition ${
+                    activeCategory === category
+                      ? "border-[#4da2ff]/40 bg-[#10335d]/70 text-white"
+                      : "border-white/10 bg-white/[0.03] text-white/72 hover:bg-white/[0.06]"
+                  }`}
+                >
+                  {CATEGORY_LABELS[category]}
+                </button>
+              ))}
+            </div>
           </div>
-          <div className="mt-1 text-sm text-white/58">
-            Deep metric layer with league context, split values and directional
-            interpretation.
+
+          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+            <SummaryCard label="Strongest Edge" value={summary.strongestEdge} />
+            <SummaryCard label="Main Weakness" value={summary.mainWeakness} />
+            <SummaryCard
+              label="Biggest Positive Delta"
+              value={summary.biggestPositiveDelta}
+            />
+            <SummaryCard label="Biggest Split Gap" value={summary.biggestSplitGap} />
           </div>
         </div>
-
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => setActiveCategory("all")}
-            className={`rounded-xl border px-3 py-2 text-sm transition ${
-              activeCategory === "all"
-                ? "border-[#4da2ff]/40 bg-[#10335d]/70 text-white"
-                : "border-white/10 bg-white/[0.03] text-white/72 hover:bg-white/[0.06]"
-            }`}
-          >
-            All
-          </button>
-
-          {availableCategories.map((category) => (
-            <button
-              key={category}
-              type="button"
-              onClick={() => setActiveCategory(category)}
-              className={`rounded-xl border px-3 py-2 text-sm transition ${
-                activeCategory === category
-                  ? "border-[#4da2ff]/40 bg-[#10335d]/70 text-white"
-                  : "border-white/10 bg-white/[0.03] text-white/72 hover:bg-white/[0.06]"
-              }`}
-            >
-              {CATEGORY_LABELS[category]}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-        <SummaryCard label="Best Category" value={summary.bestCategory} />
-        <SummaryCard label="Weakest Category" value={summary.weakestCategory} />
-        <SummaryCard label="Best Metric" value={summary.bestMetric} />
-        <SummaryCard label="Worst Metric" value={summary.worstMetric} />
-        <SummaryCard label="Biggest Home / Away Gap" value={summary.biggestGap} />
-        <SummaryCard label="Coverage Status" value={summary.coverage} />
       </div>
 
       <div className="overflow-x-auto rounded-[14px] border border-white/10">
         <table className="min-w-full border-collapse">
-          <thead className="bg-white/[0.03]">
+          <thead className="sticky top-0 z-10 bg-[#0d1624]">
             <tr className="text-left text-[10px] uppercase tracking-[0.14em] text-white/38">
               <th className="px-4 py-2 font-medium">Metric</th>
-              <th className="px-4 py-2 font-medium">Category</th>
+              {showCategoryColumn ? (
+                <th className="px-4 py-2 font-medium">Category</th>
+              ) : null}
               <th className="px-4 py-2 font-medium">Total</th>
               <th className="px-4 py-2 font-medium">Per Match</th>
               <th className="px-4 py-2 font-medium">Home</th>
@@ -287,37 +414,62 @@ export default function DetailedStatsPanel({
             {filteredRows.map((row) => (
               <tr
                 key={`${row.metric_key}-${row.team_slug}`}
-                className="border-t border-white/10 text-[13px] text-white/80 transition hover:bg-white/[0.018]"
+                className="border-t border-white/10 text-[13px] text-white/80 transition hover:bg-white/[0.02]"
               >
-                <td className="px-4 py-2 font-medium text-white whitespace-nowrap">
+                <td className="px-4 py-2 font-medium whitespace-nowrap text-white">
                   {row.metric_label}
                 </td>
-                <td className="px-4 py-2 whitespace-nowrap text-white/60">
-                  {row.category_label}
-                </td>
+
+                {showCategoryColumn ? (
+                  <td className="px-4 py-2 whitespace-nowrap text-white/58">
+                    {row.category_label}
+                  </td>
+                ) : null}
+
                 <td className="px-4 py-2 whitespace-nowrap">
                   {formatMetricValue(row.total_value, row.value_format)}
                 </td>
-                <td className="px-4 py-2 whitespace-nowrap">
+
+                <td className="px-4 py-2 whitespace-nowrap font-medium text-white">
                   {formatMetricValue(row.per_match_value, row.value_format)}
                 </td>
+
                 <td className="px-4 py-2 whitespace-nowrap">
                   {formatMetricValue(row.home_value, row.value_format)}
                 </td>
+
                 <td className="px-4 py-2 whitespace-nowrap">
                   {formatMetricValue(row.away_value, row.value_format)}
                 </td>
-                <td className="px-4 py-2 whitespace-nowrap">
+
+                <td className="px-4 py-2 whitespace-nowrap text-white/70">
                   {formatMetricValue(row.league_avg, row.value_format)}
                 </td>
-                <td className="px-4 py-2 whitespace-nowrap">
+
+                <td
+                  className={`px-4 py-2 whitespace-nowrap font-semibold ${getRankTone(
+                    row.league_rank
+                  )}`}
+                >
                   {row.league_rank ?? "—"}
                 </td>
-                <td className="px-4 py-2 whitespace-nowrap">
+
+                <td
+                  className={`px-4 py-2 whitespace-nowrap font-medium ${getDeltaTone(
+                    row.vs_league_avg_pct,
+                    row.is_higher_better
+                  )}`}
+                >
                   {formatMetricValue(row.vs_league_avg_pct, "pct_1")}
                 </td>
-                <td className="px-4 py-2 whitespace-nowrap text-white/60">
-                  {formatDirection(row.rank_direction)}
+
+                <td className="px-4 py-2 whitespace-nowrap">
+                  <span className="inline-flex rounded-md border border-white/10 bg-white/[0.03] px-2 py-1 text-[11px] text-white/65">
+                    {formatDirectionBadge(
+                      row.rank_direction,
+                      row.is_higher_better
+                    )}
+                  </span>
                 </td>
               </tr>
             ))}

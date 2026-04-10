@@ -257,9 +257,10 @@ export type TeamMetricBenchmarkRow = {
 export type TeamDetailedCategoryKey =
   | "attack"
   | "defence"
-  | "passing"
+  | "build_up"
   | "discipline"
-  | "match_control";
+  | "set_piece"
+  | "goal_composition";
 
 export type TeamDetailedValueFormat =
   | "integer"
