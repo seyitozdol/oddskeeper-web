@@ -321,3 +321,37 @@ export type TeamDetailedSummaryCardRow = {
   value: string | number | boolean | null;
   subvalue?: string | number | boolean | null;
 };
+
+export type TeamMetricLeaderboardRow = {
+  season_label: string | null;
+  competition: string | null;
+
+  team_slug: string | null;
+  source_team_id: string | number | null;
+  team_name: string | null;
+
+  metric_key: string;
+  metric_label: string;
+  category_key: TeamDetailedCategoryKey;
+  category_label: string;
+
+  total_value: number | null;
+  per_match_value: number | null;
+  home_value: number | null;
+  away_value: number | null;
+
+  league_avg: number | null;
+  league_median: number | null;
+  league_rank: number | null;
+  league_percentile: number | null;
+
+  vs_league_avg_abs: number | null;
+  vs_league_avg_pct: number | null;
+
+  rank_direction: "asc" | "desc" | string | null;
+  is_higher_better: boolean | null;
+  value_format: string | null;
+
+  sample_matches: number | null;
+  coverage_flag: boolean | null;
+};

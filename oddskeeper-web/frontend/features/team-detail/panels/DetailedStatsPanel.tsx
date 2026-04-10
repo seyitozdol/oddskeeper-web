@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { TeamMetricLeaderboardDrawer } from "../components/TeamMetricLeaderboardDrawer";
 import type {
   TeamDetailedCategoryKey,
   TeamDetailedMetricRow,
@@ -222,8 +223,8 @@ function InfoTooltip() {
 
       <div className="pointer-events-none absolute left-0 top-7 z-20 hidden w-[280px] rounded-xl border border-white/10 bg-[#0a1220] px-3 py-2 text-[11px] leading-5 text-white/72 shadow-[0_12px_30px_rgba(0,0,0,0.35)] group-hover:block">
         League-context deep team metrics. Home and Away columns are per-match
-        split values. Some rate metrics intentionally hide total values where
-        totals are not meaningful.
+        split values. Click a rank to open the league leaderboard for that
+        metric.
       </div>
     </div>
   );
@@ -233,6 +234,11 @@ export default function DetailedStatsPanel({
   rows = [],
 }: DetailedStatsPanelProps) {
   const [activeCategory, setActiveCategory] = useState<CategoryFilter>("all");
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [selectedMetricKey, setSelectedMetricKey] = useState<string | null>(null);
+  const [selectedMetricLabel, setSelectedMetricLabel] = useState<string | null>(
+    null
+  );
 
   const availableCategories = useMemo(() => {
     const categorySet = new Set<TeamDetailedCategoryKey>();
@@ -253,6 +259,21 @@ export default function DetailedStatsPanel({
 
     return rows.filter((row) => row.category_key === activeCategory);
   }, [rows, activeCategory]);
+
+  const metricOptions = useMemo(() => {
+    const uniqueMap = new Map<string, string>();
+
+    rows.forEach((row) => {
+      if (!uniqueMap.has(row.metric_key)) {
+        uniqueMap.set(row.metric_key, row.metric_label);
+      }
+    });
+
+    return Array.from(uniqueMap.entries()).map(([metricKey, metricLabel]) => ({
+      metricKey,
+      metricLabel,
+    }));
+  }, [rows]);
 
   const summary = useMemo(() => {
     if (rows.length === 0) {
@@ -351,7 +372,9 @@ export default function DetailedStatsPanel({
             "pct_1"
           )} vs avg`
         : "No metric cleared the strength threshold",
-      strongestEdgeTone: strongestRow ? ("positive" as SummaryTone) : ("neutral" as SummaryTone),
+      strongestEdgeTone: strongestRow
+        ? ("positive" as SummaryTone)
+        : ("neutral" as SummaryTone),
 
       mainWeakness: weakestRow
         ? `${weakestRow.metric_label} (#${weakestRow.league_rank})`
@@ -362,7 +385,9 @@ export default function DetailedStatsPanel({
             "pct_1"
           )} vs avg`
         : "No weakness crossed the alert threshold",
-      mainWeaknessTone: weakestRow ? ("negative" as SummaryTone) : ("neutral" as SummaryTone),
+      mainWeaknessTone: weakestRow
+        ? ("negative" as SummaryTone)
+        : ("neutral" as SummaryTone),
 
       biggestPositiveDelta: biggestPositiveDeltaRow
         ? `${biggestPositiveDeltaRow.metric_label} (${formatMetricValue(
@@ -406,164 +431,190 @@ export default function DetailedStatsPanel({
     );
   }
 
+  const selectedTeam = rows[0];
   const showCategoryColumn = activeCategory === "all";
 
   return (
-    <div className="space-y-3">
-      <div className="rounded-[16px] border border-white/10 bg-white/[0.03] px-4 py-3">
-        <div className="flex flex-col gap-3">
-          <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-            <div className="flex items-center gap-2">
-              <div className="text-[11px] font-medium uppercase tracking-[0.18em] text-white/38">
-                Detailed Team Stats
+    <>
+      <div className="space-y-3">
+        <div className="rounded-[16px] border border-white/10 bg-white/[0.03] px-4 py-3">
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+              <div className="flex items-center gap-2">
+                <div className="text-[11px] font-medium uppercase tracking-[0.18em] text-white/38">
+                  Detailed Team Stats
+                </div>
+                <InfoTooltip />
               </div>
-              <InfoTooltip />
-            </div>
 
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => setActiveCategory("all")}
-                className={`rounded-lg border px-3 py-1.5 text-[12px] font-medium transition ${
-                  activeCategory === "all"
-                    ? "border-[#4da2ff]/40 bg-[#10335d]/70 text-white"
-                    : "border-white/10 bg-white/[0.03] text-white/72 hover:bg-white/[0.06]"
-                }`}
-              >
-                All
-              </button>
-
-              {availableCategories.map((category) => (
+              <div className="flex flex-wrap gap-2">
                 <button
-                  key={category}
                   type="button"
-                  onClick={() => setActiveCategory(category)}
+                  onClick={() => setActiveCategory("all")}
                   className={`rounded-lg border px-3 py-1.5 text-[12px] font-medium transition ${
-                    activeCategory === category
+                    activeCategory === "all"
                       ? "border-[#4da2ff]/40 bg-[#10335d]/70 text-white"
                       : "border-white/10 bg-white/[0.03] text-white/72 hover:bg-white/[0.06]"
                   }`}
                 >
-                  {CATEGORY_LABELS[category]}
+                  All
                 </button>
-              ))}
+
+                {availableCategories.map((category) => (
+                  <button
+                    key={category}
+                    type="button"
+                    onClick={() => setActiveCategory(category)}
+                    className={`rounded-lg border px-3 py-1.5 text-[12px] font-medium transition ${
+                      activeCategory === category
+                        ? "border-[#4da2ff]/40 bg-[#10335d]/70 text-white"
+                        : "border-white/10 bg-white/[0.03] text-white/72 hover:bg-white/[0.06]"
+                    }`}
+                  >
+                    {CATEGORY_LABELS[category]}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+              <SummaryCard
+                label="Strongest Edge"
+                value={summary.strongestEdge}
+                subvalue={summary.strongestEdgeSub}
+                tone={summary.strongestEdgeTone}
+              />
+              <SummaryCard
+                label="Main Weakness"
+                value={summary.mainWeakness}
+                subvalue={summary.mainWeaknessSub}
+                tone={summary.mainWeaknessTone}
+              />
+              <SummaryCard
+                label="Biggest Positive Delta"
+                value={summary.biggestPositiveDelta}
+                subvalue={summary.biggestPositiveDeltaSub}
+                tone={summary.biggestPositiveDeltaTone}
+              />
+              <SummaryCard
+                label="Biggest Split Gap"
+                value={summary.biggestSplitGap}
+                subvalue={summary.biggestSplitGapSub}
+                tone={summary.biggestSplitGapTone}
+              />
             </div>
           </div>
+        </div>
 
-          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-            <SummaryCard
-              label="Strongest Edge"
-              value={summary.strongestEdge}
-              subvalue={summary.strongestEdgeSub}
-              tone={summary.strongestEdgeTone}
-            />
-            <SummaryCard
-              label="Main Weakness"
-              value={summary.mainWeakness}
-              subvalue={summary.mainWeaknessSub}
-              tone={summary.mainWeaknessTone}
-            />
-            <SummaryCard
-              label="Biggest Positive Delta"
-              value={summary.biggestPositiveDelta}
-              subvalue={summary.biggestPositiveDeltaSub}
-              tone={summary.biggestPositiveDeltaTone}
-            />
-            <SummaryCard
-              label="Biggest Split Gap"
-              value={summary.biggestSplitGap}
-              subvalue={summary.biggestSplitGapSub}
-              tone={summary.biggestSplitGapTone}
-            />
-          </div>
+        <div className="overflow-x-auto rounded-[14px] border border-white/10">
+          <table className="min-w-full border-collapse">
+            <thead className="sticky top-0 z-10 bg-[#0d1624]">
+              <tr className="text-left text-[10px] uppercase tracking-[0.14em] text-white/38">
+                <th className="px-4 py-2 font-medium">Metric</th>
+                {showCategoryColumn ? (
+                  <th className="px-4 py-2 font-medium">Category</th>
+                ) : null}
+                <th className="px-4 py-2 font-medium">Total</th>
+                <th className="px-4 py-2 font-medium">Per Match</th>
+                <th className="px-4 py-2 font-medium">Home</th>
+                <th className="px-4 py-2 font-medium">Away</th>
+                <th className="px-4 py-2 font-medium">League Avg</th>
+                <th className="px-4 py-2 font-medium">Rank</th>
+                <th className="px-4 py-2 font-medium">Vs Avg %</th>
+                <th className="px-4 py-2 font-medium">Direction</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {filteredRows.map((row) => (
+                <tr
+                  key={`${row.metric_key}-${row.team_slug}`}
+                  className="border-t border-white/10 text-[13px] text-white/80 transition hover:bg-white/[0.02]"
+                >
+                  <td className="px-4 py-2 font-medium whitespace-nowrap text-white">
+                    {row.metric_label}
+                  </td>
+
+                  {showCategoryColumn ? (
+                    <td className="px-4 py-2 whitespace-nowrap text-white/58">
+                      {row.category_label}
+                    </td>
+                  ) : null}
+
+                  <td className="px-4 py-2 whitespace-nowrap">
+                    {formatMetricValue(row.total_value, row.value_format)}
+                  </td>
+
+                  <td className="px-4 py-2 whitespace-nowrap font-medium text-white">
+                    {formatMetricValue(row.per_match_value, row.value_format)}
+                  </td>
+
+                  <td className="px-4 py-2 whitespace-nowrap">
+                    {formatMetricValue(row.home_value, row.value_format)}
+                  </td>
+
+                  <td className="px-4 py-2 whitespace-nowrap">
+                    {formatMetricValue(row.away_value, row.value_format)}
+                  </td>
+
+                  <td className="px-4 py-2 whitespace-nowrap text-white/70">
+                    {formatMetricValue(row.league_avg, row.value_format)}
+                  </td>
+
+                  <td className="px-4 py-2 whitespace-nowrap">
+                    {row.league_rank !== null && row.league_rank !== undefined ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedMetricKey(row.metric_key);
+                          setSelectedMetricLabel(row.metric_label);
+                          setIsDrawerOpen(true);
+                        }}
+                        className={`font-semibold transition hover:underline ${getRankTone(
+                          row.league_rank
+                        )}`}
+                      >
+                        {row.league_rank}
+                      </button>
+                    ) : (
+                      <span className="text-white/55">—</span>
+                    )}
+                  </td>
+
+                  <td
+                    className={`px-4 py-2 whitespace-nowrap font-medium ${getDeltaTone(
+                      row.vs_league_avg_pct,
+                      row.is_higher_better
+                    )}`}
+                  >
+                    {formatMetricValue(row.vs_league_avg_pct, "pct_1")}
+                  </td>
+
+                  <td className="px-4 py-2 whitespace-nowrap">
+                    <span className="inline-flex rounded-md border border-white/10 bg-white/[0.03] px-2 py-1 text-[11px] text-white/65">
+                      {formatDirectionBadge(
+                        row.rank_direction,
+                        row.is_higher_better
+                      )}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
 
-      <div className="overflow-x-auto rounded-[14px] border border-white/10">
-        <table className="min-w-full border-collapse">
-          <thead className="sticky top-0 z-10 bg-[#0d1624]">
-            <tr className="text-left text-[10px] uppercase tracking-[0.14em] text-white/38">
-              <th className="px-4 py-2 font-medium">Metric</th>
-              {showCategoryColumn ? (
-                <th className="px-4 py-2 font-medium">Category</th>
-              ) : null}
-              <th className="px-4 py-2 font-medium">Total</th>
-              <th className="px-4 py-2 font-medium">Per Match</th>
-              <th className="px-4 py-2 font-medium">Home</th>
-              <th className="px-4 py-2 font-medium">Away</th>
-              <th className="px-4 py-2 font-medium">League Avg</th>
-              <th className="px-4 py-2 font-medium">Rank</th>
-              <th className="px-4 py-2 font-medium">Vs Avg %</th>
-              <th className="px-4 py-2 font-medium">Direction</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {filteredRows.map((row) => (
-              <tr
-                key={`${row.metric_key}-${row.team_slug}`}
-                className="border-t border-white/10 text-[13px] text-white/80 transition hover:bg-white/[0.02]"
-              >
-                <td className="px-4 py-2 font-medium whitespace-nowrap text-white">
-                  {row.metric_label}
-                </td>
-
-                {showCategoryColumn ? (
-                  <td className="px-4 py-2 whitespace-nowrap text-white/58">
-                    {row.category_label}
-                  </td>
-                ) : null}
-
-                <td className="px-4 py-2 whitespace-nowrap">
-                  {formatMetricValue(row.total_value, row.value_format)}
-                </td>
-
-                <td className="px-4 py-2 whitespace-nowrap font-medium text-white">
-                  {formatMetricValue(row.per_match_value, row.value_format)}
-                </td>
-
-                <td className="px-4 py-2 whitespace-nowrap">
-                  {formatMetricValue(row.home_value, row.value_format)}
-                </td>
-
-                <td className="px-4 py-2 whitespace-nowrap">
-                  {formatMetricValue(row.away_value, row.value_format)}
-                </td>
-
-                <td className="px-4 py-2 whitespace-nowrap text-white/70">
-                  {formatMetricValue(row.league_avg, row.value_format)}
-                </td>
-
-                <td
-                  className={`px-4 py-2 whitespace-nowrap font-semibold ${getRankTone(
-                    row.league_rank
-                  )}`}
-                >
-                  {row.league_rank ?? "—"}
-                </td>
-
-                <td
-                  className={`px-4 py-2 whitespace-nowrap font-medium ${getDeltaTone(
-                    row.vs_league_avg_pct,
-                    row.is_higher_better
-                  )}`}
-                >
-                  {formatMetricValue(row.vs_league_avg_pct, "pct_1")}
-                </td>
-
-                <td className="px-4 py-2 whitespace-nowrap">
-                  <span className="inline-flex rounded-md border border-white/10 bg-white/[0.03] px-2 py-1 text-[11px] text-white/65">
-                    {formatDirectionBadge(
-                      row.rank_direction,
-                      row.is_higher_better
-                    )}
-                  </span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
+      <TeamMetricLeaderboardDrawer
+        isOpen={isDrawerOpen}
+        onClose={() => setIsDrawerOpen(false)}
+        initialMetricKey={selectedMetricKey}
+        initialMetricLabel={selectedMetricLabel}
+        seasonLabel={selectedTeam?.season_label ?? null}
+        competition={selectedTeam?.competition ?? null}
+        selectedTeamSlug={selectedTeam?.team_slug ?? null}
+        metricOptions={metricOptions}
+      />
+    </>
   );
 }
