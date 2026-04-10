@@ -1,14 +1,14 @@
+import type { ReactNode } from "react";
 import TeamLink from "@/components/links/TeamLink";
 import MatchLink from "@/components/links/MatchLink";
 import { PlayerResultBadge } from "../components/PlayerResultBadge";
 import type { PlayerMatchLogRow, PlayerProfileRow } from "../types";
 import { formatDate } from "../utils/formatDate";
 import { formatDecimal } from "../utils/formatDecimal";
-import type { ReactNode } from "react";
 
 type PlayerOverviewPanelProps = {
   profile: PlayerProfileRow;
-  matchLog: PlayerMatchLogRow[];
+  matchLog?: PlayerMatchLogRow[];
 };
 
 function toNumber(value: number | string | null | undefined) {
@@ -16,6 +16,10 @@ function toNumber(value: number | string | null | undefined) {
 
   const numeric = Number(value);
   return Number.isNaN(numeric) ? 0 : numeric;
+}
+
+function formatValue(value: ReactNode) {
+  return value === null || value === undefined || value === "" ? "—" : value;
 }
 
 function InfoItem({
@@ -31,7 +35,7 @@ function InfoItem({
         {label}
       </div>
       <div className="mt-1 text-sm font-medium text-white">
-        {value === null || value === undefined || value === "" ? "—" : value}
+        {formatValue(value)}
       </div>
     </div>
   );
@@ -50,15 +54,39 @@ function SummaryItem({
         {label}
       </div>
       <div className="mt-1 text-lg font-semibold text-white">
-        {value}
+        {formatValue(value)}
       </div>
     </div>
   );
 }
 
+function OpponentName({
+  teamSlug,
+  name,
+}: {
+  teamSlug: string | null | undefined;
+  name: string | null | undefined;
+}) {
+  const displayName = name ?? "—";
+
+  if (!teamSlug) {
+    return <span>{displayName}</span>;
+  }
+
+  return (
+    <TeamLink
+      teamSlug={teamSlug}
+      className="font-medium text-white transition hover:text-white hover:underline"
+      title={displayName}
+    >
+      {displayName}
+    </TeamLink>
+  );
+}
+
 export function PlayerOverviewPanel({
   profile,
-  matchLog,
+  matchLog = [],
 }: PlayerOverviewPanelProps) {
   const recentRows = matchLog.slice(0, 5);
 
@@ -119,18 +147,9 @@ export function PlayerOverviewPanel({
                   </TeamLink>
                 }
               />
-              <InfoItem
-                label="Competition"
-                value={profile.competition ?? "—"}
-              />
-              <InfoItem
-                label="Season"
-                value={profile.season_label ?? "—"}
-              />
-              <InfoItem
-                label="Position Group"
-                value={profile.position_group}
-              />
+              <InfoItem label="Competition" value={profile.competition ?? "—"} />
+              <InfoItem label="Season" value={profile.season_label ?? "—"} />
+              <InfoItem label="Position Group" value={profile.position_group} />
             </div>
           </div>
 
@@ -185,13 +204,10 @@ export function PlayerOverviewPanel({
                 </div>
 
                 <div className="mt-2 truncate text-sm font-medium text-white">
-                  <TeamLink
+                  <OpponentName
                     teamSlug={row.opponent_team_slug}
-                    className="font-medium text-white transition hover:text-white hover:underline"
-                    title={row.opponent_name ?? "Opponent"}
-                  >
-                    {row.opponent_name ?? "—"}
-                  </TeamLink>
+                    name={row.opponent_name}
+                  />
                 </div>
 
                 <div className="mt-2 flex items-center justify-between text-[11px] text-white/60">
@@ -270,13 +286,10 @@ export function PlayerOverviewPanel({
                     </td>
 
                     <td className="px-3 py-2 min-w-[180px]">
-                      <TeamLink
+                      <OpponentName
                         teamSlug={row.opponent_team_slug}
-                        className="font-medium text-white transition hover:text-white hover:underline"
-                        title={row.opponent_name ?? "Opponent"}
-                      >
-                        {row.opponent_name ?? "—"}
-                      </TeamLink>
+                        name={row.opponent_name}
+                      />
                     </td>
 
                     <td className="px-3 py-2 whitespace-nowrap">
