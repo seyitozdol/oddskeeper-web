@@ -47,6 +47,50 @@ function getSortIndicator(
   return currentDirection === "asc" ? " ↑" : " ↓";
 }
 
+function OpponentName({
+  teamSlug,
+  name,
+}: {
+  teamSlug: string | null | undefined;
+  name: string | null | undefined;
+}) {
+  const displayName = name ?? "—";
+
+  if (!teamSlug) {
+    return <span>{displayName}</span>;
+  }
+
+  return (
+    <TeamLink
+      teamSlug={teamSlug}
+      className="font-medium text-white transition hover:text-white hover:underline"
+      title={displayName}
+    >
+      {displayName}
+    </TeamLink>
+  );
+}
+
+function getSortValue(row: PlayerMatchLogRow, sortKey: SortKey) {
+  if (sortKey === "match_datetime") {
+    return row.match_datetime ? new Date(row.match_datetime).getTime() : 0;
+  }
+
+  if (sortKey === "minutes_played") {
+    return row.minutes_played ?? 0;
+  }
+
+  if (sortKey === "goals") {
+    return row.goals ?? 0;
+  }
+
+  if (sortKey === "assists") {
+    return row.assists ?? 0;
+  }
+
+  return toNumber(row.expected_goals);
+}
+
 export function PlayerMatchLogPanel({ rows = [] }: PlayerMatchLogPanelProps) {
   const [lineupFilter, setLineupFilter] = useState<LineupFilter>("all");
   const [sortKey, setSortKey] = useState<SortKey>("match_datetime");
@@ -63,12 +107,18 @@ export function PlayerMatchLogPanel({ rows = [] }: PlayerMatchLogPanelProps) {
   }
 
   const starterCount = useMemo(
-    () => rows.filter((row) => normalizeLineupStatus(row.lineup_status) === "starter").length,
+    () =>
+      rows.filter(
+        (row) => normalizeLineupStatus(row.lineup_status) === "starter"
+      ).length,
     [rows]
   );
 
   const substituteCount = useMemo(
-    () => rows.filter((row) => normalizeLineupStatus(row.lineup_status) === "substitute").length,
+    () =>
+      rows.filter(
+        (row) => normalizeLineupStatus(row.lineup_status) === "substitute"
+      ).length,
     [rows]
   );
 
@@ -84,33 +134,18 @@ export function PlayerMatchLogPanel({ rows = [] }: PlayerMatchLogPanelProps) {
     const cloned = [...filteredRows];
 
     cloned.sort((a, b) => {
-      let comparison = 0;
+      const aValue = getSortValue(a, sortKey);
+      const bValue = getSortValue(b, sortKey);
 
-      if (sortKey === "match_datetime") {
-        const aValue = a.match_datetime ? new Date(a.match_datetime).getTime() : 0;
-        const bValue = b.match_datetime ? new Date(b.match_datetime).getTime() : 0;
-        comparison = aValue - bValue;
-      }
-
-      if (sortKey === "minutes_played") {
-        comparison = (a.minutes_played ?? 0) - (b.minutes_played ?? 0);
-      }
-
-      if (sortKey === "goals") {
-        comparison = (a.goals ?? 0) - (b.goals ?? 0);
-      }
-
-      if (sortKey === "assists") {
-        comparison = (a.assists ?? 0) - (b.assists ?? 0);
-      }
-
-      if (sortKey === "expected_goals") {
-        comparison = toNumber(a.expected_goals) - toNumber(b.expected_goals);
-      }
+      let comparison = aValue - bValue;
 
       if (comparison === 0) {
-        const aFallback = a.match_datetime ? new Date(a.match_datetime).getTime() : 0;
-        const bFallback = b.match_datetime ? new Date(b.match_datetime).getTime() : 0;
+        const aFallback = a.match_datetime
+          ? new Date(a.match_datetime).getTime()
+          : 0;
+        const bFallback = b.match_datetime
+          ? new Date(b.match_datetime).getTime()
+          : 0;
         comparison = bFallback - aFallback;
       }
 
@@ -261,13 +296,10 @@ export function PlayerMatchLogPanel({ rows = [] }: PlayerMatchLogPanelProps) {
                   </td>
 
                   <td className="px-4 py-2 min-w-[220px]">
-                    <TeamLink
+                    <OpponentName
                       teamSlug={row.opponent_team_slug}
-                      className="font-medium text-white transition hover:text-white hover:underline"
-                      title={row.opponent_name ?? "Opponent"}
-                    >
-                      {row.opponent_name ?? "—"}
-                    </TeamLink>
+                      name={row.opponent_name}
+                    />
                   </td>
 
                   <td className="px-4 py-2 whitespace-nowrap">
