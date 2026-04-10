@@ -9,7 +9,7 @@ import TeamLink from "@/components/links/TeamLink";
 import MatchLink from "@/components/links/MatchLink";
 
 type PlayerMatchLogPanelProps = {
-  rows: PlayerMatchLogRow[];
+  rows?: PlayerMatchLogRow[];
 };
 
 type LineupFilter = "all" | "starter" | "substitute";
@@ -47,7 +47,7 @@ function getSortIndicator(
   return currentDirection === "asc" ? " ↑" : " ↓";
 }
 
-export function PlayerMatchLogPanel({ rows }: PlayerMatchLogPanelProps) {
+export function PlayerMatchLogPanel({ rows = [] }: PlayerMatchLogPanelProps) {
   const [lineupFilter, setLineupFilter] = useState<LineupFilter>("all");
   const [sortKey, setSortKey] = useState<SortKey>("match_datetime");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");

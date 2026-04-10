@@ -21,6 +21,23 @@ function MetricRow({
   );
 }
 
+function getDisplayValue(
+  source: Record<string, unknown>,
+  key: string
+): string | number | null {
+  const value = source[key];
+
+  if (value === null || value === undefined || value === "") {
+    return null;
+  }
+
+  if (typeof value === "string" || typeof value === "number") {
+    return value;
+  }
+
+  return String(value);
+}
+
 export default function PlayerAdvancedOverviewPanel({ overview }: Props) {
   if (!overview) {
     return (
@@ -31,6 +48,8 @@ export default function PlayerAdvancedOverviewPanel({ overview }: Props) {
       </section>
     );
   }
+
+  const data = overview as unknown as Record<string, unknown>;
 
   return (
     <section className="space-y-4">
@@ -45,30 +64,30 @@ export default function PlayerAdvancedOverviewPanel({ overview }: Props) {
         <div className="grid gap-4 md:grid-cols-2">
           <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
             <h3 className="mb-3 text-sm font-semibold text-white/80">Profile</h3>
-            <MetricRow label="Season" value={overview.season_label} />
-            <MetricRow label="Team" value={overview.team_name} />
-            <MetricRow label="Role Group" value={overview.role_group} />
-            <MetricRow label="Usage Label" value={overview.usage_label} />
-            <MetricRow label="Recent Form" value={overview.recent_form_label} />
+            <MetricRow label="Season" value={getDisplayValue(data, "season_label")} />
+            <MetricRow label="Team" value={getDisplayValue(data, "team_name")} />
+            <MetricRow label="Role Group" value={getDisplayValue(data, "role_group")} />
+            <MetricRow label="Usage Label" value={getDisplayValue(data, "usage_label")} />
+            <MetricRow label="Recent Form" value={getDisplayValue(data, "recent_form_label")} />
           </div>
 
           <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
             <h3 className="mb-3 text-sm font-semibold text-white/80">Primary Strength</h3>
             <MetricRow
               label="Metric"
-              value={overview.primary_strength_metric_label}
+              value={getDisplayValue(data, "primary_strength_metric_label")}
             />
             <MetricRow
               label="Value"
-              value={overview.primary_strength_metric_value}
+              value={getDisplayValue(data, "primary_strength_metric_value")}
             />
             <MetricRow
               label="League Rank"
-              value={overview.primary_strength_league_rank}
+              value={getDisplayValue(data, "primary_strength_league_rank")}
             />
             <MetricRow
               label="Vs League Avg %"
-              value={overview.primary_strength_vs_league_pct}
+              value={getDisplayValue(data, "primary_strength_vs_league_pct")}
             />
           </div>
         </div>
@@ -77,11 +96,11 @@ export default function PlayerAdvancedOverviewPanel({ overview }: Props) {
           <h3 className="mb-3 text-sm font-semibold text-white/80">Secondary Strength</h3>
           <MetricRow
             label="Metric"
-            value={overview.secondary_strength_metric_label}
+            value={getDisplayValue(data, "secondary_strength_metric_label")}
           />
           <MetricRow
             label="Value"
-            value={overview.secondary_strength_metric_value}
+            value={getDisplayValue(data, "secondary_strength_metric_value")}
           />
         </div>
       </div>
