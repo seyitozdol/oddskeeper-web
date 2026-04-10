@@ -27,6 +27,35 @@ function getStatusClass(status: TeamFixtureRow["fixture_status"]) {
   return "border-white/10 bg-white/[0.03] text-white/60";
 }
 
+function getStatusLabel(status: TeamFixtureRow["fixture_status"]) {
+  if (!status) return "Unknown";
+  return status.replace(/_/g, " ");
+}
+
+function OpponentName({
+  teamSlug,
+  name,
+}: {
+  teamSlug: string | null | undefined;
+  name: string | null | undefined;
+}) {
+  const displayName = name ?? "—";
+
+  if (!teamSlug) {
+    return <span>{displayName}</span>;
+  }
+
+  return (
+    <TeamLink
+      teamSlug={teamSlug}
+      className="font-medium text-white transition hover:text-white hover:underline"
+      title={displayName}
+    >
+      {displayName}
+    </TeamLink>
+  );
+}
+
 export function FixturePanel({ rows = [] }: FixturePanelProps) {
   if (rows.length === 0) {
     return (
@@ -72,13 +101,10 @@ export function FixturePanel({ rows = [] }: FixturePanelProps) {
               </td>
 
               <td className="px-4 py-2 min-w-[210px] font-medium text-white">
-                <TeamLink
+                <OpponentName
                   teamSlug={row.opponent_team_slug}
-                  className="font-medium text-white transition hover:text-white hover:underline"
-                  title={row.opponent_name ?? "Opponent"}
-                >
-                  {row.opponent_name ?? "—"}
-                </TeamLink>
+                  name={row.opponent_name}
+                />
               </td>
 
               <td className="px-4 py-2 whitespace-nowrap text-white/70">
@@ -91,7 +117,7 @@ export function FixturePanel({ rows = [] }: FixturePanelProps) {
                     row.fixture_status
                   )}`}
                 >
-                  {row.fixture_status}
+                  {getStatusLabel(row.fixture_status)}
                 </span>
               </td>
 
