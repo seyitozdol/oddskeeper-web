@@ -42,7 +42,7 @@ function SummaryItem({
   value,
 }: {
   label: string;
-  value: string | number;
+  value: ReactNode;
 }) {
   return (
     <div className="min-w-0">

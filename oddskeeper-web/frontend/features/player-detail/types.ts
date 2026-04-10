@@ -73,35 +73,75 @@ export type PlayerMatchLogRow = {
   accurate_pass: number | null;
 };
 
+type PlayerAdvancedMetricValue = string | number | boolean | null;
+
 export type PlayerAdvancedOverviewRow = {
-  player_bk: string
-  team_bk: string
-  season_label: string
-  role_group: string | null
-  usage_label: string | null
-  recent_form_label: string | null
-  primary_strength_metric_key: string | null
-  primary_strength_metric_value: number | null
-  primary_strength_league_rank: number | null
-  primary_strength_vs_league_pct: number | null
-  secondary_strength_metric_key: string | null
-  secondary_strength_metric_value: number | null
+  season_label: string | null;
+  competition: string | null;
+  source_team_id: string | number | null;
+  team_slug: string | null;
+  team_name: string | null;
+
+  player_source_id: string | number | null;
+  player_name: string | null;
+  position_code: string | null;
+  role_group: string | null;
+
+  appearances: number | null;
+  starts: number | null;
+  sub_appearances: number | null;
+  total_minutes: number | null;
+  avg_minutes: number | null;
+
+  usage_label: string | null;
+  recent_form_label: string | null;
+
+  primary_strength_metric_key: string | null;
+  primary_strength_metric_label: string | null;
+  primary_strength_category: string | null;
+  primary_strength_metric_value: PlayerAdvancedMetricValue;
+  primary_strength_league_rank: number | null;
+  primary_strength_league_percentile: number | null;
+  primary_strength_vs_league_avg_pct: number | null;
+  primary_strength_vs_league_pct?: number | null;
+
+  secondary_strength_metric_key: string | null;
+  secondary_strength_metric_label: string | null;
+  secondary_strength_category: string | null;
+  secondary_strength_metric_value: PlayerAdvancedMetricValue;
+  secondary_strength_league_rank: number | null;
+  secondary_strength_league_percentile: number | null;
+  secondary_strength_vs_league_avg_pct: number | null;
 };
 
 export type PlayerMetricBenchmarkRow = {
-  season_label: string
-  competition: string | null
-  team_bk: string
-  player_bk: string
-  metric_key: string
-  metric_value: number | null
-  team_rank: number | null
-  league_rank: number | null
-  team_percentile: number | null
-  league_percentile: number | null
-  league_avg: number | null
-  league_median: number | null
-  vs_league_avg_abs: number | null
-  vs_league_avg_pct: number | null
-  above_league_avg_flag: boolean | null
+  season_label: string | null;
+  competition: string | null;
+  source_team_id: string | number | null;
+  team_slug: string | null;
+  team_name: string | null;
+
+  player_source_id: string | number | null;
+  player_name: string | null;
+  position_code: string | null;
+  role_group: string | null;
+
+  metric_key: string;
+  display_label?: string | null;
+  metric_label?: string | null;
+  category: string | null;
+  display_priority: number | null;
+  value_basis: string | null;
+  rank_direction: string | null;
+
+  metric_value: PlayerAdvancedMetricValue;
+  team_rank: number | null;
+  league_rank: number | null;
+  team_percentile: number | null;
+  league_percentile: number | null;
+  league_avg: number | null;
+  league_median: number | null;
+  vs_league_avg_abs: number | null;
+  vs_league_avg_pct: number | null;
+  above_league_avg_flag: boolean | null;
 };

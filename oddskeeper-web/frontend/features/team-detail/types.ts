@@ -135,31 +135,71 @@ export type TeamFixtureRow = {
   opponent_team_source_id: string;
   opponent_name: string | null;
 };
+type TeamAdvancedMetricValue = string | number | boolean | null;
+
 export type TeamAdvancedOverviewRow = {
-  team_bk: string
-  season_label: string
-  attack_profile_label: string | null
-  defence_profile_label: string | null
-  strongest_metric_key: string | null
-  strongest_metric_rank: number | null
-  strongest_metric_vs_league_pct: number | null
-  weakest_metric_key: string | null
-  weakest_metric_rank: number | null
-  home_away_gap_metric_key: string | null
-  form_shift_last5_flag: boolean | null
+  season_label: string | null;
+  competition: string | null;
+  source_team_id: string | number | null;
+  team_slug: string | null;
+  team_name: string | null;
+
+  attack_profile_label: string | null;
+  defence_profile_label: string | null;
+  recent_form_label: string | null;
+  form_shift_last5_flag: boolean | null;
+
+  strongest_metric_key: string | null;
+  strongest_metric_label: string | null;
+  strongest_metric_category: string | null;
+  strongest_metric_value: TeamAdvancedMetricValue;
+  strongest_metric_league_rank: number | null;
+  strongest_metric_league_percentile: number | null;
+  strongest_metric_vs_league_avg_pct: number | null;
+
+  weakest_metric_key: string | null;
+  weakest_metric_label: string | null;
+  weakest_metric_category: string | null;
+  weakest_metric_value: TeamAdvancedMetricValue;
+  weakest_metric_league_rank: number | null;
+  weakest_metric_league_percentile: number | null;
+  weakest_metric_vs_league_avg_pct: number | null;
+
+  home_away_gap_metric_key: string | null;
+  home_away_gap_home_value: TeamAdvancedMetricValue;
+  home_away_gap_away_value: TeamAdvancedMetricValue;
+  home_away_gap_abs: number | null;
+
+  strongest_metric_rank?: number | null;
+  strongest_metric_vs_league_pct?: number | null;
+  weakest_metric_rank?: number | null;
+  weakest_metric_vs_league_pct?: number | null;
+  home_away_gap_metric_label?: string | null;
 };
 
 export type TeamMetricBenchmarkRow = {
-  season_label: string
-  competition: string | null
-  team_bk: string
-  metric_key: string
-  metric_value: number | null
-  league_rank: number | null
-  league_percentile: number | null
-  league_avg: number | null
-  league_median: number | null
-  vs_league_avg_abs: number | null
-  vs_league_avg_pct: number | null
-  above_league_avg_flag: boolean | null
+  season_label: string | null;
+  competition: string | null;
+  source_team_id: string | number | null;
+  team_slug: string | null;
+  team_name: string | null;
+
+  metric_key: string;
+  display_label?: string | null;
+  metric_label?: string | null;
+  category: string | null;
+  display_priority: number | null;
+  value_basis: string | null;
+  rank_direction: string | null;
+
+  metric_value: TeamAdvancedMetricValue;
+  league_rank: number | null;
+  league_percentile: number | null;
+  league_avg: number | null;
+  league_median: number | null;
+  vs_league_avg_abs: number | null;
+  vs_league_avg_pct: number | null;
+  above_league_avg_flag: boolean | null;
 };
+
+
