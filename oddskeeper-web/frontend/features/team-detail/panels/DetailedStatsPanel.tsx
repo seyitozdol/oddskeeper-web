@@ -14,6 +14,22 @@ type DetailedStatsPanelProps = {
 type CategoryFilter = "all" | TeamDetailedCategoryKey;
 type SummaryTone = "neutral" | "positive" | "negative" | "accent" | "warning";
 
+type SortKey =
+  | "total_value"
+  | "per_match_value"
+  | "home_value"
+  | "away_value"
+  | "league_avg"
+  | "league_rank"
+  | "vs_league_avg_pct";
+
+type SortDirection = "asc" | "desc";
+
+type SortConfig = {
+  key: SortKey;
+  direction: SortDirection;
+} | null;
+
 const CATEGORY_ORDER: TeamDetailedCategoryKey[] = [
   "attack",
   "defence",
@@ -221,12 +237,66 @@ function InfoTooltip() {
         i
       </button>
 
-      <div className="pointer-events-none absolute left-0 top-7 z-20 hidden w-[280px] rounded-xl border border-white/10 bg-[#0a1220] px-3 py-2 text-[11px] leading-5 text-white/72 shadow-[0_12px_30px_rgba(0,0,0,0.35)] group-hover:block">
+      <div className="pointer-events-none absolute left-0 top-7 z-20 hidden w-[300px] rounded-xl border border-white/10 bg-[#0a1220] px-3 py-2 text-[11px] leading-5 text-white/72 shadow-[0_12px_30px_rgba(0,0,0,0.35)] group-hover:block">
         League-context deep team metrics. Home and Away columns are per-match
-        split values. Click a rank to open the league leaderboard for that
-        metric.
+        split values. Click a rank to open the metric leaderboard. Click column
+        headers to sort the table.
       </div>
     </div>
+  );
+}
+
+function getDefaultSortDirection(key: SortKey): SortDirection {
+  if (key === "league_rank") {
+    return "asc";
+  }
+
+  return "desc";
+}
+
+function compareNullableNumbers(
+  a: number | null | undefined,
+  b: number | null | undefined,
+  direction: SortDirection
+) {
+  const aNull = a === null || a === undefined || Number.isNaN(a);
+  const bNull = b === null || b === undefined || Number.isNaN(b);
+
+  if (aNull && bNull) return 0;
+  if (aNull) return 1;
+  if (bNull) return -1;
+
+  return direction === "asc" ? a - b : b - a;
+}
+
+function SortableHeader({
+  label,
+  sortKey,
+  sortConfig,
+  onSort,
+}: {
+  label: string;
+  sortKey: SortKey;
+  sortConfig: SortConfig;
+  onSort: (key: SortKey) => void;
+}) {
+  const isActive = sortConfig?.key === sortKey;
+  const direction = sortConfig?.direction;
+
+  return (
+    <button
+      type="button"
+      onClick={() => onSort(sortKey)}
+      className={`inline-flex items-center gap-1 transition hover:text-white ${
+        isActive ? "text-white" : "text-white/38"
+      }`}
+      title={`Sort by ${label}`}
+    >
+      <span>{label}</span>
+      <span className="text-[10px]">
+        {isActive ? (direction === "asc" ? "↑" : "↓") : "↕"}
+      </span>
+    </button>
   );
 }
 
@@ -239,6 +309,7 @@ export default function DetailedStatsPanel({
   const [selectedMetricLabel, setSelectedMetricLabel] = useState<string | null>(
     null
   );
+  const [sortConfig, setSortConfig] = useState<SortConfig>(null);
 
   const availableCategories = useMemo(() => {
     const categorySet = new Set<TeamDetailedCategoryKey>();
@@ -253,12 +324,45 @@ export default function DetailedStatsPanel({
   }, [rows]);
 
   const filteredRows = useMemo(() => {
-    if (activeCategory === "all") {
-      return rows;
+    const baseRows =
+      activeCategory === "all"
+        ? rows
+        : rows.filter((row) => row.category_key === activeCategory);
+
+    if (!sortConfig) {
+      return baseRows;
     }
 
-    return rows.filter((row) => row.category_key === activeCategory);
-  }, [rows, activeCategory]);
+    const sorted = [...baseRows].sort((a, b) => {
+      const comparison = compareNullableNumbers(
+        a[sortConfig.key],
+        b[sortConfig.key],
+        sortConfig.direction
+      );
+
+      if (comparison !== 0) {
+        return comparison;
+      }
+
+      const categoryComparison =
+        CATEGORY_ORDER.indexOf(a.category_key) - CATEGORY_ORDER.indexOf(b.category_key);
+
+      if (categoryComparison !== 0) {
+        return categoryComparison;
+      }
+
+      const priorityA = a.display_priority ?? 9999;
+      const priorityB = b.display_priority ?? 9999;
+
+      if (priorityA !== priorityB) {
+        return priorityA - priorityB;
+      }
+
+      return a.metric_label.localeCompare(b.metric_label);
+    });
+
+    return sorted;
+  }, [rows, activeCategory, sortConfig]);
 
   const metricOptions = useMemo(() => {
     const uniqueMap = new Map<string, string>();
@@ -423,6 +527,22 @@ export default function DetailedStatsPanel({
     };
   }, [rows]);
 
+  const handleSort = (key: SortKey) => {
+    setSortConfig((current) => {
+      if (!current || current.key !== key) {
+        return {
+          key,
+          direction: getDefaultSortDirection(key),
+        };
+      }
+
+      return {
+        key,
+        direction: current.direction === "asc" ? "desc" : "asc",
+      };
+    });
+  };
+
   if (rows.length === 0) {
     return (
       <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-4 text-sm text-white/65">
@@ -514,13 +634,62 @@ export default function DetailedStatsPanel({
                 {showCategoryColumn ? (
                   <th className="px-4 py-2 font-medium">Category</th>
                 ) : null}
-                <th className="px-4 py-2 font-medium">Total</th>
-                <th className="px-4 py-2 font-medium">Per Match</th>
-                <th className="px-4 py-2 font-medium">Home</th>
-                <th className="px-4 py-2 font-medium">Away</th>
-                <th className="px-4 py-2 font-medium">League Avg</th>
-                <th className="px-4 py-2 font-medium">Rank</th>
-                <th className="px-4 py-2 font-medium">Vs Avg %</th>
+                <th className="px-4 py-2 font-medium">
+                  <SortableHeader
+                    label="Total"
+                    sortKey="total_value"
+                    sortConfig={sortConfig}
+                    onSort={handleSort}
+                  />
+                </th>
+                <th className="px-4 py-2 font-medium">
+                  <SortableHeader
+                    label="Per Match"
+                    sortKey="per_match_value"
+                    sortConfig={sortConfig}
+                    onSort={handleSort}
+                  />
+                </th>
+                <th className="px-4 py-2 font-medium">
+                  <SortableHeader
+                    label="Home"
+                    sortKey="home_value"
+                    sortConfig={sortConfig}
+                    onSort={handleSort}
+                  />
+                </th>
+                <th className="px-4 py-2 font-medium">
+                  <SortableHeader
+                    label="Away"
+                    sortKey="away_value"
+                    sortConfig={sortConfig}
+                    onSort={handleSort}
+                  />
+                </th>
+                <th className="px-4 py-2 font-medium">
+                  <SortableHeader
+                    label="League Avg"
+                    sortKey="league_avg"
+                    sortConfig={sortConfig}
+                    onSort={handleSort}
+                  />
+                </th>
+                <th className="px-4 py-2 font-medium">
+                  <SortableHeader
+                    label="Rank"
+                    sortKey="league_rank"
+                    sortConfig={sortConfig}
+                    onSort={handleSort}
+                  />
+                </th>
+                <th className="px-4 py-2 font-medium">
+                  <SortableHeader
+                    label="Vs Avg %"
+                    sortKey="vs_league_avg_pct"
+                    sortConfig={sortConfig}
+                    onSort={handleSort}
+                  />
+                </th>
                 <th className="px-4 py-2 font-medium">Direction</th>
               </tr>
             </thead>
@@ -570,11 +739,15 @@ export default function DetailedStatsPanel({
                           setSelectedMetricLabel(row.metric_label);
                           setIsDrawerOpen(true);
                         }}
-                        className={`font-semibold transition hover:underline ${getRankTone(
+                        title="Open metric leaderboard"
+                        className={`group inline-flex items-center gap-1 font-semibold transition duration-150 hover:underline cursor-pointer ${getRankTone(
                           row.league_rank
                         )}`}
                       >
-                        {row.league_rank}
+                        <span>{row.league_rank}</span>
+                        <span className="text-[10px] opacity-60 transition group-hover:opacity-100">
+                          ↗
+                        </span>
                       </button>
                     ) : (
                       <span className="text-white/55">—</span>
