@@ -8,6 +8,30 @@ type ResultsPanelProps = {
   rows?: TeamResultRow[];
 };
 
+function OpponentName({
+  teamSlug,
+  name,
+}: {
+  teamSlug: string | null | undefined;
+  name: string | null | undefined;
+}) {
+  const displayName = name ?? "—";
+
+  if (!teamSlug) {
+    return <span>{displayName}</span>;
+  }
+
+  return (
+    <TeamLink
+      teamSlug={teamSlug}
+      className="font-medium text-white transition hover:text-white hover:underline"
+      title={displayName}
+    >
+      {displayName}
+    </TeamLink>
+  );
+}
+
 export function ResultsPanel({ rows = [] }: ResultsPanelProps) {
   if (rows.length === 0) {
     return (
@@ -65,13 +89,10 @@ export function ResultsPanel({ rows = [] }: ResultsPanelProps) {
                 </td>
 
                 <td className="px-4 py-2 min-w-[210px]">
-                  <TeamLink
+                  <OpponentName
                     teamSlug={row.opponent_team_slug}
-                    className="font-medium text-white transition hover:text-white hover:underline"
-                    title={row.opponent_name ?? "Opponent"}
-                  >
-                    {row.opponent_name ?? "—"}
-                  </TeamLink>
+                    name={row.opponent_team_name ?? row.opponent_name}
+                  />
                 </td>
 
                 <td className="px-4 py-2 whitespace-nowrap font-semibold text-white">
@@ -90,7 +111,7 @@ export function ResultsPanel({ rows = [] }: ResultsPanelProps) {
                 </td>
 
                 <td className="px-4 py-2 min-w-[210px] text-white/60">
-                  {row.venue ?? "—"}
+                  {row.venue_label ?? row.venue ?? "—"}
                 </td>
               </tr>
             );
