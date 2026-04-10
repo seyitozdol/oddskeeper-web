@@ -4,6 +4,7 @@ import { PlayerResultBadge } from "../components/PlayerResultBadge";
 import type { PlayerMatchLogRow, PlayerProfileRow } from "../types";
 import { formatDate } from "../utils/formatDate";
 import { formatDecimal } from "../utils/formatDecimal";
+import type { ReactNode } from "react";
 
 type PlayerOverviewPanelProps = {
   profile: PlayerProfileRow;
@@ -22,7 +23,7 @@ function InfoItem({
   value,
 }: {
   label: string;
-  value: string | number;
+  value: ReactNode;
 }) {
   return (
     <div>
@@ -30,7 +31,7 @@ function InfoItem({
         {label}
       </div>
       <div className="mt-1 text-sm font-medium text-white">
-        {value}
+        {value === null || value === undefined || value === "" ? "—" : value}
       </div>
     </div>
   );
