@@ -165,3 +165,78 @@ export type PlayerMetricBenchmarkRow = {
   vs_league_avg_pct: number | null;
   above_league_avg_flag: boolean | null;
 };
+
+export type PlayerDetailedCategoryKey =
+  | "output"
+  | "shooting"
+  | "passing"
+  | "defence"
+  | "discipline"
+  | "usage"
+  | "goalkeeper";
+
+export type PlayerDetailedValueFormat =
+  | "integer"
+  | "decimal_1"
+  | "decimal_2"
+  | "decimal_3"
+  | "pct_1";
+
+export type PlayerDetailedMetricRow = {
+  season_label: string | null;
+  competition: string | null;
+
+  source_team_id: string | number | null;
+  team_source_id?: string | number | null;
+  team_slug: string | null;
+  team_name: string | null;
+
+  player_source_id: string | number | null;
+  player_name: string | null;
+  position_code: string | null;
+  role_group: string | null;
+
+  metric_key: string;
+  metric_label: string;
+  category_key: PlayerDetailedCategoryKey;
+  category_label: string;
+  display_priority: number | null;
+
+  total_value: number | null;
+  per_match_value: number | null;
+  per90_value: number | null;
+  home_value: number | null;
+  away_value: number | null;
+  last5_value: number | null;
+
+  league_avg: number | null;
+  league_median: number | null;
+  league_rank: number | null;
+  league_percentile: number | null;
+
+  vs_league_avg_abs: number | null;
+  vs_league_avg_pct: number | null;
+
+  rank_direction: "asc" | "desc" | string | null;
+  is_higher_better: boolean | null;
+  value_format: PlayerDetailedValueFormat | string | null;
+
+  home_away_gap_abs: number | null;
+  sample_matches: number | null;
+  coverage_flag: boolean | null;
+};
+
+export type PlayerDetailedSummaryCardKey =
+  | "best_category"
+  | "weakest_category"
+  | "best_metric"
+  | "worst_metric"
+  | "biggest_gap"
+  | "coverage_status";
+
+export type PlayerDetailedSummaryCardRow = {
+  key: PlayerDetailedSummaryCardKey;
+  label: string;
+  value: string | number | boolean | null;
+  subvalue?: string | number | boolean | null;
+};
