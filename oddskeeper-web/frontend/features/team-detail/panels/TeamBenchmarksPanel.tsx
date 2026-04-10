@@ -1,15 +1,16 @@
 import type { TeamMetricBenchmarkRow } from "../types";
 
 type Props = {
-  benchmarks: TeamMetricBenchmarkRow[];
+  benchmarks?: TeamMetricBenchmarkRow[];
 };
 
-function formatValue(value: string | number | null | undefined) {
+function formatValue(value: string | number | boolean | null | undefined) {
   if (value === null || value === undefined || value === "") return "-";
-  return value;
+  if (typeof value === "boolean") return value ? "Yes" : "No";
+  return String(value);
 }
 
-export default function TeamBenchmarksPanel({ benchmarks }: Props) {
+export default function TeamBenchmarksPanel({ benchmarks = [] }: Props) {
   if (!benchmarks || benchmarks.length === 0) {
     return (
       <section className="rounded-2xl border border-white/10 bg-white/5 p-5">
@@ -48,7 +49,9 @@ export default function TeamBenchmarksPanel({ benchmarks }: Props) {
                 className="border-b border-white/5 text-white/85 last:border-b-0"
               >
                 <td className="px-3 py-2">{formatValue(row.category)}</td>
-                <td className="px-3 py-2">{formatValue(row.metric_label)}</td>
+                <td className="px-3 py-2">
+                  {formatValue(row.metric_label ?? row.display_label)}
+                </td>
                 <td className="px-3 py-2">{formatValue(row.metric_value)}</td>
                 <td className="px-3 py-2">{formatValue(row.league_rank)}</td>
                 <td className="px-3 py-2">{formatValue(row.league_avg)}</td>

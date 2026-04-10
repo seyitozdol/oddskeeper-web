@@ -6,31 +6,30 @@ const DEFAULT_LIMIT = 24;
 
 export const getTeamMetricBenchmarks = cache(
   async (
-    teamSlug: string,
+    teamSlug: string | null | undefined,
     options?: {
       seasonLabel?: string;
       limit?: number;
     }
   ): Promise<TeamMetricBenchmarkRow[]> => {
+    if (!teamSlug) {
+      return [];
+    }
+
     const supabase = await createClient();
 
     let query = supabase
+      .schema("analytics")
       .from("team_metric_benchmarks_v1")
       .select("*")
       .eq("team_slug", teamSlug)
-      .order("category", { ascending: true })
-      .order("display_priority", { ascending: true })
       .order("league_rank", { ascending: true });
 
     if (options?.seasonLabel) {
       query = query.eq("season_label", options.seasonLabel);
     }
 
-    if (options?.limit) {
-      query = query.limit(options.limit);
-    } else {
-      query = query.limit(DEFAULT_LIMIT);
-    }
+    query = query.limit(options?.limit ?? DEFAULT_LIMIT);
 
     const { data, error } = await query;
 
@@ -38,11 +37,17 @@ export const getTeamMetricBenchmarks = cache(
       console.error("getTeamMetricBenchmarks failed", {
         teamSlug,
         seasonLabel: options?.seasonLabel ?? null,
-        error,
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code,
       });
       return [];
     }
 
-    return (data ?? []) as TeamMetricBenchmarkRow[];
+    return ((data ?? []).map((row: any) => ({
+      ...row,
+      metric_label: row.metric_label ?? row.display_label ?? null,
+    })) as TeamMetricBenchmarkRow[]);
   }
 );
