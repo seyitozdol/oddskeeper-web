@@ -3,11 +3,13 @@ import { TeamDetailHeader } from "../../../../../../features/team-detail/compone
 import { FixturePanel } from "../../../../../../features/team-detail/panels/FixturePanel";
 import { ResultsPanel } from "../../../../../../features/team-detail/panels/ResultsPanel";
 import { SquadPanel } from "../../../../../../features/team-detail/panels/SquadPanel";
+import DetailedStatsPanel from "../../../../../../features/team-detail/panels/DetailedStatsPanel";
 import TeamAdvancedOverviewPanel from "../../../../../../features/team-detail/panels/TeamAdvancedOverviewPanel";
 import TeamBenchmarksPanel from "../../../../../../features/team-detail/panels/TeamBenchmarksPanel";
 import { TeamStatisticsPanel } from "../../../../../../features/team-detail/panels/TeamStatisticsPanel";
 import { VALID_TABS } from "../../../../../../features/team-detail/constants";
 import { getTeamAdvancedOverview } from "../../../../../../features/team-detail/server/getTeamAdvancedOverview";
+import { getTeamDetailedMetrics } from "../../../../../../features/team-detail/server/getTeamDetailedMetrics";
 import { getTeamFixtures } from "../../../../../../features/team-detail/server/getTeamFixtures";
 import { getTeamMetricBenchmarks } from "../../../../../../features/team-detail/server/getTeamMetricBenchmarks";
 import { getTeamProfile } from "../../../../../../features/team-detail/server/getTeamProfile";
@@ -72,7 +74,7 @@ export default async function TeamDetailPage({
     activeTab === "fixture" ? await getTeamFixtures(teamSlug) : [];
 
   const summary =
-    activeTab === "team-statistics"
+    activeTab === "team-statistics" || activeTab === "detailed-stats"
       ? await getTeamStatisticsSummary(teamSlug)
       : null;
 
@@ -98,6 +100,13 @@ export default async function TeamDetailPage({
         )
       : [];
 
+  const detailedMetricRows =
+    activeTab === "detailed-stats" && summary?.season_label
+      ? await getTeamDetailedMetrics(teamSlug, {
+          seasonLabel: summary.season_label,
+        })
+      : [];
+
   return (
     <section className="w-full">
       <TeamDetailHeader
@@ -116,6 +125,8 @@ export default async function TeamDetailPage({
             splits={splitRows}
             recentForm={recentFormRows}
           />
+        ) : activeTab === "detailed-stats" ? (
+          <DetailedStatsPanel rows={detailedMetricRows} />
         ) : activeTab === "advanced" ? (
           <TeamAdvancedOverviewPanel overview={advancedOverview} />
         ) : activeTab === "benchmarks" ? (

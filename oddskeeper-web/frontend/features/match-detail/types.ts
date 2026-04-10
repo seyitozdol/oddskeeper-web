@@ -2,6 +2,7 @@ import { VALID_MATCH_TABS } from "./constants";
 
 export type ValidMatchTab = (typeof VALID_MATCH_TABS)[number];
 
+
 export type MatchProfileRow = {
   source_match_id: string;
   competition: string | null;
