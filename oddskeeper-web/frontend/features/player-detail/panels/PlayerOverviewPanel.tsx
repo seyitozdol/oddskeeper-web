@@ -17,6 +17,44 @@ function toNumber(value: number | string | null | undefined) {
   return Number.isNaN(numeric) ? 0 : numeric;
 }
 
+function InfoItem({
+  label,
+  value,
+}: {
+  label: string;
+  value: string | number;
+}) {
+  return (
+    <div>
+      <div className="text-[10px] uppercase tracking-[0.14em] text-white/35">
+        {label}
+      </div>
+      <div className="mt-1 text-sm font-medium text-white">
+        {value}
+      </div>
+    </div>
+  );
+}
+
+function SummaryItem({
+  label,
+  value,
+}: {
+  label: string;
+  value: string | number;
+}) {
+  return (
+    <div className="min-w-0">
+      <div className="text-[10px] uppercase tracking-[0.14em] text-white/35">
+        {label}
+      </div>
+      <div className="mt-1 text-lg font-semibold text-white">
+        {value}
+      </div>
+    </div>
+  );
+}
+
 export function PlayerOverviewPanel({
   profile,
   matchLog,
@@ -59,127 +97,93 @@ export function PlayerOverviewPanel({
   )}&tab=overview`;
 
   return (
-    <div className="space-y-5">
-      <div className="grid gap-4 xl:grid-cols-2">
-        <div className="rounded-[20px] border border-white/10 bg-white/[0.03] p-5">
-          <div className="text-xs uppercase tracking-[0.22em] text-white/38">
-            Player Context
-          </div>
-
-          <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            <div>
-              <div className="text-[11px] uppercase tracking-[0.16em] text-white/35">
-                Team
-              </div>
-              <div className="mt-1 text-base font-medium text-white">
-                <TeamLink
-                  teamSlug={profile.team_slug}
-                  className="font-medium text-white transition hover:text-white hover:underline"
-                  title={profile.team_name}
-                >
-                  {profile.team_name}
-                </TeamLink>
-              </div>
+    <div className="space-y-3">
+      <div className="rounded-[18px] border border-white/10 bg-white/[0.03] p-4">
+        <div className="grid gap-6 xl:grid-cols-2">
+          <div>
+            <div className="text-xs uppercase tracking-[0.22em] text-white/38">
+              Player Context
             </div>
 
-            <div>
-              <div className="text-[11px] uppercase tracking-[0.16em] text-white/35">
-                Competition
-              </div>
-              <div className="mt-1 text-base font-medium text-white">
-                {profile.competition ?? "—"}
-              </div>
-            </div>
-
-            <div>
-              <div className="text-[11px] uppercase tracking-[0.16em] text-white/35">
-                Season
-              </div>
-              <div className="mt-1 text-base font-medium text-white">
-                {profile.season_label ?? "—"}
-              </div>
-            </div>
-
-            <div>
-              <div className="text-[11px] uppercase tracking-[0.16em] text-white/35">
-                Position Group
-              </div>
-              <div className="mt-1 text-base font-medium text-white">
-                {profile.position_group}
-              </div>
+            <div className="mt-3 grid gap-x-6 gap-y-3 sm:grid-cols-2">
+              <InfoItem
+                label="Team"
+                value={
+                  <TeamLink
+                    teamSlug={profile.team_slug}
+                    className="font-medium text-white transition hover:text-white hover:underline"
+                    title={profile.team_name}
+                  >
+                    {profile.team_name}
+                  </TeamLink>
+                }
+              />
+              <InfoItem
+                label="Competition"
+                value={profile.competition ?? "—"}
+              />
+              <InfoItem
+                label="Season"
+                value={profile.season_label ?? "—"}
+              />
+              <InfoItem
+                label="Position Group"
+                value={profile.position_group}
+              />
             </div>
           </div>
-        </div>
 
-        <div className="rounded-[20px] border border-white/10 bg-white/[0.03] p-5">
-          <div className="text-xs uppercase tracking-[0.22em] text-white/38">
-            Season Summary
-          </div>
-
-          <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            <div>
-              <div className="text-[11px] uppercase tracking-[0.16em] text-white/35">
-                Avg Minutes
-              </div>
-              <div className="mt-1 text-base font-medium text-white">
-                {formatDecimal(profile.avg_minutes)}
-              </div>
+          <div>
+            <div className="text-xs uppercase tracking-[0.22em] text-white/38">
+              Season Summary
             </div>
 
-            <div>
-              <div className="text-[11px] uppercase tracking-[0.16em] text-white/35">
-                Sub Appearances
-              </div>
-              <div className="mt-1 text-base font-medium text-white">
-                {profile.sub_appearances}
-              </div>
-            </div>
-
-            <div>
-              <div className="text-[11px] uppercase tracking-[0.16em] text-white/35">
-                First Match
-              </div>
-              <div className="mt-1 text-base font-medium text-white">
-                {formatDate(profile.first_match_datetime)}
-              </div>
-            </div>
-
-            <div>
-              <div className="text-[11px] uppercase tracking-[0.16em] text-white/35">
-                Last Match
-              </div>
-              <div className="mt-1 text-base font-medium text-white">
-                {formatDate(profile.last_match_datetime)}
-              </div>
+            <div className="mt-3 grid gap-x-6 gap-y-3 sm:grid-cols-2">
+              <InfoItem
+                label="Avg Minutes"
+                value={formatDecimal(profile.avg_minutes)}
+              />
+              <InfoItem
+                label="Sub Appearances"
+                value={profile.sub_appearances}
+              />
+              <InfoItem
+                label="First Match"
+                value={formatDate(profile.first_match_datetime)}
+              />
+              <InfoItem
+                label="Last Match"
+                value={formatDate(profile.last_match_datetime)}
+              />
             </div>
           </div>
         </div>
       </div>
 
-      <div className="rounded-[20px] border border-white/10 bg-white/[0.03] p-5">
+      <div className="rounded-[18px] border border-white/10 bg-white/[0.03] p-4">
         <div className="text-xs uppercase tracking-[0.22em] text-white/38">
           Recent Form
         </div>
 
         {recentRows.length === 0 ? (
-          <div className="mt-4 text-sm text-white/55">
+          <div className="mt-3 text-sm text-white/55">
             No recent form data found.
           </div>
         ) : (
-          <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+          <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-5">
             {recentRows.map((row) => (
               <div
                 key={`${row.source_match_id}-${row.player_source_id}`}
-                className="rounded-xl border border-white/8 bg-white/[0.02] px-3 py-3"
+                className="rounded-xl border border-white/8 bg-white/[0.02] px-3 py-2"
               >
                 <div className="flex items-center justify-between gap-2">
                   <PlayerResultBadge resultCode={row.result_code} />
-                  <div className="text-[11px] text-white/45">
+                  <div className="text-[10px] text-white/45">
                     {formatDate(row.match_datetime)}
                   </div>
                 </div>
 
-                <div className="mt-3 min-h-[36px] text-sm font-medium text-white">
+                <div className="mt-2 truncate text-sm font-medium text-white">
                   <TeamLink
                     teamSlug={row.opponent_team_slug}
                     className="font-medium text-white transition hover:text-white hover:underline"
@@ -189,7 +193,7 @@ export function PlayerOverviewPanel({
                   </TeamLink>
                 </div>
 
-                <div className="mt-3 flex items-center justify-between text-[12px] text-white/65">
+                <div className="mt-2 flex items-center justify-between text-[11px] text-white/60">
                   <span>{row.score_display ?? "—"}</span>
                   <span>{row.minutes_played ?? "—"} min</span>
                 </div>
@@ -199,97 +203,40 @@ export function PlayerOverviewPanel({
         )}
       </div>
 
-      <div className="rounded-[20px] border border-white/10 bg-white/[0.03] p-5">
+      <div className="rounded-[18px] border border-white/10 bg-white/[0.03] p-4">
         <div className="text-xs uppercase tracking-[0.22em] text-white/38">
           Last 5 Summary
         </div>
 
-        <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-7">
-          <div className="rounded-xl border border-white/8 bg-white/[0.02] px-3 py-3">
-            <div className="text-[10px] uppercase tracking-[0.16em] text-white/35">
-              Matches
-            </div>
-            <div className="mt-2 text-xl font-semibold text-white">
-              {recentRows.length}
-            </div>
-          </div>
-
-          <div className="rounded-xl border border-white/8 bg-white/[0.02] px-3 py-3">
-            <div className="text-[10px] uppercase tracking-[0.16em] text-white/35">
-              Starts
-            </div>
-            <div className="mt-2 text-xl font-semibold text-white">
-              {last5Starts}
-            </div>
-          </div>
-
-          <div className="rounded-xl border border-white/8 bg-white/[0.02] px-3 py-3">
-            <div className="text-[10px] uppercase tracking-[0.16em] text-white/35">
-              Subs
-            </div>
-            <div className="mt-2 text-xl font-semibold text-white">
-              {last5SubApps}
-            </div>
-          </div>
-
-          <div className="rounded-xl border border-white/8 bg-white/[0.02] px-3 py-3">
-            <div className="text-[10px] uppercase tracking-[0.16em] text-white/35">
-              Minutes
-            </div>
-            <div className="mt-2 text-xl font-semibold text-white">
-              {last5Minutes}
-            </div>
-          </div>
-
-          <div className="rounded-xl border border-white/8 bg-white/[0.02] px-3 py-3">
-            <div className="text-[10px] uppercase tracking-[0.16em] text-white/35">
-              Avg Min
-            </div>
-            <div className="mt-2 text-xl font-semibold text-white">
-              {formatDecimal(last5AvgMinutes, 1)}
-            </div>
-          </div>
-
-          <div className="rounded-xl border border-white/8 bg-white/[0.02] px-3 py-3">
-            <div className="text-[10px] uppercase tracking-[0.16em] text-white/35">
-              Goals
-            </div>
-            <div className="mt-2 text-xl font-semibold text-white">
-              {last5Goals}
-            </div>
-          </div>
-
-          <div className="rounded-xl border border-white/8 bg-white/[0.02] px-3 py-3">
-            <div className="text-[10px] uppercase tracking-[0.16em] text-white/35">
-              Assists
-            </div>
-            <div className="mt-2 text-xl font-semibold text-white">
-              {last5Assists}
-            </div>
-          </div>
+        <div className="mt-3 grid gap-x-5 gap-y-3 sm:grid-cols-3 xl:grid-cols-7">
+          <SummaryItem label="Matches" value={recentRows.length} />
+          <SummaryItem label="Starts" value={last5Starts} />
+          <SummaryItem label="Subs" value={last5SubApps} />
+          <SummaryItem label="Minutes" value={last5Minutes} />
+          <SummaryItem
+            label="Avg Min"
+            value={formatDecimal(last5AvgMinutes, 1)}
+          />
+          <SummaryItem label="Goals" value={last5Goals} />
+          <SummaryItem label="Assists" value={last5Assists} />
         </div>
 
-        <div className="mt-3 max-w-[180px] rounded-xl border border-white/8 bg-white/[0.02] px-3 py-3">
-          <div className="text-[10px] uppercase tracking-[0.16em] text-white/35">
-            xG
-          </div>
-          <div className="mt-2 text-xl font-semibold text-white">
-            {formatDecimal(last5Xg, 2)}
-          </div>
+        <div className="mt-3 max-w-[160px]">
+          <SummaryItem label="xG" value={formatDecimal(last5Xg, 2)} />
         </div>
       </div>
 
-      <div className="rounded-[20px] border border-white/10 bg-white/[0.03] p-5">
+      <div className="rounded-[18px] border border-white/10 bg-white/[0.03] p-4">
         <div className="text-xs uppercase tracking-[0.22em] text-white/38">
           Recent Matches
         </div>
 
         {recentRows.length === 0 ? (
-          <div className="mt-4 text-sm text-white/55">
+          <div className="mt-3 text-sm text-white/55">
             No recent match data found.
           </div>
         ) : (
-          <div className="mt-4 overflow-x-auto rounded-[14px] border border-white/10">
+          <div className="mt-3 overflow-x-auto rounded-[14px] border border-white/10">
             <table className="min-w-full border-collapse">
               <thead className="bg-white/[0.03]">
                 <tr className="text-left text-[10px] uppercase tracking-[0.14em] text-white/38">

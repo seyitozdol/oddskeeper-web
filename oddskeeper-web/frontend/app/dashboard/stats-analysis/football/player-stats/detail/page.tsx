@@ -58,7 +58,7 @@ export default async function FootballPlayerDetailPage({
   }
 
   return (
-    <section className="w-full space-y-5">
+    <section className="w-full space-y-3">
       <PlayerDetailHeader profile={profile} activeTab={activeTab} />
 
       {activeTab === "overview" ? (
