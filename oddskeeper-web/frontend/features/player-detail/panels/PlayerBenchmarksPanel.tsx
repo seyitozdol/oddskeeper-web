@@ -1,16 +1,20 @@
 import type { PlayerMetricBenchmarkRow } from "../types";
 
 type Props = {
-  benchmarks: PlayerMetricBenchmarkRow[];
+  benchmarks?: PlayerMetricBenchmarkRow[];
 };
 
-function formatValue(value: string | number | null | undefined) {
+function formatValue(value: unknown) {
   if (value === null || value === undefined || value === "") return "-";
-  return value;
+  return String(value);
 }
 
-export default function PlayerBenchmarksPanel({ benchmarks }: Props) {
-  if (!benchmarks || benchmarks.length === 0) {
+function getValue(source: Record<string, unknown>, key: string) {
+  return source[key];
+}
+
+export default function PlayerBenchmarksPanel({ benchmarks = [] }: Props) {
+  if (benchmarks.length === 0) {
     return (
       <section className="rounded-2xl border border-white/10 bg-white/5 p-5">
         <p className="text-sm text-white/70">
@@ -42,19 +46,38 @@ export default function PlayerBenchmarksPanel({ benchmarks }: Props) {
             </tr>
           </thead>
           <tbody>
-            {benchmarks.map((row, index) => (
-              <tr
-                key={`${row.metric_key}-${index}`}
-                className="border-b border-white/5 text-white/85 last:border-b-0"
-              >
-                <td className="px-3 py-2">{formatValue(row.category)}</td>
-                <td className="px-3 py-2">{formatValue(row.metric_label)}</td>
-                <td className="px-3 py-2">{formatValue(row.metric_value)}</td>
-                <td className="px-3 py-2">{formatValue(row.league_rank)}</td>
-                <td className="px-3 py-2">{formatValue(row.league_avg)}</td>
-                <td className="px-3 py-2">{formatValue(row.vs_league_avg_pct)}</td>
-              </tr>
-            ))}
+            {benchmarks.map((row, index) => {
+              const data = row as unknown as Record<string, unknown>;
+
+              return (
+                <tr
+                  key={`${formatValue(getValue(data, "metric_key"))}-${index}`}
+                  className="border-b border-white/5 text-white/85 last:border-b-0"
+                >
+                  <td className="px-3 py-2">
+                    {formatValue(getValue(data, "category"))}
+                  </td>
+                  <td className="px-3 py-2">
+                    {formatValue(
+                      getValue(data, "metric_label") ??
+                        getValue(data, "display_label")
+                    )}
+                  </td>
+                  <td className="px-3 py-2">
+                    {formatValue(getValue(data, "metric_value"))}
+                  </td>
+                  <td className="px-3 py-2">
+                    {formatValue(getValue(data, "league_rank"))}
+                  </td>
+                  <td className="px-3 py-2">
+                    {formatValue(getValue(data, "league_avg"))}
+                  </td>
+                  <td className="px-3 py-2">
+                    {formatValue(getValue(data, "vs_league_avg_pct"))}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
