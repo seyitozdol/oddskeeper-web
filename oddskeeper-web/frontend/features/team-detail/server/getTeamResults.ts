@@ -15,17 +15,21 @@ export async function getTeamResults(teamSlug: string) {
         source_match_id,
         competition,
         match_datetime,
+        match_date_label:match_datetime,
         is_home,
         is_away,
         opponent_name,
+        opponent_team_name:opponent_name,
         opponent_team_slug,
         opponent_source_team_id,
         team_score,
         opponent_score,
         score_display,
         result_code,
+        result_label:result_code,
         result_points,
-        venue
+        venue,
+        venue_label:venue
       `
     )
     .eq("team_slug", teamSlug)

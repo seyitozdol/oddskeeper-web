@@ -3,7 +3,7 @@ import type { TeamRecentFormRow } from "../types";
 
 export async function getTeamRecentForm(
   teamSlug: string,
-  competition: string,
+  _competition: string,
   seasonLabel: string
 ) {
   const supabase = await createClient();
@@ -31,7 +31,6 @@ export async function getTeamRecentForm(
       `
     )
     .eq("team_slug", teamSlug)
-    .eq("competition", competition)
     .eq("season_label", seasonLabel)
     .order("recent_rank", { ascending: true })
     .returns<TeamRecentFormRow[]>();

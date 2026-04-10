@@ -3,7 +3,7 @@ import type { TeamStatisticsSplitRow } from "../types";
 
 export async function getTeamStatisticsSplit(
   teamSlug: string,
-  competition: string,
+  _competition: string,
   seasonLabel: string
 ) {
   const supabase = await createClient();
@@ -34,7 +34,6 @@ export async function getTeamStatisticsSplit(
       `
     )
     .eq("team_slug", teamSlug)
-    .eq("competition", competition)
     .eq("season_label", seasonLabel)
     .order("sort_order", { ascending: true })
     .returns<TeamStatisticsSplitRow[]>();

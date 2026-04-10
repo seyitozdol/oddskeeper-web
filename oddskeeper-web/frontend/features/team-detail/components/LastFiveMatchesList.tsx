@@ -3,10 +3,10 @@ import { formatDate } from "../utils/formatDate";
 import { ResultBadge } from "./ResultBadge";
 
 type LastFiveMatchesListProps = {
-  rows: TeamRecentFormRow[];
+  rows?: TeamRecentFormRow[];
 };
 
-export function LastFiveMatchesList({ rows }: LastFiveMatchesListProps) {
+export function LastFiveMatchesList({ rows = [] }: LastFiveMatchesListProps) {
   return (
     <div className="rounded-[14px] border border-white/10">
       <div className="border-b border-white/10 bg-white/[0.03] px-3 py-2">
@@ -16,7 +16,7 @@ export function LastFiveMatchesList({ rows }: LastFiveMatchesListProps) {
       </div>
 
       <div className="divide-y divide-white/10">
-        {rows.map((row) => (
+        {(rows ?? []).map((row) => (
           <div
             key={`recent-${row.source_match_id}`}
             className="flex items-center justify-between gap-3 px-3 py-2 text-[13px]"

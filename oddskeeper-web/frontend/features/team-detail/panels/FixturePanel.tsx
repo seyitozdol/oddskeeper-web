@@ -4,7 +4,7 @@ import { formatKickoffTime } from "../utils/formatKickoffTime";
 import TeamLink from "@/components/links/TeamLink";
 
 type FixturePanelProps = {
-  rows: TeamFixtureRow[];
+  rows?: TeamFixtureRow[];
 };
 
 function getStatusClass(status: TeamFixtureRow["fixture_status"]) {
@@ -27,7 +27,7 @@ function getStatusClass(status: TeamFixtureRow["fixture_status"]) {
   return "border-white/10 bg-white/[0.03] text-white/60";
 }
 
-export function FixturePanel({ rows }: FixturePanelProps) {
+export function FixturePanel({ rows = [] }: FixturePanelProps) {
   if (rows.length === 0) {
     return (
       <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-4 text-sm text-white/65">

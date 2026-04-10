@@ -135,3 +135,31 @@ export type TeamFixtureRow = {
   opponent_team_source_id: string;
   opponent_name: string | null;
 };
+export type TeamAdvancedOverviewRow = {
+  team_bk: string
+  season_label: string
+  attack_profile_label: string | null
+  defence_profile_label: string | null
+  strongest_metric_key: string | null
+  strongest_metric_rank: number | null
+  strongest_metric_vs_league_pct: number | null
+  weakest_metric_key: string | null
+  weakest_metric_rank: number | null
+  home_away_gap_metric_key: string | null
+  form_shift_last5_flag: boolean | null
+};
+
+export type TeamMetricBenchmarkRow = {
+  season_label: string
+  competition: string | null
+  team_bk: string
+  metric_key: string
+  metric_value: number | null
+  league_rank: number | null
+  league_percentile: number | null
+  league_avg: number | null
+  league_median: number | null
+  vs_league_avg_abs: number | null
+  vs_league_avg_pct: number | null
+  above_league_avg_flag: boolean | null
+};

@@ -5,10 +5,10 @@ import TeamLink from "@/components/links/TeamLink";
 import MatchLink from "@/components/links/MatchLink";
 
 type ResultsPanelProps = {
-  rows: TeamResultRow[];
+  rows?: TeamResultRow[];
 };
 
-export function ResultsPanel({ rows }: ResultsPanelProps) {
+export function ResultsPanel({ rows = [] }: ResultsPanelProps) {
   if (rows.length === 0) {
     return (
       <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-4 text-sm text-white/65">
@@ -40,7 +40,7 @@ export function ResultsPanel({ rows }: ResultsPanelProps) {
 
             return (
               <tr
-                key={row.source_match_id}
+                key={`${row.source_match_id}-${row.team_slug}`}
                 className="border-t border-white/10 text-[13px] text-white/80 transition hover:bg-white/[0.018]"
               >
                 <td className="px-4 py-2 whitespace-nowrap">

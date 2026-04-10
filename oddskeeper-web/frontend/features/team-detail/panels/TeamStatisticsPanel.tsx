@@ -18,17 +18,17 @@ import { getMetaValue } from "../utils/getMetaValue";
 import { getWebsiteLabel } from "../utils/getWebsiteLabel";
 
 type TeamStatisticsPanelProps = {
-  teamProfile: TeamProfileRow | null;
+  teamProfile?: TeamProfileRow | null;
   summary: TeamStatisticsSummaryRow | null;
-  splitRows: TeamStatisticsSplitRow[];
-  recentFormRows: TeamRecentFormRow[];
+  splits?: TeamStatisticsSplitRow[];
+  recentForm?: TeamRecentFormRow[];
 };
 
 export function TeamStatisticsPanel({
-  teamProfile,
+  teamProfile = null,
   summary,
-  splitRows,
-  recentFormRows,
+  splits = [],
+  recentForm = [],
 }: TeamStatisticsPanelProps) {
   if (!summary) {
     return (
@@ -67,7 +67,7 @@ export function TeamStatisticsPanel({
     );
   }
 
-  const lastFiveSummary = getLastFiveSummary(recentFormRows);
+  const lastFiveSummary = getLastFiveSummary(recentForm);
 
   return (
     <div className="space-y-3">
@@ -132,7 +132,7 @@ export function TeamStatisticsPanel({
       </div>
 
       <div className="grid gap-3 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
-        <SplitStatsTable rows={splitRows} />
+        <SplitStatsTable rows={splits} />
 
         <div className="space-y-3">
           <div className="rounded-[14px] border border-white/10 bg-white/[0.03] px-3 py-3">
@@ -140,7 +140,7 @@ export function TeamStatisticsPanel({
               Recent Form
             </div>
 
-            <RecentFormStrip rows={recentFormRows} />
+            <RecentFormStrip rows={recentForm} />
 
             <div className="mt-4 grid grid-cols-3 gap-2">
               <StatCard
@@ -158,7 +158,7 @@ export function TeamStatisticsPanel({
             </div>
           </div>
 
-          <LastFiveMatchesList rows={recentFormRows} />
+          <LastFiveMatchesList rows={recentForm} />
         </div>
       </div>
     </div>

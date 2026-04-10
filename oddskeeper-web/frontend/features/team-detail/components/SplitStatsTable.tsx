@@ -2,10 +2,10 @@ import type { TeamStatisticsSplitRow } from "../types";
 import { formatDecimal } from "../utils/formatDecimal";
 
 type SplitStatsTableProps = {
-  rows: TeamStatisticsSplitRow[];
+  rows?: TeamStatisticsSplitRow[];
 };
 
-export function SplitStatsTable({ rows }: SplitStatsTableProps) {
+export function SplitStatsTable({ rows = [] }: SplitStatsTableProps) {
   return (
     <div className="rounded-[14px] border border-white/10">
       <div className="border-b border-white/10 bg-white/[0.03] px-3 py-2">
@@ -32,7 +32,7 @@ export function SplitStatsTable({ rows }: SplitStatsTableProps) {
           </thead>
 
           <tbody>
-            {rows.map((row) => (
+            {(rows ?? []).map((row) => (
               <tr
                 key={`${row.team_slug}-${row.split_key}`}
                 className="border-t border-white/10 text-[13px] text-white/80"
@@ -48,7 +48,9 @@ export function SplitStatsTable({ rows }: SplitStatsTableProps) {
                 <td className="px-3 py-2">{row.goals_against}</td>
                 <td className="px-3 py-2">{row.goal_difference}</td>
                 <td className="px-3 py-2">{row.points}</td>
-                <td className="px-3 py-2">{formatDecimal(row.points_per_game)}</td>
+                <td className="px-3 py-2">
+                  {formatDecimal(row.points_per_game)}
+                </td>
               </tr>
             ))}
           </tbody>

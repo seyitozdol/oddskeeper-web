@@ -1,16 +1,24 @@
 export const VALID_TABS = [
   "team-statistics",
+  "advanced",
+  "benchmarks",
+  "results",
   "squad",
   "fixture",
-  "results",
 ] as const;
 
-export const TEAM_DETAIL_TABS: {
-  key: (typeof VALID_TABS)[number];
-  label: string;
-}[] = [
-  { key: "team-statistics", label: "Team Statistics" },
-  { key: "squad", label: "Squad" },
-  { key: "fixture", label: "Fixture" },
-  { key: "results", label: "Results" },
-];
+export type ValidTab = (typeof VALID_TABS)[number];
+
+export const TAB_LABELS: Record<ValidTab, string> = {
+  "team-statistics": "Team Statistics",
+  advanced: "Advanced",
+  benchmarks: "Benchmarks",
+  results: "Results",
+  squad: "Squad",
+  fixture: "Fixture",
+};
+
+export const TEAM_DETAIL_TABS = VALID_TABS.map((key) => ({
+  key,
+  label: TAB_LABELS[key],
+}));
