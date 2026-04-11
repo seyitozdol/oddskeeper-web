@@ -167,7 +167,6 @@ export type PlayerMetricBenchmarkRow = {
 };
 
 export type PlayerDetailedCategoryKey =
-  | "output"
   | "attacking"
   | "shooting"
   | "passing"

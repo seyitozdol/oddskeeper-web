@@ -33,7 +33,6 @@ type SortConfig = {
 } | null;
 
 const CATEGORY_ORDER: PlayerDetailedCategoryKey[] = [
-  "output",
   "attacking",
   "shooting",
   "passing",
@@ -44,7 +43,6 @@ const CATEGORY_ORDER: PlayerDetailedCategoryKey[] = [
 ];
 
 const CATEGORY_LABELS: Record<PlayerDetailedCategoryKey, string> = {
-  output: "Output",
   attacking: "Attacking",
   shooting: "Shooting",
   passing: "Passing",

@@ -72,8 +72,8 @@ function mapRow(row: PlayerMetricLeaderboardDbRow): PlayerMetricLeaderboardRow {
 
     metric_key: row.metric_key,
     metric_label: row.metric_label,
-    category_key: (row.category_key ?? "output") as PlayerDetailedCategoryKey,
-    category_label: row.category_label ?? "Output",
+    category_key: (row.category_key ?? "attacking") as PlayerDetailedCategoryKey,
+    category_label: row.category_label ?? "Attacking",
 
     total_value: row.total_value,
     per_match_value: row.per_match_value,
@@ -123,7 +123,7 @@ export const getPlayerMetricLeaderboard = cache(
 
     let query = supabase
       .schema("analytics")
-      .from("player_metric_leaderboard_v1")
+      .from("player_metric_leaderboard_current")
       .select(
         `
           season_label,

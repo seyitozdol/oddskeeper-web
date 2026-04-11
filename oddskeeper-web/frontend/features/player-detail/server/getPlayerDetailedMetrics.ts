@@ -65,8 +65,8 @@ function mapRow(row: PlayerDetailedMetricsDbRow): PlayerDetailedMetricRow {
 
     metric_key: row.metric_key,
     metric_label: row.metric_label,
-    category_key: (row.category_key ?? "output") as PlayerDetailedCategoryKey,
-    category_label: row.category_label ?? "Output",
+    category_key: (row.category_key ?? "attacking") as PlayerDetailedCategoryKey,
+    category_label: row.category_label ?? "Attacking",
     display_priority: row.display_priority,
 
     total_value: row.total_value,
@@ -112,7 +112,7 @@ export const getPlayerDetailedMetrics = cache(
 
     let query = supabase
       .schema("analytics")
-      .from("player_detailed_metrics_v2_1")
+      .from("player_detailed_metrics_current")
       .select(
         `
           season_label,
