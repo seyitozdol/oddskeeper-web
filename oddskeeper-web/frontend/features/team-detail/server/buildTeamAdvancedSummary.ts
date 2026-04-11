@@ -8,30 +8,6 @@ import type {
 
 type MetricMap = Map<string, TeamDetailedMetricRow>;
 
-const STRENGTH_PRIORITY = [
-  "team_expected_goals",
-  "team_shots_on_target",
-  "team_goals",
-  "team_pass_accuracy_pct",
-  "team_score_against",
-  "team_shots_against",
-  "team_interceptions",
-  "team_passes",
-  "team_accurate_pass",
-];
-
-const RISK_PRIORITY = [
-  "team_score_against",
-  "team_shots_on_target_against",
-  "team_shots_against",
-  "team_offsides",
-  "team_pass_accuracy_pct",
-  "team_shot_accuracy_pct",
-  "team_fouls_conceded",
-  "team_red_cards",
-  "team_yellow_cards",
-];
-
 const SPLIT_PRIORITY = [
   "team_expected_goals",
   "team_shots_on_target",
@@ -178,108 +154,36 @@ function priorityIndex(key: string, order: string[]): number {
   return idx === -1 ? 999 : idx;
 }
 
+function isDiscipline(rule: TeamAdvancedRuleCatalogRow) {
+  return rule.display_group === "discipline";
+}
+
 function pickPrimaryStrength(
   rows: TeamDetailedMetricRow[],
   catalog: TeamAdvancedRuleCatalogRow[],
-  leagueSize: number
+  leagueSize: number,
+  profileLevel: "elite" | "strong" | "mixed" | "weak"
 ): TeamAdvancedMetricCard {
   const candidates = rows
     .map((row) => {
       const rule = catalog.find((item) => item.metric_key === row.metric_key);
-      if (!rule || !rule.include_in_strength_risk || !rule.is_active) return null;
-
-      const score = normalizedScore(row, leagueSize);
-      const delta = Math.abs(safeNumber(row.vs_league_avg_pct) ?? 0);
-      if (score === null) return null;
-
-      return {
-        row,
-        rule,
-        score,
-        delta,
-        strict: score >= 70 && delta >= 5,
-        fallback: score >= 55,
-        businessPriority: priorityIndex(row.metric_key, STRENGTH_PRIORITY),
-      };
-    })
-    .filter(
-      (
-        item
-      ): item is {
-        row: TeamDetailedMetricRow;
-        rule: TeamAdvancedRuleCatalogRow;
-        score: number;
-        delta: number;
-        strict: boolean;
-        fallback: boolean;
-        businessPriority: number;
-      } => item !== null
-    );
-
-  const strictCandidates = candidates
-    .filter((item) => item.strict)
-    .sort((a, b) => {
-      if (a.businessPriority !== b.businessPriority) {
-        return a.businessPriority - b.businessPriority;
-      }
-      if (b.score !== a.score) return b.score - a.score;
-      return b.delta - a.delta;
-    });
-
-  if (strictCandidates.length > 0) {
-    return buildMetricCard(
-      strictCandidates[0].row,
-      "positive",
-      "No clear strength",
-      "No metric cleared the strength threshold."
-    );
-  }
-
-  const fallbackCandidate = [...candidates]
-    .filter((item) => item.fallback)
-    .sort((a, b) => {
-      if (a.businessPriority !== b.businessPriority) {
-        return a.businessPriority - b.businessPriority;
-      }
-      return b.score - a.score;
-    })[0];
-
-  if (fallbackCandidate) {
-    return {
-      label: fallbackCandidate.row.metric_label,
-      reason: `Closest positive edge • Rank #${
-        fallbackCandidate.row.league_rank ?? "—"
-      } • ${formatPct(fallbackCandidate.row.vs_league_avg_pct)} vs avg`,
-      metric_key: fallbackCandidate.row.metric_key,
-      metric_label: fallbackCandidate.row.metric_label,
-      rank: safeNumber(fallbackCandidate.row.league_rank),
-      vs_avg_pct: safeNumber(fallbackCandidate.row.vs_league_avg_pct),
-      tone: "positive",
-    };
-  }
-
-  return buildMetricCard(
-    undefined,
-    "positive",
-    "No clear strength",
-    "The profile does not show a meaningful upper-tier edge yet."
-  );
-}
-
-function pickPrimaryRisk(
-  rows: TeamDetailedMetricRow[],
-  catalog: TeamAdvancedRuleCatalogRow[],
-  leagueSize: number
-): TeamAdvancedMetricCard {
-  const candidates = rows
-    .map((row) => {
-      const rule = catalog.find((item) => item.metric_key === row.metric_key);
-      if (!rule || !rule.include_in_strength_risk || !rule.is_active) return null;
+      if (!rule || !rule.is_active) return null;
+      if (rule.priority_strength >= 900) return null;
+      if (isDiscipline(rule)) return null;
 
       const score = normalizedScore(row, leagueSize);
       const delta = Math.abs(safeNumber(row.vs_league_avg_pct) ?? 0);
       const rank = safeNumber(row.league_rank);
+
       if (score === null) return null;
+
+      const strict =
+        (score >= 78 && (delta >= 2 || (rank !== null && rank <= 3))) ||
+        (profileLevel === "elite" && rank !== null && rank <= 3);
+
+      const fallback =
+        (rank !== null && rank <= 5 && rule.priority_strength <= 8) ||
+        (score >= 62 && delta >= 2 && rule.priority_strength <= 10);
 
       return {
         row,
@@ -287,9 +191,8 @@ function pickPrimaryRisk(
         score,
         delta,
         rank,
-        strict: score <= 30 && delta >= 5 && (rank === null || rank > 4),
-        fallback: score <= 45,
-        businessPriority: priorityIndex(row.metric_key, RISK_PRIORITY),
+        strict,
+        fallback,
       };
     })
     .filter(
@@ -303,48 +206,182 @@ function pickPrimaryRisk(
         rank: number | null;
         strict: boolean;
         fallback: boolean;
-        businessPriority: number;
       } => item !== null
     );
 
-  const strictCandidates = candidates
+  const strictCandidates = [...candidates]
     .filter((item) => item.strict)
     .sort((a, b) => {
-      if (a.businessPriority !== b.businessPriority) {
-        return a.businessPriority - b.businessPriority;
+      if (a.rule.priority_strength !== b.rule.priority_strength) {
+        return a.rule.priority_strength - b.rule.priority_strength;
+      }
+      if ((a.rank ?? 999) !== (b.rank ?? 999)) {
+        return (a.rank ?? 999) - (b.rank ?? 999);
+      }
+      if (b.score !== a.score) return b.score - a.score;
+      return b.delta - a.delta;
+    });
+
+  if (strictCandidates.length > 0) {
+    const selected = strictCandidates[0];
+    const prefix =
+      profileLevel === "elite" || profileLevel === "strong"
+        ? "Flagship strength"
+        : "Primary strength";
+
+    return {
+      label: selected.row.metric_label,
+      reason: `${prefix} • Rank #${selected.row.league_rank ?? "—"} • ${formatPct(
+        selected.row.vs_league_avg_pct
+      )} vs avg`,
+      metric_key: selected.row.metric_key,
+      metric_label: selected.row.metric_label,
+      rank: selected.rank,
+      vs_avg_pct: safeNumber(selected.row.vs_league_avg_pct),
+      tone: "positive",
+    };
+  }
+
+  const fallbackCandidates = [...candidates]
+    .filter((item) => item.fallback)
+    .sort((a, b) => {
+      if (a.rule.priority_strength !== b.rule.priority_strength) {
+        return a.rule.priority_strength - b.rule.priority_strength;
+      }
+      if ((a.rank ?? 999) !== (b.rank ?? 999)) {
+        return (a.rank ?? 999) - (b.rank ?? 999);
+      }
+      return b.score - a.score;
+    });
+
+  if (fallbackCandidates.length > 0) {
+    const selected = fallbackCandidates[0];
+    return {
+      label: selected.row.metric_label,
+      reason: `Best available edge • Rank #${selected.row.league_rank ?? "—"} • ${formatPct(
+        selected.row.vs_league_avg_pct
+      )} vs avg`,
+      metric_key: selected.row.metric_key,
+      metric_label: selected.row.metric_label,
+      rank: selected.rank,
+      vs_avg_pct: safeNumber(selected.row.vs_league_avg_pct),
+      tone: "positive",
+    };
+  }
+
+  return buildMetricCard(
+    undefined,
+    "positive",
+    "No material strength",
+    "No tracked metric is strong enough to deserve a headline strength card."
+  );
+}
+
+function pickPrimaryRisk(
+  rows: TeamDetailedMetricRow[],
+  catalog: TeamAdvancedRuleCatalogRow[],
+  leagueSize: number,
+  profileLevel: "elite" | "strong" | "mixed" | "weak"
+): TeamAdvancedMetricCard {
+  const candidates = rows
+    .map((row) => {
+      const rule = catalog.find((item) => item.metric_key === row.metric_key);
+      if (!rule || !rule.is_active) return null;
+      if (rule.priority_risk >= 900) return null;
+
+      const score = normalizedScore(row, leagueSize);
+      const delta = Math.abs(safeNumber(row.vs_league_avg_pct) ?? 0);
+      const rank = safeNumber(row.league_rank);
+      if (score === null) return null;
+
+      const disciplineMetric = isDiscipline(rule);
+
+      const strict =
+        !disciplineMetric
+          ? (score <= 28 && delta >= 2) ||
+            (rank !== null && rank >= Math.max(12, leagueSize - 5) && delta >= 2)
+          : (rank !== null && rank >= Math.max(12, leagueSize - 5) && delta >= 8);
+
+      const fallback =
+        !disciplineMetric &&
+        ((score <= 40 && delta >= 2) ||
+          (rank !== null && rank >= Math.max(10, leagueSize - 7) && delta >= 1.5));
+
+      return {
+        row,
+        rule,
+        score,
+        delta,
+        rank,
+        strict,
+        fallback,
+      };
+    })
+    .filter(
+      (
+        item
+      ): item is {
+        row: TeamDetailedMetricRow;
+        rule: TeamAdvancedRuleCatalogRow;
+        score: number;
+        delta: number;
+        rank: number | null;
+        strict: boolean;
+        fallback: boolean;
+      } => item !== null
+    );
+
+  const strictCandidates = [...candidates]
+    .filter((item) => item.strict)
+    .sort((a, b) => {
+      if (a.rule.priority_risk !== b.rule.priority_risk) {
+        return a.rule.priority_risk - b.rule.priority_risk;
+      }
+      if ((b.rank ?? 0) !== (a.rank ?? 0)) {
+        return (b.rank ?? 0) - (a.rank ?? 0);
       }
       if (a.score !== b.score) return a.score - b.score;
       return b.delta - a.delta;
     });
 
   if (strictCandidates.length > 0) {
-    return buildMetricCard(
-      strictCandidates[0].row,
-      "negative",
-      "No major risk",
-      "No metric crossed the risk threshold."
-    );
+    const selected = strictCandidates[0];
+    return {
+      label: selected.row.metric_label,
+      reason: `Primary exposure • Rank #${selected.row.league_rank ?? "—"} • ${formatPct(
+        selected.row.vs_league_avg_pct
+      )} vs avg`,
+      metric_key: selected.row.metric_key,
+      metric_label: selected.row.metric_label,
+      rank: selected.rank,
+      vs_avg_pct: safeNumber(selected.row.vs_league_avg_pct),
+      tone: "negative",
+    };
   }
 
-  const fallbackCandidate = [...candidates]
+  const fallbackCandidates = [...candidates]
     .filter((item) => item.fallback)
     .sort((a, b) => {
-      if (a.businessPriority !== b.businessPriority) {
-        return a.businessPriority - b.businessPriority;
+      if (a.rule.priority_risk !== b.rule.priority_risk) {
+        return a.rule.priority_risk - b.rule.priority_risk;
+      }
+      if ((b.rank ?? 0) !== (a.rank ?? 0)) {
+        return (b.rank ?? 0) - (a.rank ?? 0);
       }
       return a.score - b.score;
-    })[0];
+    });
 
-  if (fallbackCandidate) {
+  if (fallbackCandidates.length > 0) {
+    const selected = fallbackCandidates[0];
     return {
-      label: fallbackCandidate.row.metric_label,
-      reason: `Primary exposure • Rank #${
-        fallbackCandidate.row.league_rank ?? "—"
-      } • ${formatPct(fallbackCandidate.row.vs_league_avg_pct)} vs avg`,
-      metric_key: fallbackCandidate.row.metric_key,
-      metric_label: fallbackCandidate.row.metric_label,
-      rank: safeNumber(fallbackCandidate.row.league_rank),
-      vs_avg_pct: safeNumber(fallbackCandidate.row.vs_league_avg_pct),
+      label: selected.row.metric_label,
+      reason: `Most exposed phase • Rank #${selected.row.league_rank ?? "—"} • ${formatPct(
+        selected.row.vs_league_avg_pct
+      )} vs avg`,
+      metric_key: selected.row.metric_key,
+      metric_label: selected.row.metric_label,
+      rank: selected.rank,
+      vs_avg_pct: safeNumber(selected.row.vs_league_avg_pct),
       tone: "negative",
     };
   }
@@ -353,7 +390,9 @@ function pickPrimaryRisk(
     undefined,
     "negative",
     "No major risk",
-    "No material bottom-tier weakness was detected."
+    profileLevel === "elite" || profileLevel === "strong"
+      ? "No material structural weakness was detected."
+      : "No single bottom-tier structural weakness dominates the profile."
   );
 }
 
@@ -373,6 +412,12 @@ function pickSplitSignal(
       const gap = Math.abs(home - away);
       const base = Math.max((Math.abs(home) + Math.abs(away)) / 2, 1);
       const relativeGapPct = (gap / base) * 100;
+      const splitPriority = priorityIndex(row.metric_key, SPLIT_PRIORITY);
+
+      const material =
+        (relativeGapPct >= 18 && splitPriority <= 4) ||
+        (relativeGapPct >= 25 && splitPriority <= 6) ||
+        (row.metric_key === "team_passes" && gap >= 20);
 
       return {
         row,
@@ -380,7 +425,8 @@ function pickSplitSignal(
         away,
         gap,
         relativeGapPct,
-        businessPriority: priorityIndex(row.metric_key, SPLIT_PRIORITY),
+        splitPriority,
+        material,
       };
     })
     .filter(
@@ -392,15 +438,16 @@ function pickSplitSignal(
         away: number;
         gap: number;
         relativeGapPct: number;
-        businessPriority: number;
+        splitPriority: number;
+        material: boolean;
       } => item !== null
     );
 
-  const materialCandidates = candidates
-    .filter((item) => item.relativeGapPct >= 8)
+  const materialCandidates = [...candidates]
+    .filter((item) => item.material)
     .sort((a, b) => {
-      if (a.businessPriority !== b.businessPriority) {
-        return a.businessPriority - b.businessPriority;
+      if (a.splitPriority !== b.splitPriority) {
+        return a.splitPriority - b.splitPriority;
       }
       return b.relativeGapPct - a.relativeGapPct;
     });
@@ -409,7 +456,7 @@ function pickSplitSignal(
   if (!selected) {
     return {
       label: "No material split signal",
-      reason: "Home and away performance is broadly aligned across tracked metrics.",
+      reason: "Home and away performance is broadly aligned across the tracked core metrics.",
       metric_key: null,
       metric_label: null,
       rank: null,
@@ -645,7 +692,7 @@ function buildTrendCard(form?: TeamAdvancedFormSnapshot): TeamAdvancedMetricCard
           label: "Points pace",
           deltaPct: ((last5PPG - seasonPPG) / seasonPPG) * 100,
           reason: `Last 5 PPG ${formatNumber(last5PPG)} vs season ${formatNumber(seasonPPG)}`,
-          positiveWhenHigher: true,
+          positive: ((last5PPG - seasonPPG) / seasonPPG) * 100 > 0,
         }
       : null,
     seasonGF !== null && last5GF !== null && seasonGF !== 0
@@ -653,7 +700,7 @@ function buildTrendCard(form?: TeamAdvancedFormSnapshot): TeamAdvancedMetricCard
           label: "Scoring output",
           deltaPct: ((last5GF - seasonGF) / seasonGF) * 100,
           reason: `Last 5 GF ${formatNumber(last5GF)} vs season ${formatNumber(seasonGF)}`,
-          positiveWhenHigher: true,
+          positive: ((last5GF - seasonGF) / seasonGF) * 100 > 0,
         }
       : null,
     seasonGA !== null && last5GA !== null && seasonGA !== 0
@@ -661,7 +708,7 @@ function buildTrendCard(form?: TeamAdvancedFormSnapshot): TeamAdvancedMetricCard
           label: "Defensive control",
           deltaPct: ((seasonGA - last5GA) / seasonGA) * 100,
           reason: `Last 5 GA ${formatNumber(last5GA)} vs season ${formatNumber(seasonGA)}`,
-          positiveWhenHigher: true,
+          positive: ((seasonGA - last5GA) / seasonGA) * 100 > 0,
         }
       : null,
   ].filter(
@@ -671,7 +718,7 @@ function buildTrendCard(form?: TeamAdvancedFormSnapshot): TeamAdvancedMetricCard
       label: string;
       deltaPct: number;
       reason: string;
-      positiveWhenHigher: boolean;
+      positive: boolean;
     } => item !== null
   );
 
@@ -703,18 +750,22 @@ function buildTrendCard(form?: TeamAdvancedFormSnapshot): TeamAdvancedMetricCard
     };
   }
 
-  const improving = selected.deltaPct > 0;
+  const tone: TeamAdvancedMetricCard["tone"] = selected.positive
+    ? "accent"
+    : "negative";
+
+  const wording = selected.positive
+    ? "Meaningful improvement"
+    : "Meaningful drop-off";
 
   return {
     label: selected.label,
-    reason: `${selected.reason} • ${
-      improving ? "Improving" : "Softening"
-    } by ${formatPct(Math.abs(selected.deltaPct))}`,
+    reason: `${selected.reason} • ${wording} of ${formatPct(Math.abs(selected.deltaPct))}`,
     metric_key: null,
     metric_label: selected.label,
     rank: null,
     vs_avg_pct: selected.deltaPct,
-    tone: improving ? "accent" : "negative",
+    tone,
   };
 }
 
@@ -780,7 +831,6 @@ function buildTakeaways(input: {
   let recruitment =
     "Recruitment should target the weakest structural phase in the current profile.";
 
-  // ELITE / TOP PROFILE
   if (isEliteProfile) {
     if (hasNegativeTrend) {
       coaching =
@@ -815,7 +865,6 @@ function buildTakeaways(input: {
     };
   }
 
-  // STRONG BUT NOT ELITE
   if (isStrongProfile) {
     if (risk.metric_key === "team_offsides") {
       coaching =
@@ -825,7 +874,7 @@ function buildTakeaways(input: {
         "The team profile is strong overall, but defensive control needs attention before concession softness starts dragging results.";
     } else if (hasNegativeTrend) {
       coaching =
-        "The team’s baseline remains strong, but recent momentum has softened and should be corrected before it becomes structural.";
+        "The underlying profile is serviceable, but recent momentum has softened and should be corrected before it deepens.";
     } else {
       coaching =
         "The priority is turning a strong baseline into a more complete profile by sharpening the weakest non-elite phase.";
@@ -859,7 +908,6 @@ function buildTakeaways(input: {
     };
   }
 
-  // WEAK / UNBALANCED PROFILE
   if (isWeakProfile) {
     if (
       identities.attack.label === "Blunt attack" &&
@@ -903,7 +951,6 @@ function buildTakeaways(input: {
     };
   }
 
-  // MID / MIXED PROFILE
   if (risk.metric_key === "team_offsides") {
     coaching =
       "Final-third timing needs tightening because offside frequency is wasting attacking possessions.";
@@ -961,34 +1008,56 @@ export function buildTeamAdvancedSummary(input: {
   const defenceScore = getCompositeScore(metricMap, catalog, "defence", leagueSize);
   const buildUpScore = getCompositeScore(metricMap, catalog, "build_up", leagueSize);
 
+  const positioning = {
+    attack: buildTierItem("Attack Tier", attackScore),
+    defence: buildTierItem("Defence Tier", defenceScore),
+    build_up: buildTierItem("Build-up Tier", buildUpScore),
+  };
+
+  const attackScoreForProfile = attackScore ?? 0;
+  const defenceScoreForProfile = defenceScore ?? 0;
+  const buildUpScoreForProfile = buildUpScore ?? 0;
+
+
+  const profileLevel: "elite" | "strong" | "mixed" | "weak" =
+      attackScoreForProfile >= 80 &&
+      defenceScoreForProfile >= 80 &&
+      buildUpScoreForProfile >= 80
+        ? "elite"
+        : attackScoreForProfile >= 65 &&
+          defenceScoreForProfile >= 65 &&
+          buildUpScoreForProfile >= 60
+        ? "strong"
+        : attackScoreForProfile < 40 ||
+          defenceScoreForProfile < 40 ||
+          buildUpScoreForProfile < 40
+        ? "weak"
+        : "mixed";
+
   const attackIdentity = buildAttackIdentity(metricMap, attackScore, leagueSize);
   const defenceIdentity = buildDefenceIdentity(metricMap, defenceScore, leagueSize);
   const buildUpIdentity = buildBuildUpIdentity(metricMap, buildUpScore, leagueSize);
   const formIdentity = buildFormIdentity(input.form);
 
-  const strength = pickPrimaryStrength(rows, catalog, leagueSize);
-  const risk = pickPrimaryRisk(rows, catalog, leagueSize);
+  const strength = pickPrimaryStrength(rows, catalog, leagueSize, profileLevel);
+  const risk = pickPrimaryRisk(rows, catalog, leagueSize, profileLevel);
   const split = pickSplitSignal(rows, catalog);
   const trend = buildTrendCard(input.form);
 
-  const positioning = {
-      attack: buildTierItem("Attack Tier", attackScore),
-      defence: buildTierItem("Defence Tier", defenceScore),
-      build_up: buildTierItem("Build-up Tier", buildUpScore),
-    };
   const takeaways = buildTakeaways({
-      strength,
-      risk,
-      split,
-      trend,
-      identities: {
-        attack: attackIdentity,
-        defence: defenceIdentity,
-        build_up: buildUpIdentity,
-        form: formIdentity,
-      },
-      positioning,
-});
+    strength,
+    risk,
+    split,
+    trend,
+    identities: {
+      attack: attackIdentity,
+      defence: defenceIdentity,
+      build_up: buildUpIdentity,
+      form: formIdentity,
+    },
+    positioning,
+  });
+
   return {
     identity: {
       attack: attackIdentity,
