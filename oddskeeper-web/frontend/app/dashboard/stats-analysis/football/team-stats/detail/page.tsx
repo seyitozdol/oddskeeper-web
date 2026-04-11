@@ -15,8 +15,11 @@ import { getTeamResults } from "../../../../../../features/team-detail/server/ge
 import { getTeamSquad } from "../../../../../../features/team-detail/server/getTeamSquad";
 import { getTeamStatisticsSplit } from "../../../../../../features/team-detail/server/getTeamStatisticsSplit";
 import { getTeamStatisticsSummary } from "../../../../../../features/team-detail/server/getTeamStatisticsSummary";
+import type {
+  TeamAdvancedFormSnapshot,
+  ValidTab,
+} from "../../../../../../features/team-detail/types";
 import { getFootballTeamBySlug } from "../../../../../../lib/football-teams";
-import type { ValidTab } from "../../../../../../features/team-detail/types";
 
 type TeamDetailPageProps = {
   searchParams: Promise<{
@@ -31,6 +34,15 @@ function getValidTab(tab?: string): ValidTab {
   }
 
   return "team-statistics";
+}
+
+function toNullableNumber(value: unknown): number | null {
+  if (value === null || value === undefined || value === "") {
+    return null;
+  }
+
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
 }
 
 export default async function TeamDetailPage({
@@ -80,7 +92,7 @@ export default async function TeamDetailPage({
       : [];
 
   const recentFormRows =
-    activeTab === "team-statistics" &&
+    (activeTab === "team-statistics" || activeTab === "advanced") &&
     summary?.competition &&
     summary?.season_label
       ? await getTeamRecentForm(
@@ -98,7 +110,33 @@ export default async function TeamDetailPage({
         })
       : [];
 
-
+  const advancedForm: TeamAdvancedFormSnapshot | undefined =
+    summary && recentFormRows.length > 0
+      ? {
+          season_points_per_game: toNullableNumber(summary.points_per_game),
+          last5_points_per_game:
+            recentFormRows.reduce(
+              (sum, row) => sum + (toNullableNumber(row.result_points) ?? 0),
+              0
+            ) / recentFormRows.length,
+          season_goals_for_per_game: toNullableNumber(
+            summary.goals_for_per_game
+          ),
+          last5_goals_for_per_game:
+            recentFormRows.reduce(
+              (sum, row) => sum + (toNullableNumber(row.team_score) ?? 0),
+              0
+            ) / recentFormRows.length,
+          season_goals_against_per_game: toNullableNumber(
+            summary.goals_against_per_game
+          ),
+          last5_goals_against_per_game:
+            recentFormRows.reduce(
+              (sum, row) => sum + (toNullableNumber(row.opponent_score) ?? 0),
+              0
+            ) / recentFormRows.length,
+        }
+      : undefined;
 
   return (
     <section className="w-full">
@@ -121,7 +159,10 @@ export default async function TeamDetailPage({
         ) : activeTab === "detailed-stats" ? (
           <DetailedStatsPanel rows={detailedMetricRows} />
         ) : activeTab === "advanced" ? (
-          <TeamAdvancedOverviewPanel rows={detailedMetricRows} />
+          <TeamAdvancedOverviewPanel
+            rows={detailedMetricRows}
+            form={advancedForm}
+          />
         ) : activeTab === "results" ? (
           <ResultsPanel rows={teamResults} />
         ) : activeTab === "squad" ? (
