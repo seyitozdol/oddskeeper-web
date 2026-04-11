@@ -64,16 +64,12 @@ export default async function FootballPlayerDetailPage({
   const playerSourceId = profile.player_source_id ?? null;
   const seasonLabel = profile.season_label ?? null;
 
-  const [advancedOverview, benchmarks, detailedMetricRows] = await Promise.all([
+  const [advancedOverview, detailedMetricRows] = await Promise.all([
     activeTab === "advanced" && playerSourceId
       ? getPlayerAdvancedOverview(playerSourceId)
       : Promise.resolve(null),
 
-    activeTab === "benchmarks" && playerSourceId
-      ? getPlayerMetricBenchmarks(playerSourceId, {
-          seasonLabel: seasonLabel ?? undefined,
-        })
-      : Promise.resolve([]),
+
 
     activeTab === "detailed-stats"
       ? getPlayerDetailedMetrics(playerSlug, {
@@ -92,8 +88,6 @@ export default async function FootballPlayerDetailPage({
         <DetailedPlayerStatsPanel rows={detailedMetricRows} />
       ) : activeTab === "advanced" ? (
         <PlayerAdvancedOverviewPanel overview={advancedOverview} />
-      ) : activeTab === "benchmarks" ? (
-        <PlayerBenchmarksPanel benchmarks={benchmarks} />
       ) : activeTab === "match-log" ? (
         <PlayerMatchLogPanel rows={matchLog} />
       ) : null}

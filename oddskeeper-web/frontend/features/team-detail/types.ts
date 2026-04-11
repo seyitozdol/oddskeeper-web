@@ -355,3 +355,76 @@ export type TeamMetricLeaderboardRow = {
   sample_matches: number | null;
   coverage_flag: boolean | null;
 };
+
+export type TeamAdvancedRuleCatalogRow = {
+  metric_key: string;
+  metric_label: string;
+  display_group: string;
+  identity_group: string;
+  direction: "higher_better" | "lower_better";
+  include_in_strength_risk: boolean;
+  include_in_split: boolean;
+  include_in_form: boolean;
+  weight_attack: number;
+  weight_defence: number;
+  weight_build_up: number;
+  priority_strength: number;
+  priority_risk: number;
+  is_active: boolean;
+  notes: string | null;
+};
+
+export type TeamAdvancedFormSnapshot = {
+  season_points_per_game: number | null;
+  last5_points_per_game: number | null;
+  season_goals_for_per_game: number | null;
+  last5_goals_for_per_game: number | null;
+  season_goals_against_per_game: number | null;
+  last5_goals_against_per_game: number | null;
+};
+
+export type TeamAdvancedIdentityItem = {
+  label: string;
+  reason: string;
+};
+
+export type TeamAdvancedMetricCard = {
+  label: string;
+  reason: string;
+  metric_key: string | null;
+  metric_label: string | null;
+  rank: number | null;
+  vs_avg_pct: number | null;
+  tone: "positive" | "negative" | "neutral" | "accent" | "warning";
+};
+
+export type TeamAdvancedTierItem = {
+  label: string;
+  score: number | null;
+  tier: "Elite" | "Upper Tier" | "Mid Tier" | "Below Average" | "Weak";
+};
+
+export type TeamAdvancedSummary = {
+  identity: {
+    attack: TeamAdvancedIdentityItem;
+    defence: TeamAdvancedIdentityItem;
+    build_up: TeamAdvancedIdentityItem;
+    form: TeamAdvancedIdentityItem;
+  };
+  highlights: {
+    strength: TeamAdvancedMetricCard;
+    risk: TeamAdvancedMetricCard;
+    trend: TeamAdvancedMetricCard;
+    split: TeamAdvancedMetricCard;
+  };
+  positioning: {
+    attack: TeamAdvancedTierItem;
+    defence: TeamAdvancedTierItem;
+    build_up: TeamAdvancedTierItem;
+  };
+  takeaways: {
+    coaching: string;
+    opponent_prep: string;
+    recruitment: string;
+  };
+};

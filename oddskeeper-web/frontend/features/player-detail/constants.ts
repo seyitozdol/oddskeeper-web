@@ -2,7 +2,6 @@ export const VALID_PLAYER_TABS = [
   "overview",
   "detailed-stats",
   "advanced",
-  "benchmarks",
   "match-log",
 ] as const;
 
@@ -12,6 +11,5 @@ export const PLAYER_TAB_LABELS: Record<ValidPlayerTab, string> = {
   overview: "Overview",
   "detailed-stats": "Detailed Stats",
   advanced: "Advanced",
-  benchmarks: "Benchmarks",
   "match-log": "Match Log",
 };

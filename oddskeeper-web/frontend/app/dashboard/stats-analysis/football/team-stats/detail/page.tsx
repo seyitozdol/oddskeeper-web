@@ -5,21 +5,18 @@ import { ResultsPanel } from "../../../../../../features/team-detail/panels/Resu
 import { SquadPanel } from "../../../../../../features/team-detail/panels/SquadPanel";
 import DetailedStatsPanel from "../../../../../../features/team-detail/panels/DetailedStatsPanel";
 import TeamAdvancedOverviewPanel from "../../../../../../features/team-detail/panels/TeamAdvancedOverviewPanel";
-import TeamBenchmarksPanel from "../../../../../../features/team-detail/panels/TeamBenchmarksPanel";
 import { TeamStatisticsPanel } from "../../../../../../features/team-detail/panels/TeamStatisticsPanel";
 import { VALID_TABS } from "../../../../../../features/team-detail/constants";
-import { getTeamAdvancedOverview } from "../../../../../../features/team-detail/server/getTeamAdvancedOverview";
 import { getTeamDetailedMetrics } from "../../../../../../features/team-detail/server/getTeamDetailedMetrics";
 import { getTeamFixtures } from "../../../../../../features/team-detail/server/getTeamFixtures";
-import { getTeamMetricBenchmarks } from "../../../../../../features/team-detail/server/getTeamMetricBenchmarks";
 import { getTeamProfile } from "../../../../../../features/team-detail/server/getTeamProfile";
 import { getTeamRecentForm } from "../../../../../../features/team-detail/server/getTeamRecentForm";
 import { getTeamResults } from "../../../../../../features/team-detail/server/getTeamResults";
 import { getTeamSquad } from "../../../../../../features/team-detail/server/getTeamSquad";
 import { getTeamStatisticsSplit } from "../../../../../../features/team-detail/server/getTeamStatisticsSplit";
 import { getTeamStatisticsSummary } from "../../../../../../features/team-detail/server/getTeamStatisticsSummary";
-import type { ValidTab } from "../../../../../../features/team-detail/types";
 import { getFootballTeamBySlug } from "../../../../../../lib/football-teams";
+import type { ValidTab } from "../../../../../../features/team-detail/types";
 
 type TeamDetailPageProps = {
   searchParams: Promise<{
@@ -55,15 +52,6 @@ export default async function TeamDetailPage({
 
   const teamProfile = await getTeamProfile(teamSlug);
 
-  const [advancedOverview, benchmarks] = await Promise.all([
-    activeTab === "advanced"
-      ? getTeamAdvancedOverview(teamSlug)
-      : Promise.resolve(null),
-    activeTab === "benchmarks"
-      ? getTeamMetricBenchmarks(teamSlug)
-      : Promise.resolve([]),
-  ]);
-
   const teamResults =
     activeTab === "results" ? await getTeamResults(teamSlug) : [];
 
@@ -74,7 +62,9 @@ export default async function TeamDetailPage({
     activeTab === "fixture" ? await getTeamFixtures(teamSlug) : [];
 
   const summary =
-    activeTab === "team-statistics" || activeTab === "detailed-stats"
+    activeTab === "team-statistics" ||
+    activeTab === "detailed-stats" ||
+    activeTab === "advanced"
       ? await getTeamStatisticsSummary(teamSlug)
       : null;
 
@@ -101,11 +91,14 @@ export default async function TeamDetailPage({
       : [];
 
   const detailedMetricRows =
-    activeTab === "detailed-stats" && summary?.season_label
+    (activeTab === "detailed-stats" || activeTab === "advanced") &&
+    summary?.season_label
       ? await getTeamDetailedMetrics(teamSlug, {
           seasonLabel: summary.season_label,
         })
       : [];
+
+
 
   return (
     <section className="w-full">
@@ -128,9 +121,7 @@ export default async function TeamDetailPage({
         ) : activeTab === "detailed-stats" ? (
           <DetailedStatsPanel rows={detailedMetricRows} />
         ) : activeTab === "advanced" ? (
-          <TeamAdvancedOverviewPanel overview={advancedOverview} />
-        ) : activeTab === "benchmarks" ? (
-          <TeamBenchmarksPanel benchmarks={benchmarks} />
+          <TeamAdvancedOverviewPanel rows={detailedMetricRows} />
         ) : activeTab === "results" ? (
           <ResultsPanel rows={teamResults} />
         ) : activeTab === "squad" ? (
