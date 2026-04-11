@@ -3,17 +3,49 @@ import type {
   TeamAdvancedMetricCard,
   TeamAdvancedRuleCatalogRow,
   TeamAdvancedSummary,
+  TeamDetailedMetricRow,
 } from "../types";
-import type { TeamDetailedMetricRow } from "../types";
 
 type MetricMap = Map<string, TeamDetailedMetricRow>;
-type CatalogMap = Map<string, TeamAdvancedRuleCatalogRow>;
 
-function safeNumber(value: number | null | undefined): number | null {
-  if (value === null || value === undefined || Number.isNaN(value)) {
-    return null;
-  }
-  return Number(value);
+const STRENGTH_PRIORITY = [
+  "team_expected_goals",
+  "team_shots_on_target",
+  "team_goals",
+  "team_pass_accuracy_pct",
+  "team_score_against",
+  "team_shots_against",
+  "team_interceptions",
+  "team_passes",
+  "team_accurate_pass",
+];
+
+const RISK_PRIORITY = [
+  "team_score_against",
+  "team_shots_on_target_against",
+  "team_shots_against",
+  "team_offsides",
+  "team_pass_accuracy_pct",
+  "team_shot_accuracy_pct",
+  "team_fouls_conceded",
+  "team_red_cards",
+  "team_yellow_cards",
+];
+
+const SPLIT_PRIORITY = [
+  "team_expected_goals",
+  "team_shots_on_target",
+  "team_shots",
+  "team_pass_accuracy_pct",
+  "team_passes",
+  "team_score_against",
+  "team_offsides",
+];
+
+function safeNumber(value: number | string | null | undefined): number | null {
+  if (value === null || value === undefined || value === "") return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
 }
 
 function formatPct(value: number | null | undefined): string {
@@ -39,8 +71,8 @@ function inferLeagueSize(rows: TeamDetailedMetricRow[]): number {
     .map((row) => safeNumber(row.league_rank))
     .filter((value): value is number => value !== null);
 
-  if (ranks.length === 0) return 18;
-  return Math.max(...ranks, 18);
+  if (!ranks.length) return 18;
+  return Math.max(18, ...ranks);
 }
 
 function normalizedScore(
@@ -68,10 +100,6 @@ function buildMetricMap(rows: TeamDetailedMetricRow[]): MetricMap {
   return new Map(rows.map((row) => [row.metric_key, row]));
 }
 
-function buildCatalogMap(catalog: TeamAdvancedRuleCatalogRow[]): CatalogMap {
-  return new Map(catalog.map((row) => [row.metric_key, row]));
-}
-
 function getCompositeScore(
   metricMap: MetricMap,
   catalog: TeamAdvancedRuleCatalogRow[],
@@ -95,15 +123,13 @@ function getCompositeScore(
           ? rule.weight_defence
           : rule.weight_build_up;
 
-      if (score === null || weight <= 0) {
-        return null;
-      }
+      if (score === null || weight <= 0) return null;
 
       return { score, weight };
     })
     .filter((item): item is { score: number; weight: number } => item !== null);
 
-  if (weighted.length === 0) return null;
+  if (!weighted.length) return null;
 
   const totalWeight = weighted.reduce((sum, item) => sum + item.weight, 0);
   if (totalWeight <= 0) return null;
@@ -136,13 +162,20 @@ function buildMetricCard(
 
   return {
     label: row.metric_label,
-    reason: `Rank #${row.league_rank ?? "—"} • ${formatPct(row.vs_league_avg_pct)} vs avg`,
+    reason: `Rank #${row.league_rank ?? "—"} • ${formatPct(
+      row.vs_league_avg_pct
+    )} vs avg`,
     metric_key: row.metric_key,
     metric_label: row.metric_label,
-    rank: row.league_rank ?? null,
-    vs_avg_pct: row.vs_league_avg_pct ?? null,
+    rank: safeNumber(row.league_rank),
+    vs_avg_pct: safeNumber(row.vs_league_avg_pct),
     tone,
   };
+}
+
+function priorityIndex(key: string, order: string[]): number {
+  const idx = order.indexOf(key);
+  return idx === -1 ? 999 : idx;
 }
 
 function pickPrimaryStrength(
@@ -153,43 +186,83 @@ function pickPrimaryStrength(
   const candidates = rows
     .map((row) => {
       const rule = catalog.find((item) => item.metric_key === row.metric_key);
+      if (!rule || !rule.include_in_strength_risk || !rule.is_active) return null;
+
       const score = normalizedScore(row, leagueSize);
       const delta = Math.abs(safeNumber(row.vs_league_avg_pct) ?? 0);
+      if (score === null) return null;
 
-      if (!rule || !rule.include_in_strength_risk || rule.priority_strength >= 999) {
-        return null;
-      }
-
-      if (score === null || score < 70 || delta < 5) {
-        return null;
-      }
-
-      return { row, rule, score, delta };
+      return {
+        row,
+        rule,
+        score,
+        delta,
+        strict: score >= 70 && delta >= 5,
+        fallback: score >= 55,
+        businessPriority: priorityIndex(row.metric_key, STRENGTH_PRIORITY),
+      };
     })
     .filter(
-      (item): item is {
+      (
+        item
+      ): item is {
         row: TeamDetailedMetricRow;
         rule: TeamAdvancedRuleCatalogRow;
         score: number;
         delta: number;
+        strict: boolean;
+        fallback: boolean;
+        businessPriority: number;
       } => item !== null
-    )
+    );
+
+  const strictCandidates = candidates
+    .filter((item) => item.strict)
     .sort((a, b) => {
-      if (a.rule.priority_strength !== b.rule.priority_strength) {
-        return a.rule.priority_strength - b.rule.priority_strength;
+      if (a.businessPriority !== b.businessPriority) {
+        return a.businessPriority - b.businessPriority;
       }
-      if (b.score !== a.score) {
-        return b.score - a.score;
-      }
+      if (b.score !== a.score) return b.score - a.score;
       return b.delta - a.delta;
     });
 
-  const selected = candidates[0]?.row;
+  if (strictCandidates.length > 0) {
+    return buildMetricCard(
+      strictCandidates[0].row,
+      "positive",
+      "No clear strength",
+      "No metric cleared the strength threshold."
+    );
+  }
+
+  const fallbackCandidate = [...candidates]
+    .filter((item) => item.fallback)
+    .sort((a, b) => {
+      if (a.businessPriority !== b.businessPriority) {
+        return a.businessPriority - b.businessPriority;
+      }
+      return b.score - a.score;
+    })[0];
+
+  if (fallbackCandidate) {
+    return {
+      label: fallbackCandidate.row.metric_label,
+      reason: `Closest positive edge • Rank #${
+        fallbackCandidate.row.league_rank ?? "—"
+      } • ${formatPct(fallbackCandidate.row.vs_league_avg_pct)} vs avg`,
+      metric_key: fallbackCandidate.row.metric_key,
+      metric_label: fallbackCandidate.row.metric_label,
+      rank: safeNumber(fallbackCandidate.row.league_rank),
+      vs_avg_pct: safeNumber(fallbackCandidate.row.vs_league_avg_pct),
+      tone: "positive",
+    };
+  }
+
   return buildMetricCard(
-    selected,
+    undefined,
     "positive",
     "No clear strength",
-    "No metric cleared the strength threshold."
+    "The profile does not show a meaningful upper-tier edge yet."
   );
 }
 
@@ -201,48 +274,86 @@ function pickPrimaryRisk(
   const candidates = rows
     .map((row) => {
       const rule = catalog.find((item) => item.metric_key === row.metric_key);
+      if (!rule || !rule.include_in_strength_risk || !rule.is_active) return null;
+
       const score = normalizedScore(row, leagueSize);
       const delta = Math.abs(safeNumber(row.vs_league_avg_pct) ?? 0);
       const rank = safeNumber(row.league_rank);
+      if (score === null) return null;
 
-      if (!rule || !rule.include_in_strength_risk || rule.priority_risk >= 999) {
-        return null;
-      }
-
-      if (score === null || score > 30 || delta < 5) {
-        return null;
-      }
-
-      if (rank !== null && rank <= 4) {
-        return null;
-      }
-
-      return { row, rule, score, delta };
+      return {
+        row,
+        rule,
+        score,
+        delta,
+        rank,
+        strict: score <= 30 && delta >= 5 && (rank === null || rank > 4),
+        fallback: score <= 45,
+        businessPriority: priorityIndex(row.metric_key, RISK_PRIORITY),
+      };
     })
     .filter(
-      (item): item is {
+      (
+        item
+      ): item is {
         row: TeamDetailedMetricRow;
         rule: TeamAdvancedRuleCatalogRow;
         score: number;
         delta: number;
+        rank: number | null;
+        strict: boolean;
+        fallback: boolean;
+        businessPriority: number;
       } => item !== null
-    )
+    );
+
+  const strictCandidates = candidates
+    .filter((item) => item.strict)
     .sort((a, b) => {
-      if (a.rule.priority_risk !== b.rule.priority_risk) {
-        return a.rule.priority_risk - b.rule.priority_risk;
+      if (a.businessPriority !== b.businessPriority) {
+        return a.businessPriority - b.businessPriority;
       }
-      if (a.score !== b.score) {
-        return a.score - b.score;
-      }
+      if (a.score !== b.score) return a.score - b.score;
       return b.delta - a.delta;
     });
 
-  const selected = candidates[0]?.row;
+  if (strictCandidates.length > 0) {
+    return buildMetricCard(
+      strictCandidates[0].row,
+      "negative",
+      "No major risk",
+      "No metric crossed the risk threshold."
+    );
+  }
+
+  const fallbackCandidate = [...candidates]
+    .filter((item) => item.fallback)
+    .sort((a, b) => {
+      if (a.businessPriority !== b.businessPriority) {
+        return a.businessPriority - b.businessPriority;
+      }
+      return a.score - b.score;
+    })[0];
+
+  if (fallbackCandidate) {
+    return {
+      label: fallbackCandidate.row.metric_label,
+      reason: `Primary exposure • Rank #${
+        fallbackCandidate.row.league_rank ?? "—"
+      } • ${formatPct(fallbackCandidate.row.vs_league_avg_pct)} vs avg`,
+      metric_key: fallbackCandidate.row.metric_key,
+      metric_label: fallbackCandidate.row.metric_label,
+      rank: safeNumber(fallbackCandidate.row.league_rank),
+      vs_avg_pct: safeNumber(fallbackCandidate.row.vs_league_avg_pct),
+      tone: "negative",
+    };
+  }
+
   return buildMetricCard(
-    selected,
+    undefined,
     "negative",
     "No major risk",
-    "No metric crossed the risk threshold."
+    "No material bottom-tier weakness was detected."
   );
 }
 
@@ -253,39 +364,58 @@ function pickSplitSignal(
   const candidates = rows
     .map((row) => {
       const rule = catalog.find((item) => item.metric_key === row.metric_key);
-      if (!rule || !rule.include_in_split) {
-        return null;
-      }
+      if (!rule || !rule.include_in_split || !rule.is_active) return null;
 
       const home = safeNumber(row.home_value);
       const away = safeNumber(row.away_value);
+      if (home === null || away === null) return null;
 
-      if (home === null || away === null) {
-        return null;
-      }
+      const gap = Math.abs(home - away);
+      const base = Math.max((Math.abs(home) + Math.abs(away)) / 2, 1);
+      const relativeGapPct = (gap / base) * 100;
 
       return {
         row,
-        gap: Math.abs(home - away),
         home,
         away,
+        gap,
+        relativeGapPct,
+        businessPriority: priorityIndex(row.metric_key, SPLIT_PRIORITY),
       };
     })
     .filter(
-      (item): item is { row: TeamDetailedMetricRow; gap: number; home: number; away: number } =>
-        item !== null
-    )
-    .sort((a, b) => b.gap - a.gap);
-
-  const selected = candidates[0];
-
-  if (!selected) {
-    return buildMetricCard(
-      undefined,
-      "warning",
-      "No strong split",
-      "No split metric cleared the signal threshold."
+      (
+        item
+      ): item is {
+        row: TeamDetailedMetricRow;
+        home: number;
+        away: number;
+        gap: number;
+        relativeGapPct: number;
+        businessPriority: number;
+      } => item !== null
     );
+
+  const materialCandidates = candidates
+    .filter((item) => item.relativeGapPct >= 8)
+    .sort((a, b) => {
+      if (a.businessPriority !== b.businessPriority) {
+        return a.businessPriority - b.businessPriority;
+      }
+      return b.relativeGapPct - a.relativeGapPct;
+    });
+
+  const selected = materialCandidates[0];
+  if (!selected) {
+    return {
+      label: "No material split signal",
+      reason: "Home and away performance is broadly aligned across tracked metrics.",
+      metric_key: null,
+      metric_label: null,
+      rank: null,
+      vs_avg_pct: null,
+      tone: "warning",
+    };
   }
 
   return {
@@ -295,8 +425,8 @@ function pickSplitSignal(
     )} • Gap ${formatNumber(selected.gap)}`,
     metric_key: selected.row.metric_key,
     metric_label: selected.row.metric_label,
-    rank: selected.row.league_rank ?? null,
-    vs_avg_pct: selected.row.vs_league_avg_pct ?? null,
+    rank: safeNumber(selected.row.league_rank),
+    vs_avg_pct: safeNumber(selected.row.vs_league_avg_pct),
     tone: "warning",
   };
 }
@@ -331,14 +461,14 @@ function buildAttackIdentity(
   ) {
     return {
       label: "Efficient finisher",
-      reason: "Finishing profile is stronger than raw chance volume alone.",
+      reason: "Finishing quality is stronger than raw chance volume alone.",
     };
   }
 
   if ((shots ?? 0) >= 70 && ((shotAccuracy ?? 100) < 50 || (xgPerShot ?? 100) < 50)) {
     return {
       label: "Volume over efficiency",
-      reason: "Creates plenty of attempts, but shot quality or execution trails.",
+      reason: "The team gets attempts, but shot quality or execution trails.",
     };
   }
 
@@ -356,7 +486,7 @@ function buildAttackIdentity(
         : (attackScore ?? 0) >= 50
         ? "Mid-tier attack"
         : "Below-average attack",
-    reason: "Built from goals, xG, shots and shot efficiency signals.",
+    reason: "Built from goals, xG, shots and shot-efficiency signals.",
   };
 }
 
@@ -440,7 +570,7 @@ function buildBuildUpIdentity(
         : (buildUpScore ?? 0) >= 50
         ? "Mid-tier build-up"
         : "Below-average build-up",
-    reason: "Driven by passes, accurate passes and pass accuracy profile.",
+    reason: "Driven by passes, accurate passes and pass-accuracy profile.",
   };
 }
 
@@ -452,28 +582,21 @@ function buildFormIdentity(form?: TeamAdvancedFormSnapshot) {
     };
   }
 
-  const ppgDelta =
-    safeNumber(form.last5_points_per_game) !== null &&
-    safeNumber(form.season_points_per_game) !== null
-      ? (form.last5_points_per_game ?? 0) - (form.season_points_per_game ?? 0)
-      : null;
+  const seasonPPG = safeNumber(form.season_points_per_game);
+  const last5PPG = safeNumber(form.last5_points_per_game);
+  const seasonGF = safeNumber(form.season_goals_for_per_game);
+  const last5GF = safeNumber(form.last5_goals_for_per_game);
+  const seasonGA = safeNumber(form.season_goals_against_per_game);
+  const last5GA = safeNumber(form.last5_goals_against_per_game);
 
+  const ppgDelta = seasonPPG !== null && last5PPG !== null ? last5PPG - seasonPPG : null;
   const gfDeltaPct =
-    safeNumber(form.last5_goals_for_per_game) !== null &&
-    safeNumber(form.season_goals_for_per_game) !== null &&
-    (form.season_goals_for_per_game ?? 0) !== 0
-      ? (((form.last5_goals_for_per_game ?? 0) - (form.season_goals_for_per_game ?? 0)) /
-          (form.season_goals_for_per_game ?? 1)) *
-        100
+    seasonGF !== null && last5GF !== null && seasonGF !== 0
+      ? ((last5GF - seasonGF) / seasonGF) * 100
       : null;
-
   const gaDeltaPct =
-    safeNumber(form.last5_goals_against_per_game) !== null &&
-    safeNumber(form.season_goals_against_per_game) !== null &&
-    (form.season_goals_against_per_game ?? 0) !== 0
-      ? (((form.last5_goals_against_per_game ?? 0) - (form.season_goals_against_per_game ?? 0)) /
-          (form.season_goals_against_per_game ?? 1)) *
-        100
+    seasonGA !== null && last5GA !== null && seasonGA !== 0
+      ? ((last5GA - seasonGA) / seasonGA) * 100
       : null;
 
   if ((ppgDelta ?? 0) > 0.2 || (gfDeltaPct ?? 0) >= 10) {
@@ -499,7 +622,7 @@ function buildFormIdentity(form?: TeamAdvancedFormSnapshot) {
 function buildTrendCard(form?: TeamAdvancedFormSnapshot): TeamAdvancedMetricCard {
   if (!form) {
     return {
-      label: "No trend data",
+      label: "No material trend",
       reason: "Recent form snapshot is not available yet.",
       metric_key: null,
       metric_label: null,
@@ -508,39 +631,53 @@ function buildTrendCard(form?: TeamAdvancedFormSnapshot): TeamAdvancedMetricCard
       tone: "accent",
     };
   }
+
+  const seasonPPG = safeNumber(form.season_points_per_game);
+  const last5PPG = safeNumber(form.last5_points_per_game);
+  const seasonGF = safeNumber(form.season_goals_for_per_game);
+  const last5GF = safeNumber(form.last5_goals_for_per_game);
+  const seasonGA = safeNumber(form.season_goals_against_per_game);
+  const last5GA = safeNumber(form.last5_goals_against_per_game);
 
   const candidates = [
-    {
-      label: "Points",
-      delta:
-        safeNumber(form.last5_points_per_game) !== null &&
-        safeNumber(form.season_points_per_game) !== null
-          ? (form.last5_points_per_game ?? 0) - (form.season_points_per_game ?? 0)
-          : null,
-      reason: `Last 5 PPG ${formatNumber(form.last5_points_per_game)} vs season ${formatNumber(
-        form.season_points_per_game
-      )}`,
-    },
-    {
-      label: "Goals For",
-      delta:
-        safeNumber(form.last5_goals_for_per_game) !== null &&
-        safeNumber(form.season_goals_for_per_game) !== null
-          ? (form.last5_goals_for_per_game ?? 0) - (form.season_goals_for_per_game ?? 0)
-          : null,
-      reason: `Last 5 GF ${formatNumber(form.last5_goals_for_per_game)} vs season ${formatNumber(
-        form.season_goals_for_per_game
-      )}`,
-    },
-  ].filter((item) => item.delta !== null) as {
-    label: string;
-    delta: number;
-    reason: string;
-  }[];
+    seasonPPG !== null && last5PPG !== null && seasonPPG !== 0
+      ? {
+          label: "Points pace",
+          deltaPct: ((last5PPG - seasonPPG) / seasonPPG) * 100,
+          reason: `Last 5 PPG ${formatNumber(last5PPG)} vs season ${formatNumber(seasonPPG)}`,
+          positiveWhenHigher: true,
+        }
+      : null,
+    seasonGF !== null && last5GF !== null && seasonGF !== 0
+      ? {
+          label: "Scoring output",
+          deltaPct: ((last5GF - seasonGF) / seasonGF) * 100,
+          reason: `Last 5 GF ${formatNumber(last5GF)} vs season ${formatNumber(seasonGF)}`,
+          positiveWhenHigher: true,
+        }
+      : null,
+    seasonGA !== null && last5GA !== null && seasonGA !== 0
+      ? {
+          label: "Defensive control",
+          deltaPct: ((seasonGA - last5GA) / seasonGA) * 100,
+          reason: `Last 5 GA ${formatNumber(last5GA)} vs season ${formatNumber(seasonGA)}`,
+          positiveWhenHigher: true,
+        }
+      : null,
+  ].filter(
+    (
+      item
+    ): item is {
+      label: string;
+      deltaPct: number;
+      reason: string;
+      positiveWhenHigher: boolean;
+    } => item !== null
+  );
 
-  if (candidates.length === 0) {
+  if (!candidates.length) {
     return {
-      label: "No trend data",
+      label: "No material trend",
       reason: "Recent form snapshot is not available yet.",
       metric_key: null,
       metric_label: null,
@@ -550,56 +687,256 @@ function buildTrendCard(form?: TeamAdvancedFormSnapshot): TeamAdvancedMetricCard
     };
   }
 
-  const selected = [...candidates].sort((a, b) => b.delta - a.delta)[0];
+  const selected = [...candidates].sort(
+    (a, b) => Math.abs(b.deltaPct) - Math.abs(a.deltaPct)
+  )[0];
+
+  if (Math.abs(selected.deltaPct) < 5) {
+    return {
+      label: "No material trend",
+      reason: "Last 5 performance is broadly aligned with the season baseline.",
+      metric_key: null,
+      metric_label: null,
+      rank: null,
+      vs_avg_pct: null,
+      tone: "accent",
+    };
+  }
+
+  const improving = selected.deltaPct > 0;
 
   return {
     label: selected.label,
-    reason: selected.reason,
+    reason: `${selected.reason} • ${
+      improving ? "Improving" : "Softening"
+    } by ${formatPct(Math.abs(selected.deltaPct))}`,
     metric_key: null,
     metric_label: selected.label,
     rank: null,
-    vs_avg_pct: null,
-    tone: "accent",
+    vs_avg_pct: selected.deltaPct,
+    tone: improving ? "accent" : "negative",
   };
 }
 
-function buildTakeaways(
-  strength: TeamAdvancedMetricCard,
-  risk: TeamAdvancedMetricCard,
-  split: TeamAdvancedMetricCard,
-  identities: TeamAdvancedSummary["identity"]
-) {
-  let coaching =
-    "The side should reinforce its best-performing identity while protecting its weakest recurring phase.";
-  let opponentPrep =
-    "Opponent preparation should focus on the team’s strongest repeatable edge and biggest venue split.";
-  let recruitment =
-    "Recruitment implication should be derived from the weakest recurring metric cluster.";
+function buildTierItem(
+  label: string,
+  score: number | null
+): TeamAdvancedSummary["positioning"]["attack"] {
+  const tier = getTier(score);
 
-  if (strength.metric_key === "team_shots_on_target") {
+  const reason =
+    tier === "Elite"
+      ? "Top-tier league profile."
+      : tier === "Upper Tier"
+      ? "Clearly above league average."
+      : tier === "Mid Tier"
+      ? "Competitive but not dominant."
+      : tier === "Below Average"
+      ? "Below league average profile."
+      : "Bottom-tier profile right now.";
+
+  return {
+    label,
+    score,
+    tier,
+    reason,
+  };
+}
+
+function buildTakeaways(input: {
+  strength: TeamAdvancedMetricCard;
+  risk: TeamAdvancedMetricCard;
+  split: TeamAdvancedMetricCard;
+  trend: TeamAdvancedMetricCard;
+  identities: TeamAdvancedSummary["identity"];
+  positioning: TeamAdvancedSummary["positioning"];
+}) {
+  const { strength, risk, split, trend, identities, positioning } = input;
+
+  const attackScore = positioning.attack.score ?? 0;
+  const defenceScore = positioning.defence.score ?? 0;
+  const buildUpScore = positioning.build_up.score ?? 0;
+
+  const isEliteProfile =
+    attackScore >= 80 && defenceScore >= 80 && buildUpScore >= 80;
+
+  const isStrongProfile =
+    attackScore >= 65 && defenceScore >= 65 && buildUpScore >= 60;
+
+  const isWeakProfile =
+    attackScore < 40 || defenceScore < 40 || buildUpScore < 40;
+
+  const noMajorRisk = risk.metric_key === null;
+  const hasNegativeTrend =
+    trend.tone === "negative" ||
+    identities.form.label.toLowerCase().includes("negative");
+
+  const splitText = split.metric_label
+    ? `${split.metric_label} shows the clearest venue split`
+    : "Venue effects are limited";
+
+  let coaching = "The team should focus on strengthening its weakest recurring phase.";
+  let opponentPrep = `${splitText}, so opponent prep should adapt accordingly.`;
+  let recruitment =
+    "Recruitment should target the weakest structural phase in the current profile.";
+
+  // ELITE / TOP PROFILE
+  if (isEliteProfile) {
+    if (hasNegativeTrend) {
+      coaching =
+        "Core team structure remains elite, but recent regression should be corrected before it starts eroding results.";
+    } else {
+      coaching =
+        "The main coaching priority is preserving elite balance rather than forcing unnecessary structural change.";
+    }
+
+    if (split.metric_label) {
+      opponentPrep = `${split.metric_label} shows the clearest venue split, so match planning should adjust more aggressively by location.`;
+    } else {
+      opponentPrep =
+        "Opponent prep should focus less on weaknesses and more on disrupting the team’s strongest repeatable patterns.";
+    }
+
+    if (noMajorRisk) {
+      recruitment =
+        "No urgent structural weakness stands out; squad decisions should protect the team’s current balance rather than chase unnecessary change.";
+    } else if (risk.metric_key === "team_offsides") {
+      recruitment =
+        "Front-line profiles with cleaner timing and movement could reduce waste without changing the team’s attacking identity.";
+    } else if (risk.metric_key === "team_score_against") {
+      recruitment =
+        "Even strong profiles benefit from preserving defensive control, so support pieces that protect the back line remain valuable.";
+    }
+
+    return {
+      coaching,
+      opponent_prep: opponentPrep,
+      recruitment,
+    };
+  }
+
+  // STRONG BUT NOT ELITE
+  if (isStrongProfile) {
+    if (risk.metric_key === "team_offsides") {
+      coaching =
+        "Chance creation is already strong, but final-third timing needs tightening because offside frequency is wasting attacking possessions.";
+    } else if (risk.metric_key === "team_score_against") {
+      coaching =
+        "The team profile is strong overall, but defensive control needs attention before concession softness starts dragging results.";
+    } else if (hasNegativeTrend) {
+      coaching =
+        "The team’s baseline remains strong, but recent momentum has softened and should be corrected before it becomes structural.";
+    } else {
+      coaching =
+        "The priority is turning a strong baseline into a more complete profile by sharpening the weakest non-elite phase.";
+    }
+
+    if (split.metric_label) {
+      opponentPrep = `${split.metric_label} shows the clearest venue split, so location-specific planning should be part of match prep.`;
+    } else {
+      opponentPrep =
+        "Opponent prep should focus on disrupting the team’s best-performing phase rather than chasing marginal weaknesses.";
+    }
+
+    if (risk.metric_key === "team_offsides") {
+      recruitment =
+        "Cleaner attacking timing and movement profiles could convert existing chance volume into more efficient final-third output.";
+    } else if (risk.metric_key === "team_pass_accuracy_pct") {
+      recruitment =
+        "Build-up can become more resilient with profiles that increase control, retention and cleaner circulation under pressure.";
+    } else if (risk.metric_key === "team_score_against") {
+      recruitment =
+        "The strongest improvement path is protecting defensive control with better shielding or more stable defensive support.";
+    } else {
+      recruitment =
+        "Recruitment should target the weakest structural phase without disrupting the team’s existing strengths.";
+    }
+
+    return {
+      coaching,
+      opponent_prep: opponentPrep,
+      recruitment,
+    };
+  }
+
+  // WEAK / UNBALANCED PROFILE
+  if (isWeakProfile) {
+    if (
+      identities.attack.label === "Blunt attack" &&
+      identities.build_up.label === "Low-control progression"
+    ) {
+      coaching =
+        "Chance creation is weak and build-up quality is also below league pace, so possessions are breaking before the final third.";
+    } else if (risk.metric_key === "team_score_against") {
+      coaching =
+        "The defensive floor is too low right now, so stabilising concession control should come before more ambitious upgrades.";
+    } else if (risk.metric_key === "team_offsides") {
+      coaching =
+        "Attacking possessions are already limited, so wasted final-third timing becomes even more damaging in a weak overall profile.";
+    } else {
+      coaching =
+        "The team needs to raise its weakest structural phase first, because isolated strengths are not strong enough to carry the overall profile.";
+    }
+
+    if (split.metric_label) {
+      opponentPrep = `${split.metric_label} shows the clearest venue split, so match planning should lean harder into the better-context version of the team.`;
+    } else {
+      opponentPrep =
+        "Opponent prep should be pragmatic, because the team currently lacks a strong enough profile to force its identity everywhere.";
+    }
+
+    if (identities.build_up.label === "Low-control progression") {
+      recruitment =
+        "Build-up quality can be improved with profiles that increase control, retention and cleaner progression.";
+    } else if (identities.defence.label.toLowerCase().includes("fragile")) {
+      recruitment =
+        "The clearest squad need is defensive protection, because the current structure concedes too much value.";
+    } else {
+      recruitment =
+        "Recruitment should prioritise the phase where the team is currently falling furthest below league pace.";
+    }
+
+    return {
+      coaching,
+      opponent_prep: opponentPrep,
+      recruitment,
+    };
+  }
+
+  // MID / MIXED PROFILE
+  if (risk.metric_key === "team_offsides") {
     coaching =
-      "Chance creation is strong; the next layer is turning that volume into more decisive finishing outcomes.";
-  } else if (risk.metric_key === "team_offsides") {
-    coaching =
-      "Final-third timing needs tightening, because attacking output is being wasted by offside frequency.";
+      "Final-third timing needs tightening because offside frequency is wasting attacking possessions.";
   } else if (risk.metric_key === "team_score_against") {
     coaching =
-      "Defensive floor is the main coaching priority, because concession control is dragging the profile down.";
+      "Defensive control is the main coaching priority because concession management is limiting the team’s ceiling.";
+  } else if (strength.metric_key === "team_shots_on_target") {
+    coaching =
+      "Shot creation is the clearest positive edge, so game plans should keep feeding the existing chance-generation structure.";
+  } else if (hasNegativeTrend) {
+    coaching =
+      "The underlying profile is serviceable, but recent momentum has softened and should be corrected before it deepens.";
+  } else {
+    coaching =
+      "The next step is turning a mixed profile into a clearer identity by upgrading the weakest recurring phase.";
   }
 
   if (split.metric_label) {
-    opponentPrep = `${split.metric_label} shows the strongest venue split, so opponent prep should adapt by location.`;
+    opponentPrep = `${split.metric_label} shows the clearest venue split, so match planning should be adjusted by location.`;
+  } else {
+    opponentPrep =
+      "Venue effects look limited, so opponent prep should focus more on baseline style than context changes.";
   }
 
-  if (identities.defence.label.toLowerCase().includes("fragile")) {
+  if (identities.build_up.label === "Low-control progression") {
     recruitment =
-      "A stronger ball-winning or protective defensive profile could raise the team’s defensive floor.";
-  } else if (identities.build_up.label.toLowerCase().includes("low-control")) {
-    recruitment =
-      "Build-up quality can be improved with profiles that increase control and clean progression.";
+      "Build-up quality can be improved with profiles that increase control and cleaner progression.";
   } else if (risk.metric_key === "team_offsides") {
     recruitment =
       "Front-line profiles with cleaner timing and movement could reduce waste in attacking possessions.";
+  } else if (risk.metric_key === "team_score_against") {
+    recruitment =
+      "The profile would benefit from stronger defensive support to raise the team’s floor.";
   }
 
   return {
@@ -618,9 +955,6 @@ export function buildTeamAdvancedSummary(input: {
   const catalog = input.catalog.filter((item) => item.is_active);
 
   const metricMap = buildMetricMap(rows);
-  const catalogMap = buildCatalogMap(catalog);
-  void catalogMap;
-
   const leagueSize = inferLeagueSize(rows);
 
   const attackScore = getCompositeScore(metricMap, catalog, "attack", leagueSize);
@@ -637,18 +971,24 @@ export function buildTeamAdvancedSummary(input: {
   const split = pickSplitSignal(rows, catalog);
   const trend = buildTrendCard(input.form);
 
-  const takeaways = buildTakeaways(
-    strength,
-    risk,
-    split,
-    {
-      attack: attackIdentity,
-      defence: defenceIdentity,
-      build_up: buildUpIdentity,
-      form: formIdentity,
-    }
-  );
-
+  const positioning = {
+      attack: buildTierItem("Attack Tier", attackScore),
+      defence: buildTierItem("Defence Tier", defenceScore),
+      build_up: buildTierItem("Build-up Tier", buildUpScore),
+    };
+  const takeaways = buildTakeaways({
+      strength,
+      risk,
+      split,
+      trend,
+      identities: {
+        attack: attackIdentity,
+        defence: defenceIdentity,
+        build_up: buildUpIdentity,
+        form: formIdentity,
+      },
+      positioning,
+});
   return {
     identity: {
       attack: attackIdentity,
@@ -662,23 +1002,7 @@ export function buildTeamAdvancedSummary(input: {
       trend,
       split,
     },
-    positioning: {
-      attack: {
-        label: "Attack Tier",
-        score: attackScore,
-        tier: getTier(attackScore),
-      },
-      defence: {
-        label: "Defence Tier",
-        score: defenceScore,
-        tier: getTier(defenceScore),
-      },
-      build_up: {
-        label: "Build-up Tier",
-        score: buildUpScore,
-        tier: getTier(buildUpScore),
-      },
-    },
+    positioning,
     takeaways,
   };
 }

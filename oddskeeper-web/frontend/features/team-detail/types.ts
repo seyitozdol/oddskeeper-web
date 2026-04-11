@@ -402,6 +402,7 @@ export type TeamAdvancedTierItem = {
   label: string;
   score: number | null;
   tier: "Elite" | "Upper Tier" | "Mid Tier" | "Below Average" | "Weak";
+  reason: string;
 };
 
 export type TeamAdvancedSummary = {

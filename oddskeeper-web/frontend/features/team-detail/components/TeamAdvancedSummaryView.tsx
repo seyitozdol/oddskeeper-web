@@ -110,10 +110,12 @@ function TierCard({
   label,
   tier,
   score,
+  reason,
 }: {
   label: string;
   tier: string;
   score: number | null;
+  reason: string;
 }) {
   return (
     <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-4">
@@ -123,10 +125,10 @@ function TierCard({
       <div className="mt-2 flex items-end justify-between gap-3">
         <div className="text-[16px] font-semibold text-white">{tier}</div>
         <div className="text-[24px] font-semibold leading-none text-white">
-          {formatScore(score)}
+          {score === null ? "—" : `${formatScore(score)}/100`}
         </div>
       </div>
-      <div className="mt-1 text-[11px] text-white/50">Composite score</div>
+      <div className="mt-2 text-[12px] leading-5 text-white/58">{reason}</div>
     </div>
   );
 }
@@ -206,7 +208,7 @@ export default function TeamAdvancedSummaryView({
           tone={summary.highlights.risk.tone}
         />
         <HighlightCard
-          eyebrow="Biggest Positive Trend"
+          eyebrow="Most Material Trend"
           label={summary.highlights.trend.label}
           reason={summary.highlights.trend.reason}
           rank={summary.highlights.trend.rank}
@@ -228,16 +230,19 @@ export default function TeamAdvancedSummaryView({
           label={summary.positioning.attack.label}
           tier={summary.positioning.attack.tier}
           score={summary.positioning.attack.score}
+          reason={summary.positioning.attack.reason}
         />
         <TierCard
           label={summary.positioning.defence.label}
           tier={summary.positioning.defence.tier}
           score={summary.positioning.defence.score}
+          reason={summary.positioning.defence.reason}
         />
         <TierCard
           label={summary.positioning.build_up.label}
           tier={summary.positioning.build_up.tier}
           score={summary.positioning.build_up.score}
+          reason={summary.positioning.build_up.reason}
         />
       </div>
 
