@@ -168,6 +168,7 @@ export type PlayerMetricBenchmarkRow = {
 
 export type PlayerDetailedCategoryKey =
   | "output"
+  | "attacking"
   | "shooting"
   | "passing"
   | "defence"
@@ -239,4 +240,55 @@ export type PlayerDetailedSummaryCardRow = {
   label: string;
   value: string | number | boolean | null;
   subvalue?: string | number | boolean | null;
+};
+export type PlayerMetricLeaderboardRow = {
+  season_label: string | null;
+  competition: string | null;
+
+  player_source_id: string | number | null;
+  player_name: string | null;
+  position_code: string | null;
+  role_group: string | null;
+
+  source_team_id: string | number | null;
+  team_slug: string | null;
+  team_name: string | null;
+
+  metric_key: string;
+  metric_label: string;
+  category_key: PlayerDetailedCategoryKey;
+  category_label: string;
+
+  total_value: number | null;
+  per_match_value: number | null;
+  per90_value: number | null;
+  home_value: number | null;
+  away_value: number | null;
+  last5_value: number | null;
+
+  league_avg: number | null;
+  league_median: number | null;
+  league_rank: number | null;
+  league_percentile: number | null;
+
+  vs_league_avg_abs: number | null;
+  vs_league_avg_pct: number | null;
+
+  rank_direction: "asc" | "desc" | string | null;
+  is_higher_better: boolean | null;
+  value_format: string | null;
+
+  home_away_gap_abs: number | null;
+  sample_matches: number | null;
+  coverage_flag: boolean | null;
+
+  player_pool: string | null;
+  ranking_pool: string | null;
+  ranking_value: number | null;
+  is_qualified: boolean | null;
+  recent_activity_flag: boolean | null;
+  qualification_minutes_threshold: number | null;
+  qualification_apps_threshold: number | null;
+  qualification_reason: string | null;
+
 };

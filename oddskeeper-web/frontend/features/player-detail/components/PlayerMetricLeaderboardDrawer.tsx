@@ -1,25 +1,30 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import type { TeamMetricLeaderboardRow } from "../types";
+import type { PlayerMetricLeaderboardRow } from "../types";
 
 type MetricOption = {
   metricKey: string;
   metricLabel: string;
 };
 
-type TeamMetricLeaderboardDrawerProps = {
+type PlayerMetricLeaderboardDrawerProps = {
   isOpen: boolean;
   onClose: () => void;
   initialMetricKey: string | null;
   initialMetricLabel?: string | null;
   seasonLabel?: string | null;
   competition?: string | null;
-  selectedTeamSlug?: string | null;
+  selectedPlayerSourceId?: string | number | null;
   metricOptions: MetricOption[];
 };
 
-type LeaderboardViewMode = "all" | "top4" | "bottom4" | "around_selected";
+type LeaderboardViewMode =
+  | "qualified"
+  | "all"
+  | "top4"
+  | "bottom4"
+  | "around_selected";
 
 type MetricMeta = {
   shortDescription: string;
@@ -27,93 +32,109 @@ type MetricMeta = {
 };
 
 const METRIC_META: Record<string, MetricMeta> = {
-  team_goals_for: {
-    shortDescription: "How many goals the team scores.",
+  goals_total: {
+    shortDescription: "Total goals scored by the player.",
     interpretation: "Higher is better.",
   },
-  team_expected_goals: {
-    shortDescription: "Chance quality converted into expected goals.",
+  assists_total: {
+    shortDescription: "Total assists created by the player.",
     interpretation: "Higher is better.",
   },
-  team_shots: {
-    shortDescription: "Total shot volume created.",
+  expected_goals_total: {
+    shortDescription: "Chance quality translated into expected goals.",
     interpretation: "Higher is better.",
   },
-  team_shots_on_target: {
-    shortDescription: "Shots that force a save or become a goal.",
+  shots_on_target_total: {
+    shortDescription: "Shots that hit the target.",
     interpretation: "Higher is better.",
   },
-  team_shot_accuracy_pct: {
-    shortDescription: "Share of shots hitting the target.",
-    interpretation: "Higher is better.",
-  },
-  team_xg_per_shot: {
-    shortDescription: "Average shot quality per attempt.",
-    interpretation: "Higher is better.",
-  },
-  team_offsides: {
-    shortDescription: "Offside events committed by the team.",
-    interpretation: "Lower is generally better.",
-  },
-  team_goals_against: {
-    shortDescription: "How many goals the team concedes.",
-    interpretation: "Lower is better.",
-  },
-  team_shots_against: {
-    shortDescription: "Opponent shot volume allowed.",
-    interpretation: "Lower is better.",
-  },
-  team_shots_on_target_against: {
-    shortDescription: "Opponent shots on target allowed.",
-    interpretation: "Lower is better.",
-  },
-  team_tackles: {
-    shortDescription: "Total tackles made by the team.",
+  attempts_ibox_total: {
+    shortDescription: "Attempts taken from inside the box.",
     interpretation: "Higher is generally better.",
   },
-  team_interceptions: {
-    shortDescription: "Passing lanes cut out and possession disruptions.",
-    interpretation: "Higher is generally better.",
+  attempts_obox_total: {
+    shortDescription: "Attempts taken from outside the box.",
+    interpretation: "Context dependent.",
   },
-  team_fouls_conceded: {
-    shortDescription: "Fouls committed by the team.",
-    interpretation: "Lower is better.",
+  shot_accuracy_pct: {
+    shortDescription: "Share of attempts that hit the target.",
+    interpretation: "Higher is better.",
   },
-  team_passes: {
+  xg_per90: {
+    shortDescription: "Expected goals generated every 90 minutes.",
+    interpretation: "Higher is better.",
+  },
+  passes_total: {
     shortDescription: "Total pass volume.",
     interpretation: "Higher is generally better.",
   },
-  team_accurate_pass: {
+  accurate_pass_total: {
     shortDescription: "Completed passes.",
     interpretation: "Higher is better.",
   },
-  team_pass_accuracy_pct: {
-    shortDescription: "Share of passes completed successfully.",
+  pass_accuracy_pct: {
+    shortDescription: "Pass completion rate.",
     interpretation: "Higher is better.",
   },
-  team_yellow_cards: {
+  tackles_total: {
+    shortDescription: "Total tackles made.",
+    interpretation: "Higher is generally better.",
+  },
+  interceptions_total: {
+    shortDescription: "Possession disruptions and passing lane cuts.",
+    interpretation: "Higher is generally better.",
+  },
+  fouls_conceded_total: {
+    shortDescription: "Fouls committed by the player.",
+    interpretation: "Lower is better.",
+  },
+  fouls_won_total: {
+    shortDescription: "Fouls drawn from opponents.",
+    interpretation: "Higher is generally better.",
+  },
+  cards_yellow_total: {
     shortDescription: "Yellow cards received.",
     interpretation: "Lower is better.",
   },
-  team_red_cards: {
+  cards_red_total: {
     shortDescription: "Red cards received.",
     interpretation: "Lower is better.",
   },
-  team_corners_won: {
-    shortDescription: "Corners earned by the team.",
+  appearances: {
+    shortDescription: "Matches appeared in.",
+    interpretation: "Higher is better.",
+  },
+  starts: {
+    shortDescription: "Matches started.",
+    interpretation: "Higher is better.",
+  },
+  starter_rate_pct: {
+    shortDescription: "Share of appearances that were starts.",
+    interpretation: "Higher is better.",
+  },
+  total_minutes: {
+    shortDescription: "Total minutes played.",
+    interpretation: "Higher is better.",
+  },
+  avg_minutes: {
+    shortDescription: "Average minutes played per appearance.",
+    interpretation: "Higher is better.",
+  },
+  saves_total_total: {
+    shortDescription: "Total saves made.",
     interpretation: "Higher is generally better.",
   },
-  team_saves: {
-    shortDescription: "Goalkeeper saves made.",
-    interpretation: "Context dependent.",
+  goals_conceded_total: {
+    shortDescription: "Goals conceded while playing.",
+    interpretation: "Lower is better.",
   },
-  team_goal_kicks: {
-    shortDescription: "Goal kicks taken by the team.",
-    interpretation: "Context dependent.",
+  penalties_saved_total: {
+    shortDescription: "Penalties saved.",
+    interpretation: "Higher is better.",
   },
-  team_total_throws: {
-    shortDescription: "Total throw-ins taken.",
-    interpretation: "Context dependent.",
+  offsides_total: {
+    shortDescription: "Times caught offside.",
+    interpretation: "Lower is generally better.",
   },
 };
 
@@ -165,11 +186,11 @@ function getRankTone(rank: number | null | undefined) {
     return "text-emerald-300";
   }
 
-  if (rank >= 15) {
+  if (rank >= 40) {
     return "text-rose-300";
   }
 
-  if (rank >= 11) {
+  if (rank >= 25) {
     return "text-amber-300";
   }
 
@@ -204,34 +225,46 @@ function getMetricMeta(metricKey: string | null | undefined): MetricMeta {
 
   return (
     METRIC_META[metricKey] ?? {
-      shortDescription: "League ranking for the selected team metric.",
+      shortDescription: "League ranking for the selected player metric.",
       interpretation: "Check rank direction and league average for context.",
     }
   );
 }
 
-export function TeamMetricLeaderboardDrawer({
+function buildLeaderboardRowKey(row: PlayerMetricLeaderboardRow) {
+  return [
+    row.metric_key ?? "metric",
+    row.player_source_id ?? "player",
+    row.team_slug ?? "team",
+    row.team_name ?? "team_name",
+    row.league_rank ?? "rank",
+    row.total_value ?? "total",
+    row.per90_value ?? "per90",
+  ].join("__");
+}
+
+export function PlayerMetricLeaderboardDrawer({
   isOpen,
   onClose,
   initialMetricKey,
   initialMetricLabel,
   seasonLabel,
   competition,
-  selectedTeamSlug,
+  selectedPlayerSourceId,
   metricOptions,
-}: TeamMetricLeaderboardDrawerProps) {
+}: PlayerMetricLeaderboardDrawerProps) {
   const [selectedMetricKey, setSelectedMetricKey] = useState<string | null>(
     initialMetricKey
   );
-  const [rows, setRows] = useState<TeamMetricLeaderboardRow[]>([]);
+  const [rows, setRows] = useState<PlayerMetricLeaderboardRow[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [errorText, setErrorText] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<LeaderboardViewMode>("all");
+  const [viewMode, setViewMode] = useState<LeaderboardViewMode>("qualified");
 
   useEffect(() => {
     if (isOpen) {
       setSelectedMetricKey(initialMetricKey ?? metricOptions[0]?.metricKey ?? null);
-      setViewMode("all");
+      setViewMode("qualified");
     }
   }, [isOpen, initialMetricKey, metricOptions]);
 
@@ -273,7 +306,7 @@ export function TeamMetricLeaderboardDrawer({
         }
 
         const response = await fetch(
-          `/api/team-metric-leaderboard?${params.toString()}`,
+          `/api/player-metric-leaderboard?${params.toString()}`,
           {
             method: "GET",
             cache: "no-store",
@@ -285,7 +318,7 @@ export function TeamMetricLeaderboardDrawer({
         }
 
         const payload = (await response.json()) as {
-          rows?: TeamMetricLeaderboardRow[];
+          rows?: PlayerMetricLeaderboardRow[];
         };
 
         if (!isCancelled) {
@@ -293,7 +326,7 @@ export function TeamMetricLeaderboardDrawer({
         }
       } catch (error) {
         if (!isCancelled) {
-          console.error("TeamMetricLeaderboardDrawer load failed", {
+          console.error("PlayerMetricLeaderboardDrawer load failed", {
             metricKey,
             seasonLabel,
             competition,
@@ -328,41 +361,92 @@ export function TeamMetricLeaderboardDrawer({
     return initialMetricLabel ?? "Metric";
   }, [metricOptions, selectedMetricKey, initialMetricLabel]);
 
+  const normalizedRows = useMemo(() => {
+    const uniqueMap = new Map<string, PlayerMetricLeaderboardRow>();
+
+    rows.forEach((row) => {
+      const key = buildLeaderboardRowKey(row);
+
+      if (!uniqueMap.has(key)) {
+        uniqueMap.set(key, row);
+      }
+    });
+
+    return Array.from(uniqueMap.values());
+  }, [rows]);
+
+  const qualifiedRows = useMemo(() => {
+    return normalizedRows.filter((row) => row.is_qualified === true);
+  }, [normalizedRows]);
+
+  const activeRows = useMemo(() => {
+    return viewMode === "qualified" ? qualifiedRows : normalizedRows;
+  }, [viewMode, qualifiedRows, normalizedRows]);
+
   const selectedRow = useMemo(() => {
-    return rows.find((row) => row.team_slug === selectedTeamSlug) ?? null;
-  }, [rows, selectedTeamSlug]);
+    return (
+      activeRows.find(
+        (row) =>
+          String(row.player_source_id ?? "") === String(selectedPlayerSourceId ?? "")
+      ) ?? null
+    );
+  }, [activeRows, selectedPlayerSourceId]);
+
+  const selectedRowAny = useMemo(() => {
+    return (
+      normalizedRows.find(
+        (row) =>
+          String(row.player_source_id ?? "") === String(selectedPlayerSourceId ?? "")
+      ) ?? null
+    );
+  }, [normalizedRows, selectedPlayerSourceId]);
 
   const visibleRows = useMemo(() => {
-    if (rows.length === 0) {
+    if (activeRows.length === 0) {
       return [];
     }
 
-    if (viewMode === "all") {
-      return rows;
+    if (viewMode === "qualified" || viewMode === "all") {
+      return activeRows;
     }
 
     if (viewMode === "top4") {
-      return rows.slice(0, 4);
+      return qualifiedRows.slice(0, 4);
     }
 
     if (viewMode === "bottom4") {
-      return rows.slice(Math.max(0, rows.length - 4));
+      return qualifiedRows.slice(Math.max(0, qualifiedRows.length - 4));
     }
 
-    const selectedIndex = rows.findIndex((row) => row.team_slug === selectedTeamSlug);
+    const aroundPool = normalizedRows;
+    const selectedIndex = aroundPool.findIndex(
+      (row) =>
+        String(row.player_source_id ?? "") === String(selectedPlayerSourceId ?? "")
+    );
 
     if (selectedIndex === -1) {
-      return rows.slice(0, 6);
+      return aroundPool.slice(0, 6);
     }
 
     const start = Math.max(0, selectedIndex - 2);
-    const end = Math.min(rows.length, selectedIndex + 3);
-    return rows.slice(start, end);
-  }, [rows, viewMode, selectedTeamSlug]);
+    const end = Math.min(aroundPool.length, selectedIndex + 3);
+
+    return aroundPool.slice(start, end);
+  }, [activeRows, qualifiedRows, normalizedRows, viewMode, selectedPlayerSourceId]);
 
   const metricMeta = useMemo(() => {
     return getMetricMeta(selectedMetricKey);
   }, [selectedMetricKey]);
+
+  const qualificationContextText = useMemo(() => {
+    const ref = selectedRowAny;
+
+    if (!ref) {
+      return "Qualified leaderboard";
+    }
+
+    return `Qualified leaderboard • min ${ref.qualification_minutes_threshold ?? "—"} mins • min ${ref.qualification_apps_threshold ?? "—"} apps • active recently`;
+  }, [selectedRowAny]);
 
   if (!isOpen) {
     return null;
@@ -377,7 +461,7 @@ export function TeamMetricLeaderboardDrawer({
         className="absolute inset-0 bg-black/60 backdrop-blur-[2px]"
       />
 
-      <div className="absolute right-0 top-0 h-full w-full max-w-[760px] border-l border-white/10 bg-[linear-gradient(180deg,rgba(7,12,21,0.98),rgba(4,8,15,0.99))] shadow-[-20px_0_60px_rgba(0,0,0,0.45)]">
+      <div className="absolute right-0 top-0 h-full w-full max-w-[780px] border-l border-white/10 bg-[linear-gradient(180deg,rgba(7,12,21,0.98),rgba(4,8,15,0.99))] shadow-[-20px_0_60px_rgba(0,0,0,0.45)]">
         <div className="flex h-full flex-col">
           <div className="border-b border-white/10 px-5 py-4">
             <div className="flex items-start justify-between gap-3">
@@ -390,6 +474,9 @@ export function TeamMetricLeaderboardDrawer({
                 </div>
                 <div className="mt-1 text-xs text-white/52">
                   {competition ?? "—"} • {seasonLabel ?? "—"}
+                </div>
+                <div className="mt-2 text-[11px] text-white/45">
+                  {qualificationContextText}
                 </div>
               </div>
 
@@ -420,12 +507,16 @@ export function TeamMetricLeaderboardDrawer({
 
               <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-3">
                 <div className="text-[10px] uppercase tracking-[0.14em] text-white/38">
-                  Selected Team
+                  Selected Player
                 </div>
 
                 <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
                   <div className="font-semibold text-white">
-                    {selectedRow?.team_name ?? "—"}
+                    {selectedRowAny?.player_name ?? "—"}
+                  </div>
+
+                  <div className="text-white/65">
+                    {selectedRowAny?.team_name ?? "—"}
                   </div>
 
                   <div className={`${getRankTone(selectedRow?.league_rank)}`}>
@@ -433,11 +524,11 @@ export function TeamMetricLeaderboardDrawer({
                   </div>
 
                   <div className="text-white/65">
-                    Per Match{" "}
+                    Per 90{" "}
                     <span className="font-medium text-white">
                       {formatMetricValue(
-                        selectedRow?.per_match_value,
-                        selectedRow?.value_format
+                        selectedRowAny?.per90_value,
+                        selectedRowAny?.value_format
                       )}
                     </span>
                   </div>
@@ -463,6 +554,12 @@ export function TeamMetricLeaderboardDrawer({
                       {formatMetricValue(selectedRow?.vs_league_avg_pct, "pct_1")}
                     </span>
                   </div>
+
+                  {selectedRowAny?.is_qualified === false ? (
+                    <div className="text-[11px] text-amber-300">
+                      Not qualified • {selectedRowAny.qualification_reason ?? "rule"}
+                    </div>
+                  ) : null}
                 </div>
               </div>
             </div>
@@ -470,7 +567,8 @@ export function TeamMetricLeaderboardDrawer({
             <div className="mt-3 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div className="flex flex-wrap gap-2">
                 {[
-                  { key: "all", label: "Full Table" },
+                  { key: "qualified", label: "Qualified" },
+                  { key: "all", label: "All Players" },
                   { key: "around_selected", label: "Around Selected" },
                   { key: "top4", label: "Top 4" },
                   { key: "bottom4", label: "Bottom 4" },
@@ -522,7 +620,7 @@ export function TeamMetricLeaderboardDrawer({
               <div className="rounded-xl border border-rose-500/20 bg-rose-500/[0.06] px-4 py-4 text-sm text-rose-200">
                 {errorText}
               </div>
-            ) : rows.length === 0 ? (
+            ) : activeRows.length === 0 ? (
               <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-4 text-sm text-white/65">
                 No leaderboard rows found for this metric.
               </div>
@@ -532,9 +630,11 @@ export function TeamMetricLeaderboardDrawer({
                   <thead className="sticky top-0 z-10 bg-[#0d1624]">
                     <tr className="text-left text-[10px] uppercase tracking-[0.14em] text-white/38">
                       <th className="px-4 py-2 font-medium">Rank</th>
+                      <th className="px-4 py-2 font-medium">Player</th>
                       <th className="px-4 py-2 font-medium">Team</th>
                       <th className="px-4 py-2 font-medium">Total</th>
                       <th className="px-4 py-2 font-medium">Per Match</th>
+                      <th className="px-4 py-2 font-medium">Per 90</th>
                       <th className="px-4 py-2 font-medium">League Avg</th>
                       <th className="px-4 py-2 font-medium">Vs Avg %</th>
                     </tr>
@@ -542,11 +642,13 @@ export function TeamMetricLeaderboardDrawer({
 
                   <tbody>
                     {visibleRows.map((row) => {
-                      const isSelected = row.team_slug === selectedTeamSlug;
+                      const isSelected =
+                        String(row.player_source_id ?? "") ===
+                        String(selectedPlayerSourceId ?? "");
 
                       return (
                         <tr
-                          key={`${row.metric_key}-${row.team_slug}`}
+                          key={buildLeaderboardRowKey(row)}
                           className={`border-t border-white/10 text-[13px] text-white/80 ${
                             isSelected ? "bg-[#11335c]/35" : "hover:bg-white/[0.02]"
                           }`}
@@ -562,7 +664,7 @@ export function TeamMetricLeaderboardDrawer({
                           <td className="px-4 py-2">
                             <div className="flex items-center gap-2">
                               <span className="font-medium text-white">
-                                {row.team_name ?? "—"}
+                                {row.player_name ?? "—"}
                               </span>
                               {isSelected ? (
                                 <span className="rounded-md border border-sky-500/20 bg-sky-500/[0.10] px-1.5 py-0.5 text-[10px] uppercase tracking-[0.12em] text-sky-200">
@@ -570,6 +672,10 @@ export function TeamMetricLeaderboardDrawer({
                                 </span>
                               ) : null}
                             </div>
+                          </td>
+
+                          <td className="px-4 py-2 text-white/70">
+                            {row.team_name ?? "—"}
                           </td>
 
                           <td className="px-4 py-2 whitespace-nowrap">
@@ -581,6 +687,10 @@ export function TeamMetricLeaderboardDrawer({
                               row.per_match_value,
                               row.value_format
                             )}
+                          </td>
+
+                          <td className="px-4 py-2 whitespace-nowrap font-medium text-white">
+                            {formatMetricValue(row.per90_value, row.value_format)}
                           </td>
 
                           <td className="px-4 py-2 whitespace-nowrap text-white/70">

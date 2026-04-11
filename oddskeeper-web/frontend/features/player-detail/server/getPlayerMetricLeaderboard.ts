@@ -2,11 +2,10 @@ import { cache } from "react";
 import { createClient } from "../../../lib/supabase/server";
 import type {
   PlayerDetailedCategoryKey,
-  PlayerDetailedMetricRow,
+  PlayerMetricLeaderboardRow,
 } from "../types";
-import { getPlayerProfile } from "./getPlayerProfile";
 
-type PlayerDetailedMetricsDbRow = {
+type PlayerMetricLeaderboardDbRow = {
   season_label: string | null;
   competition: string | null;
 
@@ -23,7 +22,6 @@ type PlayerDetailedMetricsDbRow = {
   metric_label: string;
   category_key: string | null;
   category_label: string | null;
-  display_priority: number | null;
 
   total_value: number | null;
   per_match_value: number | null;
@@ -47,9 +45,18 @@ type PlayerDetailedMetricsDbRow = {
   home_away_gap_abs: number | null;
   sample_matches: number | null;
   coverage_flag: boolean | null;
+
+  player_pool: string | null;
+  ranking_pool: string | null;
+  ranking_value: number | null;
+  is_qualified: boolean | null;
+  recent_activity_flag: boolean | null;
+  qualification_minutes_threshold: number | null;
+  qualification_apps_threshold: number | null;
+  qualification_reason: string | null;
 };
 
-function mapRow(row: PlayerDetailedMetricsDbRow): PlayerDetailedMetricRow {
+function mapRow(row: PlayerMetricLeaderboardDbRow): PlayerMetricLeaderboardRow {
   return {
     season_label: row.season_label,
     competition: row.competition,
@@ -67,7 +74,6 @@ function mapRow(row: PlayerDetailedMetricsDbRow): PlayerDetailedMetricRow {
     metric_label: row.metric_label,
     category_key: (row.category_key ?? "output") as PlayerDetailedCategoryKey,
     category_label: row.category_label ?? "Output",
-    display_priority: row.display_priority,
 
     total_value: row.total_value,
     per_match_value: row.per_match_value,
@@ -91,20 +97,25 @@ function mapRow(row: PlayerDetailedMetricsDbRow): PlayerDetailedMetricRow {
     home_away_gap_abs: row.home_away_gap_abs,
     sample_matches: row.sample_matches,
     coverage_flag: row.coverage_flag,
+
+    player_pool: row.player_pool,
+    ranking_pool: row.ranking_pool,
+    ranking_value: row.ranking_value,
+    is_qualified: row.is_qualified,
+    recent_activity_flag: row.recent_activity_flag,
+    qualification_minutes_threshold: row.qualification_minutes_threshold,
+    qualification_apps_threshold: row.qualification_apps_threshold,
+    qualification_reason: row.qualification_reason,
   };
 }
 
-export const getPlayerDetailedMetrics = cache(
-  async (
-    playerSlug: string,
-    options?: {
-      seasonLabel?: string | null;
-      competition?: string | null;
-    }
-  ): Promise<PlayerDetailedMetricRow[]> => {
-    const profileRow = await getPlayerProfile(playerSlug);
-
-    if (!profileRow?.player_source_id) {
+export const getPlayerMetricLeaderboard = cache(
+  async (options: {
+    metricKey: string | null | undefined;
+    seasonLabel?: string;
+    competition?: string;
+  }): Promise<PlayerMetricLeaderboardRow[]> => {
+    if (!options.metricKey) {
       return [];
     }
 
@@ -112,7 +123,7 @@ export const getPlayerDetailedMetrics = cache(
 
     let query = supabase
       .schema("analytics")
-      .from("player_detailed_metrics_v2")
+      .from("player_metric_leaderboard_v1")
       .select(
         `
           season_label,
@@ -128,7 +139,6 @@ export const getPlayerDetailedMetrics = cache(
           metric_label,
           category_key,
           category_label,
-          display_priority,
           total_value,
           per_match_value,
           per90_value,
@@ -146,48 +156,42 @@ export const getPlayerDetailedMetrics = cache(
           value_format,
           home_away_gap_abs,
           sample_matches,
-          coverage_flag
+          coverage_flag,
+          player_pool,
+          ranking_pool,
+          ranking_value,
+          is_qualified,
+          recent_activity_flag,
+          qualification_minutes_threshold,
+          qualification_apps_threshold,
+          qualification_reason
         `
       )
-      .eq("player_source_id", String(profileRow.player_source_id))
-      .order("category_key", { ascending: true })
-      .order("display_priority", { ascending: true, nullsFirst: false })
-      .order("metric_label", { ascending: true });
+      .eq("metric_key", options.metricKey)
+      .order("league_rank", { ascending: true, nullsFirst: false })
+      .order("player_name", { ascending: true });
 
-    const effectiveSeasonLabel =
-      options?.seasonLabel ?? profileRow.season_label ?? null;
-    const effectiveCompetition =
-      options?.competition ?? profileRow.competition ?? null;
-
-    if (effectiveSeasonLabel) {
-      query = query.eq("season_label", effectiveSeasonLabel);
+    if (options.seasonLabel) {
+      query = query.eq("season_label", options.seasonLabel);
     }
 
-    if (effectiveCompetition) {
-      query = query.eq("competition", effectiveCompetition);
+    if (options.competition) {
+      query = query.eq("competition", options.competition);
     }
 
     const { data, error } =
-      await query.returns<PlayerDetailedMetricsDbRow[]>();
+      await query.returns<PlayerMetricLeaderboardDbRow[]>();
 
     if (error) {
-      console.error(
-        "getPlayerDetailedMetrics failed ::",
-        JSON.stringify(
-          {
-            playerSlug,
-            playerSourceId: profileRow.player_source_id,
-            seasonLabel: effectiveSeasonLabel,
-            competition: effectiveCompetition,
-            message: error.message,
-            details: error.details,
-            hint: error.hint,
-            code: error.code,
-          },
-          null,
-          2
-        )
-      );
+      console.error("getPlayerMetricLeaderboard failed", {
+        metricKey: options.metricKey,
+        seasonLabel: options.seasonLabel ?? null,
+        competition: options.competition ?? null,
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code,
+      });
       return [];
     }
 
