@@ -112,7 +112,7 @@ export const getPlayerDetailedMetrics = cache(
 
     let query = supabase
       .schema("analytics")
-      .from("player_detailed_metrics_v2")
+      .from("player_detailed_metrics_v2_1")
       .select(
         `
           season_label,
