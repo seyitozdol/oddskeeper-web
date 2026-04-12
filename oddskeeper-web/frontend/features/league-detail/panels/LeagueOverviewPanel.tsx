@@ -46,6 +46,15 @@ function formatPct(value: number | null | undefined) {
   return `${formatNumber(value, 1)}%`;
 }
 
+function formatPctPoint(value: number | null | undefined) {
+  if (value === null || value === undefined || Number.isNaN(value)) {
+    return "—";
+  }
+
+  const absValue = Math.abs(value);
+  return `${formatNumber(absValue, 1)} pp`;
+}
+
 function formatTime(kickoffTimeKnown: boolean, kickoffTimeText: string | null | undefined) {
   if (!kickoffTimeKnown || !kickoffTimeText) {
     return "TBD";
@@ -85,10 +94,10 @@ function SnapshotCard({
     accent === "positive"
       ? "border-emerald-500/20 bg-[linear-gradient(180deg,rgba(16,185,129,0.08),rgba(255,255,255,0.02))]"
       : accent === "accent"
-      ? "border-sky-500/20 bg-[linear-gradient(180deg,rgba(59,130,246,0.08),rgba(255,255,255,0.02))]"
-      : accent === "warning"
-      ? "border-amber-500/20 bg-[linear-gradient(180deg,rgba(245,158,11,0.08),rgba(255,255,255,0.02))]"
-      : "border-white/10 bg-white/[0.03]";
+        ? "border-sky-500/20 bg-[linear-gradient(180deg,rgba(59,130,246,0.08),rgba(255,255,255,0.02))]"
+        : accent === "warning"
+          ? "border-amber-500/20 bg-[linear-gradient(180deg,rgba(245,158,11,0.08),rgba(255,255,255,0.02))]"
+          : "border-white/10 bg-white/[0.03]";
 
   return (
     <div className={`rounded-xl border px-4 py-3 ${toneClass}`}>
@@ -102,16 +111,19 @@ function SnapshotCard({
 function MiniSplitCard({
   label,
   value,
+  subvalue,
   toneClass,
 }: {
   label: string;
   value: string;
+  subvalue?: string;
   toneClass: string;
 }) {
   return (
     <div className={`rounded-xl border px-4 py-3 ${toneClass}`}>
       <div className="text-[10px] uppercase tracking-[0.14em] text-white/55">{label}</div>
       <div className="mt-1 text-xl font-semibold text-white">{value}</div>
+      {subvalue ? <div className="mt-1 text-[11px] text-white/50">{subvalue}</div> : null}
     </div>
   );
 }
@@ -177,7 +189,7 @@ export function LeagueOverviewPanel({
       const bTime = b.match_datetime ? new Date(b.match_datetime).getTime() : 0;
       return bTime - aTime;
     })
-    .slice(0, 5);
+    .slice(0, 4);
 
   const nextFixtures = [...fixtures]
     .sort((a, b) => {
@@ -193,11 +205,18 @@ export function LeagueOverviewPanel({
           : Number.MAX_SAFE_INTEGER;
       return aTime - bTime;
     })
-    .slice(0, 5);
+    .slice(0, 4);
 
   const leader = standings[0] ?? null;
   const runnerUp = standings[1] ?? null;
   const titleGap = leader && runnerUp ? leader.points - runnerUp.points : null;
+  const homeEdge =
+    overview?.home_win_pct !== null &&
+    overview?.home_win_pct !== undefined &&
+    overview?.away_win_pct !== null &&
+    overview?.away_win_pct !== undefined
+      ? overview.home_win_pct - overview.away_win_pct
+      : null;
 
   return (
     <div className="space-y-4">
@@ -227,7 +246,7 @@ export function LeagueOverviewPanel({
         />
       </div>
 
-      <SectionCard title="Result Split">
+      <SectionCard title="League Outcome Split">
         <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
           <MiniSplitCard
             label="Home Wins"
@@ -245,15 +264,16 @@ export function LeagueOverviewPanel({
             toneClass="border-sky-500/20 bg-sky-500/10"
           />
           <MiniSplitCard
-            label="Latest Result"
-            value={formatDate(overview?.latest_match_datetime)}
+            label="Home Edge"
+            value={formatPctPoint(homeEdge)}
+            subvalue="home wins over away wins"
             toneClass="border-white/10 bg-white/[0.03]"
           />
         </div>
       </SectionCard>
 
       <div className="grid gap-4 xl:grid-cols-3">
-        <SectionCard title="Best Form Teams">
+        <SectionCard title="Best Recent Form">
           <div className="space-y-2">
             {bestForm.length === 0 ? (
               <div className="text-sm text-white/55">No league table data found.</div>
@@ -262,7 +282,7 @@ export function LeagueOverviewPanel({
                 <div key={`form-${row.team_source_id}`} className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2">
                   <div className="min-w-0">
                     <div className="text-[10px] uppercase tracking-[0.12em] text-white/35">
-                      Form Rank #{index + 1} • Table #{row.rank}
+                      Form rank #{index + 1} • Table #{row.rank}
                     </div>
                     <div className="truncate text-sm font-medium text-white">
                       {row.team_slug ? (
@@ -284,7 +304,7 @@ export function LeagueOverviewPanel({
           </div>
         </SectionCard>
 
-        <SectionCard title="Attack Leaders">
+        <SectionCard title="Most Productive Attacks">
           <div className="space-y-2">
             {topAttack.length === 0 ? (
               <div className="text-sm text-white/55">No attack ranking available.</div>
@@ -293,7 +313,7 @@ export function LeagueOverviewPanel({
                 <div key={`attack-${row.team_source_id}`} className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2">
                   <div className="min-w-0">
                     <div className="text-[10px] uppercase tracking-[0.12em] text-white/35">
-                      Attack Rank #{index + 1} • Table #{row.rank}
+                      Attack rank #{index + 1} • Table #{row.rank}
                     </div>
                     <div className="truncate text-sm font-medium text-white">
                       {row.team_slug ? (
@@ -315,7 +335,7 @@ export function LeagueOverviewPanel({
           </div>
         </SectionCard>
 
-        <SectionCard title="Defence Leaders">
+        <SectionCard title="Best Defensive Records">
           <div className="space-y-2">
             {bestDefence.length === 0 ? (
               <div className="text-sm text-white/55">No defence ranking available.</div>
@@ -324,7 +344,7 @@ export function LeagueOverviewPanel({
                 <div key={`defence-${row.team_source_id}`} className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2">
                   <div className="min-w-0">
                     <div className="text-[10px] uppercase tracking-[0.12em] text-white/35">
-                      Defence Rank #{index + 1} • Table #{row.rank}
+                      Defence rank #{index + 1} • Table #{row.rank}
                     </div>
                     <div className="truncate text-sm font-medium text-white">
                       {row.team_slug ? (
@@ -401,7 +421,7 @@ export function LeagueOverviewPanel({
               nextFixtures.map((row) => (
                 <div key={`fixture-${row.fixture_id}`} className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2">
                   <div className="min-w-0 flex-1">
-                    <div className="text-[10px] uppercase tracking-[0.12em] text-white/35">
+                    <div className="text-[10px] uppercase tracking-[0.12em] text-white/30">
                       Week {row.round_number ?? "—"} • {formatDate(row.fixture_datetime ?? row.fixture_date)}
                     </div>
                     <div className="mt-1 flex items-center gap-2 text-sm text-white">
@@ -428,7 +448,6 @@ export function LeagueOverviewPanel({
                   </div>
                   <div className="text-right">
                     <div className="text-sm font-semibold text-white">{formatTime(row.kickoff_time_known, row.kickoff_time_text)}</div>
-                    {row.venue ? <div className="text-[11px] text-white/45">{row.venue}</div> : null}
                   </div>
                 </div>
               ))
