@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import TeamLink from "@/components/links/TeamLink";
+import PlayerLink from "@/components/links/PlayerLink";
 import type {
   LeaguePlayerLeaderboardRow,
   LeaguePlayerMetricOption,
@@ -13,6 +14,9 @@ type RoleFilter = "all" | "starter_core" | "starters" | "substitutes";
 
 type PreparedRow = LeaguePlayerLeaderboardRow & {
   displayValue: number | null;
+  displayRank: number;
+  derivedLeagueAvg: number | null;
+  derivedVsAvgPct: number | null;
 };
 
 type LeaguePlayerLeadersPanelProps = {
@@ -68,6 +72,41 @@ function formatPct(value: number | null | undefined) {
   }
 
   return `${formatRawNumber(Math.abs(value), 1)}%`;
+}
+
+function getBasisValueFormat(
+  valueFormat: string | null | undefined,
+  basis: ValueBasis,
+  kind: "value" | "average" | "gap" = "value"
+) {
+  if (valueFormat === "pct_1") {
+    return "pct_1";
+  }
+
+  if (valueFormat === "integer") {
+    if (basis === "total" && kind === "value") {
+      return "integer";
+    }
+
+    return "decimal_2";
+  }
+
+  return valueFormat;
+}
+
+function compareDisplayValues(
+  a: number | null | undefined,
+  b: number | null | undefined,
+  isHigherBetter: boolean
+) {
+  const aNull = a === null || a === undefined || Number.isNaN(a);
+  const bNull = b === null || b === undefined || Number.isNaN(b);
+
+  if (aNull && bNull) return 0;
+  if (aNull) return 1;
+  if (bNull) return -1;
+
+  return isHigherBetter ? b - a : a - b;
 }
 
 function getDeltaTone(
@@ -314,7 +353,43 @@ export function LeaguePlayerLeadersPanel({
       : "per_match";
 
   const filteredRows = useMemo(() => {
-    const prepared: PreparedRow[] = rows.map((row) => {
+    const deduped = new Map<string, LeaguePlayerLeaderboardRow>();
+
+    rows.forEach((row) => {
+      const apps = safeNumber(row.sample_matches) ?? 0;
+      if (apps < currentMinApps) return;
+
+      const role = (row.role_group ?? "").toUpperCase();
+      const positionCode = (row.position_code ?? "").toUpperCase();
+
+      if (currentRole === "starter_core") {
+        if (role === "SUBSTITUTE" || positionCode === "SUB") return;
+      }
+
+      if (currentRole === "starters") {
+        if (role === "SUBSTITUTE" || positionCode === "SUB") return;
+      }
+
+      if (currentRole === "substitutes") {
+        if (!(role === "SUBSTITUTE" || positionCode === "SUB")) return;
+      }
+
+      if (currentTeam !== "all" && row.team_slug !== currentTeam) {
+        return;
+      }
+
+      const dedupeKey = [
+        row.metric_key ?? "",
+        row.player_source_id ?? "",
+        row.team_slug ?? "",
+      ].join("|");
+
+      if (!deduped.has(dedupeKey)) {
+        deduped.set(dedupeKey, row);
+      }
+    });
+
+    const preparedBase = Array.from(deduped.values()).map((row) => {
       const displayValue =
         visibleBasis === "total"
           ? row.total_value ?? row.per_match_value ?? row.per90_value ?? null
@@ -328,12 +403,68 @@ export function LeaguePlayerLeadersPanel({
       };
     });
 
-    return prepared;
-  }, [rows, visibleBasis]);
+    const validValues = preparedBase
+      .map((row) => row.displayValue)
+      .filter((value): value is number => value !== null && !Number.isNaN(value));
+
+    const derivedLeagueAvg =
+      validValues.length > 0
+        ? validValues.reduce((sum, value) => sum + value, 0) / validValues.length
+        : null;
+
+    const isHigherBetter = selectedMetricRow?.is_higher_better !== false;
+
+    const sorted = [...preparedBase].sort((a, b) => {
+      const comparison = compareDisplayValues(
+        a.displayValue,
+        b.displayValue,
+        isHigherBetter
+      );
+
+      if (comparison !== 0) {
+        return comparison;
+      }
+
+      return (a.player_name ?? "").localeCompare(b.player_name ?? "");
+    });
+
+    return sorted.map((row, index) => {
+      let derivedVsAvgPct: number | null = null;
+
+      if (
+        row.displayValue !== null &&
+        derivedLeagueAvg !== null &&
+        !Number.isNaN(row.displayValue) &&
+        !Number.isNaN(derivedLeagueAvg)
+      ) {
+        if (derivedLeagueAvg !== 0) {
+          derivedVsAvgPct =
+            ((row.displayValue - derivedLeagueAvg) / Math.abs(derivedLeagueAvg)) *
+            100;
+        } else if (row.displayValue === 0) {
+          derivedVsAvgPct = 0;
+        }
+      }
+
+      return {
+        ...row,
+        displayRank: index + 1,
+        derivedLeagueAvg,
+        derivedVsAvgPct,
+      };
+    });
+  }, [
+    rows,
+    currentMinApps,
+    currentRole,
+    currentTeam,
+    visibleBasis,
+    selectedMetricRow?.is_higher_better,
+  ]);
 
   const leaderRow = filteredRows[0];
   const runnerUpRow = filteredRows[1];
-  const leagueAverage = safeNumber(selectedMetricRow?.league_avg);
+  const leagueAverage = filteredRows[0]?.derivedLeagueAvg ?? null;
 
   const leaderGapToAvg =
     leaderRow && leagueAverage !== null && leaderRow.displayValue !== null
@@ -415,9 +546,7 @@ export function LeaguePlayerLeadersPanel({
     leaderGapToAvg !== null
       ? formatMetricValue(
           Math.abs(leaderGapToAvg),
-          selectedMetricRow.value_format === "pct_1"
-            ? "pct_1"
-            : selectedMetricRow.value_format
+          getBasisValueFormat(selectedMetricRow.value_format, visibleBasis, "gap")
         )
       : "—";
 
@@ -425,9 +554,7 @@ export function LeaguePlayerLeadersPanel({
     leaderGapToSecond !== null
       ? `Leader vs #2: ${formatMetricValue(
           Math.abs(leaderGapToSecond),
-          selectedMetricRow.value_format === "pct_1"
-            ? "pct_1"
-            : selectedMetricRow.value_format
+          getBasisValueFormat(selectedMetricRow.value_format, visibleBasis, "gap")
         )}`
       : "Leader vs average";
 
@@ -615,16 +742,27 @@ export function LeaguePlayerLeadersPanel({
             value={leaderRow?.player_name ?? "—"}
             subvalue={
               leaderRow
-                ? `${formatMetricValue(
+                ? `#${leaderRow.displayRank} • ${formatMetricValue(
                     leaderRow.displayValue,
-                    visibleBasis === "total" ? "integer" : selectedMetricRow.value_format
+                    getBasisValueFormat(
+                      selectedMetricRow.value_format,
+                      visibleBasis,
+                      "value"
+                    )
                   )} • ${leaderRow.team_name ?? "—"}`
                 : undefined
             }
           />
           <MetricSummaryCard
             label="League Average"
-            value={formatMetricValue(leagueAverage, selectedMetricRow.value_format)}
+            value={formatMetricValue(
+              leagueAverage,
+              getBasisValueFormat(
+                selectedMetricRow.value_format,
+                visibleBasis,
+                "average"
+              )
+            )}
             subvalue={`${metricDefinition.basisLabel} baseline`}
           />
           <MetricSummaryCard
@@ -659,15 +797,21 @@ export function LeaguePlayerLeadersPanel({
           <tbody>
             {filteredRows.map((row, index) => (
               <tr
-                key={`${row.metric_key}-${row.player_source_id ?? "na"}-${row.team_slug ?? "na"}-${row.role_group ?? "na"}-${row.league_rank ?? "na"}-${visibleBasis}-${index}`}
+                key={`${row.metric_key}-${row.player_source_id ?? "na"}-${row.team_slug ?? "na"}-${row.role_group ?? "na"}-${row.displayRank}-${visibleBasis}-${index}`}
                 className="border-t border-white/10 text-[13px] text-white/80 transition hover:bg-white/[0.02]"
               >
                 <td className="px-4 py-2 whitespace-nowrap font-semibold text-white">
-                  {row.league_rank ?? "—"}
+                  {row.displayRank}
                 </td>
 
                 <td className="px-4 py-2 min-w-[220px] font-medium text-white">
-                  {row.player_name ?? "—"}
+                  <PlayerLink
+                    playerSlug={row.player_slug}
+                    className="transition hover:text-white hover:underline"
+                    title={row.player_name ?? undefined}
+                  >
+                    {row.player_name ?? "—"}
+                  </PlayerLink>
                 </td>
 
                 <td className="px-4 py-2 min-w-[180px] font-medium text-white">
@@ -691,21 +835,24 @@ export function LeaguePlayerLeadersPanel({
                 <td className="px-4 py-2 whitespace-nowrap font-medium text-white">
                   {formatMetricValue(
                     row.displayValue,
-                    visibleBasis === "total" ? "integer" : row.value_format
+                    getBasisValueFormat(row.value_format, visibleBasis, "value")
                   )}
                 </td>
 
                 <td className="px-4 py-2 whitespace-nowrap text-white/70">
-                  {formatMetricValue(row.league_avg, row.value_format)}
+                  {formatMetricValue(
+                    row.derivedLeagueAvg,
+                    getBasisValueFormat(row.value_format, visibleBasis, "average")
+                  )}
                 </td>
 
                 <td
                   className={`px-4 py-2 whitespace-nowrap font-medium ${getDeltaTone(
-                    row.vs_league_avg_pct,
+                    row.derivedVsAvgPct,
                     row.is_higher_better
                   )}`}
                 >
-                  {getDeltaText(row.vs_league_avg_pct, row.is_higher_better)}
+                  {getDeltaText(row.derivedVsAvgPct, row.is_higher_better)}
                 </td>
 
                 <td className="px-4 py-2 whitespace-nowrap text-white/70">
