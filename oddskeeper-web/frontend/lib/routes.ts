@@ -17,7 +17,7 @@ export function getPlayerDetailHref(playerSlug?: string | null): string | null {
 export function getMatchDetailHref(
   sourceMatchId?: string | null,
   tab?: string | null,
-  returnTo?: string | null
+  returnTo?: string | null,
 ): string | null {
   if (!sourceMatchId || !sourceMatchId.trim()) {
     return null;
@@ -35,4 +35,24 @@ export function getMatchDetailHref(
   }
 
   return `/dashboard/stats-analysis/football/match-stats/detail?${params.toString()}`;
+}
+
+export function getLeagueDetailHref(
+  competition?: string | null,
+  season?: string | null,
+  tab?: string | null,
+): string | null {
+  if (!competition || !competition.trim() || !season || !season.trim()) {
+    return null;
+  }
+
+  const params = new URLSearchParams();
+  params.set("competition", competition);
+  params.set("season", season);
+
+  if (tab && tab.trim()) {
+    params.set("tab", tab);
+  }
+
+  return `/dashboard/stats-analysis/football/league-stats/detail?${params.toString()}`;
 }

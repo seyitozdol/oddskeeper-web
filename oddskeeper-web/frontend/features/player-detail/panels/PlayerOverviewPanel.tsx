@@ -12,6 +12,7 @@ type PlayerOverviewPanelProps = {
 };
 
 type Tone = "neutral" | "positive" | "accent" | "warning";
+type RecencyState = "active" | "cooling" | "stale" | "unknown";
 
 function toNumber(value: number | string | null | undefined) {
   if (value === null || value === undefined || value === "") return 0;
@@ -64,7 +65,54 @@ function normalizeRoleLabel(role: string | null | undefined) {
 
 function isDefensiveProfile(positionGroup: string | null | undefined) {
   const normalized = (positionGroup ?? "").toUpperCase();
-  return normalized.includes("DEF") || normalized.includes("BACK");
+  return (
+    normalized.includes("DEF") ||
+    normalized.includes("BACK") ||
+    normalized.includes("CENTRE") ||
+    normalized.includes("CENTER")
+  );
+}
+
+function isMidfieldProfile(positionGroup: string | null | undefined) {
+  const normalized = (positionGroup ?? "").toUpperCase();
+  return normalized.includes("MID");
+}
+
+function isAttackingProfile(positionGroup: string | null | undefined) {
+  const normalized = (positionGroup ?? "").toUpperCase();
+  return (
+    normalized.includes("FW") ||
+    normalized.includes("ATT") ||
+    normalized.includes("STRIKER") ||
+    normalized.includes("WING") ||
+    normalized.includes("FORWARD")
+  );
+}
+
+function parseDateMs(value: string | null | undefined) {
+  if (!value) return null;
+  const parsed = Date.parse(value);
+  return Number.isNaN(parsed) ? null : parsed;
+}
+
+function getDaysSince(value: string | null | undefined) {
+  const parsedMs = parseDateMs(value);
+  if (parsedMs === null) return null;
+
+  const diffMs = Date.now() - parsedMs;
+  return Math.max(0, Math.floor(diffMs / 86400000));
+}
+
+function getRecencyState(daysSinceLastMatch: number | null): RecencyState {
+  if (daysSinceLastMatch === null) return "unknown";
+  if (daysSinceLastMatch <= 45) return "active";
+  if (daysSinceLastMatch <= 90) return "cooling";
+  return "stale";
+}
+
+function formatInactivityText(daysSinceLastMatch: number | null) {
+  if (daysSinceLastMatch === null) return "Last appearance date unavailable";
+  return `${daysSinceLastMatch} days since last appearance`;
 }
 
 function MiniInfoTile({
@@ -183,111 +231,178 @@ export function PlayerOverviewPanel({
 
   const avgMinutes = toNumber(profile.avg_minutes);
   const defensiveProfile = isDefensiveProfile(profile.position_group);
+  const midfieldProfile = isMidfieldProfile(profile.position_group);
+  const attackingProfile = isAttackingProfile(profile.position_group);
   const recentStartsRate = recentRows.length > 0 ? last5Starts / recentRows.length : 0;
 
-  const roleSnapshot =
-    recentStartsRate >= 0.8 && avgMinutes >= 75
-      ? {
-          label: "Core starter",
-          subvalue: `${last5Starts}/${recentRows.length || 0} recent starts • ${formatDecimal(avgMinutes, 1)} avg min`,
-          tone: "positive" as Tone,
-        }
-      : recentStartsRate >= 0.6
-      ? {
-          label: "Regular starter",
-          subvalue: `${last5Starts}/${recentRows.length || 0} recent starts`,
-          tone: "accent" as Tone,
-        }
-      : last5SubApps >= 2
-      ? {
-          label: "Rotation option",
-          subvalue: `${last5SubApps} recent sub apps`,
-          tone: "warning" as Tone,
-        }
-      : {
-          label: "Usage profile unclear",
-          subvalue: "Not enough recent role separation",
-          tone: "neutral" as Tone,
-        };
+  const lastAppearanceDate =
+    recentRows[0]?.match_datetime ?? profile.last_match_datetime ?? null;
+  const daysSinceLastMatch = getDaysSince(lastAppearanceDate);
+  const recencyState = getRecencyState(daysSinceLastMatch);
+  const staleProfile = recencyState === "stale";
+  const coolingProfile = recencyState === "cooling";
 
-  const loadSnapshot =
-    avgMinutes >= 82
-      ? {
-          label: "High-minute load",
-          subvalue: `${formatDecimal(avgMinutes, 1)} avg minutes`,
-          tone: "positive" as Tone,
-        }
-      : avgMinutes >= 60
-      ? {
-          label: "Stable workload",
-          subvalue: `${formatDecimal(avgMinutes, 1)} avg minutes`,
-          tone: "accent" as Tone,
-        }
-      : avgMinutes >= 30
-      ? {
-          label: "Managed minutes",
-          subvalue: `${formatDecimal(avgMinutes, 1)} avg minutes`,
-          tone: "warning" as Tone,
-        }
-      : {
-          label: "Low involvement",
-          subvalue: `${formatDecimal(avgMinutes, 1)} avg minutes`,
-          tone: "neutral" as Tone,
-        };
+  const roleSnapshot = staleProfile
+    ? {
+        label: "Inactive",
+        subvalue: `No appearance since ${formatDate(lastAppearanceDate)}`,
+        tone: "warning" as Tone,
+      }
+    : coolingProfile
+    ? {
+        label: "Recent role uncertain",
+        subvalue: `${formatInactivityText(daysSinceLastMatch)} • current role not fully clear`,
+        tone: "warning" as Tone,
+      }
+    : recentStartsRate >= 0.8 && avgMinutes >= 75
+    ? {
+        label: "Core starter",
+        subvalue: `${last5Starts}/${recentRows.length || 0} recent starts • ${formatDecimal(avgMinutes, 1)} avg min`,
+        tone: "positive" as Tone,
+      }
+    : recentStartsRate >= 0.6
+    ? {
+        label: "Regular starter",
+        subvalue: `${last5Starts}/${recentRows.length || 0} recent starts`,
+        tone: "accent" as Tone,
+      }
+    : last5SubApps >= 2
+    ? {
+        label: "Rotation option",
+        subvalue: `${last5SubApps} recent sub apps`,
+        tone: "warning" as Tone,
+      }
+    : {
+        label: "Usage profile unclear",
+        subvalue: "Not enough recent role separation",
+        tone: "neutral" as Tone,
+      };
 
-  const recentUsageSnapshot =
-    last5AvgMinutes >= 85
-      ? {
-          label: "Recent 90-min trust",
-          subvalue: `${formatDecimal(last5AvgMinutes, 1)} avg min across last 5`,
-          tone: "positive" as Tone,
-        }
-      : last5AvgMinutes >= 65
-      ? {
-          label: "Strong recent usage",
-          subvalue: `${formatDecimal(last5AvgMinutes, 1)} avg min across last 5`,
-          tone: "accent" as Tone,
-        }
-      : recentRows.length === 0
-      ? {
-          label: "No recent usage",
-          subvalue: "Recent match log unavailable",
-          tone: "neutral" as Tone,
-        }
-      : {
-          label: "Limited recent load",
-          subvalue: `${formatDecimal(last5AvgMinutes, 1)} avg min across last 5`,
-          tone: "warning" as Tone,
-        };
+  const loadSnapshot = staleProfile
+    ? {
+        label: "Historical workload",
+        subvalue: `${formatDecimal(avgMinutes, 1)} avg minutes before inactivity`,
+        tone: "neutral" as Tone,
+      }
+    : coolingProfile
+    ? {
+        label: "Usage cooling off",
+        subvalue: `${formatInactivityText(daysSinceLastMatch)}`,
+        tone: "warning" as Tone,
+      }
+    : avgMinutes >= 82
+    ? {
+        label: "High-minute load",
+        subvalue: `${formatDecimal(avgMinutes, 1)} avg minutes`,
+        tone: "positive" as Tone,
+      }
+    : avgMinutes >= 60
+    ? {
+        label: "Stable workload",
+        subvalue: `${formatDecimal(avgMinutes, 1)} avg minutes`,
+        tone: "accent" as Tone,
+      }
+    : avgMinutes >= 30
+    ? {
+        label: "Managed minutes",
+        subvalue: `${formatDecimal(avgMinutes, 1)} avg minutes`,
+        tone: "warning" as Tone,
+      }
+    : {
+        label: "Low involvement",
+        subvalue: `${formatDecimal(avgMinutes, 1)} avg minutes`,
+        tone: "neutral" as Tone,
+      };
 
-  const outputSnapshot =
-    last5Goals + last5Assists > 0
-      ? {
-          label: "Direct output recorded",
-          subvalue: `${last5Goals} goals • ${last5Assists} assists in last 5`,
-          tone: "accent" as Tone,
-        }
-      : defensiveProfile
-      ? {
-          label: "Defence-first profile",
-          subvalue: `${formatDecimal(last5Xg, 2)} xG in last 5`,
-          tone: "neutral" as Tone,
-        }
-      : last5Xg >= 0.4
-      ? {
-          label: "Threat without return",
-          subvalue: `${formatDecimal(last5Xg, 2)} xG in last 5`,
-          tone: "warning" as Tone,
-        }
-      : {
-          label: "Low attacking involvement",
-          subvalue: `${formatDecimal(last5Xg, 2)} xG in last 5`,
-          tone: "neutral" as Tone,
-        };
+  const recentUsageSnapshot = staleProfile
+    ? {
+        label: "No recent usage",
+        subvalue: formatInactivityText(daysSinceLastMatch),
+        tone: "warning" as Tone,
+      }
+    : coolingProfile
+    ? {
+        label: "No short-window certainty",
+        subvalue: `${formatInactivityText(daysSinceLastMatch)}`,
+        tone: "warning" as Tone,
+      }
+    : last5AvgMinutes >= 85
+    ? {
+        label: "Recent 90-min trust",
+        subvalue: `${formatDecimal(last5AvgMinutes, 1)} avg min across last 5`,
+        tone: "positive" as Tone,
+      }
+    : last5AvgMinutes >= 65
+    ? {
+        label: "Strong recent usage",
+        subvalue: `${formatDecimal(last5AvgMinutes, 1)} avg min across last 5`,
+        tone: "accent" as Tone,
+      }
+    : recentRows.length === 0
+    ? {
+        label: "No recent usage",
+        subvalue: "Recent match log unavailable",
+        tone: "neutral" as Tone,
+      }
+    : {
+        label: "Limited recent load",
+        subvalue: `${formatDecimal(last5AvgMinutes, 1)} avg min across last 5`,
+        tone: "warning" as Tone,
+      };
+
+  const outputSnapshot = staleProfile
+    ? {
+        label: "No current output window",
+        subvalue: `Output labels suppressed • last appearance ${formatDate(lastAppearanceDate)}`,
+        tone: "warning" as Tone,
+      }
+    : last5Goals + last5Assists > 0
+    ? {
+        label: "Direct output recorded",
+        subvalue: `${last5Goals} goals • ${last5Assists} assists in last 5`,
+        tone: "accent" as Tone,
+      }
+    : defensiveProfile
+    ? {
+        label: "Defensive role profile",
+        subvalue: `${last5Starts}/${recentRows.length || 0} starts • ${last5Minutes} minutes in last 5`,
+        tone: "neutral" as Tone,
+      }
+    : midfieldProfile
+    ? {
+        label: "Control-first profile",
+        subvalue: `${last5Starts}/${recentRows.length || 0} starts • 0 direct returns in last 5`,
+        tone: "neutral" as Tone,
+      }
+    : attackingProfile && last5Xg >= 0.4
+    ? {
+        label: "Threat without return",
+        subvalue: `${formatDecimal(last5Xg, 2)} xG in last 5`,
+        tone: "warning" as Tone,
+      }
+    : attackingProfile
+    ? {
+        label: "Low final-third return",
+        subvalue: `${last5Goals} goals • ${last5Assists} assists • ${formatDecimal(last5Xg, 2)} xG in last 5`,
+        tone: "neutral" as Tone,
+      }
+    : {
+        label: "Low direct output",
+        subvalue: `${last5Goals} goals • ${last5Assists} assists in last 5`,
+        tone: "neutral" as Tone,
+      };
 
   const overviewReturnTo = `/dashboard/stats-analysis/football/player-stats/detail?player=${encodeURIComponent(
     profile.player_slug
   )}&tab=overview`;
+
+  const recentFormSectionLabel = staleProfile
+    ? "Last Recorded Appearances"
+    : "Recent Form";
+
+  const last5SectionLabel = staleProfile
+    ? "Last 5 Recorded Appearances"
+    : "Last 5 Summary";
 
   return (
     <div className="space-y-2.5">
@@ -364,6 +479,7 @@ export function PlayerOverviewPanel({
               <MiniInfoTile
                 label="Last Match"
                 value={formatDate(profile.last_match_datetime)}
+                tone={staleProfile ? "warning" : coolingProfile ? "warning" : "neutral"}
               />
             </div>
           </div>
@@ -371,7 +487,7 @@ export function PlayerOverviewPanel({
       </div>
 
       <div className="rounded-[16px] border border-white/10 bg-white/[0.03] p-3">
-        <SectionLabel>Recent Form</SectionLabel>
+        <SectionLabel>{recentFormSectionLabel}</SectionLabel>
 
         {recentRows.length === 0 ? (
           <div className="mt-2 text-sm text-white/55">
@@ -422,7 +538,7 @@ export function PlayerOverviewPanel({
       </div>
 
       <div className="rounded-[16px] border border-white/10 bg-white/[0.03] p-3">
-        <SectionLabel>Last 5 Summary</SectionLabel>
+        <SectionLabel>{last5SectionLabel}</SectionLabel>
 
         <div className="mt-2 grid gap-2 sm:grid-cols-3 xl:grid-cols-8">
           <MiniInfoTile label="Matches" value={recentRows.length} tone="accent" />
@@ -432,12 +548,12 @@ export function PlayerOverviewPanel({
           <MiniInfoTile label="Avg Min" value={formatDecimal(last5AvgMinutes, 1)} tone={last5AvgMinutes >= 80 ? "positive" : last5AvgMinutes >= 60 ? "accent" : "neutral"} />
           <MiniInfoTile label="Goals" value={last5Goals} tone={last5Goals > 0 ? "accent" : "neutral"} />
           <MiniInfoTile label="Assists" value={last5Assists} tone={last5Assists > 0 ? "accent" : "neutral"} />
-          <MiniInfoTile label="xG" value={formatDecimal(last5Xg, 2)} tone={last5Xg >= 0.3 ? "accent" : "neutral"} />
+          <MiniInfoTile label="xG" value={formatDecimal(last5Xg, 2)} tone={attackingProfile && last5Xg >= 0.3 ? "accent" : "neutral"} />
         </div>
       </div>
 
       <div className="rounded-[16px] border border-white/10 bg-white/[0.03] p-3">
-        <SectionLabel>Recent Matches</SectionLabel>
+        <SectionLabel>{staleProfile ? "Last Recorded Matches" : "Recent Matches"}</SectionLabel>
 
         {recentRows.length === 0 ? (
           <div className="mt-2 text-sm text-white/55">
