@@ -1,10 +1,27 @@
-export type LeagueDetailTab = "standings" | "results" | "fixtures";
+export type LeagueDetailTab = "overview" | "standings" | "results" | "fixtures";
 
 export const LEAGUE_DETAIL_TABS: LeagueDetailTab[] = [
+  "overview",
   "standings",
   "results",
   "fixtures",
 ];
+
+export type LeagueOverviewRow = {
+  competition: string | null;
+  season_label: string | null;
+  teams_count: number;
+  completed_matches: number;
+  upcoming_fixtures: number;
+  total_goals: number;
+  goals_per_match: number | null;
+  home_win_pct: number | null;
+  draw_pct: number | null;
+  away_win_pct: number | null;
+  latest_match_datetime: string | null;
+  next_fixture_date: string | null;
+  next_fixture_datetime: string | null;
+};
 
 export type LeagueStandingRow = {
   rank: number;
@@ -32,7 +49,6 @@ export type LeagueResultRow = {
   source_match_id: string;
   competition: string | null;
   season_label: string | null;
-  round_number: number | null;
   match_datetime: string | null;
   match_date: string | null;
   home_team_source_id: string | null;
@@ -46,6 +62,7 @@ export type LeagueResultRow = {
   venue: string | null;
   match_status: string | null;
   result_code: "H" | "A" | "D" | null;
+  round_number?: number | null;
 };
 
 export type LeagueFixtureRow = {
