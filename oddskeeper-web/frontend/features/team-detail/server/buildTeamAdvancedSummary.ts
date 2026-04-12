@@ -15,7 +15,6 @@ const SPLIT_PRIORITY = [
   "team_pass_accuracy_pct",
   "team_passes",
   "team_score_against",
-  "team_offsides",
 ];
 
 function safeNumber(value: number | string | null | undefined): number | null {
@@ -149,6 +148,7 @@ function buildMetricCard(
   };
 }
 
+
 function priorityIndex(key: string, order: string[]): number {
   const idx = order.indexOf(key);
   return idx === -1 ? 999 : idx;
@@ -156,6 +156,107 @@ function priorityIndex(key: string, order: string[]): number {
 
 function isDiscipline(rule: TeamAdvancedRuleCatalogRow) {
   return rule.display_group === "discipline";
+}
+
+function isLowSignalStrengthMetricKey(metricKey: string | null | undefined): boolean {
+  return /team_(tackles|interceptions|recoveries|clearances|blocks|duels|aerials)/i.test(
+    metricKey ?? ""
+  );
+}
+
+function isLowEdgeDefensiveStrengthMetricKey(
+  metricKey: string | null | undefined
+): boolean {
+  return /team_(score_against|shots_against|shots_on_target_against)/i.test(
+    metricKey ?? ""
+  );
+}
+
+function getMinSplitGap(metricKey: string): number {
+  switch (metricKey) {
+    case "team_shots_on_target":
+      return 2.5;
+    case "team_shots":
+      return 4.0;
+    case "team_expected_goals":
+      return 0.8;
+    case "team_pass_accuracy_pct":
+      return 4.5;
+    case "team_passes":
+      return 35;
+    case "team_score_against":
+      return 0.6;
+    default:
+      return Number.POSITIVE_INFINITY;
+  }
+}
+
+function getMinSplitRelativeGapPct(metricKey: string): number {
+  switch (metricKey) {
+    case "team_shots_on_target":
+      return 40;
+    case "team_shots":
+      return 30;
+    case "team_expected_goals":
+      return 45;
+    case "team_pass_accuracy_pct":
+      return 0;
+    case "team_passes":
+      return 10;
+    case "team_score_against":
+      return 40;
+    default:
+      return Number.POSITIVE_INFINITY;
+  }
+}
+
+function isSuppressedSplitMetric(metricKey: string | null | undefined): boolean {
+  return metricKey === "team_offsides";
+}
+
+function getWeakProfileSplitGapOverride(metricKey: string): number {
+  switch (metricKey) {
+    case "team_expected_goals":
+      return 0.9;
+    case "team_shots_on_target":
+      return 3.0;
+    case "team_shots":
+      return 5.0;
+    default:
+      return 0;
+  }
+}
+
+function getWeakProfileSplitRelativeOverride(metricKey: string): number {
+  switch (metricKey) {
+    case "team_expected_goals":
+      return 50;
+    case "team_shots_on_target":
+      return 45;
+    case "team_shots":
+      return 35;
+    default:
+      return 0;
+  }
+}
+
+function buildForcedCompositeRiskCard(
+  dimension: { key: string; label: string; score: number }
+): TeamAdvancedMetricCard {
+  const severityText =
+    dimension.score <= 45
+      ? "remains materially below a safe level."
+      : "is the weakest composite dimension and should be treated as the main downside risk.";
+
+  return {
+    label: `${dimension.label} risk`,
+    reason: `${dimension.label} is the weakest composite dimension and ${severityText}`,
+    metric_key: dimension.key,
+    metric_label: dimension.label,
+    rank: null,
+    vs_avg_pct: null,
+    tone: "negative",
+  };
 }
 
 function pickPrimaryStrength(
@@ -177,22 +278,28 @@ function pickPrimaryStrength(
 
       if (score === null) return null;
 
-      const lowSignal = LOW_SIGNAL_STRENGTH_RE.test(
-        `${row.metric_key} ${row.metric_label}`
-      );
+      const lowSignalMetric = isLowSignalStrengthMetricKey(row.metric_key);
+      const lowEdgeDefensiveMetric = isLowEdgeDefensiveStrengthMetricKey(row.metric_key);
 
-      const clearsMateriality = lowSignal
-        ? score >= LOW_SIGNAL_STRENGTH_MIN_SCORE &&
-          (delta >= LOW_SIGNAL_STRENGTH_MIN_EDGE || (rank !== null && rank <= 2))
-        : score >= MATERIAL_STRENGTH_MIN_SCORE &&
-          (delta >= MATERIAL_STRENGTH_MIN_EDGE || (rank !== null && rank <= 3));
+      let strict =
+        !lowSignalMetric &&
+        ((score >= 74 && delta >= 4) ||
+          (rank !== null && rank <= 2 && delta >= 3 && rule.priority_strength <= 6));
 
-      const profileBoost =
-        !lowSignal &&
-        (profileLevel === "elite" || profileLevel === "strong") &&
-        rank !== null &&
-        rank <= 3 &&
-        score >= 72;
+      let fallback =
+        !lowSignalMetric &&
+        ((score >= 80 && delta >= 3.5 && rule.priority_strength <= 8) ||
+          (rank !== null && rank <= 3 && delta >= 3.5 && rule.priority_strength <= 5));
+
+      if (lowEdgeDefensiveMetric && delta < 3) {
+        strict = false;
+        fallback = false;
+      }
+
+      if (profileLevel === "weak" && delta < 4.5) {
+        strict = false;
+        fallback = false;
+      }
 
       return {
         row,
@@ -200,8 +307,8 @@ function pickPrimaryStrength(
         score,
         delta,
         rank,
-        lowSignal,
-        material: clearsMateriality || profileBoost,
+        strict,
+        fallback,
       };
     })
     .filter(
@@ -213,37 +320,29 @@ function pickPrimaryStrength(
         score: number;
         delta: number;
         rank: number | null;
-        lowSignal: boolean;
-        material: boolean;
+        strict: boolean;
+        fallback: boolean;
       } => item !== null
     );
 
-  const materialCandidates = [...candidates]
-    .filter((item) => item.material)
+  const strictCandidates = [...candidates]
+    .filter((item) => item.strict)
     .sort((a, b) => {
-      if (a.lowSignal !== b.lowSignal) {
-        return a.lowSignal ? 1 : -1;
-      }
       if (a.rule.priority_strength !== b.rule.priority_strength) {
         return a.rule.priority_strength - b.rule.priority_strength;
       }
       if ((a.rank ?? 999) !== (b.rank ?? 999)) {
         return (a.rank ?? 999) - (b.rank ?? 999);
       }
-      if (b.score !== a.score) return b.score - a.score;
-      return b.delta - a.delta;
+      if (b.delta !== a.delta) return b.delta - a.delta;
+      return b.score - a.score;
     });
 
-  if (materialCandidates.length > 0) {
-    const selected = materialCandidates[0];
-    const prefix =
-      profileLevel === "elite" || profileLevel === "strong"
-        ? "Flagship strength"
-        : "Primary strength";
-
+  if (strictCandidates.length > 0) {
+    const selected = strictCandidates[0];
     return {
       label: selected.row.metric_label,
-      reason: `${prefix} • Rank #${selected.row.league_rank ?? "—"} • ${formatPct(
+      reason: `Material strength • Rank #${selected.row.league_rank ?? "—"} • ${formatPct(
         selected.row.vs_league_avg_pct
       )} vs avg`,
       metric_key: selected.row.metric_key,
@@ -254,26 +353,46 @@ function pickPrimaryStrength(
     };
   }
 
-  return {
-    label: "No material strength",
-    reason:
-      "Low-signal defensive activity metrics were suppressed and no positive edge cleared the strength filter.",
-    metric_key: null,
-    metric_label: null,
-    rank: null,
-    vs_avg_pct: null,
-    tone: "warning",
-  };
+  const fallbackCandidates = [...candidates]
+    .filter((item) => item.fallback)
+    .sort((a, b) => {
+      if (a.rule.priority_strength !== b.rule.priority_strength) {
+        return a.rule.priority_strength - b.rule.priority_strength;
+      }
+      if ((a.rank ?? 999) !== (b.rank ?? 999)) {
+        return (a.rank ?? 999) - (b.rank ?? 999);
+      }
+      return b.delta - a.delta;
+    });
+
+  if (fallbackCandidates.length > 0) {
+    const selected = fallbackCandidates[0];
+    return {
+      label: selected.row.metric_label,
+      reason: `Best material edge • Rank #${selected.row.league_rank ?? "—"} • ${formatPct(
+        selected.row.vs_league_avg_pct
+      )} vs avg`,
+      metric_key: selected.row.metric_key,
+      metric_label: selected.row.metric_label,
+      rank: selected.rank,
+      vs_avg_pct: safeNumber(selected.row.vs_league_avg_pct),
+      tone: "positive",
+    };
+  }
+
+  return buildMetricCard(
+    undefined,
+    "positive",
+    "No material strength",
+    "Low-signal and low-edge positive metrics were suppressed because no metric cleared the strength filter."
+  );
 }
 
 function pickPrimaryRisk(
   rows: TeamDetailedMetricRow[],
   catalog: TeamAdvancedRuleCatalogRow[],
   leagueSize: number,
-  profileLevel: "elite" | "strong" | "mixed" | "weak",
-  attackScore: number | null,
-  defenceScore: number | null,
-  buildUpScore: number | null
+  profileLevel: "elite" | "strong" | "mixed" | "weak"
 ): TeamAdvancedMetricCard {
   const candidates = rows
     .map((row) => {
@@ -378,97 +497,26 @@ function pickPrimaryRisk(
     };
   }
 
-  const compositeDimensions = [
-    attackScore !== null
-      ? { key: "composite_attack", label: "Attack", score: attackScore }
-      : null,
-    defenceScore !== null
-      ? { key: "composite_defence", label: "Defence", score: defenceScore }
-      : null,
-    buildUpScore !== null
-      ? { key: "composite_build_up", label: "Build-up", score: buildUpScore }
-      : null,
-  ].filter(
-    (
-      item
-    ): item is { key: string; label: string; score: number } => item !== null
+  return buildMetricCard(
+    undefined,
+    "negative",
+    "No major risk",
+    profileLevel === "elite" || profileLevel === "strong"
+      ? "No material structural weakness was detected."
+      : "No single bottom-tier structural weakness dominates the profile."
   );
-
-  const worstCompositeDimension = [...compositeDimensions].sort(
-    (a, b) => a.score - b.score
-  )[0];
-
-  const weakCompositeTier =
-    profileLevel === "weak" || (worstCompositeDimension?.score ?? 100) <= 45;
-
-  const identityIsNegativeHeuristic =
-    (worstCompositeDimension?.score ?? 100) <= 48 &&
-    profileLevel !== "strong" &&
-    profileLevel !== "elite";
-
-  const shouldForceRisk =
-    !!worstCompositeDimension &&
-    (weakCompositeTier ||
-      identityIsNegativeHeuristic ||
-      worstCompositeDimension.score <= FORCED_RISK_MAX_COMPOSITE);
-
-  if (shouldForceRisk && worstCompositeDimension) {
-    const severityText =
-      worstCompositeDimension.score <= 45
-        ? "materially below a safe level"
-        : "the clearest structural downside";
-
-    return {
-      label: `${worstCompositeDimension.label} risk`,
-      reason: `${worstCompositeDimension.label} is the weakest composite dimension and remains ${severityText}.`,
-      metric_key: worstCompositeDimension.key,
-      metric_label: worstCompositeDimension.label,
-      rank: null,
-      vs_avg_pct: null,
-      tone: "negative",
-    };
-  }
-
-  return {
-    label: "No material risk",
-    reason: "No downside signal cleared the risk filter.",
-    metric_key: null,
-    metric_label: null,
-    rank: null,
-    vs_avg_pct: null,
-    tone: "accent",
-  };
 }
 
 function pickSplitSignal(
   rows: TeamDetailedMetricRow[],
-  catalog: TeamAdvancedRuleCatalogRow[]
+  catalog: TeamAdvancedRuleCatalogRow[],
+  profileLevel: "elite" | "strong" | "mixed" | "weak"
 ): TeamAdvancedMetricCard {
-  const absoluteGapFloor = (metricKey: string): number => {
-    switch (metricKey) {
-      case "team_expected_goals":
-        return 0.35;
-      case "team_shots_on_target":
-        return 1;
-      case "team_shots":
-        return 2;
-      case "team_pass_accuracy_pct":
-        return 4;
-      case "team_passes":
-        return 40;
-      case "team_score_against":
-        return 0.4;
-      case "team_offsides":
-        return 0.6;
-      default:
-        return 1;
-    }
-  };
-
   const candidates = rows
     .map((row) => {
       const rule = catalog.find((item) => item.metric_key === row.metric_key);
       if (!rule || !rule.include_in_split || !rule.is_active) return null;
+      if (isSuppressedSplitMetric(row.metric_key)) return null;
 
       const home = safeNumber(row.home_value);
       const away = safeNumber(row.away_value);
@@ -478,16 +526,27 @@ function pickSplitSignal(
       const base = Math.max((Math.abs(home) + Math.abs(away)) / 2, 1);
       const relativeGapPct = (gap / base) * 100;
       const splitPriority = priorityIndex(row.metric_key, SPLIT_PRIORITY);
-      const minGap = absoluteGapFloor(row.metric_key);
+
+      const baseMinGap = getMinSplitGap(row.metric_key);
+      const baseMinRelativeGapPct = getMinSplitRelativeGapPct(row.metric_key);
+
+      const weakProfileMinGap =
+        profileLevel === "weak"
+          ? Math.max(baseMinGap, getWeakProfileSplitGapOverride(row.metric_key))
+          : baseMinGap;
+
+      const weakProfileMinRelativeGapPct =
+        profileLevel === "weak"
+          ? Math.max(
+              baseMinRelativeGapPct,
+              getWeakProfileSplitRelativeOverride(row.metric_key)
+            )
+          : baseMinRelativeGapPct;
 
       const material =
-        ((relativeGapPct >= 20 && splitPriority <= 2) ||
-          (relativeGapPct >= 22 && splitPriority <= 4) ||
-          (relativeGapPct >= 28 && splitPriority <= 6) ||
-          (row.metric_key === "team_passes" && gap >= 40) ||
-          (row.metric_key === "team_pass_accuracy_pct" && gap >= 4)) &&
-        gap >= minGap &&
-        gap >= MATERIAL_SPLIT_MIN_MAGNITUDE / 10;
+        splitPriority <= 5 &&
+        gap >= weakProfileMinGap &&
+        relativeGapPct >= weakProfileMinRelativeGapPct;
 
       return {
         row,
@@ -518,6 +577,9 @@ function pickSplitSignal(
     .sort((a, b) => {
       if (a.splitPriority !== b.splitPriority) {
         return a.splitPriority - b.splitPriority;
+      }
+      if (b.gap !== a.gap) {
+        return b.gap - a.gap;
       }
       return b.relativeGapPct - a.relativeGapPct;
     });
@@ -1064,210 +1126,6 @@ function buildTakeaways(input: {
   };
 }
 
-type LooseTakeawayCandidate = Record<string, unknown>;
-
-const LOW_SIGNAL_STRENGTH_RE =
-  /(tackles?|interceptions?|recoveries?|ball recoveries?|clearances?|blocks?|duels?|aerials?)/i;
-
-const MATERIAL_STRENGTH_MIN_SCORE = 68;
-const MATERIAL_STRENGTH_MIN_EDGE = 8;
-
-const LOW_SIGNAL_STRENGTH_MIN_SCORE = 78;
-const LOW_SIGNAL_STRENGTH_MIN_EDGE = 14;
-
-const MATERIAL_SPLIT_MIN_MAGNITUDE = 10;
-const FORCED_RISK_MAX_COMPOSITE = 57;
-
-function readNumberFromCandidate(
-  candidate: LooseTakeawayCandidate | null | undefined,
-  keys: string[],
-): number | null {
-  for (const key of keys) {
-    const value = candidate?.[key];
-    if (typeof value === "number" && Number.isFinite(value)) {
-      return value;
-    }
-    if (typeof value === "string") {
-      const parsed = Number(value);
-      if (Number.isFinite(parsed)) {
-        return parsed;
-      }
-    }
-  }
-  return null;
-}
-
-function readTextFromCandidate(
-  candidate: LooseTakeawayCandidate | null | undefined,
-  keys: string[],
-): string {
-  for (const key of keys) {
-    const value = candidate?.[key];
-    if (typeof value === "string" && value.trim().length > 0) {
-      return value.trim();
-    }
-  }
-  return "";
-}
-
-function getCandidateScore(
-  candidate: LooseTakeawayCandidate | null | undefined,
-): number {
-  return (
-    readNumberFromCandidate(candidate, [
-      "score",
-      "signalScore",
-      "strengthScore",
-      "riskScore",
-      "splitScore",
-      "sortScore",
-      "priority",
-    ]) ?? 0
-  );
-}
-
-function getCandidateEdge(
-  candidate: LooseTakeawayCandidate | null | undefined,
-): number {
-  return Math.abs(
-    readNumberFromCandidate(candidate, [
-      "edge",
-      "delta",
-      "gap",
-      "difference",
-      "diff",
-      "valueGap",
-      "homeAwayGap",
-      "absoluteDiff",
-      "zScore",
-      "pctDiff",
-    ]) ??
-      readNumberFromCandidate(candidate, [
-        "score",
-        "signalScore",
-        "strengthScore",
-        "riskScore",
-        "splitScore",
-        "sortScore",
-      ]) ??
-      0,
-  );
-}
-
-function isLowSignalStrengthCandidate(
-  candidate: LooseTakeawayCandidate | null | undefined,
-): boolean {
-  const haystack = [
-    readTextFromCandidate(candidate, ["metricKey", "key"]),
-    readTextFromCandidate(candidate, [
-      "metricLabel",
-      "label",
-      "title",
-      "headline",
-      "name",
-    ]),
-    readTextFromCandidate(candidate, ["description", "body", "reason"]),
-  ]
-    .join(" ")
-    .trim();
-
-  return LOW_SIGNAL_STRENGTH_RE.test(haystack);
-}
-
-function pickMaterialStrengthCandidate<T extends LooseTakeawayCandidate>(
-  candidates: T[],
-): T | null {
-  return (
-    [...candidates]
-      .sort(
-        (a, b) =>
-          getCandidateScore(b) +
-          getCandidateEdge(b) -
-          (getCandidateScore(a) + getCandidateEdge(a)),
-      )
-      .find((candidate) => {
-        const lowSignal = isLowSignalStrengthCandidate(candidate);
-        const minScore = lowSignal
-          ? LOW_SIGNAL_STRENGTH_MIN_SCORE
-          : MATERIAL_STRENGTH_MIN_SCORE;
-        const minEdge = lowSignal
-          ? LOW_SIGNAL_STRENGTH_MIN_EDGE
-          : MATERIAL_STRENGTH_MIN_EDGE;
-
-        return (
-          getCandidateScore(candidate) >= minScore &&
-          getCandidateEdge(candidate) >= minEdge
-        );
-      }) ?? null
-  );
-}
-
-function pickMaterialSplitCandidate<T extends LooseTakeawayCandidate>(
-  candidates: T[],
-): T | null {
-  return (
-    [...candidates]
-      .sort((a, b) => getCandidateEdge(b) - getCandidateEdge(a))
-      .find(
-        (candidate) =>
-          getCandidateEdge(candidate) >= MATERIAL_SPLIT_MIN_MAGNITUDE,
-      ) ?? null
-  );
-}
-
-function makeNeutralTakeawayCard(
-  seed: LooseTakeawayCandidate | null | undefined,
-  title: string,
-  description: string,
-): any {
-  return {
-    ...(seed ?? {}),
-    title,
-    headline: title,
-    label: title,
-    description,
-    body: description,
-    reason: description,
-    tone: "neutral",
-    sentiment: "neutral",
-    variant: "neutral",
-    metricKey: null,
-    metricLabel: null,
-    forced: false,
-  };
-}
-
-function buildForcedCompositeRiskCard(
-  seed: LooseTakeawayCandidate | null | undefined,
-  dimension: { key: string; label: string; score: number },
-  profileLevel: string,
-): any {
-  const title = `${dimension.label} risk`;
-
-  const description =
-    dimension.score <= 45
-      ? `${dimension.label} is the weakest composite area and is materially below a safe level.`
-      : `${dimension.label} is the weakest composite area and should be treated as the main downside risk.`;
-
-  return {
-    ...(seed ?? {}),
-    title,
-    headline: title,
-    label: title,
-    description,
-    body: description,
-    reason: description,
-    tone: "negative",
-    sentiment: "negative",
-    variant: "negative",
-    metricKey: dimension.key,
-    metricLabel: dimension.label,
-    score: dimension.score,
-    forced: true,
-    profileLevel,
-  };
-}
-
 
 export function buildTeamAdvancedSummary(input: {
   rows: TeamDetailedMetricRow[];
@@ -1294,21 +1152,20 @@ export function buildTeamAdvancedSummary(input: {
   const defenceScoreForProfile = defenceScore ?? 0;
   const buildUpScoreForProfile = buildUpScore ?? 0;
 
-
   const profileLevel: "elite" | "strong" | "mixed" | "weak" =
-      attackScoreForProfile >= 80 &&
-      defenceScoreForProfile >= 80 &&
-      buildUpScoreForProfile >= 80
-        ? "elite"
-        : attackScoreForProfile >= 65 &&
-          defenceScoreForProfile >= 65 &&
-          buildUpScoreForProfile >= 60
-        ? "strong"
-        : attackScoreForProfile < 40 ||
-          defenceScoreForProfile < 40 ||
-          buildUpScoreForProfile < 40
-        ? "weak"
-        : "mixed";
+    attackScoreForProfile >= 80 &&
+    defenceScoreForProfile >= 80 &&
+    buildUpScoreForProfile >= 80
+      ? "elite"
+      : attackScoreForProfile >= 65 &&
+        defenceScoreForProfile >= 65 &&
+        buildUpScoreForProfile >= 60
+      ? "strong"
+      : attackScoreForProfile < 40 ||
+        defenceScoreForProfile < 40 ||
+        buildUpScoreForProfile < 40
+      ? "weak"
+      : "mixed";
 
   const attackIdentity = buildAttackIdentity(metricMap, attackScore, leagueSize);
   const defenceIdentity = buildDefenceIdentity(metricMap, defenceScore, leagueSize);
@@ -1316,17 +1173,47 @@ export function buildTeamAdvancedSummary(input: {
   const formIdentity = buildFormIdentity(input.form);
 
   const strength = pickPrimaryStrength(rows, catalog, leagueSize, profileLevel);
-  const risk = pickPrimaryRisk(
-    rows,
-    catalog,
-    leagueSize,
-    profileLevel,
-    attackScore,
-    defenceScore,
-    buildUpScore
-  );
-  const split = pickSplitSignal(rows, catalog);
+  const baseRisk = pickPrimaryRisk(rows, catalog, leagueSize, profileLevel);
+  const split = pickSplitSignal(rows, catalog, profileLevel);
   const trend = buildTrendCard(input.form);
+
+  const compositeDimensions = [
+    {
+      key: "attack",
+      label: "Attack",
+      score: attackScoreForProfile,
+    },
+    {
+      key: "defence",
+      label: "Defence",
+      score: defenceScoreForProfile,
+    },
+    {
+      key: "build_up",
+      label: "Build-up",
+      score: buildUpScoreForProfile,
+    },
+  ];
+
+  const worstCompositeDimension = [...compositeDimensions].sort(
+    (a, b) => a.score - b.score
+  )[0];
+
+  const identityIsNegativeHeuristic =
+    attackIdentity.label === "Blunt attack" ||
+    defenceIdentity.label === "Fragile defence" ||
+    buildUpIdentity.label === "Low-control progression";
+
+  const shouldForceRisk =
+    baseRisk.metric_key === null &&
+    (profileLevel === "weak" ||
+      identityIsNegativeHeuristic ||
+      worstCompositeDimension.score <= 57);
+
+  const risk =
+    shouldForceRisk && worstCompositeDimension
+      ? buildForcedCompositeRiskCard(worstCompositeDimension)
+      : baseRisk;
 
   const takeaways = buildTakeaways({
     strength,
