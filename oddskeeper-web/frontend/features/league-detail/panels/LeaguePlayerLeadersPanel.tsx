@@ -314,48 +314,22 @@ export function LeaguePlayerLeadersPanel({
       : "per_match";
 
   const filteredRows = useMemo(() => {
-    const prepared: PreparedRow[] = rows
-      .filter((row) => {
-        const apps = safeNumber(row.sample_matches) ?? 0;
-        if (apps < currentMinApps) return false;
+    const prepared: PreparedRow[] = rows.map((row) => {
+      const displayValue =
+        visibleBasis === "total"
+          ? row.total_value ?? row.per_match_value ?? row.per90_value ?? null
+          : visibleBasis === "per90"
+          ? row.per90_value ?? row.per_match_value ?? row.total_value ?? null
+          : row.per_match_value ?? row.per90_value ?? row.total_value ?? null;
 
-        const role = (row.role_group ?? "").toUpperCase();
-        const positionCode = (row.position_code ?? "").toUpperCase();
-
-        if (currentRole === "starter_core") {
-          if (role === "SUBSTITUTE" || positionCode === "SUB") return false;
-        }
-
-        if (currentRole === "starters") {
-          if (role === "SUBSTITUTE" || positionCode === "SUB") return false;
-        }
-
-        if (currentRole === "substitutes") {
-          if (!(role === "SUBSTITUTE" || positionCode === "SUB")) return false;
-        }
-
-        if (currentTeam !== "all" && row.team_slug !== currentTeam) {
-          return false;
-        }
-
-        return true;
-      })
-      .map((row) => {
-        const displayValue =
-          visibleBasis === "total"
-            ? row.total_value ?? row.per_match_value ?? row.per90_value ?? null
-            : visibleBasis === "per90"
-            ? row.per90_value ?? row.per_match_value ?? row.total_value ?? null
-            : row.per_match_value ?? row.per90_value ?? row.total_value ?? null;
-
-        return {
-          ...row,
-          displayValue,
-        };
-      });
+      return {
+        ...row,
+        displayValue,
+      };
+    });
 
     return prepared;
-  }, [rows, currentMinApps, currentRole, currentTeam, visibleBasis]);
+  }, [rows, visibleBasis]);
 
   const leaderRow = filteredRows[0];
   const runnerUpRow = filteredRows[1];
@@ -414,6 +388,7 @@ export function LeaguePlayerLeadersPanel({
 
   function handleMetricChange(nextMetricKey: string) {
     const nextMetric = metricOptions.find((item) => item.metric_key === nextMetricKey);
+
     replaceParams({
       metric: nextMetricKey,
       category:

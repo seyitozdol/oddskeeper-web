@@ -103,9 +103,14 @@ export default async function LeagueDetailPage({ searchParams }: PageProps) {
   let standingsData: Awaited<ReturnType<typeof getLeagueStandings>> = [];
   let resultsData: Awaited<ReturnType<typeof getLeagueResults>> = [];
   let fixturesData: Awaited<ReturnType<typeof getLeagueFixtures>> = [];
-  let teamLeaderboardData: Awaited<ReturnType<typeof getLeagueTeamLeaderboard>> = [];
-  let playerLeaderboardData: Awaited<ReturnType<typeof getLeaguePlayerLeaderboard>> = [];
-  let playerMetricOptions: Awaited<ReturnType<typeof getLeaguePlayerLeaderboardMeta>> = [];
+  let teamLeaderboardData: Awaited<ReturnType<typeof getLeagueTeamLeaderboard>> =
+    [];
+  let playerLeaderboardData: Awaited<
+    ReturnType<typeof getLeaguePlayerLeaderboard>
+  > = [];
+  let playerMetricOptions: Awaited<
+    ReturnType<typeof getLeaguePlayerLeaderboardMeta>
+  > = [];
 
   const currentCategory =
     getSingleValue(resolvedSearchParams?.category)?.trim() ?? "all";
@@ -120,7 +125,8 @@ export default async function LeagueDetailPage({ searchParams }: PageProps) {
       ? currentRoleRaw
       : "starter_core";
 
-  const currentTeam = getSingleValue(resolvedSearchParams?.team)?.trim() ?? "all";
+  const currentTeam =
+    getSingleValue(resolvedSearchParams?.team)?.trim() ?? "all";
 
   const currentMinApps = Math.max(
     1,
@@ -138,20 +144,28 @@ export default async function LeagueDetailPage({ searchParams }: PageProps) {
     case "overview":
       overviewData = await getLeagueOverview(competition, season);
       break;
+
     case "standings":
       standingsData = await getLeagueStandings(competition, season);
       break;
+
     case "results":
       resultsData = await getLeagueResults(competition, season);
       break;
+
     case "fixtures":
       fixturesData = await getLeagueFixtures(competition, season);
       break;
+
     case "team_leaders":
       teamLeaderboardData = await getLeagueTeamLeaderboard(competition, season);
       break;
+
     case "player_leaders":
-      playerMetricOptions = await getLeaguePlayerLeaderboardMeta(competition, season);
+      playerMetricOptions = await getLeaguePlayerLeaderboardMeta(
+        competition,
+        season
+      );
 
       const requestedMetric =
         getSingleValue(resolvedSearchParams?.metric)?.trim() ?? null;
@@ -159,22 +173,30 @@ export default async function LeagueDetailPage({ searchParams }: PageProps) {
       const categoryScopedOptions =
         currentCategory === "all"
           ? playerMetricOptions
-          : playerMetricOptions.filter((item) => item.category_key === currentCategory);
+          : playerMetricOptions.filter(
+              (item) => item.category_key === currentCategory
+            );
 
       const resolvedMetric =
-        categoryScopedOptions.find((item) => item.metric_key === requestedMetric)?.metric_key ??
-        playerMetricOptions.find((item) => item.metric_key === requestedMetric)?.metric_key ??
+        categoryScopedOptions.find((item) => item.metric_key === requestedMetric)
+          ?.metric_key ??
+        playerMetricOptions.find((item) => item.metric_key === requestedMetric)
+          ?.metric_key ??
         categoryScopedOptions[0]?.metric_key ??
         playerMetricOptions[0]?.metric_key ??
         null;
 
       if (resolvedMetric) {
-        playerLeaderboardData = await getLeaguePlayerLeaderboard(
+        playerLeaderboardData = await getLeaguePlayerLeaderboard({
           competition,
           season,
-          resolvedMetric
-        );
+          metricKey: resolvedMetric,
+          minApps: currentMinApps,
+          role: currentRole,
+          teamSlug: currentTeam === "all" ? null : currentTeam,
+        });
       }
+
       break;
   }
 
@@ -183,8 +205,9 @@ export default async function LeagueDetailPage({ searchParams }: PageProps) {
       ? playerLeaderboardData[0]?.metric_key ??
         (currentCategory === "all"
           ? playerMetricOptions[0]?.metric_key
-          : playerMetricOptions.find((item) => item.category_key === currentCategory)
-              ?.metric_key) ??
+          : playerMetricOptions.find(
+              (item) => item.category_key === currentCategory
+            )?.metric_key) ??
         null
       : null;
 
@@ -196,7 +219,9 @@ export default async function LeagueDetailPage({ searchParams }: PageProps) {
             <div className="text-[11px] uppercase tracking-[0.20em] text-white/35">
               League Stats
             </div>
-            <h1 className="mt-2 text-2xl font-semibold text-white">{competition}</h1>
+            <h1 className="mt-2 text-2xl font-semibold text-white">
+              {competition}
+            </h1>
             <div className="mt-1 text-sm text-white/60">{season}</div>
           </div>
 
