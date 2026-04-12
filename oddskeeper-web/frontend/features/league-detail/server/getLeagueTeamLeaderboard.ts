@@ -9,14 +9,14 @@ type LeagueTeamCategoryKey =
   | "goal_composition";
 
 export type LeagueTeamLeaderboardRow = {
-  season_label: string | null;
   competition: string | null;
-
-  metric_key: string;
-  metric_label: string;
+  season_label: string | null;
 
   category_key: LeagueTeamCategoryKey | string | null;
   category_label: string | null;
+
+  metric_key: string;
+  metric_label: string;
 
   team_slug: string | null;
   team_name: string | null;
@@ -27,27 +27,25 @@ export type LeagueTeamLeaderboardRow = {
   away_value: number | null;
 
   league_avg: number | null;
-  league_median: number | null;
   league_rank: number | null;
   vs_league_avg_pct: number | null;
 
   value_format: string | null;
-  rank_direction: string | null;
   is_higher_better: boolean | null;
 };
 
-type LeagueTeamLeaderboardDbRow = LeagueTeamLeaderboardRow;
+type TeamLeaderboardDbRow = LeagueTeamLeaderboardRow;
 
-function mapRow(row: LeagueTeamLeaderboardDbRow): LeagueTeamLeaderboardRow {
+function mapRow(row: TeamLeaderboardDbRow): LeagueTeamLeaderboardRow {
   return {
-    season_label: row.season_label,
     competition: row.competition,
-
-    metric_key: row.metric_key,
-    metric_label: row.metric_label,
+    season_label: row.season_label,
 
     category_key: row.category_key,
     category_label: row.category_label,
+
+    metric_key: row.metric_key,
+    metric_label: row.metric_label,
 
     team_slug: row.team_slug,
     team_name: row.team_name,
@@ -58,12 +56,10 @@ function mapRow(row: LeagueTeamLeaderboardDbRow): LeagueTeamLeaderboardRow {
     away_value: row.away_value,
 
     league_avg: row.league_avg,
-    league_median: row.league_median,
     league_rank: row.league_rank,
     vs_league_avg_pct: row.vs_league_avg_pct,
 
     value_format: row.value_format,
-    rank_direction: row.rank_direction,
     is_higher_better: row.is_higher_better,
   };
 }
@@ -76,15 +72,15 @@ export async function getLeagueTeamLeaderboard(
 
   const { data, error } = await supabase
     .schema("analytics")
-    .from("league_team_metric_leaderboard_v1")
+    .from("team_leaderboard_rows_v1")
     .select(
       `
-        season_label,
         competition,
-        metric_key,
-        metric_label,
+        season_label,
         category_key,
         category_label,
+        metric_key,
+        metric_label,
         team_slug,
         team_name,
         total_value,
@@ -92,22 +88,21 @@ export async function getLeagueTeamLeaderboard(
         home_value,
         away_value,
         league_avg,
-        league_median,
         league_rank,
         vs_league_avg_pct,
         value_format,
-        rank_direction,
         is_higher_better
       `
     )
     .eq("competition", competition)
     .eq("season_label", season)
+    .order("category_key", { ascending: true })
     .order("metric_label", { ascending: true })
     .order("league_rank", { ascending: true, nullsFirst: false })
-    .returns<LeagueTeamLeaderboardDbRow[]>();
+    .returns<TeamLeaderboardDbRow[]>();
 
   if (error) {
-      return [];
+    return [];
   }
 
   return (data ?? []).map(mapRow);
