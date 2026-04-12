@@ -1,7 +1,10 @@
 import Link from "next/link";
 import { getLeagueOverview } from "@/features/league-detail/server/getLeagueOverview";
 import { getLeagueFixtures } from "@/features/league-detail/server/getLeagueFixtures";
-import { getLeaguePlayerLeaderboard } from "@/features/league-detail/server/getLeaguePlayerLeaderboard";
+import {
+  getLeaguePlayerLeaderboard,
+  getLeaguePlayerLeaderboardMeta,
+} from "@/features/league-detail/server/getLeaguePlayerLeaderboard";
 import { getLeagueResults } from "@/features/league-detail/server/getLeagueResults";
 import { getLeagueStandings } from "@/features/league-detail/server/getLeagueStandings";
 import { getLeagueTeamLeaderboard } from "@/features/league-detail/server/getLeagueTeamLeaderboard";
@@ -16,6 +19,12 @@ type PageSearchParams = {
   competition?: string | string[];
   season?: string | string[];
   tab?: string | string[];
+  metric?: string | string[];
+  category?: string | string[];
+  role?: string | string[];
+  team?: string | string[];
+  minApps?: string | string[];
+  basis?: string | string[];
 };
 
 type PageProps = {
@@ -29,6 +38,9 @@ type LeagueDetailTab =
   | "fixtures"
   | "team_leaders"
   | "player_leaders";
+
+type ValueBasis = "per90" | "per_match" | "total";
+type RoleFilter = "all" | "starter_core" | "starters" | "substitutes";
 
 const TAB_LABELS: Record<LeagueDetailTab, string> = {
   overview: "Overview",
@@ -64,7 +76,6 @@ function buildLeagueTabHref(
   params.set("competition", competition);
   params.set("season", season);
   params.set("tab", tab);
-
   return `/dashboard/stats-analysis/football/league-stats/detail?${params.toString()}`;
 }
 
@@ -92,40 +103,90 @@ export default async function LeagueDetailPage({ searchParams }: PageProps) {
   let standingsData: Awaited<ReturnType<typeof getLeagueStandings>> = [];
   let resultsData: Awaited<ReturnType<typeof getLeagueResults>> = [];
   let fixturesData: Awaited<ReturnType<typeof getLeagueFixtures>> = [];
-  let teamLeaderboardData: Awaited<ReturnType<typeof getLeagueTeamLeaderboard>> =
-    [];
-  let playerLeaderboardData: Awaited<
-    ReturnType<typeof getLeaguePlayerLeaderboard>
-  > = [];
+  let teamLeaderboardData: Awaited<ReturnType<typeof getLeagueTeamLeaderboard>> = [];
+  let playerLeaderboardData: Awaited<ReturnType<typeof getLeaguePlayerLeaderboard>> = [];
+  let playerMetricOptions: Awaited<ReturnType<typeof getLeaguePlayerLeaderboardMeta>> = [];
+
+  const currentCategory =
+    getSingleValue(resolvedSearchParams?.category)?.trim() ?? "all";
+
+  const currentRoleRaw =
+    getSingleValue(resolvedSearchParams?.role)?.trim() ?? "starter_core";
+  const currentRole: RoleFilter =
+    currentRoleRaw === "all" ||
+    currentRoleRaw === "starters" ||
+    currentRoleRaw === "substitutes" ||
+    currentRoleRaw === "starter_core"
+      ? currentRoleRaw
+      : "starter_core";
+
+  const currentTeam = getSingleValue(resolvedSearchParams?.team)?.trim() ?? "all";
+
+  const currentMinApps = Math.max(
+    1,
+    Number(getSingleValue(resolvedSearchParams?.minApps) ?? "5") || 5
+  );
+
+  const currentBasisRaw =
+    getSingleValue(resolvedSearchParams?.basis)?.trim() ?? "per90";
+  const currentBasis: ValueBasis =
+    currentBasisRaw === "per_match" || currentBasisRaw === "total"
+      ? currentBasisRaw
+      : "per90";
 
   switch (activeTab) {
     case "overview":
       overviewData = await getLeagueOverview(competition, season);
       break;
-
     case "standings":
       standingsData = await getLeagueStandings(competition, season);
       break;
-
     case "results":
       resultsData = await getLeagueResults(competition, season);
       break;
-
     case "fixtures":
       fixturesData = await getLeagueFixtures(competition, season);
       break;
-
     case "team_leaders":
       teamLeaderboardData = await getLeagueTeamLeaderboard(competition, season);
       break;
-
     case "player_leaders":
-      playerLeaderboardData = await getLeaguePlayerLeaderboard(
-        competition,
-        season
-      );
+      playerMetricOptions = await getLeaguePlayerLeaderboardMeta(competition, season);
+
+      const requestedMetric =
+        getSingleValue(resolvedSearchParams?.metric)?.trim() ?? null;
+
+      const categoryScopedOptions =
+        currentCategory === "all"
+          ? playerMetricOptions
+          : playerMetricOptions.filter((item) => item.category_key === currentCategory);
+
+      const resolvedMetric =
+        categoryScopedOptions.find((item) => item.metric_key === requestedMetric)?.metric_key ??
+        playerMetricOptions.find((item) => item.metric_key === requestedMetric)?.metric_key ??
+        categoryScopedOptions[0]?.metric_key ??
+        playerMetricOptions[0]?.metric_key ??
+        null;
+
+      if (resolvedMetric) {
+        playerLeaderboardData = await getLeaguePlayerLeaderboard(
+          competition,
+          season,
+          resolvedMetric
+        );
+      }
       break;
   }
+
+  const effectivePlayerMetricKey =
+    activeTab === "player_leaders"
+      ? playerLeaderboardData[0]?.metric_key ??
+        (currentCategory === "all"
+          ? playerMetricOptions[0]?.metric_key
+          : playerMetricOptions.find((item) => item.category_key === currentCategory)
+              ?.metric_key) ??
+        null
+      : null;
 
   return (
     <div className="space-y-4">
@@ -135,9 +196,7 @@ export default async function LeagueDetailPage({ searchParams }: PageProps) {
             <div className="text-[11px] uppercase tracking-[0.20em] text-white/35">
               League Stats
             </div>
-            <h1 className="mt-2 text-2xl font-semibold text-white">
-              {competition}
-            </h1>
+            <h1 className="mt-2 text-2xl font-semibold text-white">{competition}</h1>
             <div className="mt-1 text-sm text-white/60">{season}</div>
           </div>
 
@@ -195,7 +254,18 @@ export default async function LeagueDetailPage({ searchParams }: PageProps) {
       ) : null}
 
       {activeTab === "player_leaders" ? (
-        <LeaguePlayerLeadersPanel rows={playerLeaderboardData} />
+        <LeaguePlayerLeadersPanel
+          rows={playerLeaderboardData}
+          metricOptions={playerMetricOptions}
+          competition={competition}
+          season={season}
+          currentMetricKey={effectivePlayerMetricKey}
+          currentCategory={currentCategory}
+          currentRole={currentRole}
+          currentTeam={currentTeam}
+          currentMinApps={currentMinApps}
+          currentBasis={currentBasis}
+        />
       ) : null}
     </div>
   );

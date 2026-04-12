@@ -1,48 +1,31 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import TeamLink from "@/components/links/TeamLink";
-
-export type LeaguePlayerLeaderboardRow = {
-  season_label: string | null;
-  competition: string | null;
-
-  player_source_id: string | null;
-  player_name: string | null;
-  position_code: string | null;
-  role_group: string | null;
-
-  team_slug: string | null;
-  team_name: string | null;
-
-  metric_key: string;
-  metric_label: string;
-  category_key: string | null;
-  category_label: string | null;
-
-  total_value: number | null;
-  per_match_value: number | null;
-  per90_value: number | null;
-
-  league_avg: number | null;
-  league_rank: number | null;
-  vs_league_avg_pct: number | null;
-
-  is_higher_better: boolean | null;
-  value_format: string | null;
-
-  sample_matches: number | null;
-};
-
-type LeaguePlayerLeadersPanelProps = {
-  rows?: LeaguePlayerLeaderboardRow[];
-};
+import type {
+  LeaguePlayerLeaderboardRow,
+  LeaguePlayerMetricOption,
+} from "../server/getLeaguePlayerLeaderboard";
 
 type ValueBasis = "per90" | "per_match" | "total";
 type RoleFilter = "all" | "starter_core" | "starters" | "substitutes";
 
 type PreparedRow = LeaguePlayerLeaderboardRow & {
   displayValue: number | null;
+};
+
+type LeaguePlayerLeadersPanelProps = {
+  rows?: LeaguePlayerLeaderboardRow[];
+  metricOptions?: LeaguePlayerMetricOption[];
+  competition: string;
+  season: string;
+  currentMetricKey: string | null;
+  currentCategory: string;
+  currentRole: RoleFilter;
+  currentTeam: string;
+  currentMinApps: number;
+  currentBasis: ValueBasis;
 };
 
 function safeNumber(value: number | string | null | undefined): number | null {
@@ -101,7 +84,6 @@ function getDeltaTone(
 
   const isPositive = value > 0;
   const isGood = isHigherBetter === false ? !isPositive : isPositive;
-
   return isGood ? "text-emerald-300" : "text-rose-300";
 }
 
@@ -131,23 +113,19 @@ function isTotalMeaningful(
   valueFormat: string | null | undefined
 ) {
   const key = (metricKey ?? "").toLowerCase();
-
   if (valueFormat === "pct_1") return false;
   if (key.includes("accuracy")) return false;
   if (key.includes("rate")) return false;
   if (key.includes("per90")) return false;
-
   return true;
 }
 
 function isPer90Meaningful(metricKey: string | null | undefined) {
   const key = (metricKey ?? "").toLowerCase();
-
   if (key.includes("accuracy")) return false;
   if (key.includes("pct")) return false;
   if (key.includes("rate")) return false;
   if (key.includes("appearance")) return false;
-
   return true;
 }
 
@@ -241,12 +219,7 @@ function getMetricDefinition(
     text = "Appearance counts reflect presence and selection continuity.";
   }
 
-  return {
-    directionLabel,
-    basisLabel,
-    titleText,
-    text,
-  };
+  return { directionLabel, basisLabel, titleText, text };
 }
 
 function MetricSummaryCard({
@@ -273,18 +246,24 @@ function MetricSummaryCard({
 
 export function LeaguePlayerLeadersPanel({
   rows = [],
+  metricOptions = [],
+  competition,
+  season,
+  currentMetricKey,
+  currentCategory,
+  currentRole,
+  currentTeam,
+  currentMinApps,
+  currentBasis,
 }: LeaguePlayerLeadersPanelProps) {
-  const [selectedCategory, setSelectedCategory] = useState<string>("all");
-  const [selectedMetricKey, setSelectedMetricKey] = useState<string>("");
-  const [selectedRole, setSelectedRole] = useState<RoleFilter>("starter_core");
-  const [selectedTeam, setSelectedTeam] = useState<string>("all");
-  const [minApps, setMinApps] = useState<number>(5);
-  const [basis, setBasis] = useState<ValueBasis>("per90");
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
 
   const availableCategories = useMemo(() => {
     const unique = new Map<string, string>();
 
-    rows.forEach((row) => {
+    metricOptions.forEach((row) => {
       const key = (row.category_key ?? "").trim();
       const label = (row.category_label ?? row.category_key ?? "").trim();
       if (key && !unique.has(key)) {
@@ -295,59 +274,17 @@ export function LeaguePlayerLeadersPanel({
     return Array.from(unique.entries())
       .map(([key, label]) => ({ key, label }))
       .sort((a, b) => a.label.localeCompare(b.label));
-  }, [rows]);
+  }, [metricOptions]);
 
-  const categoryScopedRows = useMemo(() => {
-    if (selectedCategory === "all") return rows;
-    return rows.filter((row) => row.category_key === selectedCategory);
-  }, [rows, selectedCategory]);
-
-  const metricOptions = useMemo(() => {
-    const unique = new Map<string, { key: string; label: string }>();
-
-    categoryScopedRows.forEach((row) => {
-      if (!unique.has(row.metric_key)) {
-        unique.set(row.metric_key, {
-          key: row.metric_key,
-          label: row.metric_label ?? row.metric_key,
-        });
-      }
-    });
-
-    return Array.from(unique.values()).sort((a, b) =>
-      a.label.localeCompare(b.label)
-    );
-  }, [categoryScopedRows]);
-
-  useEffect(() => {
-    if (!metricOptions.length) {
-      setSelectedMetricKey("");
-      return;
-    }
-
-    const exists = metricOptions.some((option) => option.key === selectedMetricKey);
-    if (!exists) {
-      setSelectedMetricKey(metricOptions[0].key);
-    }
-  }, [metricOptions, selectedMetricKey]);
-
-  const selectedMetricRows = useMemo(() => {
-    const metricKey = selectedMetricKey || metricOptions[0]?.key;
-    if (!metricKey) return [];
-
-    return rows.filter((row) => {
-      if (row.metric_key !== metricKey) return false;
-      if (selectedCategory !== "all" && row.category_key !== selectedCategory) {
-        return false;
-      }
-      return true;
-    });
-  }, [rows, selectedCategory, selectedMetricKey, metricOptions]);
+  const categoryScopedMetricOptions = useMemo(() => {
+    if (currentCategory === "all") return metricOptions;
+    return metricOptions.filter((row) => row.category_key === currentCategory);
+  }, [metricOptions, currentCategory]);
 
   const availableTeams = useMemo(() => {
     const unique = new Map<string, string>();
 
-    selectedMetricRows.forEach((row) => {
+    rows.forEach((row) => {
       const slug = (row.team_slug ?? "").trim();
       const name = (row.team_name ?? "").trim();
       if (slug && !unique.has(slug)) {
@@ -358,9 +295,9 @@ export function LeaguePlayerLeadersPanel({
     return Array.from(unique.entries())
       .map(([slug, name]) => ({ slug, name }))
       .sort((a, b) => a.name.localeCompare(b.name));
-  }, [selectedMetricRows]);
+  }, [rows]);
 
-  const selectedMetricRow = selectedMetricRows[0];
+  const selectedMetricRow = rows[0] ?? undefined;
 
   const totalAllowed = isTotalMeaningful(
     selectedMetricRow?.metric_key,
@@ -369,45 +306,35 @@ export function LeaguePlayerLeadersPanel({
 
   const per90Allowed = isPer90Meaningful(selectedMetricRow?.metric_key);
 
-  useEffect(() => {
-    if (basis === "total" && !totalAllowed) {
-      setBasis(per90Allowed ? "per90" : "per_match");
-    }
-
-    if (basis === "per90" && !per90Allowed) {
-      setBasis("per_match");
-    }
-  }, [basis, totalAllowed, per90Allowed]);
-
   const visibleBasis: ValueBasis =
-    basis === "total" && totalAllowed
+    currentBasis === "total" && totalAllowed
       ? "total"
-      : basis === "per90" && per90Allowed
+      : currentBasis === "per90" && per90Allowed
       ? "per90"
       : "per_match";
 
   const filteredRows = useMemo(() => {
-    const prepared: PreparedRow[] = selectedMetricRows
+    const prepared: PreparedRow[] = rows
       .filter((row) => {
         const apps = safeNumber(row.sample_matches) ?? 0;
-        if (apps < minApps) return false;
+        if (apps < currentMinApps) return false;
 
         const role = (row.role_group ?? "").toUpperCase();
         const positionCode = (row.position_code ?? "").toUpperCase();
 
-        if (selectedRole === "starter_core") {
+        if (currentRole === "starter_core") {
           if (role === "SUBSTITUTE" || positionCode === "SUB") return false;
         }
 
-        if (selectedRole === "starters") {
+        if (currentRole === "starters") {
           if (role === "SUBSTITUTE" || positionCode === "SUB") return false;
         }
 
-        if (selectedRole === "substitutes") {
+        if (currentRole === "substitutes") {
           if (!(role === "SUBSTITUTE" || positionCode === "SUB")) return false;
         }
 
-        if (selectedTeam !== "all" && row.team_slug !== selectedTeam) {
+        if (currentTeam !== "all" && row.team_slug !== currentTeam) {
           return false;
         }
 
@@ -425,30 +352,10 @@ export function LeaguePlayerLeadersPanel({
           ...row,
           displayValue,
         };
-      })
-      .sort((a, b) => {
-        const rankA = safeNumber(a.league_rank) ?? 999999;
-        const rankB = safeNumber(b.league_rank) ?? 999999;
-        if (rankA !== rankB) return rankA - rankB;
-        return (a.player_name ?? "").localeCompare(b.player_name ?? "");
       });
 
-    const deduped = new Map<string, PreparedRow>();
-
-    prepared.forEach((row) => {
-      const dedupeKey = [
-        row.metric_key ?? "",
-        row.player_source_id ?? "",
-        row.team_slug ?? "",
-      ].join("|");
-
-      if (!deduped.has(dedupeKey)) {
-        deduped.set(dedupeKey, row);
-      }
-    });
-
-    return Array.from(deduped.values());
-  }, [selectedMetricRows, minApps, selectedRole, selectedTeam, visibleBasis]);
+    return prepared;
+  }, [rows, currentMinApps, currentRole, currentTeam, visibleBasis]);
 
   const leaderRow = filteredRows[0];
   const runnerUpRow = filteredRows[1];
@@ -469,7 +376,57 @@ export function LeaguePlayerLeadersPanel({
 
   const metricDefinition = getMetricDefinition(selectedMetricRow, visibleBasis);
 
-  const empty = rows.length === 0 || !selectedMetricRow;
+  function replaceParams(updates: Record<string, string | null>) {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("competition", competition);
+    params.set("season", season);
+    params.set("tab", "player_leaders");
+
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value === null || value === "") {
+        params.delete(key);
+      } else {
+        params.set(key, value);
+      }
+    });
+
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  }
+
+  function handleCategoryChange(nextCategory: string) {
+    const scoped =
+      nextCategory === "all"
+        ? metricOptions
+        : metricOptions.filter((item) => item.category_key === nextCategory);
+
+    const nextMetricKey =
+      scoped.find((item) => item.metric_key === currentMetricKey)?.metric_key ??
+      scoped[0]?.metric_key ??
+      currentMetricKey ??
+      "";
+
+    replaceParams({
+      category: nextCategory === "all" ? null : nextCategory,
+      metric: nextMetricKey || null,
+      team: null,
+    });
+  }
+
+  function handleMetricChange(nextMetricKey: string) {
+    const nextMetric = metricOptions.find((item) => item.metric_key === nextMetricKey);
+    replaceParams({
+      metric: nextMetricKey,
+      category:
+        nextMetric?.category_key && nextMetric.category_key !== "all"
+          ? nextMetric.category_key
+          : currentCategory === "all"
+          ? null
+          : currentCategory,
+      team: null,
+    });
+  }
+
+  const empty = metricOptions.length === 0 || !selectedMetricRow;
 
   if (empty) {
     return (
@@ -540,7 +497,7 @@ export function LeaguePlayerLeadersPanel({
               <div className="inline-flex rounded-lg border border-white/10 bg-white/[0.03] p-1">
                 <button
                   type="button"
-                  onClick={() => setBasis("per90")}
+                  onClick={() => replaceParams({ basis: "per90" })}
                   disabled={!per90Allowed}
                   className={`rounded-md px-3 py-1.5 text-[12px] font-medium transition ${
                     visibleBasis === "per90"
@@ -555,7 +512,7 @@ export function LeaguePlayerLeadersPanel({
 
                 <button
                   type="button"
-                  onClick={() => setBasis("per_match")}
+                  onClick={() => replaceParams({ basis: "per_match" })}
                   className={`rounded-md px-3 py-1.5 text-[12px] font-medium transition ${
                     visibleBasis === "per_match"
                       ? "border border-[#4da2ff]/40 bg-[#10335d]/70 text-white"
@@ -567,7 +524,7 @@ export function LeaguePlayerLeadersPanel({
 
                 <button
                   type="button"
-                  onClick={() => setBasis("total")}
+                  onClick={() => replaceParams({ basis: "total" })}
                   disabled={!totalAllowed}
                   className={`rounded-md px-3 py-1.5 text-[12px] font-medium transition ${
                     visibleBasis === "total"
@@ -582,13 +539,13 @@ export function LeaguePlayerLeadersPanel({
               </div>
 
               <select
-                value={selectedMetricKey}
-                onChange={(event) => setSelectedMetricKey(event.target.value)}
+                value={currentMetricKey ?? ""}
+                onChange={(event) => handleMetricChange(event.target.value)}
                 className="min-w-[220px] rounded-lg border border-white/10 bg-[#0d1624] px-3 py-2 text-[13px] text-white outline-none transition focus:border-[#4da2ff]/40"
               >
-                {metricOptions.map((option) => (
-                  <option key={option.key} value={option.key}>
-                    {option.label}
+                {categoryScopedMetricOptions.map((option) => (
+                  <option key={option.metric_key} value={option.metric_key}>
+                    {option.metric_label}
                   </option>
                 ))}
               </select>
@@ -596,8 +553,13 @@ export function LeaguePlayerLeadersPanel({
 
             <div className="flex flex-wrap gap-2">
               <select
-                value={selectedRole}
-                onChange={(event) => setSelectedRole(event.target.value as RoleFilter)}
+                value={currentRole}
+                onChange={(event) =>
+                  replaceParams({
+                    role:
+                      event.target.value === "starter_core" ? null : event.target.value,
+                  })
+                }
                 className="min-w-[160px] rounded-lg border border-white/10 bg-[#0d1624] px-3 py-2 text-[12px] text-white outline-none transition focus:border-[#4da2ff]/40"
               >
                 <option value="starter_core">Starter core</option>
@@ -607,8 +569,12 @@ export function LeaguePlayerLeadersPanel({
               </select>
 
               <select
-                value={selectedTeam}
-                onChange={(event) => setSelectedTeam(event.target.value)}
+                value={currentTeam}
+                onChange={(event) =>
+                  replaceParams({
+                    team: event.target.value === "all" ? null : event.target.value,
+                  })
+                }
                 className="min-w-[180px] rounded-lg border border-white/10 bg-[#0d1624] px-3 py-2 text-[12px] text-white outline-none transition focus:border-[#4da2ff]/40"
               >
                 <option value="all">All teams</option>
@@ -620,8 +586,8 @@ export function LeaguePlayerLeadersPanel({
               </select>
 
               <select
-                value={String(minApps)}
-                onChange={(event) => setMinApps(Number(event.target.value))}
+                value={String(currentMinApps)}
+                onChange={(event) => replaceParams({ minApps: event.target.value })}
                 className="min-w-[140px] rounded-lg border border-white/10 bg-[#0d1624] px-3 py-2 text-[12px] text-white outline-none transition focus:border-[#4da2ff]/40"
               >
                 <option value="1">Min apps: 1</option>
@@ -637,9 +603,9 @@ export function LeaguePlayerLeadersPanel({
         <div className="mt-4 flex flex-wrap gap-2">
           <button
             type="button"
-            onClick={() => setSelectedCategory("all")}
+            onClick={() => handleCategoryChange("all")}
             className={`rounded-lg border px-3 py-1.5 text-[12px] font-medium transition ${
-              selectedCategory === "all"
+              currentCategory === "all"
                 ? "border-[#4da2ff]/40 bg-[#10335d]/70 text-white"
                 : "border-white/10 bg-white/[0.03] text-white/72 hover:bg-white/[0.06]"
             }`}
@@ -651,9 +617,9 @@ export function LeaguePlayerLeadersPanel({
             <button
               key={category.key}
               type="button"
-              onClick={() => setSelectedCategory(category.key)}
+              onClick={() => handleCategoryChange(category.key)}
               className={`rounded-lg border px-3 py-1.5 text-[12px] font-medium transition ${
-                selectedCategory === category.key
+                currentCategory === category.key
                   ? "border-[#4da2ff]/40 bg-[#10335d]/70 text-white"
                   : "border-white/10 bg-white/[0.03] text-white/72 hover:bg-white/[0.06]"
               }`}
@@ -669,7 +635,6 @@ export function LeaguePlayerLeadersPanel({
             value={selectedMetricRow.metric_label ?? "—"}
             subvalue={selectedMetricRow.category_label ?? "—"}
           />
-
           <MetricSummaryCard
             label="League Leader"
             value={leaderRow?.player_name ?? "—"}
@@ -682,13 +647,11 @@ export function LeaguePlayerLeadersPanel({
                 : undefined
             }
           />
-
           <MetricSummaryCard
             label="League Average"
             value={formatMetricValue(leagueAverage, selectedMetricRow.value_format)}
             subvalue={`${metricDefinition.basisLabel} baseline`}
           />
-
           <MetricSummaryCard
             label="Leader Gap"
             value={leaderGapValue}
