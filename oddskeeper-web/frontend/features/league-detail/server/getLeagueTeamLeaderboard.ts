@@ -107,15 +107,7 @@ export async function getLeagueTeamLeaderboard(
     .returns<LeagueTeamLeaderboardDbRow[]>();
 
   if (error) {
-    console.error("league team leaderboard fetch error:", {
-      competition,
-      season,
-      message: error.message,
-      details: error.details,
-      hint: error.hint,
-      code: error.code,
-    });
-    return [];
+      return [];
   }
 
   return (data ?? []).map(mapRow);

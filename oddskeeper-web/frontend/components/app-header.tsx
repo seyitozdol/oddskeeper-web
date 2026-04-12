@@ -10,6 +10,9 @@ type AppHeaderProps = {
   userEmail?: string | null;
 };
 
+const FOOTBALL_LEAGUE_DETAIL_HREF =
+  "/dashboard/stats-analysis/football/league-stats/detail?competition=S%C3%BCper%20Lig&season=2025%2F2026&tab=overview";
+
 export default function AppHeader({ userEmail }: AppHeaderProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -100,6 +103,7 @@ export default function AppHeader({ userEmail }: AppHeaderProps) {
                   iconSrc="/icons/football.svg"
                   playerHref="/dashboard/stats-analysis?sport=football&view=player"
                   teamHref="/dashboard/stats-analysis/football/team-stats"
+                  leagueHref={FOOTBALL_LEAGUE_DETAIL_HREF}
                 />
 
                 <StatsMenuItem
@@ -196,6 +200,13 @@ export default function AppHeader({ userEmail }: AppHeaderProps) {
           </Link>
 
           <Link
+            href={FOOTBALL_LEAGUE_DETAIL_HREF}
+            className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2 text-xs font-medium text-white/72"
+          >
+            Football League Details
+          </Link>
+
+          <Link
             href="/dashboard/stats-analysis?sport=basketball&view=player"
             className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2 text-xs font-medium text-white/72"
           >
@@ -220,6 +231,7 @@ type StatsMenuItemProps = {
   iconSrc: string;
   playerHref: string;
   teamHref: string;
+  leagueHref?: string;
 };
 
 function StatsMenuItem({
@@ -228,6 +240,7 @@ function StatsMenuItem({
   iconSrc,
   playerHref,
   teamHref,
+  leagueHref,
 }: StatsMenuItemProps) {
   return (
     <div className="group/item relative">
@@ -253,7 +266,7 @@ function StatsMenuItem({
       </div>
 
       <div className="pointer-events-none absolute left-[calc(100%-10px)] top-0 z-50 pl-4 opacity-0 transition duration-200 group-hover/item:pointer-events-auto group-hover/item:opacity-100">
-        <div className="w-[260px] rounded-[22px] border border-white/10 bg-[#121418]/95 p-3 shadow-[0_12px_50px_rgba(0,0,0,0.45)] backdrop-blur-xl">
+        <div className="w-[280px] rounded-[22px] border border-white/10 bg-[#121418]/95 p-3 shadow-[0_12px_50px_rgba(0,0,0,0.45)] backdrop-blur-xl">
           <Link
             href={playerHref}
             className="flex items-start gap-3 rounded-[16px] px-4 py-4 transition hover:bg-white/[0.04]"
@@ -301,6 +314,32 @@ function StatsMenuItem({
               </div>
             </div>
           </Link>
+
+          {leagueHref ? (
+            <Link
+              href={leagueHref}
+              className="flex items-start gap-3 rounded-[16px] px-4 py-4 transition hover:bg-white/[0.04]"
+            >
+              <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03]">
+                <Image
+                  src="/icons/team.svg"
+                  alt="League Details"
+                  width={20}
+                  height={20}
+                  className="opacity-85"
+                />
+              </div>
+
+              <div>
+                <div className="text-[15px] font-semibold text-white">
+                  League Details
+                </div>
+                <div className="mt-1 text-sm text-white/45">
+                  Standings, fixtures, results and leaders
+                </div>
+              </div>
+            </Link>
+          ) : null}
         </div>
       </div>
     </div>

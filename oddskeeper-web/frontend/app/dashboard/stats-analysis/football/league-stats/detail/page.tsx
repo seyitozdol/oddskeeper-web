@@ -1,22 +1,16 @@
-
 import Link from "next/link";
-import { getLeagueFixtures } from "@/features/league-detail/server/getLeagueFixtures";
 import { getLeagueOverview } from "@/features/league-detail/server/getLeagueOverview";
+import { getLeagueFixtures } from "@/features/league-detail/server/getLeagueFixtures";
+import { getLeaguePlayerLeaderboard } from "@/features/league-detail/server/getLeaguePlayerLeaderboard";
 import { getLeagueResults } from "@/features/league-detail/server/getLeagueResults";
 import { getLeagueStandings } from "@/features/league-detail/server/getLeagueStandings";
 import { getLeagueTeamLeaderboard } from "@/features/league-detail/server/getLeagueTeamLeaderboard";
-import { LeagueFixturesPanel } from "@/features/league-detail/panels/LeagueFixturesPanel";
 import { LeagueOverviewPanel } from "@/features/league-detail/panels/LeagueOverviewPanel";
+import { LeagueFixturesPanel } from "@/features/league-detail/panels/LeagueFixturesPanel";
+import { LeaguePlayerLeadersPanel } from "@/features/league-detail/panels/LeaguePlayerLeadersPanel";
 import { LeagueResultsPanel } from "@/features/league-detail/panels/LeagueResultsPanel";
 import { LeagueStandingsPanel } from "@/features/league-detail/panels/LeagueStandingsPanel";
 import { LeagueTeamLeadersPanel } from "@/features/league-detail/panels/LeagueTeamLeadersPanel";
-
-type LeagueDetailTab =
-  | "overview"
-  | "standings"
-  | "results"
-  | "fixtures"
-  | "team_leaders";
 
 type PageSearchParams = {
   competition?: string | string[];
@@ -28,12 +22,21 @@ type PageProps = {
   searchParams?: Promise<PageSearchParams>;
 };
 
+type LeagueDetailTab =
+  | "overview"
+  | "standings"
+  | "results"
+  | "fixtures"
+  | "team_leaders"
+  | "player_leaders";
+
 const TAB_LABELS: Record<LeagueDetailTab, string> = {
   overview: "Overview",
   standings: "Standings",
   results: "Results",
   fixtures: "Fixtures",
   team_leaders: "Team Leaders",
+  player_leaders: "Player Leaders",
 };
 
 function getSingleValue(value: string | string[] | undefined): string | null {
@@ -47,7 +50,8 @@ function isLeagueTab(value: string | null): value is LeagueDetailTab {
     value === "standings" ||
     value === "results" ||
     value === "fixtures" ||
-    value === "team_leaders"
+    value === "team_leaders" ||
+    value === "player_leaders"
   );
 }
 
@@ -64,28 +68,6 @@ function buildLeagueTabHref(
   return `/dashboard/stats-analysis/football/league-stats/detail?${params.toString()}`;
 }
 
-function SummaryCard({
-  label,
-  value,
-  subvalue,
-}: {
-  label: string;
-  value: string;
-  subvalue?: string;
-}) {
-  return (
-    <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
-      <div className="text-[10px] uppercase tracking-[0.14em] text-white/35">
-        {label}
-      </div>
-      <div className="mt-1 text-[20px] font-semibold text-white">{value}</div>
-      {subvalue ? (
-        <div className="mt-1 text-[11px] text-white/55">{subvalue}</div>
-      ) : null}
-    </div>
-  );
-}
-
 export default async function LeagueDetailPage({ searchParams }: PageProps) {
   const resolvedSearchParams = await searchParams;
 
@@ -93,6 +75,7 @@ export default async function LeagueDetailPage({ searchParams }: PageProps) {
     getSingleValue(resolvedSearchParams?.competition)?.trim() ?? "";
   const season = getSingleValue(resolvedSearchParams?.season)?.trim() ?? "";
   const requestedTab = getSingleValue(resolvedSearchParams?.tab)?.trim() ?? null;
+
   const activeTab: LeagueDetailTab = isLeagueTab(requestedTab)
     ? requestedTab
     : "overview";
@@ -105,24 +88,44 @@ export default async function LeagueDetailPage({ searchParams }: PageProps) {
     );
   }
 
-  const [overview, standings, results, fixtures, teamLeaders] = await Promise.all([
-    getLeagueOverview(competition, season),
-    getLeagueStandings(competition, season),
-    getLeagueResults(competition, season),
-    getLeagueFixtures(competition, season),
-    getLeagueTeamLeaderboard(competition, season),
-  ]);
+  let overviewData: Awaited<ReturnType<typeof getLeagueOverview>> | null = null;
+  let standingsData: Awaited<ReturnType<typeof getLeagueStandings>> = [];
+  let resultsData: Awaited<ReturnType<typeof getLeagueResults>> = [];
+  let fixturesData: Awaited<ReturnType<typeof getLeagueFixtures>> = [];
+  let teamLeaderboardData: Awaited<ReturnType<typeof getLeagueTeamLeaderboard>> =
+    [];
+  let playerLeaderboardData: Awaited<
+    ReturnType<typeof getLeaguePlayerLeaderboard>
+  > = [];
 
-  const totalGoals = results.reduce(
-    (sum, row) => sum + (row.home_score ?? 0) + (row.away_score ?? 0),
-    0
-  );
-  const goalsPerMatch = results.length > 0 ? totalGoals / results.length : 0;
+  switch (activeTab) {
+    case "overview":
+      overviewData = await getLeagueOverview(competition, season);
+      break;
 
-  const showTopSummary =
-    activeTab === "standings" ||
-    activeTab === "results" ||
-    activeTab === "fixtures";
+    case "standings":
+      standingsData = await getLeagueStandings(competition, season);
+      break;
+
+    case "results":
+      resultsData = await getLeagueResults(competition, season);
+      break;
+
+    case "fixtures":
+      fixturesData = await getLeagueFixtures(competition, season);
+      break;
+
+    case "team_leaders":
+      teamLeaderboardData = await getLeagueTeamLeaderboard(competition, season);
+      break;
+
+    case "player_leaders":
+      playerLeaderboardData = await getLeaguePlayerLeaderboard(
+        competition,
+        season
+      );
+      break;
+  }
 
   return (
     <div className="space-y-4">
@@ -146,6 +149,7 @@ export default async function LeagueDetailPage({ searchParams }: PageProps) {
                 "results",
                 "fixtures",
                 "team_leaders",
+                "player_leaders",
               ] as LeagueDetailTab[]
             ).map((tab) => {
               const isActive = tab === activeTab;
@@ -154,6 +158,8 @@ export default async function LeagueDetailPage({ searchParams }: PageProps) {
                 <Link
                   key={tab}
                   href={buildLeagueTabHref(competition, season, tab)}
+                  prefetch
+                  scroll={false}
                   className={`rounded-lg border px-3 py-1.5 text-[12px] font-medium transition ${
                     isActive
                       ? "border-[#4da2ff]/40 bg-[#10335d]/70 text-white"
@@ -168,48 +174,28 @@ export default async function LeagueDetailPage({ searchParams }: PageProps) {
         </div>
       </div>
 
-      {showTopSummary ? (
-        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-          <SummaryCard
-            label="Teams"
-            value={String(standings.length)}
-            subvalue="League table entries"
-          />
-          <SummaryCard
-            label="Completed Matches"
-            value={String(results.length)}
-            subvalue="Results view"
-          />
-          <SummaryCard
-            label="Upcoming Fixtures"
-            value={String(fixtures.length)}
-            subvalue="Open fixture list"
-          />
-          <SummaryCard
-            label="Goals / Match"
-            value={new Intl.NumberFormat("en-GB", {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            }).format(goalsPerMatch)}
-            subvalue={`${totalGoals} total goals`}
-          />
-        </div>
+      {activeTab === "overview" && overviewData ? (
+        <LeagueOverviewPanel overview={overviewData} />
       ) : null}
 
-      {activeTab === "overview" ? (
-        <LeagueOverviewPanel
-          overview={overview}
-          standings={standings}
-          results={results}
-          fixtures={fixtures}
-        />
+      {activeTab === "standings" ? (
+        <LeagueStandingsPanel rows={standingsData} />
       ) : null}
 
-      {activeTab === "standings" ? <LeagueStandingsPanel rows={standings} /> : null}
-      {activeTab === "results" ? <LeagueResultsPanel rows={results} /> : null}
-      {activeTab === "fixtures" ? <LeagueFixturesPanel rows={fixtures} /> : null}
+      {activeTab === "results" ? (
+        <LeagueResultsPanel rows={resultsData} />
+      ) : null}
+
+      {activeTab === "fixtures" ? (
+        <LeagueFixturesPanel rows={fixturesData} />
+      ) : null}
+
       {activeTab === "team_leaders" ? (
-        <LeagueTeamLeadersPanel rows={teamLeaders} />
+        <LeagueTeamLeadersPanel rows={teamLeaderboardData} />
+      ) : null}
+
+      {activeTab === "player_leaders" ? (
+        <LeaguePlayerLeadersPanel rows={playerLeaderboardData} />
       ) : null}
     </div>
   );
