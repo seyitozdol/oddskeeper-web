@@ -11,6 +11,8 @@ type PlayerOverviewPanelProps = {
   matchLog?: PlayerMatchLogRow[];
 };
 
+type Tone = "neutral" | "positive" | "accent" | "warning";
+
 function toNumber(value: number | string | null | undefined) {
   if (value === null || value === undefined || value === "") return 0;
 
@@ -22,40 +24,98 @@ function formatValue(value: ReactNode) {
   return value === null || value === undefined || value === "" ? "—" : value;
 }
 
-function InfoItem({
+function getToneClasses(tone: Tone) {
+  if (tone === "positive") {
+    return "border-emerald-500/20 bg-[linear-gradient(180deg,rgba(16,185,129,0.08),rgba(255,255,255,0.02))]";
+  }
+
+  if (tone === "accent") {
+    return "border-sky-500/20 bg-[linear-gradient(180deg,rgba(59,130,246,0.08),rgba(255,255,255,0.02))]";
+  }
+
+  if (tone === "warning") {
+    return "border-amber-500/20 bg-[linear-gradient(180deg,rgba(245,158,11,0.08),rgba(255,255,255,0.02))]";
+  }
+
+  return "border-white/10 bg-white/[0.025]";
+}
+
+function getRoleBadgeClasses(role: string | null | undefined) {
+  const normalized = (role ?? "").toLowerCase();
+
+  if (normalized === "starter") {
+    return "border-emerald-500/25 bg-emerald-500/10 text-emerald-300";
+  }
+
+  if (normalized === "substitute") {
+    return "border-amber-500/25 bg-amber-500/10 text-amber-300";
+  }
+
+  return "border-white/10 bg-white/[0.03] text-white/60";
+}
+
+function normalizeRoleLabel(role: string | null | undefined) {
+  const normalized = (role ?? "").toLowerCase();
+
+  if (normalized === "starter") return "Starter";
+  if (normalized === "substitute") return "Sub";
+  return "—";
+}
+
+function isDefensiveProfile(positionGroup: string | null | undefined) {
+  const normalized = (positionGroup ?? "").toUpperCase();
+  return normalized.includes("DEF") || normalized.includes("BACK");
+}
+
+function MiniInfoTile({
   label,
   value,
+  tone = "neutral",
 }: {
   label: string;
   value: ReactNode;
+  tone?: Tone;
 }) {
   return (
-    <div>
-      <div className="text-[10px] uppercase tracking-[0.14em] text-white/35">
+    <div className={`rounded-xl border px-3 py-2.5 ${getToneClasses(tone)}`}>
+      <div className="text-[9px] uppercase tracking-[0.16em] text-white/38">
         {label}
       </div>
-      <div className="mt-1 text-sm font-medium text-white">
-        {formatValue(value)}
-      </div>
+      <div className="mt-1 text-sm font-semibold text-white">{formatValue(value)}</div>
     </div>
   );
 }
 
-function SummaryItem({
+function SnapshotCard({
   label,
   value,
+  subvalue,
+  tone = "neutral",
 }: {
   label: string;
   value: ReactNode;
+  subvalue?: ReactNode;
+  tone?: Tone;
 }) {
   return (
-    <div className="min-w-0">
-      <div className="text-[10px] uppercase tracking-[0.14em] text-white/35">
+    <div className={`rounded-xl border px-3 py-3 ${getToneClasses(tone)}`}>
+      <div className="text-[9px] uppercase tracking-[0.16em] text-white/38">
         {label}
       </div>
-      <div className="mt-1 text-lg font-semibold text-white">
+      <div className="mt-1 text-[15px] font-semibold leading-5 text-white">
         {formatValue(value)}
       </div>
+      {subvalue ? (
+        <div className="mt-1 text-[11px] leading-4 text-white/58">{subvalue}</div>
+      ) : null}
+    </div>
+  );
+}
+
+function SectionLabel({ children }: { children: ReactNode }) {
+  return (
+    <div className="text-[11px] uppercase tracking-[0.22em] text-white/38">
+      {children}
     </div>
   );
 }
@@ -121,21 +181,151 @@ export function PlayerOverviewPanel({
   const last5AvgMinutes =
     recentRows.length > 0 ? last5Minutes / recentRows.length : 0;
 
+  const avgMinutes = toNumber(profile.avg_minutes);
+  const defensiveProfile = isDefensiveProfile(profile.position_group);
+  const recentStartsRate = recentRows.length > 0 ? last5Starts / recentRows.length : 0;
+
+  const roleSnapshot =
+    recentStartsRate >= 0.8 && avgMinutes >= 75
+      ? {
+          label: "Core starter",
+          subvalue: `${last5Starts}/${recentRows.length || 0} recent starts • ${formatDecimal(avgMinutes, 1)} avg min`,
+          tone: "positive" as Tone,
+        }
+      : recentStartsRate >= 0.6
+      ? {
+          label: "Regular starter",
+          subvalue: `${last5Starts}/${recentRows.length || 0} recent starts`,
+          tone: "accent" as Tone,
+        }
+      : last5SubApps >= 2
+      ? {
+          label: "Rotation option",
+          subvalue: `${last5SubApps} recent sub apps`,
+          tone: "warning" as Tone,
+        }
+      : {
+          label: "Usage profile unclear",
+          subvalue: "Not enough recent role separation",
+          tone: "neutral" as Tone,
+        };
+
+  const loadSnapshot =
+    avgMinutes >= 82
+      ? {
+          label: "High-minute load",
+          subvalue: `${formatDecimal(avgMinutes, 1)} avg minutes`,
+          tone: "positive" as Tone,
+        }
+      : avgMinutes >= 60
+      ? {
+          label: "Stable workload",
+          subvalue: `${formatDecimal(avgMinutes, 1)} avg minutes`,
+          tone: "accent" as Tone,
+        }
+      : avgMinutes >= 30
+      ? {
+          label: "Managed minutes",
+          subvalue: `${formatDecimal(avgMinutes, 1)} avg minutes`,
+          tone: "warning" as Tone,
+        }
+      : {
+          label: "Low involvement",
+          subvalue: `${formatDecimal(avgMinutes, 1)} avg minutes`,
+          tone: "neutral" as Tone,
+        };
+
+  const recentUsageSnapshot =
+    last5AvgMinutes >= 85
+      ? {
+          label: "Recent 90-min trust",
+          subvalue: `${formatDecimal(last5AvgMinutes, 1)} avg min across last 5`,
+          tone: "positive" as Tone,
+        }
+      : last5AvgMinutes >= 65
+      ? {
+          label: "Strong recent usage",
+          subvalue: `${formatDecimal(last5AvgMinutes, 1)} avg min across last 5`,
+          tone: "accent" as Tone,
+        }
+      : recentRows.length === 0
+      ? {
+          label: "No recent usage",
+          subvalue: "Recent match log unavailable",
+          tone: "neutral" as Tone,
+        }
+      : {
+          label: "Limited recent load",
+          subvalue: `${formatDecimal(last5AvgMinutes, 1)} avg min across last 5`,
+          tone: "warning" as Tone,
+        };
+
+  const outputSnapshot =
+    last5Goals + last5Assists > 0
+      ? {
+          label: "Direct output recorded",
+          subvalue: `${last5Goals} goals • ${last5Assists} assists in last 5`,
+          tone: "accent" as Tone,
+        }
+      : defensiveProfile
+      ? {
+          label: "Defence-first profile",
+          subvalue: `${formatDecimal(last5Xg, 2)} xG in last 5`,
+          tone: "neutral" as Tone,
+        }
+      : last5Xg >= 0.4
+      ? {
+          label: "Threat without return",
+          subvalue: `${formatDecimal(last5Xg, 2)} xG in last 5`,
+          tone: "warning" as Tone,
+        }
+      : {
+          label: "Low attacking involvement",
+          subvalue: `${formatDecimal(last5Xg, 2)} xG in last 5`,
+          tone: "neutral" as Tone,
+        };
+
   const overviewReturnTo = `/dashboard/stats-analysis/football/player-stats/detail?player=${encodeURIComponent(
     profile.player_slug
   )}&tab=overview`;
 
   return (
-    <div className="space-y-3">
-      <div className="rounded-[18px] border border-white/10 bg-white/[0.03] p-4">
-        <div className="grid gap-6 xl:grid-cols-2">
-          <div>
-            <div className="text-xs uppercase tracking-[0.22em] text-white/38">
-              Player Context
-            </div>
+    <div className="space-y-2.5">
+      <div className="rounded-[16px] border border-white/10 bg-white/[0.03] p-3">
+        <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+          <SnapshotCard
+            label="Role Snapshot"
+            value={roleSnapshot.label}
+            subvalue={roleSnapshot.subvalue}
+            tone={roleSnapshot.tone}
+          />
+          <SnapshotCard
+            label="Load Profile"
+            value={loadSnapshot.label}
+            subvalue={loadSnapshot.subvalue}
+            tone={loadSnapshot.tone}
+          />
+          <SnapshotCard
+            label="Recent Usage"
+            value={recentUsageSnapshot.label}
+            subvalue={recentUsageSnapshot.subvalue}
+            tone={recentUsageSnapshot.tone}
+          />
+          <SnapshotCard
+            label="Recent Output"
+            value={outputSnapshot.label}
+            subvalue={outputSnapshot.subvalue}
+            tone={outputSnapshot.tone}
+          />
+        </div>
+      </div>
 
-            <div className="mt-3 grid gap-x-6 gap-y-3 sm:grid-cols-2">
-              <InfoItem
+      <div className="rounded-[16px] border border-white/10 bg-white/[0.03] p-3">
+        <div className="grid gap-3 xl:grid-cols-2">
+          <div>
+            <SectionLabel>Player Context</SectionLabel>
+            <div className="mt-2 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+              <MiniInfoTile
                 label="Team"
                 value={
                   <TeamLink
@@ -146,32 +336,32 @@ export function PlayerOverviewPanel({
                     {profile.team_name}
                   </TeamLink>
                 }
+                tone="accent"
               />
-              <InfoItem label="Competition" value={profile.competition ?? "—"} />
-              <InfoItem label="Season" value={profile.season_label ?? "—"} />
-              <InfoItem label="Position Group" value={profile.position_group} />
+              <MiniInfoTile label="Competition" value={profile.competition ?? "—"} />
+              <MiniInfoTile label="Season" value={profile.season_label ?? "—"} />
+              <MiniInfoTile label="Position Group" value={profile.position_group} />
             </div>
           </div>
 
           <div>
-            <div className="text-xs uppercase tracking-[0.22em] text-white/38">
-              Season Summary
-            </div>
-
-            <div className="mt-3 grid gap-x-6 gap-y-3 sm:grid-cols-2">
-              <InfoItem
+            <SectionLabel>Season Summary</SectionLabel>
+            <div className="mt-2 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+              <MiniInfoTile
                 label="Avg Minutes"
-                value={formatDecimal(profile.avg_minutes)}
+                value={formatDecimal(profile.avg_minutes, 1)}
+                tone={avgMinutes >= 75 ? "positive" : avgMinutes >= 55 ? "accent" : "neutral"}
               />
-              <InfoItem
+              <MiniInfoTile
                 label="Sub Appearances"
                 value={profile.sub_appearances}
+                tone={toNumber(profile.sub_appearances) <= 2 ? "positive" : "neutral"}
               />
-              <InfoItem
+              <MiniInfoTile
                 label="First Match"
                 value={formatDate(profile.first_match_datetime)}
               />
-              <InfoItem
+              <MiniInfoTile
                 label="Last Match"
                 value={formatDate(profile.last_match_datetime)}
               />
@@ -180,21 +370,19 @@ export function PlayerOverviewPanel({
         </div>
       </div>
 
-      <div className="rounded-[18px] border border-white/10 bg-white/[0.03] p-4">
-        <div className="text-xs uppercase tracking-[0.22em] text-white/38">
-          Recent Form
-        </div>
+      <div className="rounded-[16px] border border-white/10 bg-white/[0.03] p-3">
+        <SectionLabel>Recent Form</SectionLabel>
 
         {recentRows.length === 0 ? (
-          <div className="mt-3 text-sm text-white/55">
+          <div className="mt-2 text-sm text-white/55">
             No recent form data found.
           </div>
         ) : (
-          <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-5">
+          <div className="mt-2 grid gap-2 md:grid-cols-2 xl:grid-cols-5">
             {recentRows.map((row) => (
               <div
                 key={`${row.source_match_id}-${row.player_source_id}`}
-                className="rounded-xl border border-white/8 bg-white/[0.02] px-3 py-2"
+                className="rounded-xl border border-white/8 bg-white/[0.02] px-3 py-2.5"
               >
                 <div className="flex items-center justify-between gap-2">
                   <PlayerResultBadge resultCode={row.result_code} />
@@ -210,9 +398,22 @@ export function PlayerOverviewPanel({
                   />
                 </div>
 
-                <div className="mt-2 flex items-center justify-between text-[11px] text-white/60">
+                <div className="mt-2 flex items-center justify-between gap-2 text-[11px] text-white/60">
                   <span>{row.score_display ?? "—"}</span>
                   <span>{row.minutes_played ?? "—"} min</span>
+                </div>
+
+                <div className="mt-2 flex items-center justify-between gap-2">
+                  <span
+                    className={`inline-flex rounded-md border px-2 py-[2px] text-[10px] font-medium ${getRoleBadgeClasses(
+                      row.lineup_status
+                    )}`}
+                  >
+                    {normalizeRoleLabel(row.lineup_status)}
+                  </span>
+                  <span className="text-[10px] text-white/45">
+                    xG {formatDecimal(row.expected_goals, 3)}
+                  </span>
                 </div>
               </div>
             ))}
@@ -220,40 +421,30 @@ export function PlayerOverviewPanel({
         )}
       </div>
 
-      <div className="rounded-[18px] border border-white/10 bg-white/[0.03] p-4">
-        <div className="text-xs uppercase tracking-[0.22em] text-white/38">
-          Last 5 Summary
-        </div>
+      <div className="rounded-[16px] border border-white/10 bg-white/[0.03] p-3">
+        <SectionLabel>Last 5 Summary</SectionLabel>
 
-        <div className="mt-3 grid gap-x-5 gap-y-3 sm:grid-cols-3 xl:grid-cols-7">
-          <SummaryItem label="Matches" value={recentRows.length} />
-          <SummaryItem label="Starts" value={last5Starts} />
-          <SummaryItem label="Subs" value={last5SubApps} />
-          <SummaryItem label="Minutes" value={last5Minutes} />
-          <SummaryItem
-            label="Avg Min"
-            value={formatDecimal(last5AvgMinutes, 1)}
-          />
-          <SummaryItem label="Goals" value={last5Goals} />
-          <SummaryItem label="Assists" value={last5Assists} />
-        </div>
-
-        <div className="mt-3 max-w-[160px]">
-          <SummaryItem label="xG" value={formatDecimal(last5Xg, 2)} />
+        <div className="mt-2 grid gap-2 sm:grid-cols-3 xl:grid-cols-8">
+          <MiniInfoTile label="Matches" value={recentRows.length} tone="accent" />
+          <MiniInfoTile label="Starts" value={last5Starts} tone={last5Starts >= 4 ? "positive" : "neutral"} />
+          <MiniInfoTile label="Subs" value={last5SubApps} tone={last5SubApps >= 2 ? "warning" : "neutral"} />
+          <MiniInfoTile label="Minutes" value={last5Minutes} tone={last5Minutes >= 400 ? "positive" : "neutral"} />
+          <MiniInfoTile label="Avg Min" value={formatDecimal(last5AvgMinutes, 1)} tone={last5AvgMinutes >= 80 ? "positive" : last5AvgMinutes >= 60 ? "accent" : "neutral"} />
+          <MiniInfoTile label="Goals" value={last5Goals} tone={last5Goals > 0 ? "accent" : "neutral"} />
+          <MiniInfoTile label="Assists" value={last5Assists} tone={last5Assists > 0 ? "accent" : "neutral"} />
+          <MiniInfoTile label="xG" value={formatDecimal(last5Xg, 2)} tone={last5Xg >= 0.3 ? "accent" : "neutral"} />
         </div>
       </div>
 
-      <div className="rounded-[18px] border border-white/10 bg-white/[0.03] p-4">
-        <div className="text-xs uppercase tracking-[0.22em] text-white/38">
-          Recent Matches
-        </div>
+      <div className="rounded-[16px] border border-white/10 bg-white/[0.03] p-3">
+        <SectionLabel>Recent Matches</SectionLabel>
 
         {recentRows.length === 0 ? (
-          <div className="mt-3 text-sm text-white/55">
+          <div className="mt-2 text-sm text-white/55">
             No recent match data found.
           </div>
         ) : (
-          <div className="mt-3 overflow-x-auto rounded-[14px] border border-white/10">
+          <div className="mt-2 overflow-x-auto rounded-[14px] border border-white/10">
             <table className="min-w-full border-collapse">
               <thead className="bg-white/[0.03]">
                 <tr className="text-left text-[10px] uppercase tracking-[0.14em] text-white/38">
@@ -261,6 +452,7 @@ export function PlayerOverviewPanel({
                   <th className="px-3 py-2 font-medium">Opponent</th>
                   <th className="px-3 py-2 font-medium">Score</th>
                   <th className="px-3 py-2 font-medium">Res</th>
+                  <th className="px-3 py-2 font-medium">Role</th>
                   <th className="px-3 py-2 font-medium">Min</th>
                   <th className="px-3 py-2 font-medium">G</th>
                   <th className="px-3 py-2 font-medium">A</th>
@@ -272,7 +464,7 @@ export function PlayerOverviewPanel({
                 {recentRows.map((row) => (
                   <tr
                     key={`${row.source_match_id}-${row.player_source_id}`}
-                    className="border-t border-white/10 text-[12px] text-white/80"
+                    className="border-t border-white/10 text-[12px] text-white/80 transition hover:bg-white/[0.018]"
                   >
                     <td className="px-3 py-2 whitespace-nowrap">
                       <MatchLink
@@ -305,6 +497,16 @@ export function PlayerOverviewPanel({
 
                     <td className="px-3 py-2 whitespace-nowrap">
                       <PlayerResultBadge resultCode={row.result_code} />
+                    </td>
+
+                    <td className="px-3 py-2 whitespace-nowrap">
+                      <span
+                        className={`inline-flex rounded-md border px-2 py-[2px] text-[10px] font-medium ${getRoleBadgeClasses(
+                          row.lineup_status
+                        )}`}
+                      >
+                        {normalizeRoleLabel(row.lineup_status)}
+                      </span>
                     </td>
 
                     <td className="px-3 py-2 whitespace-nowrap">
