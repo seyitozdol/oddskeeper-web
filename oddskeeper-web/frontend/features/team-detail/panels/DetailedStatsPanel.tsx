@@ -30,6 +30,16 @@ type SortConfig = {
   direction: SortDirection;
 } | null;
 
+type DisplayValueColumn =
+  | "total"
+  | "per_match"
+  | "home_per_match"
+  | "away_per_match"
+  | "league_avg_per_match"
+  | "gap";
+
+type MetricDisplayProfile = "count" | "pct" | "xg" | "ratio";
+
 const CATEGORY_ORDER: TeamDetailedCategoryKey[] = [
   "attack",
   "defence",
@@ -85,6 +95,73 @@ function formatMetricValue(
   }
 
   return formatRawNumber(value, 2);
+}
+
+function getMetricDisplayProfile(row: TeamDetailedMetricRow): MetricDisplayProfile {
+  const metricKey = row.metric_key.toLowerCase();
+  const metricLabel = row.metric_label.toLowerCase();
+  const valueFormat = row.value_format;
+
+  if (
+    valueFormat === "pct_1" ||
+    metricLabel.includes("%") ||
+    metricKey.includes("_pct")
+  ) {
+    return "pct";
+  }
+
+  if (
+    valueFormat === "decimal_3" ||
+    metricKey.includes("xg_per_shot") ||
+    metricKey.includes("per_shot")
+  ) {
+    return "ratio";
+  }
+
+  if (
+    valueFormat === "decimal_2" ||
+    metricKey.includes("expected_goals") ||
+    metricKey.includes("xg_against") ||
+    metricKey === "team_xg" ||
+    metricKey.startsWith("team_xg")
+  ) {
+    return "xg";
+  }
+
+  return "count";
+}
+
+function getColumnValueFormat(
+  row: TeamDetailedMetricRow,
+  column: DisplayValueColumn
+): string {
+  const profile = getMetricDisplayProfile(row);
+
+  if (profile === "pct") {
+    return "pct_1";
+  }
+
+  if (profile === "ratio") {
+    return "decimal_3";
+  }
+
+  if (profile === "xg") {
+    return "decimal_2";
+  }
+
+  if (column === "total") {
+    return "integer";
+  }
+
+  return "decimal_1";
+}
+
+function formatMetricCell(
+  row: TeamDetailedMetricRow,
+  value: number | null | undefined,
+  column: DisplayValueColumn
+) {
+  return formatMetricValue(value, getColumnValueFormat(row, column));
 }
 
 function getRankTone(rank: number | null | undefined) {
@@ -237,10 +314,10 @@ function InfoTooltip() {
         i
       </button>
 
-      <div className="pointer-events-none absolute left-0 top-7 z-20 hidden w-[300px] rounded-xl border border-white/10 bg-[#0a1220] px-3 py-2 text-[11px] leading-5 text-white/72 shadow-[0_12px_30px_rgba(0,0,0,0.35)] group-hover:block">
-        League-context deep team metrics. Home and Away columns are per-match
-        split values. Click a rank to open the metric leaderboard. Click column
-        headers to sort the table.
+      <div className="pointer-events-none absolute left-0 top-7 z-20 hidden w-[340px] rounded-xl border border-white/10 bg-[#0a1220] px-3 py-2 text-[11px] leading-5 text-white/72 shadow-[0_12px_30px_rgba(0,0,0,0.35)] group-hover:block">
+        Totals are season totals. Per Match, Home Per Match, Away Per Match and
+        League Avg Per Match are rate-based columns. Click a rank to open the
+        metric leaderboard. Click column headers to sort the table.
       </div>
     </div>
   );
@@ -507,18 +584,21 @@ export default function DetailedStatsPanel({
         : ("neutral" as SummaryTone),
 
       biggestSplitGap: biggestGapRow
-        ? `${biggestGapRow.metric_label} • ${formatMetricValue(
+        ? `${biggestGapRow.metric_label} • ${formatMetricCell(
+            biggestGapRow,
             biggestGapRow.home_away_gap_abs,
-            biggestGapRow.value_format
+            "gap"
           )}`
         : "—",
       biggestSplitGapSub: biggestGapRow
-        ? `Home ${formatMetricValue(
+        ? `Home PM ${formatMetricCell(
+            biggestGapRow,
             biggestGapRow.home_value,
-            biggestGapRow.value_format
-          )} • Away ${formatMetricValue(
+            "home_per_match"
+          )} • Away PM ${formatMetricCell(
+            biggestGapRow,
             biggestGapRow.away_value,
-            biggestGapRow.value_format
+            "away_per_match"
           )}`
         : undefined,
       biggestSplitGapTone: biggestGapRow
@@ -652,7 +732,7 @@ export default function DetailedStatsPanel({
                 </th>
                 <th className="px-4 py-2 font-medium">
                   <SortableHeader
-                    label="Home"
+                    label="Home Per Match"
                     sortKey="home_value"
                     sortConfig={sortConfig}
                     onSort={handleSort}
@@ -660,7 +740,7 @@ export default function DetailedStatsPanel({
                 </th>
                 <th className="px-4 py-2 font-medium">
                   <SortableHeader
-                    label="Away"
+                    label="Away Per Match"
                     sortKey="away_value"
                     sortConfig={sortConfig}
                     onSort={handleSort}
@@ -668,7 +748,7 @@ export default function DetailedStatsPanel({
                 </th>
                 <th className="px-4 py-2 font-medium">
                   <SortableHeader
-                    label="League Avg"
+                    label="League Avg Per Match"
                     sortKey="league_avg"
                     sortConfig={sortConfig}
                     onSort={handleSort}
@@ -711,23 +791,23 @@ export default function DetailedStatsPanel({
                   ) : null}
 
                   <td className="px-4 py-2 whitespace-nowrap">
-                    {formatMetricValue(row.total_value, row.value_format)}
+                    {formatMetricCell(row, row.total_value, "total")}
                   </td>
 
                   <td className="px-4 py-2 whitespace-nowrap font-medium text-white">
-                    {formatMetricValue(row.per_match_value, row.value_format)}
+                    {formatMetricCell(row, row.per_match_value, "per_match")}
                   </td>
 
                   <td className="px-4 py-2 whitespace-nowrap">
-                    {formatMetricValue(row.home_value, row.value_format)}
+                    {formatMetricCell(row, row.home_value, "home_per_match")}
                   </td>
 
                   <td className="px-4 py-2 whitespace-nowrap">
-                    {formatMetricValue(row.away_value, row.value_format)}
+                    {formatMetricCell(row, row.away_value, "away_per_match")}
                   </td>
 
                   <td className="px-4 py-2 whitespace-nowrap text-white/70">
-                    {formatMetricValue(row.league_avg, row.value_format)}
+                    {formatMetricCell(row, row.league_avg, "league_avg_per_match")}
                   </td>
 
                   <td className="px-4 py-2 whitespace-nowrap">
