@@ -5,6 +5,7 @@ export const VALID_TABS = [
   "results",
   "squad",
   "fixture",
+  "comparison",
 ] as const;
 
 export type ValidTab = (typeof VALID_TABS)[number];
@@ -16,6 +17,7 @@ export const TAB_LABELS: Record<ValidTab, string> = {
   results: "Results",
   squad: "Squad",
   fixture: "Fixture",
+  comparison: "Comparison",
 };
 
 export const TEAM_DETAIL_TABS = VALID_TABS.map((key) => ({

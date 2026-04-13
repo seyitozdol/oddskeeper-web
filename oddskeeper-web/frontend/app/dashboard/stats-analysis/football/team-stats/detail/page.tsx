@@ -15,6 +15,9 @@ import { getTeamResults } from "../../../../../../features/team-detail/server/ge
 import { getTeamSquad } from "../../../../../../features/team-detail/server/getTeamSquad";
 import { getTeamStatisticsSplit } from "../../../../../../features/team-detail/server/getTeamStatisticsSplit";
 import { getTeamStatisticsSummary } from "../../../../../../features/team-detail/server/getTeamStatisticsSummary";
+import { getTeamComparison } from "../../../../../../features/team-detail/server/getTeamComparison";
+import TeamComparisonPanel from "../../../../../../features/team-detail/panels/TeamComparisonPanel";
+import { getFootballTeams } from "../../../../../../lib/football-teams";
 import type {
   TeamAdvancedFormSnapshot,
   ValidTab,
@@ -25,6 +28,7 @@ type TeamDetailPageProps = {
   searchParams: Promise<{
     team?: string;
     tab?: string;
+    opponent?: string;
   }>;
 };
 
@@ -51,6 +55,21 @@ export default async function TeamDetailPage({
   const resolvedSearchParams = await searchParams;
   const teamSlug = resolvedSearchParams.team;
   const activeTab = getValidTab(resolvedSearchParams.tab);
+
+  const opponentSlug = resolvedSearchParams.opponent;
+
+  const comparisonData =
+    activeTab === "comparison" && teamSlug
+        ? await getTeamComparison(
+            teamSlug,
+            opponentSlug ?? "galatasaray",
+            "overall"
+            )
+        : null;
+
+    const allTeams =
+      activeTab === "comparison" ? await getFootballTeams() : [];
+
 
   if (!teamSlug) {
     notFound();
@@ -169,7 +188,13 @@ export default async function TeamDetailPage({
           <SquadPanel rows={squadRows} />
         ) : activeTab === "fixture" ? (
           <FixturePanel rows={fixtureRows} />
-        ) : null}
+        ) : activeTab === "comparison" && comparisonData ? (
+          <TeamComparisonPanel
+            initialData={comparisonData}
+            currentTeamSlug={teamSlug}
+            availableTeams={allTeams.map((t) => ({ slug: t.slug, name: t.name }))}
+          />
+         ) : null}
       </div>
     </section>
   );
