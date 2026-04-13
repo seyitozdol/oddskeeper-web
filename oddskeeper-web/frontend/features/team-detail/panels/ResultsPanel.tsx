@@ -2,7 +2,7 @@ import type { TeamResultRow } from "../types";
 import { formatDate } from "../utils/formatDate";
 import { ResultBadge } from "../components/ResultBadge";
 import TeamLink from "@/components/links/TeamLink";
-import MatchLink from "@/components/links/MatchLink";
+
 
 type ResultsPanelProps = {
   rows?: TeamResultRow[];
@@ -68,14 +68,7 @@ export function ResultsPanel({ rows = [] }: ResultsPanelProps) {
                 className="border-t border-white/10 text-[13px] text-white/80 transition hover:bg-white/[0.018]"
               >
                 <td className="px-4 py-2 whitespace-nowrap">
-                  <MatchLink
-                    sourceMatchId={row.source_match_id}
-                    returnTo={returnTo}
-                    className="transition hover:text-white hover:underline"
-                    title="Open match detail"
-                  >
-                    {formatDate(row.match_datetime)}
-                  </MatchLink>
+                  {formatDate(row.match_datetime)}
                 </td>
 
                 <td className="px-4 py-2 whitespace-nowrap text-white/60">
@@ -96,14 +89,7 @@ export function ResultsPanel({ rows = [] }: ResultsPanelProps) {
                 </td>
 
                 <td className="px-4 py-2 whitespace-nowrap font-semibold text-white">
-                  <MatchLink
-                    sourceMatchId={row.source_match_id}
-                    returnTo={returnTo}
-                    className="font-semibold text-white transition hover:text-white hover:underline"
-                    title="Open match detail"
-                  >
-                    {row.score_display ?? "—"}
-                  </MatchLink>
+                  {row.score_display ?? "—"}
                 </td>
 
                 <td className="px-4 py-2 whitespace-nowrap">

@@ -61,9 +61,9 @@ export default function AppHeader({ userEmail }: AppHeaderProps) {
 
         <nav className="hidden items-center gap-3 md:flex">
           <Link
-            href="/dashboard"
+            href="/dashboard/smart-prediction"
             className={`rounded-2xl border px-5 py-2.5 text-sm font-medium transition ${
-              pathname === "/dashboard"
+              pathname === "/dashboard/smart-prediction"
                 ? "border-[#4da2ff]/40 bg-[#10233b] text-white shadow-[0_0_25px_rgba(77,162,255,0.15)]"
                 : "border-white/10 bg-white/[0.03] text-white/72 hover:border-[#4da2ff]/25 hover:bg-[#0e1d30] hover:text-white"
             }`}
@@ -153,9 +153,9 @@ export default function AppHeader({ userEmail }: AppHeaderProps) {
       <div className="px-6 pb-3 md:hidden lg:px-10">
         <div className="flex flex-wrap gap-2">
           <Link
-            href="/dashboard"
+            href="/dashboard/smart-prediction"
             className={`rounded-xl border px-4 py-2 text-xs font-medium transition ${
-              pathname === "/dashboard"
+              pathname === "/dashboard/smart-prediction"
                 ? "border-[#4da2ff]/40 bg-[#10233b] text-white"
                 : "border-white/10 bg-white/[0.03] text-white/72"
             }`}
