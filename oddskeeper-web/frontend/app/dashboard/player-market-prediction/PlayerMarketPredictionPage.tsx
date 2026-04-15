@@ -6,6 +6,7 @@ import {
   fetchTeamPlayers,
   fetchPlayerRecentMatches,
   fetchPlayerMetricStats,
+  fetchPlayerLast5Avg,
   MARKET_OPTIONS,
   type UpcomingFixture,
   type PlayerRow,
@@ -234,7 +235,7 @@ function TeamPlayerTable({
                   </td>
 
                   <td className="px-2 py-1.5 text-right text-white/70 tabular-nums">
-                    {p.last5Avg !== null && p.last5Avg > 0 ? fmt(p.last5Avg / 5) : "—"}
+                    {p.last5Avg !== null && p.last5Avg >= 0 ? fmt(p.last5Avg) : "—"}
                   </td>
 
                   <td className="px-2 py-1.5 text-right tabular-nums text-teal-400/80">
@@ -323,9 +324,10 @@ export default function PlayerMarketPredictionPage() {
 
       const allIds = [...homeRaw, ...awayRaw].map((p) => p.player_source_id);
 
-      const [recentMatches, metricStats] = await Promise.all([
+      const [recentMatches, metricStats, last5AvgMap] = await Promise.all([
         fetchPlayerRecentMatches(allIds),
         fetchPlayerMetricStats(allIds, selectedMarket.metricKey),
+        fetchPlayerLast5Avg(allIds, selectedMarket.logField),
       ]);
 
       function buildStates(rawPlayers: PlayerRow[]): PlayerState[] {
@@ -344,7 +346,7 @@ export default function PlayerMarketPredictionPage() {
             checked: false,
             status,
             seasonAvg: stat?.per_match_value ?? null,
-            last5Avg: stat?.last5_value ?? null,
+            last5Avg: last5AvgMap[p.player_source_id] ?? null,
             manualValue: "",
           };
         });
@@ -383,13 +385,16 @@ export default function PlayerMarketPredictionPage() {
     const allIds = [...homePlayers, ...awayPlayers].map((p) => p.player_source_id);
     if (allIds.length === 0) return;
 
-    fetchPlayerMetricStats(allIds, selectedMarket.metricKey).then((metricStats) => {
+    Promise.all([
+      fetchPlayerMetricStats(allIds, selectedMarket.metricKey),
+      fetchPlayerLast5Avg(allIds, selectedMarket.logField),
+    ]).then(([metricStats, last5AvgMap]) => {
       const update = (prev: PlayerState[]) =>
         prev.map((p) => ({
           ...p,
           seasonAvg: metricStats[p.player_source_id]?.per_match_value ?? null,
-          last5Avg: metricStats[p.player_source_id]?.last5_value ?? null,
-          manualValue: "", // reset manual on market change
+          last5Avg: last5AvgMap[p.player_source_id] ?? null,
+          manualValue: "",
         }));
       setHomePlayers(update);
       setAwayPlayers(update);

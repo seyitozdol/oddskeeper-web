@@ -52,16 +52,18 @@ export type MarketOption = {
 // ─── Market definitions ───────────────────────────────────────────────────────
 
 export const MARKET_OPTIONS: MarketOption[] = [
-  { key: "shots",           label: "Shot",             metricKey: "shots_on_target_total", logField: "shots_on_target" },
-  { key: "shots_total",     label: "Shots Total",      metricKey: "attempts_ibox_total",   logField: "shots_total" },
-  { key: "shots_on_target", label: "Shots on Target",  metricKey: "shots_on_target_total", logField: "shots_on_target" },
-  { key: "passes",          label: "Passes",           metricKey: "passes_total",          logField: "passes" },
-  { key: "accurate_passes", label: "Accurate Passes",  metricKey: "accurate_pass_total",   logField: "accurate_pass" },
-  { key: "tackles",         label: "Tackles",          metricKey: "tackles_total",         logField: "tackles" },
-  { key: "fouls",           label: "Fouls",            metricKey: "fouls_conceded_total",  logField: "fouls_conceded" },
-  { key: "yellow_cards",    label: "Yellow Cards",     metricKey: "cards_yellow_total",    logField: "cards_yellow" },
-  { key: "offsides",        label: "Offsides",         metricKey: "offsides_total",        logField: "offsides" },
-  { key: "saves",           label: "Saves",            metricKey: "saves_total_total",     logField: "saves_total" },
+  { key: "shots",           label: "Shot",              metricKey: "shots_on_target_total",  logField: "shots_on_target" },
+  { key: "shots_total",     label: "Shots Total",       metricKey: "attempts_ibox_total",    logField: "shots_total" },
+  { key: "shots_on_target", label: "Shots on Target",   metricKey: "shots_on_target_total",  logField: "shots_on_target" },
+  { key: "attempts_ibox",   label: "Attempts In Box",   metricKey: "attempts_ibox_total",    logField: "attempts_ibox" },
+  { key: "attempts_obox",   label: "Attempts Out Box",  metricKey: "attempts_obox_total",    logField: "attempts_obox" },
+  { key: "passes",          label: "Passes",            metricKey: "passes_total",           logField: "passes" },
+  { key: "accurate_passes", label: "Accurate Passes",   metricKey: "accurate_pass_total",    logField: "accurate_pass" },
+  { key: "tackles",         label: "Tackles",           metricKey: "tackles_total",          logField: "tackles" },
+  { key: "fouls",           label: "Fouls",             metricKey: "fouls_conceded_total",   logField: "fouls_conceded" },
+  { key: "yellow_cards",    label: "Yellow Cards",      metricKey: "cards_yellow_total",     logField: "cards_yellow" },
+  { key: "offsides",        label: "Offsides",          metricKey: "offsides_total",         logField: "offsides" },
+  { key: "saves",           label: "Saves",             metricKey: "saves_total_total",      logField: "saves_total" },
 ];
 
 // ─── Fetch upcoming fixtures ──────────────────────────────────────────────────
@@ -153,7 +155,6 @@ export async function fetchPlayerRecentMatches(
   if (playerSourceIds.length === 0) return {};
   const supabase = createClient();
 
-  // player_match_log_v1 uses player_source_id directly
   const { data, error } = await supabase
     .schema("analytics")
     .from("player_match_log_v1")
@@ -168,7 +169,6 @@ export async function fetchPlayerRecentMatches(
     return {};
   }
 
-  // Group by player and take last N
   const grouped: Record<string, PlayerMatchEntry[]> = {};
   for (const row of data ?? []) {
     const id = row.player_source_id;
@@ -180,6 +180,56 @@ export async function fetchPlayerRecentMatches(
   }
 
   return grouped;
+}
+
+// ─── Fetch last 5 match avg per player for selected metric ───────────────────
+
+export async function fetchPlayerLast5Avg(
+  playerSourceIds: string[],
+  logField: string,
+  seasonLabel = "2025/2026"
+): Promise<Record<string, number | null>> {
+  if (playerSourceIds.length === 0) return {};
+  const supabase = createClient();
+
+  // Fetch last 5 matches per player with the stat field
+  const { data, error } = await supabase
+    .schema("analytics")
+    .from("player_match_log_v1")
+    .select(`player_source_id, match_datetime, ${logField}`)
+    .eq("season_label", seasonLabel)
+    .in("player_source_id", playerSourceIds)
+    .order("match_datetime", { ascending: false })
+    .limit(Math.min(playerSourceIds.length * 5 * 2, 1000));
+
+  if (error) {
+    console.error("fetchPlayerLast5Avg error:", error);
+    return {};
+  }
+
+  // Group by player, take last 5, compute avg
+  const grouped: Record<string, number[]> = {};
+  for (const row of data ?? []) {
+    const id = row.player_source_id;
+    if (!id) continue;
+    if (!grouped[id]) grouped[id] = [];
+    if (grouped[id].length < 5) {
+      const val = row[logField as keyof typeof row];
+      const num = val !== null && val !== undefined ? Number(val) : null;
+      if (num !== null && !isNaN(num)) grouped[id].push(num);
+    }
+  }
+
+  const result: Record<string, number | null> = {};
+  for (const id of playerSourceIds) {
+    const vals = grouped[id];
+    if (!vals || vals.length === 0) {
+      result[id] = null;
+    } else {
+      result[id] = vals.reduce((s, v) => s + v, 0) / vals.length;
+    }
+  }
+  return result;
 }
 
 // ─── Fetch player metric stats (season avg + last5) ──────────────────────────
