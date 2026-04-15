@@ -36,20 +36,20 @@ export type Market =
   | "saves" | "tackle" | "offside" | "possession"
   | "throwin" | "goalkick";
 
+export type SeasonWeight = {
+  season: string;
+  weight: number; // 0-100
+};
+
 export async function fetchUpcomingFixtures(): Promise<UpcomingFixture[]> {
   const { data, error } = await footballClient()
     .from("fixtures")
-    .select(
-      "fixture_id, home_team_name, away_team_name, home_team_slug, away_team_slug, round_number, fixture_date, season_label"
-    )
+    .select("fixture_id, home_team_name, away_team_name, home_team_slug, away_team_slug, round_number, fixture_date, season_label")
     .eq("fixture_status", "scheduled")
     .order("fixture_date", { ascending: true })
     .limit(100);
 
-  if (error) {
-    console.error("fetchUpcomingFixtures error:", error);
-    return [];
-  }
+  if (error) { console.error("fetchUpcomingFixtures error:", error); return []; }
   return data ?? [];
 }
 
@@ -59,21 +59,38 @@ export async function fetchTeamStatsCache(
   market: Market,
   nMatches: number
 ): Promise<StatsCache | null> {
-  const client = predictionClient();
-
-  const { data, error } = await client
+  // N'e eşit veya küçük max N'i çek — takımın oynadığından fazla N seçilince fallback yapar
+  const { data, error } = await predictionClient()
     .from("team_stats_cache")
     .select("hf, ha, af, aa, home_match_count, away_match_count")
     .eq("team_slug", teamSlug)
     .eq("season_label", seasonLabel)
     .eq("market", market)
-    .eq("n_matches", nMatches)
+    .lte("n_matches", nMatches)
+    .gt("n_matches", 0)
+    .order("n_matches", { ascending: false })
+    .limit(1)
     .maybeSingle();
 
-  if (error) {
-    console.error("fetchTeamStatsCache error:", error);
-    return null;
-  }
+  if (error) { console.error("fetchTeamStatsCache error:", error); return null; }
+  return data;
+}
+
+export async function fetchTeamStatsCacheFullSeason(
+  teamSlug: string,
+  seasonLabel: string,
+  market: Market,
+): Promise<StatsCache | null> {
+  const { data, error } = await predictionClient()
+    .from("team_stats_cache")
+    .select("hf, ha, af, aa, home_match_count, away_match_count")
+    .eq("team_slug", teamSlug)
+    .eq("season_label", seasonLabel)
+    .eq("market", market)
+    .eq("n_matches", -1)
+    .maybeSingle();
+
+  if (error) return null;
   return data;
 }
 
@@ -81,22 +98,38 @@ export async function fetchBothTeamsStats(
   homeSlug: string,
   awaySlug: string,
   currentSeason: string,
-  prevSeason: string,
+  seasonWeights: SeasonWeight[],
   market: Market,
   nMatches: number
 ): Promise<{
   curr: { home: StatsCache | null; away: StatsCache | null };
-  prev: { home: StatsCache | null; away: StatsCache | null };
+  prevBySeasons: { season: string; weight: number; home: StatsCache | null; away: StatsCache | null }[];
 }> {
-  const [currHome, currAway, prevHome, prevAway] = await Promise.all([
-    fetchTeamStatsCache(homeSlug, currentSeason, market, nMatches),
-    fetchTeamStatsCache(awaySlug, currentSeason, market, nMatches),
-    fetchTeamStatsCache(homeSlug, prevSeason, market, -1),
-    fetchTeamStatsCache(awaySlug, prevSeason, market, -1),
+  // Cari sezon — n=-1 ise full season, değilse fallback ile N
+  const fetchCurr = nMatches === -1
+    ? async (slug: string) => fetchTeamStatsCacheFullSeason(slug, currentSeason, market)
+    : async (slug: string) => fetchTeamStatsCache(slug, currentSeason, market, nMatches);
+
+  const [currHome, currAway] = await Promise.all([
+    fetchCurr(homeSlug),
+    fetchCurr(awaySlug),
   ]);
+
+  // Geçmiş sezonlar (hep full season)
+  const prevResults = await Promise.all(
+    seasonWeights
+      .filter(sw => sw.season !== currentSeason) // güncel sezonu burada atla
+      .map(async ({ season, weight }) => {
+        const [home, away] = await Promise.all([
+          fetchTeamStatsCacheFullSeason(homeSlug, season, market),
+          fetchTeamStatsCacheFullSeason(awaySlug, season, market),
+        ]);
+        return { season, weight, home, away };
+      })
+  );
 
   return {
     curr: { home: currHome, away: currAway },
-    prev: { home: prevHome, away: prevAway },
+    prevBySeasons: prevResults,
   };
 }

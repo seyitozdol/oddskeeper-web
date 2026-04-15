@@ -2,10 +2,8 @@ import type { Market, StatsCache } from "./queries";
 
 export type PredictionParams = {
   nMatches: number;
-  pastSeasonWeight: number;
-  tableWeight: number;
   effPct: number;
-  levelEnabled: boolean;
+  manualLevel: 0 | 1 | 2 | 3;
   refEnabled: boolean;
   oddsHome: number;
   oddsAway: number;
@@ -25,8 +23,11 @@ export type TableData = {
 };
 
 export type PredictionResult = {
+  // Tablo 1: Years Weighted (geçmiş sezonlar + güncel sezon, years dist. ağırlıklı)
   table1: { home: TableData; away: TableData; homeEq: number; awayEq: number };
+  // Tablo 2: Son N Hafta (sadece cari sezon)
   table2: { home: TableData; away: TableData; homeEq: number; awayEq: number };
+  // Tablo 3: Ağırlıklı (Tablo2 × effPct + Tablo1 × (1-effPct)) — asıl beklenti
   table3: { home: TableData; away: TableData; homeEq: number; awayEq: number };
   predHome: number;
   predAway: number;
@@ -51,57 +52,25 @@ const HALF_RATIOS: Record<Market, [number, number]> = {
   goalkick:   [0.44, 0.56],
 };
 
-const MKT_LEVEL: Market[]  = ["shot", "sot", "saves", "goalkick", "corner"];
-const MKT_LVL1: Market[]   = ["foul", "tackle", "card"];
 const MKT_REVERSE: Market[] = ["saves", "goalkick"];
-const MKT_REF: Market[]    = ["card", "foul"];
+const MKT_REF: Market[]     = ["card", "foul"];
 
-function calcEq(d: TableData, eff: number): number {
-  const w2 = 1 - eff;
-  return (d.hf * eff) + (d.af * 0.05) + (d.aa * (w2 - 0.05)) + (d.ha * 0.05);
+// Eq formülleri — çapraz: ev sahibi HF/AF home takımdan, AA/HA away takımdan
+function calcHomeEq(homeData: TableData, awayData: TableData): number {
+  return (homeData.hf * 0.65) + (homeData.af * 0.05) + (awayData.aa * 0.25) + (awayData.ha * 0.05);
 }
 
-function calcAwayEq(d: TableData, eff: number): number {
-  const w2 = 1 - eff;
-  return (d.af * eff) + (d.hf * 0.05) + (d.ha * (w2 - 0.05)) + (d.aa * 0.05);
+function calcAwayEq(homeData: TableData, awayData: TableData): number {
+  return (awayData.af * 0.65) + (awayData.hf * 0.05) + (homeData.ha * 0.25) + (homeData.aa * 0.05);
 }
 
-function getLevel(market: Market, probDiff: number, enabled: boolean): 0 | 1 | 2 | 3 {
-  if (!enabled) return 0;
-  if (MKT_LEVEL.includes(market)) {
-    if (probDiff > 4.5) return 3;
-    if (probDiff > 1.6) return 2;
-    if (probDiff > 0.25) return 1;
-    return 0;
-  }
-  if (MKT_LVL1.includes(market)) return 1;
-  return 0;
-}
-
-function getLevelKatsayi(
-  level: 0 | 1 | 2 | 3,
-  probHome: number,
-  probAway: number
-): { homeLvl: number; awayLvl: number } {
+function getLevelKatsayi(level: 0 | 1 | 2 | 3, probHome: number, probAway: number) {
   if (level === 0) return { homeLvl: 1, awayLvl: 1 };
   const mid = (probHome + probAway) / 2;
-  const div = [0, 8, 5, 3][level];
+  const div = [0, 8, 5.5, 3][level];
   return {
     homeLvl: (probHome - mid) / div + 1,
     awayLvl: (probAway - mid) / div + 1,
-  };
-}
-
-function blendTableData(
-  prev: TableData,
-  curr: TableData,
-  w: number
-): TableData {
-  return {
-    hf: prev.hf * (1 - w) + curr.hf * w,
-    ha: prev.ha * (1 - w) + curr.ha * w,
-    af: prev.af * (1 - w) + curr.af * w,
-    aa: prev.aa * (1 - w) + curr.aa * w,
   };
 }
 
@@ -110,46 +79,63 @@ function cacheToTable(c: StatsCache | null): TableData | null {
   return { hf: c.hf, ha: c.ha!, af: c.af!, aa: c.aa! };
 }
 
+// Tablo3: ağırlıklı blend — effPct cari sezonu, (1-effPct) years weighted'ı ağırlıklandırır
+function blendTables(t1: TableData, t2: TableData, effPct: number): TableData {
+  const w1 = 1 - effPct;
+  const w2 = effPct;
+  return {
+    hf: t1.hf * w1 + t2.hf * w2,
+    ha: t1.ha * w1 + t2.ha * w2,
+    af: t1.af * w1 + t2.af * w2,
+    aa: t1.aa * w1 + t2.aa * w2,
+  };
+}
+
 export function computePrediction(
   market: Market,
   params: PredictionParams,
+  // prevHome/Away = years weighted blend (tüm sezonlar ağırlıklı)
   prevHome: StatsCache | null,
   prevAway: StatsCache | null,
+  // currHome/Away = son N hafta (cari sezon)
   currHome: StatsCache | null,
   currAway: StatsCache | null
 ): PredictionResult | null {
-  const ph = cacheToTable(prevHome);
-  const pa = cacheToTable(prevAway);
-  const ch = cacheToTable(currHome);
-  const ca = cacheToTable(currAway);
 
-  if ((!ph && !ch) || (!pa && !ca)) return null;
+  const t1HomeData = cacheToTable(prevHome);
+  const t1AwayData = cacheToTable(prevAway);
+  const t2HomeData = cacheToTable(currHome);
+  const t2AwayData = cacheToTable(currAway);
 
-  // Fallback: curr yoksa prev kullan, prev yoksa curr kullan
-  const t1Home: TableData = ph ?? ch!;
-  const t1Away: TableData = pa ?? ca!;
-  const t2Home: TableData = ch ?? ph!;
-  const t2Away: TableData = ca ?? pa!;
+  // En az bir tablo olmalı
+  if ((!t1HomeData && !t2HomeData) || (!t1AwayData && !t2AwayData)) return null;
 
-  const { effPct, tableWeight: w } = params;
+  // Fallback: biri yoksa diğerini kullan
+  const t1Home = t1HomeData ?? t2HomeData!;
+  const t1Away = t1AwayData ?? t2AwayData!;
+  const t2Home = t2HomeData ?? t1HomeData!;
+  const t2Away = t2AwayData ?? t1AwayData!;
 
-  const t3Home = blendTableData(t1Home, t2Home, w);
-  const t3Away = blendTableData(t1Away, t2Away, w);
+  // Tablo 1: Years Weighted — Eq çapraz
+  const t1HomeEq = calcHomeEq(t1Home, t1Away);
+  const t1AwayEq = calcAwayEq(t1Home, t1Away);
 
-  const t1HomeEq = calcEq(t1Home, effPct);
-  const t1AwayEq = calcAwayEq(t1Away, effPct);
-  const t2HomeEq = calcEq(t2Home, effPct);
-  const t2AwayEq = calcAwayEq(t2Away, effPct);
-  const t3HomeEq = calcEq(t3Home, effPct);
-  const t3AwayEq = calcAwayEq(t3Away, effPct);
+  // Tablo 2: Son N Hafta — Eq çapraz
+  const t2HomeEq = calcHomeEq(t2Home, t2Away);
+  const t2AwayEq = calcAwayEq(t2Home, t2Away);
+
+  // Tablo 3: Ağırlıklı = T2 × effPct + T1 × (1-effPct)
+  const t3Home = blendTables(t1Home, t2Home, params.effPct);
+  const t3Away = blendTables(t1Away, t2Away, params.effPct);
+  const t3HomeEq = calcHomeEq(t3Home, t3Away);
+  const t3AwayEq = calcAwayEq(t3Home, t3Away);
 
   const probHome = 1 / params.oddsHome;
   const probAway = 1 / params.oddsAway;
-  const probDiff = Math.abs(probHome - probAway);
-
-  const level = getLevel(market, probDiff, params.levelEnabled);
+  const level = params.manualLevel;
   const { homeLvl, awayLvl } = getLevelKatsayi(level, probHome, probAway);
 
+  // Tahmin = Tablo3 Eq × level katsayısı
   const isReverse = MKT_REVERSE.includes(market);
   let predHome = isReverse ? t3HomeEq * (1 / awayLvl) : t3HomeEq * homeLvl;
   let predAway = isReverse ? t3AwayEq * (1 / homeLvl) : t3AwayEq * awayLvl;
