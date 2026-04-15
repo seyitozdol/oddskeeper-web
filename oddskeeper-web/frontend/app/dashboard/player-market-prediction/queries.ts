@@ -52,11 +52,9 @@ export type MarketOption = {
 // ─── Market definitions ───────────────────────────────────────────────────────
 
 export const MARKET_OPTIONS: MarketOption[] = [
-  { key: "shots",           label: "Shot",              metricKey: "shots_on_target_total",  logField: "shots_on_target" },
-  { key: "shots_total",     label: "Shots Total",       metricKey: "attempts_ibox_total",    logField: "shots_total" },
   { key: "shots_on_target", label: "Shots on Target",   metricKey: "shots_on_target_total",  logField: "shots_on_target" },
-  { key: "attempts_ibox",   label: "Attempts In Box",   metricKey: "attempts_ibox_total",    logField: "attempts_ibox" },
-  { key: "attempts_obox",   label: "Attempts Out Box",  metricKey: "attempts_obox_total",    logField: "attempts_obox" },
+  { key: "attempts_ibox",   label: "Attempts In Box",   metricKey: "attempts_ibox_total",    logField: "shots_on_target" },
+  { key: "attempts_obox",   label: "Attempts Out Box",  metricKey: "attempts_obox_total",    logField: "shots_off_target" },
   { key: "passes",          label: "Passes",            metricKey: "passes_total",           logField: "passes" },
   { key: "accurate_passes", label: "Accurate Passes",   metricKey: "accurate_pass_total",    logField: "accurate_pass" },
   { key: "tackles",         label: "Tackles",           metricKey: "tackles_total",          logField: "tackles" },
@@ -192,11 +190,12 @@ export async function fetchPlayerLast5Avg(
   if (playerSourceIds.length === 0) return {};
   const supabase = createClient();
 
-  // Fetch last 5 matches per player with the stat field
   const { data, error } = await supabase
     .schema("analytics")
     .from("player_match_log_v1")
-    .select(`player_source_id, match_datetime, ${logField}`)
+    .select(
+      "player_source_id, match_datetime, shots_on_target, shots_off_target, shots_blocked, passes, accurate_pass, tackles, fouls_conceded, cards_yellow, offsides, saves_total, expected_goals"
+    )
     .eq("season_label", seasonLabel)
     .in("player_source_id", playerSourceIds)
     .order("match_datetime", { ascending: false })
@@ -207,14 +206,14 @@ export async function fetchPlayerLast5Avg(
     return {};
   }
 
-  // Group by player, take last 5, compute avg
+  // Group by player, take last 5, compute avg for the requested field
   const grouped: Record<string, number[]> = {};
   for (const row of data ?? []) {
     const id = row.player_source_id;
     if (!id) continue;
     if (!grouped[id]) grouped[id] = [];
     if (grouped[id].length < 5) {
-      const val = row[logField as keyof typeof row];
+      const val = (row as Record<string, unknown>)[logField];
       const num = val !== null && val !== undefined ? Number(val) : null;
       if (num !== null && !isNaN(num)) grouped[id].push(num);
     }
