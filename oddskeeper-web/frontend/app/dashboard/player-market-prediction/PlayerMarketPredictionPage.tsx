@@ -1,0 +1,574 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import {
+  fetchUpcomingFixtures,
+  fetchTeamPlayers,
+  fetchPlayerRecentMatches,
+  fetchPlayerMetricStats,
+  MARKET_OPTIONS,
+  type UpcomingFixture,
+  type PlayerRow,
+  type PlayerMetricStat,
+} from "./queries";
+import {
+  inferPlayerStatus,
+  distributeExpectation,
+  calcOddsLines,
+  type InferredStatus,
+} from "./compute";
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+type PlayerState = {
+  player_source_id: string;
+  player_name: string;
+  player_slug: string;
+  primary_position_code: string;
+  appearances: number;
+  last_match_datetime: string | null;
+  checked: boolean;
+  status: InferredStatus;
+  seasonAvg: number | null;
+  last5Avg: number | null;
+  manualValue: string;
+};
+
+const STATUS_OPTIONS: InferredStatus[] = ["Pos. Starter", "Pos. Sub", "Out"];
+
+const STATUS_COLORS: Record<InferredStatus, string> = {
+  "Pos. Starter": "bg-teal-500/20 text-teal-300 border-teal-500/30",
+  "Pos. Sub": "bg-yellow-500/20 text-yellow-300 border-yellow-500/30",
+  "Out": "bg-red-500/20 text-red-400 border-red-500/30",
+};
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function fmt(v: number | null, digits = 2): string {
+  if (v === null || isNaN(v)) return "—";
+  return v.toFixed(digits);
+}
+
+function fmtOdds(v: number): string {
+  if (!v || v <= 0 || !isFinite(v)) return "—";
+  return v.toFixed(2);
+}
+
+// ─── Sub-components ───────────────────────────────────────────────────────────
+
+function StatusBadge({
+  status,
+  onChange,
+}: {
+  status: InferredStatus;
+  onChange: (s: InferredStatus) => void;
+}) {
+  return (
+    <div className="relative inline-block">
+      <select
+        value={status}
+        onChange={(e) => onChange(e.target.value as InferredStatus)}
+        className={`cursor-pointer appearance-none rounded border px-2 py-0.5 text-[11px] font-semibold tracking-wide pr-5
+          ${STATUS_COLORS[status]} bg-[#0d1624] focus:outline-none [color-scheme:dark]`}
+      >
+        {STATUS_OPTIONS.map((opt) => (
+          <option key={opt} value={opt} className="bg-[#0d1624] text-white">
+            {opt}
+          </option>
+        ))}
+      </select>
+      <span className="pointer-events-none absolute right-1 top-1/2 -translate-y-1/2 text-white/40 text-[10px]">▾</span>
+    </div>
+  );
+}
+
+const STATUS_ACCENT: Record<InferredStatus, string> = {
+  "Pos. Starter": "accent-teal-400",
+  "Pos. Sub":     "accent-yellow-400",
+  "Out":          "accent-red-400",
+};
+
+const STATUS_ORDER: Record<InferredStatus, number> = { "Pos. Starter": 0, "Pos. Sub": 1, "Out": 2 };
+
+// ─── Player table for one team ────────────────────────────────────────────────
+
+type SortCol = "player" | "pos" | "status" | "avg" | "last5" | "distexp" | "manual";
+type SortDir = "asc" | "desc";
+
+function SortTh({
+  col, label, sortCol, sortDir, onSort, className = "",
+}: {
+  col: SortCol; label: string; sortCol: SortCol; sortDir: SortDir;
+  onSort: (c: SortCol) => void; className?: string;
+}) {
+  const active = sortCol === col;
+  return (
+    <th
+      className={`px-2 py-2 cursor-pointer select-none hover:text-white/70 ${className}`}
+      onClick={() => onSort(col)}
+    >
+      {label}
+      <span className="ml-1 opacity-50">{active ? (sortDir === "asc" ? "↑" : "↓") : "↕"}</span>
+    </th>
+  );
+}
+
+function TeamPlayerTable({
+  teamName,
+  players,
+  distExp,
+  paybackPct,
+  onStatusChange,
+  onManualChange,
+  onCheckedChange,
+}: {
+  teamName: string;
+  players: PlayerState[];
+  distExp: number;
+  paybackPct: number;
+  onStatusChange: (id: string, s: InferredStatus) => void;
+  onManualChange: (id: string, v: string) => void;
+  onCheckedChange: (id: string, v: boolean) => void;
+}) {
+  const [sortCol, setSortCol] = useState<SortCol>("status");
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
+
+  function handleSort(col: SortCol) {
+    if (sortCol === col) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    else { setSortCol(col); setSortDir("asc"); }
+  }
+
+  const expMap = useMemo(
+    () =>
+      distributeExpectation(
+        players.map((p) => ({
+          player_source_id: p.player_source_id,
+          status: p.status,
+          seasonAvg: p.seasonAvg,
+          manualValue: p.manualValue,
+        })),
+        distExp
+      ),
+    [players, distExp]
+  );
+
+  const sortedPlayers = useMemo(() => {
+    return [...players].sort((a, b) => {
+      let cmp = 0;
+      if (sortCol === "player") cmp = a.player_name.localeCompare(b.player_name);
+      else if (sortCol === "pos") cmp = a.primary_position_code.localeCompare(b.primary_position_code);
+      else if (sortCol === "status") cmp = STATUS_ORDER[a.status] - STATUS_ORDER[b.status];
+      else if (sortCol === "avg") cmp = (a.seasonAvg ?? -1) - (b.seasonAvg ?? -1);
+      else if (sortCol === "last5") cmp = (a.last5Avg ?? -1) - (b.last5Avg ?? -1);
+      else if (sortCol === "distexp") cmp = (expMap[a.player_source_id] ?? 0) - (expMap[b.player_source_id] ?? 0);
+      else if (sortCol === "manual") {
+        const ma = parseFloat(a.manualValue) || 0;
+        const mb = parseFloat(b.manualValue) || 0;
+        cmp = ma - mb;
+      }
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+  }, [players, sortCol, sortDir, expMap]);
+
+  return (
+    <div className="flex-1 min-w-0">
+      <div className="mb-2 flex items-center gap-2">
+        <span className="text-[11px] uppercase tracking-[0.14em] text-white/40">Team</span>
+        <span className="text-[15px] font-bold text-white">{teamName}</span>
+      </div>
+
+      <div className="overflow-x-auto rounded-[10px] border border-white/10">
+        <table className="min-w-full border-collapse text-[12px]">
+          <thead className="bg-[#0d1624]">
+            <tr className="text-left text-[10px] uppercase tracking-[0.12em] text-white/38">
+              <th className="px-2 py-2 w-6"></th>
+              <SortTh col="player" label="Player" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} className="min-w-[120px]" />
+              <SortTh col="pos" label="Pos" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
+              <SortTh col="status" label="Status" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
+              <SortTh col="avg" label="Avg" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} className="text-right" />
+              <SortTh col="last5" label="Last 5 Avg" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} className="text-right" />
+              <SortTh col="distexp" label="Dist. Exp" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} className="text-right" />
+              <SortTh col="manual" label="Manual" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} className="text-right w-20" />
+              <th className="px-2 py-2 min-w-[160px]">Odds</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sortedPlayers.map((p) => {
+              const effExp = expMap[p.player_source_id] ?? 0;
+              const manNum = parseFloat(p.manualValue);
+              const finalExp = !isNaN(manNum) && manNum > 0 ? manNum : effExp;
+              const oddsLines = p.status !== "Out" && finalExp > 0
+                ? calcOddsLines(finalExp, paybackPct)
+                : [];
+
+              return (
+                <tr
+                  key={p.player_source_id}
+                  className={`border-t border-white/[0.06] transition hover:bg-white/[0.02]
+                    ${p.status === "Out" ? "opacity-40" : ""}`}
+                >
+                  <td className="px-2 py-1.5">
+                    <input
+                      type="checkbox"
+                      checked={p.checked}
+                      onChange={(e) => onCheckedChange(p.player_source_id, e.target.checked)}
+                      className={`cursor-pointer ${STATUS_ACCENT[p.status]}`}
+                    />
+                  </td>
+
+                  <td className="px-2 py-1.5 font-medium text-white whitespace-nowrap">
+                    {p.player_name}
+                  </td>
+
+                  <td className="px-2 py-1.5 text-white/50">{p.primary_position_code}</td>
+
+                  <td className="px-2 py-1.5">
+                    <StatusBadge
+                      status={p.status}
+                      onChange={(s) => onStatusChange(p.player_source_id, s)}
+                    />
+                  </td>
+
+                  <td className="px-2 py-1.5 text-right text-white/70 tabular-nums">
+                    {fmt(p.seasonAvg)}
+                  </td>
+
+                  <td className="px-2 py-1.5 text-right text-white/70 tabular-nums">
+                    {p.last5Avg !== null && p.last5Avg > 0 ? fmt(p.last5Avg / 5) : "—"}
+                  </td>
+
+                  <td className="px-2 py-1.5 text-right tabular-nums text-teal-400/80">
+                    {p.status !== "Out" ? fmt(effExp) : "—"}
+                  </td>
+
+                  <td className="px-2 py-1.5">
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      placeholder="0"
+                      value={p.manualValue}
+                      onChange={(e) => onManualChange(p.player_source_id, e.target.value)}
+                      className="w-16 rounded border border-white/10 bg-white/[0.04] px-1.5 py-0.5 text-right text-[11px] text-white placeholder-white/20 focus:border-teal-500/50 focus:outline-none"
+                    />
+                  </td>
+
+                  {/* Odds - over only, with tick box per line */}
+                  <td className="px-2 py-1.5">
+                    {oddsLines.length > 0 ? (
+                      <div className="flex flex-col gap-0.5">
+                        {oddsLines.map((ol) => (
+                          <div key={`${p.player_source_id}-${ol.line}`} className="flex items-center gap-1.5">
+                            <input
+                              type="checkbox"
+                              className={`cursor-pointer ${STATUS_ACCENT[p.status]}`}
+                            />
+                            <span className="text-white/40 text-[11px] w-14">Over {ol.line.toFixed(1)}</span>
+                            <span className="rounded bg-white/[0.06] px-1.5 py-0.5 text-[12px] font-semibold text-teal-300">
+                              {fmtOdds(ol.overOdds)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="text-white/20">—</span>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// ─── Main page ────────────────────────────────────────────────────────────────
+
+export default function PlayerMarketPredictionPage() {
+  // ── Inputs ──
+  const [fixtures, setFixtures] = useState<UpcomingFixture[]>([]);
+  const [selectedFixtureId, setSelectedFixtureId] = useState<number | null>(null);
+  const [selectedMarketKey, setSelectedMarketKey] = useState<string>("shots");
+  const [homeDistExp, setHomeDistExp] = useState<string>("23");
+  const [awayDistExp, setAwayDistExp] = useState<string>("23");
+  const [paybackPct, setPaybackPct] = useState<string>("93");
+
+  // ── Data ──
+  const [homePlayers, setHomePlayers] = useState<PlayerState[]>([]);
+  const [awayPlayers, setAwayPlayers] = useState<PlayerState[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  // ── On mount: load fixtures ──
+  useEffect(() => {
+    fetchUpcomingFixtures().then(setFixtures);
+  }, []);
+
+  const selectedFixture = fixtures.find((f) => f.fixture_id === selectedFixtureId) ?? null;
+  const selectedMarket = MARKET_OPTIONS.find((m) => m.key === selectedMarketKey) ?? MARKET_OPTIONS[0];
+
+  // ── Load players when fixture changes ──
+  useEffect(() => {
+    if (!selectedFixture) return;
+    setLoading(true);
+    setHomePlayers([]);
+    setAwayPlayers([]);
+
+    async function load() {
+      const [homeRaw, awayRaw] = await Promise.all([
+        fetchTeamPlayers(selectedFixture!.home_source_team_id),
+        fetchTeamPlayers(selectedFixture!.away_source_team_id),
+      ]);
+
+      const allIds = [...homeRaw, ...awayRaw].map((p) => p.player_source_id);
+
+      const [recentMatches, metricStats] = await Promise.all([
+        fetchPlayerRecentMatches(allIds),
+        fetchPlayerMetricStats(allIds, selectedMarket.metricKey),
+      ]);
+
+      function buildStates(rawPlayers: PlayerRow[]): PlayerState[] {
+        const states = rawPlayers.map((p) => {
+          const matches = recentMatches[p.player_source_id] ?? [];
+          const stat: PlayerMetricStat | undefined = metricStats[p.player_source_id];
+          const status = inferPlayerStatus(matches, p.appearances, p.last_match_datetime);
+
+          return {
+            player_source_id: p.player_source_id,
+            player_name: p.player_name,
+            player_slug: p.player_slug,
+            primary_position_code: p.primary_position_code,
+            appearances: p.appearances,
+            last_match_datetime: p.last_match_datetime ?? null,
+            checked: false,
+            status,
+            seasonAvg: stat?.per_match_value ?? null,
+            last5Avg: stat?.last5_value ?? null,
+            manualValue: "",
+          };
+        });
+
+        // GK dedup: only the GK with most appearances can be Pos. Starter
+        const gkStarters = states
+          .filter((p) => p.primary_position_code === "GK" && p.status === "Pos. Starter")
+          .sort((a, b) => b.appearances - a.appearances);
+
+        if (gkStarters.length > 1) {
+          const keepId = gkStarters[0].player_source_id;
+          return states.map((p) => {
+            if (p.primary_position_code === "GK" && p.status === "Pos. Starter" && p.player_source_id !== keepId) {
+              return { ...p, status: "Pos. Sub" as InferredStatus };
+            }
+            return p;
+          });
+        }
+
+        return states;
+      }
+
+      setHomePlayers(buildStates(homeRaw));
+      setAwayPlayers(buildStates(awayRaw));
+      setLoading(false);
+    }
+
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedFixtureId]);
+
+  // ── Refresh metric stats when market changes (keep players) ──
+  useEffect(() => {
+    if (!selectedFixture || (homePlayers.length === 0 && awayPlayers.length === 0)) return;
+
+    const allIds = [...homePlayers, ...awayPlayers].map((p) => p.player_source_id);
+    if (allIds.length === 0) return;
+
+    fetchPlayerMetricStats(allIds, selectedMarket.metricKey).then((metricStats) => {
+      const update = (prev: PlayerState[]) =>
+        prev.map((p) => ({
+          ...p,
+          seasonAvg: metricStats[p.player_source_id]?.per_match_value ?? null,
+          last5Avg: metricStats[p.player_source_id]?.last5_value ?? null,
+          manualValue: "", // reset manual on market change
+        }));
+      setHomePlayers(update);
+      setAwayPlayers(update);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedMarketKey]);
+
+  // ── State updaters ──
+  function makeStatusHandler(setter: typeof setHomePlayers) {
+    return (id: string, s: InferredStatus) =>
+      setter((prev) => prev.map((p) => (p.player_source_id === id ? { ...p, status: s } : p)));
+  }
+
+  function makeManualHandler(setter: typeof setHomePlayers) {
+    return (id: string, v: string) =>
+      setter((prev) => prev.map((p) => (p.player_source_id === id ? { ...p, manualValue: v } : p)));
+  }
+
+  function makeCheckedHandler(setter: typeof setHomePlayers) {
+    return (id: string, v: boolean) =>
+      setter((prev) => prev.map((p) => (p.player_source_id === id ? { ...p, checked: v } : p)));
+  }
+
+  const homeDistExpNum = parseFloat(homeDistExp) || 0;
+  const awayDistExpNum = parseFloat(awayDistExp) || 0;
+  const paybackNum = parseFloat(paybackPct) || 93;
+
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  return (
+    <div className="w-full space-y-4 px-1">
+      {/* Header */}
+      <div className="rounded-[14px] border border-white/10 bg-[#0d1624] px-5 py-4">
+        <h1 className="text-[18px] font-bold text-white">Player Market Prediction</h1>
+        <p className="mt-0.5 text-[12px] text-white/40">
+          Select a fixture and market to calculate player-level odds.
+        </p>
+      </div>
+
+      {/* Controls */}
+      <div className="rounded-[14px] border border-white/10 bg-[#0d1624] px-5 py-4">
+        <div className="flex flex-wrap gap-4 items-end">
+          {/* Fixture select */}
+          <div className="flex flex-col gap-1 min-w-[260px]">
+            <label className="text-[10px] uppercase tracking-[0.12em] text-white/40">Fixture</label>
+            <select
+              value={selectedFixtureId ?? ""}
+              onChange={(e) => setSelectedFixtureId(e.target.value ? Number(e.target.value) : null)}
+              className="rounded-[8px] border border-white/10 bg-[#0d1624] px-3 py-2 text-[13px] text-white focus:border-teal-500/50 focus:outline-none [color-scheme:dark]"
+            >
+              <option value="">— Fixture seç —</option>
+              {fixtures.map((f) => (
+                <option key={f.fixture_id} value={f.fixture_id}>
+                  {f.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Market select */}
+          <div className="flex flex-col gap-1 min-w-[180px]">
+            <label className="text-[10px] uppercase tracking-[0.12em] text-white/40">Market</label>
+            <select
+              value={selectedMarketKey}
+              onChange={(e) => setSelectedMarketKey(e.target.value)}
+              className="rounded-[8px] border border-white/10 bg-[#0d1624] px-3 py-2 text-[13px] text-white focus:border-teal-500/50 focus:outline-none [color-scheme:dark]"
+            >
+              {MARKET_OPTIONS.map((m) => (
+                <option key={m.key} value={m.key}>
+                  {m.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Home Dist. Exp */}
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] uppercase tracking-[0.12em] text-white/40">
+              Home Exp.
+            </label>
+            <input
+              type="number"
+              min="0"
+              step="0.5"
+              value={homeDistExp}
+              onChange={(e) => setHomeDistExp(e.target.value)}
+              className="w-24 rounded-[8px] border border-white/10 bg-white/[0.04] px-3 py-2 text-[13px] text-white focus:border-teal-500/50 focus:outline-none"
+            />
+          </div>
+
+          {/* Away Dist. Exp */}
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] uppercase tracking-[0.12em] text-white/40">
+              Away Exp.
+            </label>
+            <input
+              type="number"
+              min="0"
+              step="0.5"
+              value={awayDistExp}
+              onChange={(e) => setAwayDistExp(e.target.value)}
+              className="w-24 rounded-[8px] border border-white/10 bg-white/[0.04] px-3 py-2 text-[13px] text-white focus:border-teal-500/50 focus:outline-none"
+            />
+          </div>
+
+          {/* Payback */}
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] uppercase tracking-[0.12em] text-white/40">
+              Payback %
+            </label>
+            <input
+              type="number"
+              min="80"
+              max="100"
+              step="1"
+              value={paybackPct}
+              onChange={(e) => setPaybackPct(e.target.value)}
+              className="w-24 rounded-[8px] border border-white/10 bg-white/[0.04] px-3 py-2 text-[13px] text-white focus:border-teal-500/50 focus:outline-none"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Loading */}
+      {loading && (
+        <div className="rounded-[14px] border border-white/10 bg-[#0d1624] px-5 py-8 text-center text-sm text-white/40">
+          Loading players…
+        </div>
+      )}
+
+      {/* Player tables */}
+      {!loading && selectedFixture && (homePlayers.length > 0 || awayPlayers.length > 0) && (
+        <div className="rounded-[14px] border border-white/10 bg-[#0d1624] px-5 py-4">
+          {/* Market info bar */}
+          <div className="mb-4 flex items-center gap-3">
+            <span className="rounded-full border border-teal-500/30 bg-teal-500/10 px-3 py-1 text-[12px] font-semibold text-teal-300">
+              {selectedMarket.label}
+            </span>
+            <span className="text-[12px] text-white/40">
+              Home Exp: <span className="text-white/70 font-medium">{homeDistExpNum.toFixed(1)}</span>
+            </span>
+            <span className="text-[12px] text-white/40">
+              Away Exp: <span className="text-white/70 font-medium">{awayDistExpNum.toFixed(1)}</span>
+            </span>
+            <span className="text-[12px] text-white/40">
+              Payback: <span className="text-white/70 font-medium">{paybackNum}%</span>
+            </span>
+          </div>
+
+          {/* Two-column layout */}
+          <div className="flex gap-6 flex-wrap xl:flex-nowrap">
+            <TeamPlayerTable
+              teamName={selectedFixture.home_team_name}
+              players={homePlayers}
+              distExp={homeDistExpNum}
+              paybackPct={paybackNum}
+              onStatusChange={makeStatusHandler(setHomePlayers)}
+              onManualChange={makeManualHandler(setHomePlayers)}
+              onCheckedChange={makeCheckedHandler(setHomePlayers)}
+            />
+            <TeamPlayerTable
+              teamName={selectedFixture.away_team_name}
+              players={awayPlayers}
+              distExp={awayDistExpNum}
+              paybackPct={paybackNum}
+              onStatusChange={makeStatusHandler(setAwayPlayers)}
+              onManualChange={makeManualHandler(setAwayPlayers)}
+              onCheckedChange={makeCheckedHandler(setAwayPlayers)}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Empty state */}
+      {!loading && !selectedFixture && (
+        <div className="rounded-[14px] border border-white/10 bg-[#0d1624] px-5 py-10 text-center text-sm text-white/30">
+          Fixture seçerek başlayın.
+        </div>
+      )}
+    </div>
+  );
+}
