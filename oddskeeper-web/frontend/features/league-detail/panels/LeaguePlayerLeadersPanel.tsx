@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import TeamLink from "@/components/links/TeamLink";
 import PlayerLink from "@/components/links/PlayerLink";
@@ -299,6 +299,24 @@ export function LeaguePlayerLeadersPanel({
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
+  type SortCol = "rank" | "player" | "team" | "role" | "value" | "avg" | "vsavg" | "apps";
+  const [sortCol, setSortCol] = useState<SortCol>("rank");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+
+  function handleColSort(col: SortCol) {
+    if (sortCol === col) {
+      setSortDir(d => d === "asc" ? "desc" : "asc");
+    } else {
+      setSortCol(col);
+      setSortDir(col === "player" || col === "team" || col === "role" ? "asc" : "desc");
+    }
+  }
+
+  function SortIcon({ col }: { col: SortCol }) {
+    if (sortCol !== col) return <span className="ml-1 opacity-25">↕</span>;
+    return <span className="ml-1 opacity-90">{sortDir === "asc" ? "↑" : "↓"}</span>;
+  }
+
   const availableCategories = useMemo(() => {
     const unique = new Map<string, string>();
 
@@ -461,6 +479,23 @@ export function LeaguePlayerLeadersPanel({
     visibleBasis,
     selectedMetricRow?.is_higher_better,
   ]);
+
+  const sortedRows = useMemo(() => {
+    if (sortCol === "rank") {
+      return sortDir === "asc" ? filteredRows : [...filteredRows].reverse();
+    }
+    return [...filteredRows].sort((a, b) => {
+      let cmp = 0;
+      if (sortCol === "player") cmp = (a.player_name ?? "").localeCompare(b.player_name ?? "");
+      else if (sortCol === "team") cmp = (a.team_name ?? "").localeCompare(b.team_name ?? "");
+      else if (sortCol === "role") cmp = (a.role_group ?? "").localeCompare(b.role_group ?? "");
+      else if (sortCol === "value") cmp = (a.displayValue ?? -Infinity) - (b.displayValue ?? -Infinity);
+      else if (sortCol === "avg") cmp = (a.derivedLeagueAvg ?? -Infinity) - (b.derivedLeagueAvg ?? -Infinity);
+      else if (sortCol === "vsavg") cmp = (a.derivedVsAvgPct ?? -Infinity) - (b.derivedVsAvgPct ?? -Infinity);
+      else if (sortCol === "apps") cmp = (safeNumber(a.sample_matches) ?? -Infinity) - (safeNumber(b.sample_matches) ?? -Infinity);
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+  }, [filteredRows, sortCol, sortDir]);
 
   const leaderRow = filteredRows[0];
   const runnerUpRow = filteredRows[1];
@@ -777,25 +812,25 @@ export function LeaguePlayerLeadersPanel({
         <table className="min-w-full border-collapse">
           <thead className="sticky top-0 z-10 bg-[#0d1624]">
             <tr className="text-left text-[10px] uppercase tracking-[0.14em] text-white/38">
-              <th className="px-4 py-2 font-medium">Rank</th>
-              <th className="px-4 py-2 font-medium">Player</th>
-              <th className="px-4 py-2 font-medium">Team</th>
-              <th className="px-4 py-2 font-medium">Role</th>
-              <th className="px-4 py-2 font-medium">
+              <th className="px-4 py-2 font-medium cursor-pointer hover:text-white/70 select-none" onClick={() => handleColSort("rank")}>Rank<SortIcon col="rank" /></th>
+              <th className="px-4 py-2 font-medium cursor-pointer hover:text-white/70 select-none" onClick={() => handleColSort("player")}>Player<SortIcon col="player" /></th>
+              <th className="px-4 py-2 font-medium cursor-pointer hover:text-white/70 select-none" onClick={() => handleColSort("team")}>Team<SortIcon col="team" /></th>
+              <th className="px-4 py-2 font-medium cursor-pointer hover:text-white/70 select-none" onClick={() => handleColSort("role")}>Role<SortIcon col="role" /></th>
+              <th className="px-4 py-2 font-medium cursor-pointer hover:text-white/70 select-none" onClick={() => handleColSort("value")}>
                 {visibleBasis === "per90"
                   ? "Per 90"
                   : visibleBasis === "total"
                   ? "Total"
-                  : "Per Match"}
+                  : "Per Match"}<SortIcon col="value" />
               </th>
-              <th className="px-4 py-2 font-medium">League Avg</th>
-              <th className="px-4 py-2 font-medium">Vs Avg %</th>
-              <th className="px-4 py-2 font-medium">Apps</th>
+              <th className="px-4 py-2 font-medium cursor-pointer hover:text-white/70 select-none" onClick={() => handleColSort("avg")}>League Avg<SortIcon col="avg" /></th>
+              <th className="px-4 py-2 font-medium cursor-pointer hover:text-white/70 select-none" onClick={() => handleColSort("vsavg")}>Vs Avg %<SortIcon col="vsavg" /></th>
+              <th className="px-4 py-2 font-medium cursor-pointer hover:text-white/70 select-none" onClick={() => handleColSort("apps")}>Apps<SortIcon col="apps" /></th>
             </tr>
           </thead>
 
           <tbody>
-            {filteredRows.map((row, index) => (
+            {sortedRows.map((row, index) => (
               <tr
                 key={`${row.metric_key}-${row.player_source_id ?? "na"}-${row.team_slug ?? "na"}-${row.role_group ?? "na"}-${row.displayRank}-${visibleBasis}-${index}`}
                 className="border-t border-white/10 text-[13px] text-white/80 transition hover:bg-white/[0.02]"

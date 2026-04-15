@@ -298,6 +298,24 @@ export function LeagueTeamLeadersPanel({
   const [basis, setBasis] = useState<ValueBasis>("per_match");
   const [selectedMetricKey, setSelectedMetricKey] = useState<string>("");
 
+  type SortCol = "rank" | "team" | "value" | "avg" | "vsavg";
+  const [sortCol, setSortCol] = useState<SortCol>("rank");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+
+  function handleColSort(col: SortCol) {
+    if (sortCol === col) {
+      setSortDir(d => d === "asc" ? "desc" : "asc");
+    } else {
+      setSortCol(col);
+      setSortDir(col === "team" ? "asc" : "desc");
+    }
+  }
+
+  function SortIcon({ col }: { col: SortCol }) {
+    if (sortCol !== col) return <span className="ml-1 opacity-25">↕</span>;
+    return <span className="ml-1 opacity-90">{sortDir === "asc" ? "↑" : "↓"}</span>;
+  }
+
   const filteredByCategory = useMemo(() => {
     if (activeCategory === "all") return rows;
     return rows.filter((row) => row.category_key === activeCategory);
@@ -387,6 +405,20 @@ export function LeagueTeamLeadersPanel({
       };
     });
   }, [metricRows, visibleBasis, totalAllowed]);
+
+  const sortedRows = useMemo(() => {
+    if (sortCol === "rank") {
+      return sortDir === "asc" ? displayRows : [...displayRows].reverse();
+    }
+    return [...displayRows].sort((a, b) => {
+      let cmp = 0;
+      if (sortCol === "team") cmp = (a.team_name ?? "").localeCompare(b.team_name ?? "");
+      else if (sortCol === "value") cmp = (a.displayValue ?? -Infinity) - (b.displayValue ?? -Infinity);
+      else if (sortCol === "avg") cmp = (safeNumber(a.league_avg) ?? -Infinity) - (safeNumber(b.league_avg) ?? -Infinity);
+      else if (sortCol === "vsavg") cmp = (safeNumber(a.vs_league_avg_pct) ?? -Infinity) - (safeNumber(b.vs_league_avg_pct) ?? -Infinity);
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+  }, [displayRows, sortCol, sortDir]);
 
   const leaderRow = displayRows[0];
   const runnerUpRow = displayRows[1];
@@ -604,18 +636,18 @@ export function LeagueTeamLeadersPanel({
         <table className="min-w-full border-collapse">
           <thead className="sticky top-0 z-10 bg-[#0d1624]">
             <tr className="text-left text-[10px] uppercase tracking-[0.14em] text-white/38">
-              <th className="px-4 py-2 font-medium">Rank</th>
-              <th className="px-4 py-2 font-medium">Team</th>
-              <th className="px-4 py-2 font-medium">
-                {visibleBasis === "total" && totalAllowed ? "Total" : "Per Match"}
+              <th className="px-4 py-2 font-medium cursor-pointer hover:text-white/70 select-none" onClick={() => handleColSort("rank")}>Rank<SortIcon col="rank" /></th>
+              <th className="px-4 py-2 font-medium cursor-pointer hover:text-white/70 select-none" onClick={() => handleColSort("team")}>Team<SortIcon col="team" /></th>
+              <th className="px-4 py-2 font-medium cursor-pointer hover:text-white/70 select-none" onClick={() => handleColSort("value")}>
+                {visibleBasis === "total" && totalAllowed ? "Total" : "Per Match"}<SortIcon col="value" />
               </th>
-              <th className="px-4 py-2 font-medium">League Avg</th>
-              <th className="px-4 py-2 font-medium">Vs Avg %</th>
+              <th className="px-4 py-2 font-medium cursor-pointer hover:text-white/70 select-none" onClick={() => handleColSort("avg")}>League Avg<SortIcon col="avg" /></th>
+              <th className="px-4 py-2 font-medium cursor-pointer hover:text-white/70 select-none" onClick={() => handleColSort("vsavg")}>Vs Avg %<SortIcon col="vsavg" /></th>
             </tr>
           </thead>
 
           <tbody>
-            {displayRows.map((row) => {
+            {sortedRows.map((row) => {
               const deltaText =
                 row.vs_league_avg_pct === null ||
                 row.vs_league_avg_pct === undefined ||
