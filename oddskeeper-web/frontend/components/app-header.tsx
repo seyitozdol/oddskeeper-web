@@ -82,6 +82,28 @@ export default function AppHeader({ userEmail }: AppHeaderProps) {
             Deep Prediction ML
           </Link>
 
+          <Link
+            href="/dashboard/match-predictions"
+            className={`rounded-2xl border px-5 py-2.5 text-sm font-medium transition ${
+              pathname === "/dashboard/match-predictions"
+                ? "border-[#4da2ff]/40 bg-[#10233b] text-white shadow-[0_0_25px_rgba(77,162,255,0.15)]"
+                : "border-white/10 bg-white/[0.03] text-white/72 hover:border-[#4da2ff]/25 hover:bg-[#0e1d30] hover:text-white"
+            }`}
+          >
+            Match Predictions
+          </Link>
+
+          <Link
+            href="/dashboard/player-market-prediction"
+            className={`rounded-2xl border px-5 py-2.5 text-sm font-medium transition ${
+              pathname === "/dashboard/player-market-prediction"
+                ? "border-[#4da2ff]/40 bg-[#10233b] text-white shadow-[0_0_25px_rgba(77,162,255,0.15)]"
+                : "border-white/10 bg-white/[0.03] text-white/72 hover:border-[#4da2ff]/25 hover:bg-[#0e1d30] hover:text-white"
+            }`}
+          >
+            Player Market
+          </Link>
+
           <div className="group relative">
             <Link
               href="/dashboard/stats-analysis"

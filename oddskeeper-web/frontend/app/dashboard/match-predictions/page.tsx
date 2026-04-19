@@ -1,9 +1,8 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
-import { hasPlayerMarketAccess } from "../player-market-prediction/access";
+import MatchPredictionsPage from "./MatchPredictionsPage";
 import PlayerMarketAccessDenied from "../player-market-prediction/PlayerMarketAccessDenied";
-import DeepPredictionMLPage from "./DeepPredictionMLPage";
-import { getUpcomingFixtures } from "./queries";
+import { hasPlayerMarketAccess } from "../player-market-prediction/access";
 
 async function getUser() {
   const cookieStore = await cookies();
@@ -24,7 +23,5 @@ export default async function Page() {
     return <PlayerMarketAccessDenied userEmail={userEmail} />;
   }
 
-  const fixtures = await getUpcomingFixtures();
-
-  return <DeepPredictionMLPage fixtures={fixtures} />;
+  return <MatchPredictionsPage />;
 }

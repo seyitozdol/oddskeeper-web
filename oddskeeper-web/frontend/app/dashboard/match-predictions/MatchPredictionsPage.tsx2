@@ -1,0 +1,263 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import { fetchMatchPredictions, type MatchPrediction } from "./queries";
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function probToOdds(prob: number, payback: number): string {
+  if (!prob || prob <= 0) return "—";
+  const odds = (payback / 100) / prob;
+  if (odds > 99 || !isFinite(odds)) return "—";
+  return odds.toFixed(2);
+}
+
+function fmtPct(v: number): string {
+  return `${(v * 100).toFixed(1)}%`;
+}
+
+function fmtDate(d: string): string {
+  return new Date(d).toLocaleDateString("tr-TR", {
+    weekday: "short", day: "numeric", month: "short"
+  });
+}
+
+// Group predictions by date
+function groupByDate(preds: MatchPrediction[]): Record<string, MatchPrediction[]> {
+  const groups: Record<string, MatchPrediction[]> = {};
+  for (const p of preds) {
+    if (!groups[p.fixture_date]) groups[p.fixture_date] = [];
+    groups[p.fixture_date].push(p);
+  }
+  return groups;
+}
+
+// ─── Outcome bar ─────────────────────────────────────────────────────────────
+
+function OutcomeBar({ home, draw, away }: { home: number; draw: number; away: number }) {
+  return (
+    <div className="flex w-full overflow-hidden rounded-full" style={{ height: "8px" }}>
+      <div className="bg-teal-400/80"    style={{ width: `${home * 100}%` }} />
+      <div className="bg-white/30"       style={{ width: `${draw * 100}%` }} />
+      <div className="bg-orange-400/80"  style={{ width: `${away * 100}%` }} />
+    </div>
+  );
+}
+
+// ─── Over/under 2.5 via Poisson ──────────────────────────────────────────────
+
+function poissonPmf(k: number, lambda: number): number {
+  if (lambda <= 0) return k === 0 ? 1 : 0;
+  let logP = -lambda + k * Math.log(lambda);
+  for (let i = 1; i <= k; i++) logP -= Math.log(i);
+  return Math.exp(logP);
+}
+
+function calcOverUnder25(homeXg: number, awayXg: number): { over: number; under: number } {
+  let under = 0;
+  for (let h = 0; h <= 9; h++)
+    for (let a = 0; a <= 9; a++)
+      if (h + a <= 2) under += poissonPmf(h, homeXg) * poissonPmf(a, awayXg);
+  return { over: 1 - under, under };
+}
+
+// ─── Match card ───────────────────────────────────────────────────────────────
+
+function MatchCard({ prediction: p, payback }: { prediction: MatchPrediction; payback: number }) {
+  const homeOdds = probToOdds(p.home_win_prob, payback);
+  const drawOdds = probToOdds(p.draw_prob, payback);
+  const awayOdds = probToOdds(p.away_win_prob, payback);
+  const max = Math.max(p.home_win_prob, p.draw_prob, p.away_win_prob);
+  const isHomeFav = p.home_win_prob === max;
+  const isDrawFav = p.draw_prob === max;
+  const isAwayFav = p.away_win_prob === max;
+  const { over, under } = calcOverUnder25(p.home_xg, p.away_xg);
+  const overOdds  = probToOdds(over, payback);
+  const underOdds = probToOdds(under, payback);
+  const isOverFav = over >= under;
+
+  const cell = (
+    label: string, odds: string, pct: string,
+    fav: boolean, scheme: "teal" | "yellow" | "orange"
+  ) => {
+    const bg = {
+      teal:   fav ? "border-teal-500/40 bg-teal-500/10"    : "border-white/[0.07] bg-white/[0.02]",
+      yellow: fav ? "border-yellow-500/40 bg-yellow-500/10" : "border-white/[0.07] bg-white/[0.02]",
+      orange: fav ? "border-orange-500/40 bg-orange-500/10" : "border-white/[0.07] bg-white/[0.02]",
+    }[scheme];
+    const textColor = fav
+      ? scheme === "teal" ? "text-teal-300" : scheme === "yellow" ? "text-yellow-300" : "text-orange-300"
+      : "text-white/60";
+    return (
+      <div key={label} className={`rounded-[6px] border flex flex-col items-center justify-center py-2.5 gap-0.5 ${bg}`}>
+        <div className="text-[9px] uppercase tracking-widest text-white/35">{label}</div>
+        <div className={`text-[15px] font-bold tabular-nums leading-none ${textColor}`}>{odds}</div>
+        <div className="text-[10px] text-white/30">{pct}</div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="rounded-[10px] border border-white/10 bg-[#0b1523] overflow-hidden">
+
+      {/* Teams + bar */}
+      <div className="px-4 pt-3 pb-2">
+        <div className="flex items-start justify-between gap-2 mb-2">
+          <div className="flex-1 min-w-0">
+            <p className={`text-[13px] font-semibold ${isHomeFav ? "text-white" : "text-white/55"}`}>
+              {p.home_team_name}
+            </p>
+            <p className="text-[10px] text-white/30 mt-0.5">xG {p.home_xg.toFixed(2)}</p>
+          </div>
+          <span className="text-[9px] text-white/20 uppercase tracking-widest shrink-0 pt-1">vs</span>
+          <div className="flex-1 min-w-0 text-right">
+            <p className={`text-[13px] font-semibold ${isAwayFav ? "text-white" : "text-white/55"}`}>
+              {p.away_team_name}
+            </p>
+            <p className="text-[11px] text-white/30 mt-0.5">xG {p.away_xg.toFixed(2)}</p>
+          </div>
+        </div>
+        <OutcomeBar home={p.home_win_prob} draw={p.draw_prob} away={p.away_win_prob} />
+      </div>
+
+      {/* 1X2 */}
+      <div className="border-t border-white/[0.06] px-3 py-2">
+        <div className="grid grid-cols-3 gap-1.5">
+          {cell("1", homeOdds, fmtPct(p.home_win_prob), isHomeFav, "teal")}
+          {cell("X", drawOdds, fmtPct(p.draw_prob),     isDrawFav, "yellow")}
+          {cell("2", awayOdds, fmtPct(p.away_win_prob), isAwayFav, "orange")}
+        </div>
+      </div>
+
+      {/* Toplam 2.5 */}
+      <div className="border-t border-white/[0.06] bg-white/[0.015] px-3 py-2">
+        <p className="text-[8px] uppercase tracking-[0.15em] text-white/25 mb-1.5">Toplam 2.5</p>
+        <div className="grid grid-cols-2 gap-1.5">
+          {cell("Üst", overOdds,  fmtPct(over),  isOverFav,  "teal")}
+          {cell("Alt", underOdds, fmtPct(under), !isOverFav, "orange")}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Main page ────────────────────────────────────────────────────────────────
+
+export default function MatchPredictionsPage() {
+  const [predictions, setPredictions] = useState<MatchPrediction[]>([]);
+  const [loading, setLoading]         = useState(true);
+  const [payback, setPayback]         = useState<string>("93");
+
+  useEffect(() => {
+    fetchMatchPredictions().then((data) => {
+      setPredictions(data);
+      setLoading(false);
+    });
+  }, []);
+
+  const paybackNum = Math.min(100, Math.max(50, parseFloat(payback) || 93));
+  const grouped    = useMemo(() => groupByDate(predictions), [predictions]);
+  const dates      = Object.keys(grouped).sort();
+
+  return (
+    <div className="w-full space-y-6 px-1">
+
+      {/* Header */}
+      <div className="rounded-[14px] border border-white/10 bg-[#0d1624] px-5 py-4">
+        <div className="flex items-start justify-between flex-wrap gap-4">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <h1 className="text-[18px] font-bold text-white">Match Predictions</h1>
+              <span className="rounded-full border border-teal-500/30 bg-teal-500/10 px-2 py-0.5 text-[10px] font-semibold text-teal-400 uppercase tracking-wide">
+                v3
+              </span>
+            </div>
+            <p className="text-[12px] text-white/40">
+              Dixon-Coles + xG · Team home advantage · Form adjustment · Isotonic calibration · Süper Lig 2025/2026
+            </p>
+            <div className="mt-2 flex items-center gap-3 text-[11px] text-white/25">
+              <span>RPS skill <span className="text-teal-400/70">+0.333</span></span>
+              <span>·</span>
+              <span>Accuracy <span className="text-white/40">47.4%</span></span>
+              <span>·</span>
+              <span>219 match backtest</span>
+            </div>
+          </div>
+
+          {/* Payback input */}
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] uppercase tracking-[0.12em] text-white/40">
+              Payback %
+            </label>
+            <input
+              type="number"
+              min="50"
+              max="100"
+              step="1"
+              value={payback}
+              onChange={(e) => setPayback(e.target.value)}
+              className="w-24 rounded-[8px] border border-white/10 bg-white/[0.04] px-3 py-2 text-[13px] text-white focus:border-teal-500/50 focus:outline-none [color-scheme:dark]"
+            />
+          </div>
+        </div>
+
+        {/* Legend */}
+        <div className="mt-3 flex items-center gap-4 text-[11px] text-white/30">
+          <span className="flex items-center gap-1.5">
+            <span className="h-2 w-4 rounded-full bg-teal-400/70 inline-block" />
+            Home win
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="h-2 w-4 rounded-full bg-white/25 inline-block" />
+            Draw
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="h-2 w-4 rounded-full bg-orange-400/70 inline-block" />
+            Away win
+          </span>
+          <span className="ml-auto text-white/20">
+            Odds = payback / probability
+          </span>
+        </div>
+      </div>
+
+      {/* Loading */}
+      {loading && (
+        <div className="rounded-[14px] border border-white/10 bg-[#0d1624] px-5 py-10 text-center text-sm text-white/30">
+          Loading predictions…
+        </div>
+      )}
+
+      {/* No data */}
+      {!loading && predictions.length === 0 && (
+        <div className="rounded-[14px] border border-white/10 bg-[#0d1624] px-5 py-10 text-center text-sm text-white/30">
+          No upcoming predictions found. Run the model script to generate predictions.
+        </div>
+      )}
+
+      {/* Predictions grouped by date */}
+      {!loading && dates.map((date) => (
+        <div key={date} className="space-y-3">
+
+          {/* Date header */}
+          <div className="flex items-center gap-3">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-white/50">
+              {fmtDate(date)}
+            </span>
+            <span className="text-[11px] text-white/20">
+              {grouped[date].length} {grouped[date].length === 1 ? "match" : "matches"}
+            </span>
+            <div className="flex-1 h-px bg-white/[0.06]" />
+          </div>
+
+          {/* Match cards grid */}
+          <div className="grid gap-3 sm:grid-cols-2">
+            {grouped[date].map((p) => (
+              <MatchCard key={p.id} prediction={p} payback={paybackNum} />
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}

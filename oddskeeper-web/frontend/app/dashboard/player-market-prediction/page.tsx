@@ -1,5 +1,35 @@
+import { createServerClient } from "@supabase/ssr";
+import { cookies } from "next/headers";
 import PlayerMarketPredictionPage from "./PlayerMarketPredictionPage";
+import PlayerMarketAccessDenied from "./PlayerMarketAccessDenied";
+import { hasPlayerMarketAccess } from "./access";
 
-export default function Page() {
+async function getUser() {
+  const cookieStore = await cookies();
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll();
+        },
+      },
+    }
+  );
+
+  const { data: { user } } = await supabase.auth.getUser();
+  return user;
+}
+
+export default async function Page() {
+  const user = await getUser();
+  const userEmail = user?.email ?? null;
+
+  if (!hasPlayerMarketAccess(userEmail)) {
+    return <PlayerMarketAccessDenied userEmail={userEmail} />;
+  }
+
   return <PlayerMarketPredictionPage />;
 }
