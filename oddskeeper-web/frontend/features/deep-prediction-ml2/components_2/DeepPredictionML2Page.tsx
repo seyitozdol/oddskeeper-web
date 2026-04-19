@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Lock } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Lock, Search } from "lucide-react";
 import {
   markets_2,
   type PredictionMatch_2,
@@ -78,7 +78,44 @@ function ConfidenceBadge_2({
   );
 }
 
-function MatchCard_2({ match }: { match: PredictionMatch_2 }) {
+function MatchListItem_2({
+  match,
+  isActive,
+  onClick,
+}: {
+  match: PredictionMatch_2;
+  isActive: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        "w-full rounded-2xl border p-4 text-left transition",
+        isActive
+          ? "border-white/20 bg-white/10"
+          : "border-white/10 bg-white/[0.03] hover:bg-white/[0.06]"
+      )}
+    >
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <div className="truncate text-sm font-medium text-white">
+            {match.homeTeam ?? "-"} vs {match.awayTeam ?? "-"}
+          </div>
+          <div className="mt-1 text-xs text-white/45">
+            {match.kickoff ?? "-"}
+          </div>
+        </div>
+        <ConfidenceBadge_2
+          confidence={match.confidence}
+          score={match.confidenceScore}
+        />
+      </div>
+    </button>
+  );
+}
+
+function SelectedMatchCard_2({ match }: { match: PredictionMatch_2 }) {
   return (
     <div className="rounded-[26px] border border-white/10 bg-white/[0.04] p-5 backdrop-blur-sm">
       <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
@@ -155,10 +192,12 @@ export default function DeepPredictionML2Page({
   const [selectedConfidence, setSelectedConfidence] = useState<
     "All" | "High" | "Medium" | "Low"
   >("All");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedMatchId, setSelectedMatchId] = useState<string>("");
 
   const normalizedMatches = useMemo(() => {
     return matches.map((match, index) => ({
-      id: match.id ?? index + 1,
+      id: String(match.id ?? index + 1),
       competition: match.competition ?? "-",
       kickoff: match.kickoff ?? "-",
       homeTeam: match.homeTeam ?? "-",
@@ -178,15 +217,42 @@ export default function DeepPredictionML2Page({
   }, [matches]);
 
   const filteredMatches = useMemo(() => {
-    if (selectedConfidence === "All") return normalizedMatches;
-    return normalizedMatches.filter(
-      (match) => match.confidence === selectedConfidence
-    );
-  }, [normalizedMatches, selectedConfidence]);
+    const base =
+      selectedConfidence === "All"
+        ? normalizedMatches
+        : normalizedMatches.filter(
+            (match) => match.confidence === selectedConfidence
+          );
+
+    const term = searchTerm.trim().toLowerCase();
+    if (!term) return base;
+
+    return base.filter((match) => {
+      const text = `${match.homeTeam} ${match.awayTeam} ${match.competition}`.toLowerCase();
+      return text.includes(term);
+    });
+  }, [normalizedMatches, searchTerm, selectedConfidence]);
+
+  useEffect(() => {
+    if (filteredMatches.length === 0) {
+      setSelectedMatchId("");
+      return;
+    }
+
+    const stillExists = filteredMatches.some((match) => match.id === selectedMatchId);
+    if (!stillExists) {
+      setSelectedMatchId(filteredMatches[0].id ?? "");
+    }
+  }, [filteredMatches, selectedMatchId]);
+
+  const selectedMatch =
+    filteredMatches.find((match) => match.id === selectedMatchId) ??
+    filteredMatches[0] ??
+    null;
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(91,141,239,0.18),_transparent_28%),linear-gradient(180deg,#060b14_0%,#09111f_35%,#060b14_100%)] text-white">
-      <div className="mx-auto max-w-6xl px-4 py-8 md:px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl px-4 py-8 md:px-6 lg:px-8">
         <div className="mb-6">
           <div className="text-xs uppercase tracking-[0.22em] text-white/35">
             Deep Prediction ML2
@@ -196,7 +262,7 @@ export default function DeepPredictionML2Page({
           </h1>
         </div>
 
-        <div className="mb-6 flex flex-col gap-3 rounded-[24px] border border-white/10 bg-white/[0.04] p-4 md:flex-row md:items-center md:justify-between">
+        <div className="mb-6 flex flex-col gap-3 rounded-[24px] border border-white/10 bg-white/[0.04] p-4">
           <div className="flex flex-wrap gap-2">
             {markets_2.map((market) => (
               <MarketButton_2
@@ -209,40 +275,85 @@ export default function DeepPredictionML2Page({
             ))}
           </div>
 
-          <div className="flex flex-wrap gap-2">
-            {[
-              { label: "All", value: "All" as const },
-              { label: "High", value: "High" as const },
-              { label: "Medium", value: "Medium" as const },
-              { label: "Low", value: "Low" as const },
-            ].map((item) => (
-              <button
-                key={item.value}
-                onClick={() => setSelectedConfidence(item.value)}
-                className={cn(
-                  "rounded-2xl border px-4 py-2 text-sm transition",
-                  selectedConfidence === item.value
-                    ? "border-white/20 bg-white text-black"
-                    : "border-white/10 bg-white/5 text-white/75 hover:bg-white/10"
-                )}
-              >
-                {item.label}
-              </button>
-            ))}
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex flex-wrap gap-2">
+              {[
+                { label: "All", value: "All" as const },
+                { label: "High", value: "High" as const },
+                { label: "Medium", value: "Medium" as const },
+                { label: "Low", value: "Low" as const },
+              ].map((item) => (
+                <button
+                  key={item.value}
+                  onClick={() => setSelectedConfidence(item.value)}
+                  className={cn(
+                    "rounded-2xl border px-4 py-2 text-sm transition",
+                    selectedConfidence === item.value
+                      ? "border-white/20 bg-white text-black"
+                      : "border-white/10 bg-white/5 text-white/75 hover:bg-white/10"
+                  )}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="relative w-full lg:w-[320px]">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/35" />
+              <input
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search fixture..."
+                className="w-full rounded-2xl border border-white/10 bg-white/5 py-2.5 pl-10 pr-4 text-sm text-white outline-none placeholder:text-white/30"
+              />
+            </div>
           </div>
         </div>
 
-        <div className="space-y-4">
-          {filteredMatches.map((match, index) => (
-            <MatchCard_2
-              key={
-                match.id ??
-                `${match.homeTeam ?? "home"}-${match.awayTeam ?? "away"}-${match.kickoff ?? index}`
-              }
-              match={match}
-            />
-          ))}
+        <div className="mb-4 lg:hidden">
+          <select
+            value={selectedMatchId}
+            onChange={(e) => setSelectedMatchId(e.target.value)}
+            className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none"
+          >
+            {filteredMatches.map((match) => (
+              <option key={match.id} value={match.id} className="bg-slate-900">
+                {match.homeTeam} vs {match.awayTeam}
+              </option>
+            ))}
+          </select>
         </div>
+
+        {filteredMatches.length === 0 ? (
+          <div className="rounded-[26px] border border-white/10 bg-white/[0.04] p-8 text-sm text-white/60">
+            No fixtures matched your filter.
+          </div>
+        ) : (
+          <div className="grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
+            <div className="hidden lg:block">
+              <div className="sticky top-6 space-y-3 rounded-[26px] border border-white/10 bg-white/[0.04] p-4">
+                {filteredMatches.map((match) => (
+                  <MatchListItem_2
+                    key={match.id}
+                    match={match}
+                    isActive={match.id === selectedMatchId}
+                    onClick={() => setSelectedMatchId(match.id ?? "")}
+                  />
+                ))}
+              </div>
+            </div>
+
+            <div>
+              {selectedMatch ? (
+                <SelectedMatchCard_2 match={selectedMatch} />
+              ) : (
+                <div className="rounded-[26px] border border-white/10 bg-white/[0.04] p-8 text-sm text-white/60">
+                  No selected fixture.
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
