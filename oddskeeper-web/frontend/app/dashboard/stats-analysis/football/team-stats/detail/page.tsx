@@ -15,6 +15,8 @@ import { getTeamResults } from "../../../../../../features/team-detail/server/ge
 import { getTeamSquad } from "../../../../../../features/team-detail/server/getTeamSquad";
 import { getTeamStatisticsSplit } from "../../../../../../features/team-detail/server/getTeamStatisticsSplit";
 import { getTeamStatisticsSummary } from "../../../../../../features/team-detail/server/getTeamStatisticsSummary";
+import { getTeamSeasonHistory } from "../../../../../../features/team-detail/server/getTeamSeasonHistory";
+import { SeasonHistoryPanel } from "../../../../../../features/team-detail/panels/SeasonHistoryPanel";
 import { getTeamComparison } from "../../../../../../features/team-detail/server/getTeamComparison";
 import TeamComparisonPanel from "../../../../../../features/team-detail/panels/TeamComparisonPanel";
 import { getFootballTeams } from "../../../../../../lib/football-teams";
@@ -85,6 +87,9 @@ export default async function TeamDetailPage({
 
   const teamResults =
     activeTab === "results" ? await getTeamResults(teamSlug) : [];
+
+  const seasonHistoryRows =
+    activeTab === "season-history" ? await getTeamSeasonHistory(teamSlug) : [];
 
   const squadRows =
     activeTab === "squad" ? await getTeamSquad(teamSlug) : [];
@@ -182,6 +187,8 @@ export default async function TeamDetailPage({
             rows={detailedMetricRows}
             form={advancedForm}
           />
+        ) : activeTab === "season-history" ? (
+          <SeasonHistoryPanel rows={seasonHistoryRows} />
         ) : activeTab === "results" ? (
           <ResultsPanel rows={teamResults} />
         ) : activeTab === "squad" ? (
