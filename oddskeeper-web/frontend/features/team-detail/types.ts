@@ -429,3 +429,20 @@ export type TeamAdvancedSummary = {
     recruitment: string;
   };
 };
+export type TeamCurrentSquadRow = {
+  team_slug: string;
+  team_source_id: string;
+  team_name: string;
+
+  player_source_id: string;
+  player_name: string;
+
+  age: number | null;
+  shirt_number: number | null;
+  position: string | null;
+  position_group: string;
+  position_sort: number;
+
+  photo_url: string | null;
+  fetched_at: string | null;
+};

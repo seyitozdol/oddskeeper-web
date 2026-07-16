@@ -13,6 +13,7 @@ import { getTeamProfile } from "../../../../../../features/team-detail/server/ge
 import { getTeamRecentForm } from "../../../../../../features/team-detail/server/getTeamRecentForm";
 import { getTeamResults } from "../../../../../../features/team-detail/server/getTeamResults";
 import { getTeamSquad } from "../../../../../../features/team-detail/server/getTeamSquad";
+import { getTeamCurrentSquad } from "../../../../../../features/team-detail/server/getTeamCurrentSquad";
 import { getTeamStatisticsSplit } from "../../../../../../features/team-detail/server/getTeamStatisticsSplit";
 import { getTeamStatisticsSummary } from "../../../../../../features/team-detail/server/getTeamStatisticsSummary";
 import { getTeamSeasonHistory } from "../../../../../../features/team-detail/server/getTeamSeasonHistory";
@@ -93,6 +94,9 @@ export default async function TeamDetailPage({
 
   const squadRows =
     activeTab === "squad" ? await getTeamSquad(teamSlug) : [];
+
+  const currentSquadRows =
+    activeTab === "squad" ? await getTeamCurrentSquad(teamSlug) : [];
 
   const fixtureRows =
     activeTab === "fixture" ? await getTeamFixtures(teamSlug) : [];
@@ -192,7 +196,7 @@ export default async function TeamDetailPage({
         ) : activeTab === "results" ? (
           <ResultsPanel rows={teamResults} />
         ) : activeTab === "squad" ? (
-          <SquadPanel rows={squadRows} />
+          <SquadPanel rows={squadRows} currentSquad={currentSquadRows} />
         ) : activeTab === "fixture" ? (
           <FixturePanel rows={fixtureRows} />
         ) : activeTab === "comparison" && comparisonData ? (

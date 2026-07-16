@@ -1,14 +1,70 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { TeamSquadRow } from "../types";
+import type { TeamCurrentSquadRow, TeamSquadRow } from "../types";
 import { formatDate } from "../utils/formatDate";
 import { formatDecimal } from "../utils/formatDecimal";
 import PlayerLink from "@/components/links/PlayerLink";
 
 type SquadPanelProps = {
   rows?: TeamSquadRow[];
+  currentSquad?: TeamCurrentSquadRow[];
 };
+
+const POSITION_GROUP_LABELS: Record<string, string> = {
+  GOALKEEPER: "Goalkeepers",
+  DEFENDER: "Defenders",
+  MIDFIELDER: "Midfielders",
+  FORWARD: "Forwards",
+  OTHER: "Other",
+};
+
+function CurrentSquadTable({ rows }: { rows: TeamCurrentSquadRow[] }) {
+  return (
+    <div className="rounded-[14px] border border-white/10">
+      <div className="border-b border-white/10 bg-white/[0.03] px-4 py-2">
+        <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-white/42">
+          Current Squad
+        </div>
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="min-w-full border-collapse">
+          <thead>
+            <tr className="text-left text-[10px] uppercase tracking-[0.14em] text-white/38">
+              <th className="px-4 py-2 font-medium">#</th>
+              <th className="px-4 py-2 font-medium">Player</th>
+              <th className="px-4 py-2 font-medium">Position</th>
+              <th className="px-4 py-2 font-medium">Age</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {rows.map((row) => (
+              <tr
+                key={row.player_source_id}
+                className="border-t border-white/10 text-[13px] text-white/80"
+              >
+                <td className="px-4 py-2 text-white/55">
+                  {row.shirt_number ?? "—"}
+                </td>
+                <td className="px-4 py-2 font-medium text-white">
+                  {row.player_name}
+                </td>
+                <td className="px-4 py-2">
+                  {POSITION_GROUP_LABELS[row.position_group]?.replace(/s$/, "") ??
+                    row.position ??
+                    "—"}
+                </td>
+                <td className="px-4 py-2">{row.age ?? "—"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
 
 type SortKey =
   | "player_name"
@@ -118,7 +174,7 @@ function getMetricSortValue(row: TeamSquadRow, sortKey: SortKey): number {
   return 0;
 }
 
-export function SquadPanel({ rows = [] }: SquadPanelProps) {
+export function SquadPanel({ rows = [], currentSquad = [] }: SquadPanelProps) {
   const [sortKey, setSortKey] = useState<SortKey>("primary_position_code");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
 
@@ -168,7 +224,7 @@ export function SquadPanel({ rows = [] }: SquadPanelProps) {
     return cloned;
   }, [rows, sortKey, sortDirection]);
 
-  if (rows.length === 0) {
+  if (rows.length === 0 && currentSquad.length === 0) {
     return (
       <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-4 text-sm text-white/65">
         No squad data found for this team.
@@ -177,8 +233,22 @@ export function SquadPanel({ rows = [] }: SquadPanelProps) {
   }
 
   return (
-    <div className="overflow-x-auto rounded-[14px] border border-white/10">
-      <table className="min-w-full border-collapse">
+    <div className="space-y-3">
+      {currentSquad.length > 0 ? (
+        <CurrentSquadTable rows={currentSquad} />
+      ) : null}
+
+      {rows.length > 0 ? (
+        <div className="rounded-[14px] border border-white/10">
+          <div className="border-b border-white/10 bg-white/[0.03] px-4 py-2">
+            <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-white/42">
+              Season Match Stats
+              {rows[0]?.season_label ? ` — ${rows[0].season_label}` : ""}
+            </div>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="min-w-full border-collapse">
         <thead className="bg-white/[0.03]">
           <tr className="text-left text-[10px] uppercase tracking-[0.14em] text-white/38">
             <th className="px-4 py-2 font-medium">
@@ -337,6 +407,9 @@ export function SquadPanel({ rows = [] }: SquadPanelProps) {
           ))}
         </tbody>
       </table>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
