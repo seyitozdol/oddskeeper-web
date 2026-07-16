@@ -10,6 +10,7 @@ import { getPlayerDetailedMetrics } from "@/features/player-detail/server/getPla
 import { getPlayerMatchLog } from "@/features/player-detail/server/getPlayerMatchLog";
 import { getPlayerMetricBenchmarks } from "@/features/player-detail/server/getPlayerMetricBenchmarks";
 import { getPlayerProfile } from "@/features/player-detail/server/getPlayerProfile";
+import { getPlayerCurrentInfo } from "@/features/player-detail/server/getPlayerCurrentInfo";
 import type { ValidPlayerTab } from "@/features/player-detail/types";
 
 type PageProps = {
@@ -44,9 +45,10 @@ export default async function FootballPlayerDetailPage({
     );
   }
 
-  const [profile, matchLog] = await Promise.all([
+  const [profile, matchLog, currentInfo] = await Promise.all([
     getPlayerProfile(playerSlug),
     getPlayerMatchLog(playerSlug),
+    getPlayerCurrentInfo(playerSlug),
   ]);
 
   if (!profile) {
@@ -80,7 +82,11 @@ export default async function FootballPlayerDetailPage({
 
   return (
     <section className="w-full space-y-3">
-      <PlayerDetailHeader profile={profile} activeTab={activeTab} />
+      <PlayerDetailHeader
+        profile={profile}
+        activeTab={activeTab}
+        currentInfo={currentInfo}
+      />
 
       {activeTab === "overview" ? (
         <PlayerOverviewPanel profile={profile} matchLog={matchLog} />

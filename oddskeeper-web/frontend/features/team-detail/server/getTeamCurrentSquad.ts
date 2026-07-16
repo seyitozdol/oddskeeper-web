@@ -22,7 +22,8 @@ export async function getTeamCurrentSquad(
         position_group,
         position_sort,
         photo_url,
-        fetched_at
+        fetched_at,
+        player_slug
       `
     )
     .eq("team_slug", teamSlug)

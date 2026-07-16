@@ -49,7 +49,10 @@ function CurrentSquadTable({ rows }: { rows: TeamCurrentSquadRow[] }) {
                   {row.shirt_number ?? "—"}
                 </td>
                 <td className="px-4 py-2 font-medium text-white">
-                  {row.player_name}
+                  <PlayerName
+                    playerSlug={row.player_slug}
+                    playerName={row.player_name}
+                  />
                 </td>
                 <td className="px-4 py-2">
                   {POSITION_GROUP_LABELS[row.position_group]?.replace(/s$/, "") ??

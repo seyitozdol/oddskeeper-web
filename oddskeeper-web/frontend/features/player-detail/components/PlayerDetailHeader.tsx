@@ -5,10 +5,12 @@ import type { PlayerProfileRow, ValidPlayerTab } from "../types";
 import { getTeamDetailHref } from "@/lib/routes";
 import { getTeamLogoPath } from "../utils/getTeamLogoPath";
 import { formatDecimal } from "../utils/formatDecimal";
+import type { PlayerCurrentInfoRow } from "../types";
 
 type PlayerDetailHeaderProps = {
   profile: PlayerProfileRow;
   activeTab: ValidPlayerTab;
+  currentInfo?: PlayerCurrentInfoRow | null;
 };
 
 function StatInline({
@@ -33,6 +35,7 @@ function StatInline({
 export function PlayerDetailHeader({
   profile,
   activeTab,
+  currentInfo = null,
 }: PlayerDetailHeaderProps) {
   const backToTeamHref =
     getTeamDetailHref(profile.team_slug)
@@ -45,8 +48,16 @@ export function PlayerDetailHeader({
     <div className="rounded-[24px] border border-white/10 bg-[linear-gradient(180deg,rgba(8,14,24,0.96),rgba(5,10,18,0.98))] p-4 shadow-[0_0_40px_rgba(34,104,189,0.06)]">
       <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
         <div className="flex min-w-0 items-start gap-4">
-          <div className="flex h-[72px] w-[72px] shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03] p-2">
-            {logoPath ? (
+          <div className="flex h-[72px] w-[72px] shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] p-2">
+            {currentInfo?.photo_url ? (
+              <Image
+                src={currentInfo.photo_url}
+                alt={profile.player_name}
+                width={64}
+                height={64}
+                className="h-auto max-h-[64px] w-auto max-w-[64px] rounded-xl object-contain"
+              />
+            ) : logoPath ? (
               <Image
                 src={logoPath}
                 alt={profile.team_name}
@@ -77,6 +88,37 @@ export function PlayerDetailHeader({
               <span>•</span>
               <span>{profile.season_label ?? "—"}</span>
             </div>
+
+            {currentInfo ? (
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
+                <span className="rounded-full border border-sky-400/30 bg-sky-400/10 px-2 py-0.5 text-[11px] font-medium uppercase tracking-[0.08em] text-sky-300">
+                  Current
+                </span>
+                <span className="text-white/80">
+                  {currentInfo.current_team_name}
+                </span>
+                {currentInfo.shirt_number !== null ? (
+                  <>
+                    <span className="text-white/40">•</span>
+                    <span className="text-white/80">
+                      #{currentInfo.shirt_number}
+                    </span>
+                  </>
+                ) : null}
+                {currentInfo.position ? (
+                  <>
+                    <span className="text-white/40">•</span>
+                    <span className="text-white/80">{currentInfo.position}</span>
+                  </>
+                ) : null}
+                {currentInfo.age !== null ? (
+                  <>
+                    <span className="text-white/40">•</span>
+                    <span className="text-white/80">Age {currentInfo.age}</span>
+                  </>
+                ) : null}
+              </div>
+            ) : null}
           </div>
         </div>
 

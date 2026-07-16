@@ -291,3 +291,19 @@ export type PlayerMetricLeaderboardRow = {
   qualification_reason: string | null;
 
 };
+export type PlayerCurrentInfoRow = {
+  player_slug: string;
+  opta_player_id: string;
+  apifootball_player_id: string;
+
+  current_team_slug: string;
+  current_team_name: string;
+
+  player_name: string;
+  age: number | null;
+  shirt_number: number | null;
+  position: string | null;
+
+  photo_url: string | null;
+  fetched_at: string | null;
+};

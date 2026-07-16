@@ -445,4 +445,6 @@ export type TeamCurrentSquadRow = {
 
   photo_url: string | null;
   fetched_at: string | null;
+
+  player_slug: string | null;
 };
