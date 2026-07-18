@@ -5,9 +5,12 @@
 --    (uyruk, boy, kilo, doğum tarihi/yeri, tam ad, foto). Kadro yenilendiğinde
 --    oddskeeper/data/apifootball/player_profiles cache'i ile birlikte tazelenir.
 -- 2) analytics.player_current_info_v1 view'ına bio alanları eklendi.
--- 3) ref.team_profiles: /teams (stadyum, kapasite, kuruluş yılı) ve /coachs
---    (teknik direktör) ile güncellendi; amed/corum/erzurumspor profilleri eklendi.
---    market_value_* alanlarına dokunulmadı (API-Football'da yok).
+-- 3) ref.team_profiles: /teams (stadyum, kapasite, kuruluş yılı) ile güncellendi;
+--    amed/corum/erzurumspor profilleri eklendi. market_value_* alanlarına
+--    dokunulmadı (API-Football'da yok).
+--    NOT: head_coach için /coachs verisi GÜVENİLMEZ çıktı (kapanmamış eski
+--    kayıtlar döndürüyor); elle bakılan koç isimleri geri yüklendi. head_coach
+--    alanını API'den güncelleme, elle yönet.
 -- 4) PERFORMANS: apifootball backfill'i sonrası match_player_stats_details 8.5k
 --    satırdan 127k satıra çıktı. Opta kimlikleriyle çalışan view'lar bu tabloyu
 --    filtresiz dedup'luyordu; team_squad_v1 7 sn'ye kadar çıkmıştı. Aşağıdaki
