@@ -119,6 +119,40 @@ export function PlayerDetailHeader({
                 ) : null}
               </div>
             ) : null}
+
+            {currentInfo &&
+            (currentInfo.nationality ||
+              currentInfo.height_cm ||
+              currentInfo.birth_date) ? (
+              <div className="mt-1 flex flex-wrap items-center gap-2 text-[13px] text-white/50">
+                {currentInfo.nationality ? (
+                  <span>{currentInfo.nationality}</span>
+                ) : null}
+                {currentInfo.height_cm ? (
+                  <>
+                    <span className="text-white/30">•</span>
+                    <span>{currentInfo.height_cm} cm</span>
+                  </>
+                ) : null}
+                {currentInfo.weight_kg ? (
+                  <>
+                    <span className="text-white/30">•</span>
+                    <span>{currentInfo.weight_kg} kg</span>
+                  </>
+                ) : null}
+                {currentInfo.birth_date ? (
+                  <>
+                    <span className="text-white/30">•</span>
+                    <span>
+                      {currentInfo.birth_date}
+                      {currentInfo.birth_place
+                        ? ` (${currentInfo.birth_place})`
+                        : ""}
+                    </span>
+                  </>
+                ) : null}
+              </div>
+            ) : null}
           </div>
         </div>
 

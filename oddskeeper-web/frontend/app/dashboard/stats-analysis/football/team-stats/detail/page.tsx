@@ -84,59 +84,47 @@ export default async function TeamDetailPage({
     notFound();
   }
 
-  const teamProfile = await getTeamProfile(teamSlug);
-
-  const teamResults =
-    activeTab === "results" ? await getTeamResults(teamSlug) : [];
-
-  const seasonHistoryRows =
-    activeTab === "season-history" ? await getTeamSeasonHistory(teamSlug) : [];
-
-  const squadRows =
-    activeTab === "squad" ? await getTeamSquad(teamSlug) : [];
-
-  const currentSquadRows =
-    activeTab === "squad" ? await getTeamCurrentSquad(teamSlug) : [];
-
-  const fixtureRows =
-    activeTab === "fixture" ? await getTeamFixtures(teamSlug) : [];
-
-  const summary =
+  // Birbirinden bağımsız sorgular paralel; summary'e bağımlı olanlar ikinci grupta.
+  const [
+    teamProfile,
+    teamResults,
+    seasonHistoryRows,
+    squadRows,
+    currentSquadRows,
+    fixtureRows,
+    summary,
+  ] = await Promise.all([
+    getTeamProfile(teamSlug),
+    activeTab === "results" ? getTeamResults(teamSlug) : Promise.resolve([]),
+    activeTab === "season-history"
+      ? getTeamSeasonHistory(teamSlug)
+      : Promise.resolve([]),
+    activeTab === "squad" ? getTeamSquad(teamSlug) : Promise.resolve([]),
+    activeTab === "squad" ? getTeamCurrentSquad(teamSlug) : Promise.resolve([]),
+    activeTab === "fixture" ? getTeamFixtures(teamSlug) : Promise.resolve([]),
     activeTab === "team-statistics" ||
     activeTab === "detailed-stats" ||
     activeTab === "advanced"
-      ? await getTeamStatisticsSummary(teamSlug)
-      : null;
+      ? getTeamStatisticsSummary(teamSlug)
+      : Promise.resolve(null),
+  ]);
 
-  const splitRows =
+  const [splitRows, recentFormRows, detailedMetricRows] = await Promise.all([
     activeTab === "team-statistics" &&
     summary?.competition &&
     summary?.season_label
-      ? await getTeamStatisticsSplit(
-          teamSlug,
-          summary.competition,
-          summary.season_label
-        )
-      : [];
-
-  const recentFormRows =
+      ? getTeamStatisticsSplit(teamSlug, summary.competition, summary.season_label)
+      : Promise.resolve([]),
     (activeTab === "team-statistics" || activeTab === "advanced") &&
     summary?.competition &&
     summary?.season_label
-      ? await getTeamRecentForm(
-          teamSlug,
-          summary.competition,
-          summary.season_label
-        )
-      : [];
-
-  const detailedMetricRows =
+      ? getTeamRecentForm(teamSlug, summary.competition, summary.season_label)
+      : Promise.resolve([]),
     (activeTab === "detailed-stats" || activeTab === "advanced") &&
     summary?.season_label
-      ? await getTeamDetailedMetrics(teamSlug, {
-          seasonLabel: summary.season_label,
-        })
-      : [];
+      ? getTeamDetailedMetrics(teamSlug, { seasonLabel: summary.season_label })
+      : Promise.resolve([]),
+  ]);
 
   const advancedForm: TeamAdvancedFormSnapshot | undefined =
     summary && recentFormRows.length > 0

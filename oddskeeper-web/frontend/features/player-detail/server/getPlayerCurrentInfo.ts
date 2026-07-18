@@ -21,7 +21,13 @@ export async function getPlayerCurrentInfo(
         shirt_number,
         position,
         photo_url,
-        fetched_at
+        fetched_at,
+        full_name,
+        nationality,
+        height_cm,
+        weight_kg,
+        birth_date,
+        birth_place
       `
     )
     .eq("player_slug", playerSlug)

@@ -306,4 +306,11 @@ export type PlayerCurrentInfoRow = {
 
   photo_url: string | null;
   fetched_at: string | null;
+
+  full_name: string | null;
+  nationality: string | null;
+  height_cm: number | null;
+  weight_kg: number | null;
+  birth_date: string | null;
+  birth_place: string | null;
 };
