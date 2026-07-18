@@ -48,11 +48,20 @@ function CurrentSquadTable({ rows }: { rows: TeamCurrentSquadRow[] }) {
                 <td className="px-4 py-2 text-white/55">
                   {row.shirt_number ?? "—"}
                 </td>
-                <td className="px-4 py-2 font-medium text-white">
-                  <PlayerName
-                    playerSlug={row.player_slug}
-                    playerName={row.player_name}
-                  />
+                <td className="px-4 py-2 font-medium">
+                  {row.player_slug ? (
+                    <PlayerLink
+                      playerSlug={row.player_slug}
+                      className="font-medium text-[#8dc8ff] transition hover:text-[#bfe0ff] hover:underline"
+                      title={row.player_name}
+                    >
+                      {row.player_name}
+                    </PlayerLink>
+                  ) : (
+                    <span className="text-white" title="Oyuncu sayfası henüz yok">
+                      {row.player_name}
+                    </span>
+                  )}
                 </td>
                 <td className="px-4 py-2">
                   {POSITION_GROUP_LABELS[row.position_group]?.replace(/s$/, "") ??
@@ -144,7 +153,7 @@ function PlayerName({
   return (
     <PlayerLink
       playerSlug={playerSlug}
-      className="font-medium text-white transition hover:text-white hover:underline"
+      className="font-medium text-[#8dc8ff] transition hover:text-[#bfe0ff] hover:underline"
       title={playerName}
     >
       {playerName}
