@@ -11,7 +11,11 @@ import { getPlayerMatchLog } from "@/features/player-detail/server/getPlayerMatc
 import { getPlayerMetricBenchmarks } from "@/features/player-detail/server/getPlayerMetricBenchmarks";
 import { getPlayerProfile } from "@/features/player-detail/server/getPlayerProfile";
 import { getPlayerCurrentInfo } from "@/features/player-detail/server/getPlayerCurrentInfo";
-import type { ValidPlayerTab } from "@/features/player-detail/types";
+import type {
+  PlayerCurrentInfoRow,
+  PlayerProfileRow,
+  ValidPlayerTab,
+} from "@/features/player-detail/types";
 
 type PageProps = {
   searchParams?: Promise<{
@@ -22,6 +26,52 @@ type PageProps = {
 
 function isValidPlayerTab(value: string | undefined): value is ValidPlayerTab {
   return VALID_PLAYER_TABS.includes(value as ValidPlayerTab);
+}
+
+const POSITION_CODES: Record<string, { code: string; group: string }> = {
+  Goalkeeper: { code: "GK", group: "GOALKEEPER" },
+  Defender: { code: "DF", group: "DEFENDER" },
+  Midfielder: { code: "MF", group: "MIDFIELDER" },
+  Attacker: { code: "FW", group: "FORWARD" },
+};
+
+// Opta maç verisi olmayan (yeni transfer) oyuncular için güncel kadro
+// bilgisinden asgari bir profil kurar; sayfa böylece boş kalmaz.
+function buildFallbackProfile(
+  playerSlug: string,
+  info: PlayerCurrentInfoRow
+): PlayerProfileRow {
+  const fullName =
+    [info.first_name, info.last_name].filter(Boolean).join(" ") ||
+    info.full_name ||
+    info.player_name;
+  const position = POSITION_CODES[info.position ?? ""] ?? {
+    code: "—",
+    group: "OTHER",
+  };
+
+  return {
+    team_slug: info.current_team_slug,
+    team_source_id: "",
+    team_name: info.current_team_name,
+    competition: "Süper Lig",
+    season_label: null,
+    player_source_id: info.apifootball_player_id,
+    player_name: fullName,
+    player_slug: playerSlug,
+    primary_position_code: position.code,
+    position_group: position.group,
+    appearances: 0,
+    starts: 0,
+    sub_appearances: 0,
+    starter_rate_pct: null,
+    total_minutes: 0,
+    avg_minutes: null,
+    goals: 0,
+    assists: 0,
+    first_match_datetime: null,
+    last_match_datetime: null,
+  };
 }
 
 export default async function FootballPlayerDetailPage({
@@ -45,11 +95,15 @@ export default async function FootballPlayerDetailPage({
     );
   }
 
-  const [profile, matchLog, currentInfo] = await Promise.all([
+  const [optaProfile, matchLog, currentInfo] = await Promise.all([
     getPlayerProfile(playerSlug),
     getPlayerMatchLog(playerSlug),
     getPlayerCurrentInfo(playerSlug),
   ]);
+
+  const profile =
+    optaProfile ??
+    (currentInfo ? buildFallbackProfile(playerSlug, currentInfo) : null);
 
   if (!profile) {
     return (

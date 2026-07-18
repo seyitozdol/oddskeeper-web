@@ -1,0 +1,22 @@
+-- Yeni transfer oyunculara sayfa + güncel hocalar. 2026-07-19'da canlıya uygulandı.
+--
+-- 1) Opta eşleşmesi olmayan oyuncular (yeni transferler) için de oyuncu sayfası:
+--    analytics.team_current_squad_v1 ve analytics.player_current_info_v1
+--    view'larında player_slug artık coalesce(opta_slug, api_slug) üretir;
+--    api_slug formatı: '<ad-soyad-slug>--af<apifootball_player_id>' (örn.
+--    'a-nubel--af399'). Frontend, Opta profili bulunamayan slug'larda güncel
+--    kadro bilgisinden asgari profil kurar (buildFallbackProfile).
+--    player_current_info_v1'e ayrıca b.first_name, b.last_name eklendi
+--    (kısaltılmış görünen ad yerine tam ad göstermek için).
+--    Tam view gövdeleri pg_views'tan alınabilir.
+--
+-- 2) ref.team_profiles.head_coach 2026-27 güncel değerlerle yenilendi.
+--    Kaynak: Wikipedia 2026-27 Süper Lig sayfası (2026-07-19 itibarıyla):
+--    Beşiktaş=Vincenzo Italiano, Fenerbahçe=İsmail Kartal, Eyüpspor=Özhan Pulat,
+--    Gaziantep=Mirel Rădoi, Gençlerbirliği=Metin Diyadin, Amed=Besnik Hasi,
+--    Çorum=Uğur Uçar; diğerleri değişmedi. head_coach alanı elle/manuel
+--    araştırmayla yönetiliyor (API koç verisi güvenilmez, bkz. 2026-07-18 notu).
+--
+-- 3) Vercel bölge tespiti: Supabase DB eu-west-1'de (Dublin), Vercel
+--    fonksiyonları varsayılan iad1'de (ABD) çalışıyordu; her sorgu Atlantik
+--    turu atıyordu. frontend/vercel.json ile fonksiyonlar dub1'e sabitlendi.

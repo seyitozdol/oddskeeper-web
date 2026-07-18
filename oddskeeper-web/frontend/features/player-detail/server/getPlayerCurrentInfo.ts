@@ -27,7 +27,9 @@ export async function getPlayerCurrentInfo(
         height_cm,
         weight_kg,
         birth_date,
-        birth_place
+        birth_place,
+        first_name,
+        last_name
       `
     )
     .eq("player_slug", playerSlug)

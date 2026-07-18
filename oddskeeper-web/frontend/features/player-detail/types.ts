@@ -293,7 +293,7 @@ export type PlayerMetricLeaderboardRow = {
 };
 export type PlayerCurrentInfoRow = {
   player_slug: string;
-  opta_player_id: string;
+  opta_player_id: string | null;
   apifootball_player_id: string;
 
   current_team_slug: string;
@@ -313,4 +313,6 @@ export type PlayerCurrentInfoRow = {
   weight_kg: number | null;
   birth_date: string | null;
   birth_place: string | null;
+  first_name: string | null;
+  last_name: string | null;
 };
