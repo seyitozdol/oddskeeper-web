@@ -67,9 +67,11 @@ def parse_squad(html):
     """Kadro sayfasından oyuncu satırlarını çıkarır."""
     players = []
     # Satırlar: profil linki -> isim; aynı satırda doğum tarihi ve değer.
-    row_chunks = re.split(r'<tr class="(?:odd|even)">', html)[1:]
+    # Dikkat: transfer vurgulu satırlar "odd theme6" gibi ek sınıf taşır,
+    # kaptan ikonlu isimlerde </a>'dan önce iç içe <span> bulunur.
+    row_chunks = re.split(r'<tr class="(?:odd|even)[^"]*">', html)[1:]
     for chunk in row_chunks:
-        pm = re.search(r'href="/[a-z0-9-]+/profil/spieler/(\d+)">\s*([^<]+?)\s*</a>', chunk)
+        pm = re.search(r'href="/[a-z0-9-]+/profil/spieler/(\d+)">\s*([^<]+?)\s*<', chunk)
         if not pm:
             continue
         tm_id, name = pm.group(1), pm.group(2)
