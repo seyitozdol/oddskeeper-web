@@ -1,3 +1,4 @@
+import { getT } from "@/lib/i18n/server";
 import type { MatchIncidentRow } from "../types";
 
 type MatchIncidentsPanelProps = {
@@ -16,11 +17,13 @@ function getSideBadgeClass(side: string | null) {
   return "border-white/10 bg-white/[0.03] text-white/60";
 }
 
-export function MatchIncidentsPanel({ rows }: MatchIncidentsPanelProps) {
+export async function MatchIncidentsPanel({ rows }: MatchIncidentsPanelProps) {
+  const t = await getT();
+
   if (rows.length === 0) {
     return (
       <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-4 text-sm text-white/65">
-        No incidents found for this match.
+        {t("matchDetail.noIncidents")}
       </div>
     );
   }
@@ -30,12 +33,12 @@ export function MatchIncidentsPanel({ rows }: MatchIncidentsPanelProps) {
       <table className="min-w-full border-collapse">
         <thead className="bg-white/[0.03]">
           <tr className="text-left text-[9px] uppercase tracking-[0.14em] text-white/38">
-            <th className="px-3 py-2 font-medium">Minute</th>
-            <th className="px-3 py-2 font-medium">Side</th>
-            <th className="px-3 py-2 font-medium">Event</th>
-            <th className="px-3 py-2 font-medium">Primary</th>
-            <th className="px-3 py-2 font-medium">Secondary</th>
-            <th className="px-3 py-2 font-medium">Raw</th>
+            <th className="px-3 py-2 font-medium">{t("matchDetail.colMinute")}</th>
+            <th className="px-3 py-2 font-medium">{t("matchDetail.colSide")}</th>
+            <th className="px-3 py-2 font-medium">{t("matchDetail.colEvent")}</th>
+            <th className="px-3 py-2 font-medium">{t("matchDetail.colPrimary")}</th>
+            <th className="px-3 py-2 font-medium">{t("matchDetail.colSecondary")}</th>
+            <th className="px-3 py-2 font-medium">{t("matchDetail.colRaw")}</th>
           </tr>
         </thead>
 

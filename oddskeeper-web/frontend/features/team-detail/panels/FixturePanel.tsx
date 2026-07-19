@@ -1,7 +1,9 @@
+import { getT } from "@/lib/i18n/server";
 import type { TeamFixtureRow } from "../types";
 import { formatFixtureDate } from "../utils/formatFixtureDate";
 import { formatKickoffTime } from "../utils/formatKickoffTime";
 import TeamLink from "@/components/links/TeamLink";
+import type { Translator } from "@/lib/i18n/messages";
 
 type FixturePanelProps = {
   rows?: TeamFixtureRow[];
@@ -27,9 +29,20 @@ function getStatusClass(status: TeamFixtureRow["fixture_status"]) {
   return "border-white/10 bg-white/[0.03] text-white/60";
 }
 
-function getStatusLabel(status: TeamFixtureRow["fixture_status"]) {
-  if (!status) return "Unknown";
-  return status.replace(/_/g, " ");
+const STATUS_LABEL_KEYS: Record<string, string> = {
+  scheduled: "teamDetail.statusScheduled",
+  completed: "teamDetail.statusCompleted",
+  postponed: "teamDetail.statusPostponed",
+  cancelled: "teamDetail.statusCancelled",
+};
+
+function getStatusLabel(
+  status: TeamFixtureRow["fixture_status"],
+  t: Translator
+) {
+  if (!status) return t("teamDetail.statusUnknown");
+  const key = STATUS_LABEL_KEYS[status];
+  return key ? t(key) : status.replace(/_/g, " ");
 }
 
 function OpponentName({
@@ -56,11 +69,13 @@ function OpponentName({
   );
 }
 
-export function FixturePanel({ rows = [] }: FixturePanelProps) {
+export async function FixturePanel({ rows = [] }: FixturePanelProps) {
+  const t = await getT();
+
   if (rows.length === 0) {
     return (
       <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-4 text-sm text-white/65">
-        No fixture data found for this team.
+        {t("teamDetail.noFixtureData")}
       </div>
     );
   }
@@ -70,13 +85,13 @@ export function FixturePanel({ rows = [] }: FixturePanelProps) {
       <table className="min-w-full border-collapse">
         <thead className="bg-white/[0.03]">
           <tr className="text-left text-[10px] uppercase tracking-[0.14em] text-white/38">
-            <th className="px-4 py-2 font-medium">Date</th>
-            <th className="px-4 py-2 font-medium">Time</th>
-            <th className="px-4 py-2 font-medium">H/A</th>
-            <th className="px-4 py-2 font-medium">Opponent</th>
-            <th className="px-4 py-2 font-medium">Round</th>
-            <th className="px-4 py-2 font-medium">Status</th>
-            <th className="px-4 py-2 font-medium">Competition</th>
+            <th className="px-4 py-2 font-medium">{t("common.date")}</th>
+            <th className="px-4 py-2 font-medium">{t("teamDetail.colTime")}</th>
+            <th className="px-4 py-2 font-medium">{t("teamDetail.colHomeAway")}</th>
+            <th className="px-4 py-2 font-medium">{t("common.opponent")}</th>
+            <th className="px-4 py-2 font-medium">{t("teamDetail.colRound")}</th>
+            <th className="px-4 py-2 font-medium">{t("teamDetail.colStatus")}</th>
+            <th className="px-4 py-2 font-medium">{t("common.competition")}</th>
           </tr>
         </thead>
 
@@ -96,7 +111,7 @@ export function FixturePanel({ rows = [] }: FixturePanelProps) {
 
               <td className="px-4 py-2 whitespace-nowrap">
                 <span className="rounded-md border border-white/10 bg-white/[0.03] px-2 py-[2px] text-[10px] font-medium text-white/72">
-                  {row.is_home ? "Home" : "Away"}
+                  {row.is_home ? t("common.home") : t("common.away")}
                 </span>
               </td>
 
@@ -117,7 +132,7 @@ export function FixturePanel({ rows = [] }: FixturePanelProps) {
                     row.fixture_status
                   )}`}
                 >
-                  {getStatusLabel(row.fixture_status)}
+                  {getStatusLabel(row.fixture_status, t)}
                 </span>
               </td>
 

@@ -4,10 +4,12 @@ import Link from "next/link";
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "../../lib/supabase/client";
+import { useI18n } from "@/lib/i18n/LanguageProvider";
 
 export default function SignUpPage() {
   const router = useRouter();
   const supabase = createClient();
+  const { t } = useI18n();
 
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -47,7 +49,7 @@ export default function SignUpPage() {
       return;
     }
 
-    setSuccessText("Account created. Check your email to confirm your account.");
+    setSuccessText(t("auth.signUpSuccess"));
     setLoading(false);
   }
 
@@ -67,7 +69,7 @@ export default function SignUpPage() {
                 OddsKeeper
               </span>
               <span className="text-[11px] uppercase tracking-[0.24em] text-white/45">
-                Sports Data Intelligence
+                {t("landing.brandTagline")}
               </span>
             </div>
           </Link>
@@ -76,23 +78,22 @@ export default function SignUpPage() {
             href="/"
             className="text-sm text-white/60 transition hover:text-white"
           >
-            Back to Home
+            {t("auth.backToHome")}
           </Link>
         </div>
 
         <div className="grid gap-8 lg:grid-cols-[0.95fr_1.05fr] lg:items-center">
           <div className="max-w-[560px]">
             <p className="text-[11px] font-medium uppercase tracking-[0.24em] text-[#8bdfff]">
-              Sign Up
+              {t("auth.signUpKicker")}
             </p>
 
             <h1 className="mt-4 text-4xl font-semibold leading-tight text-white sm:text-5xl lg:text-6xl">
-              Create your workspace
+              {t("auth.signUpTitle")}
             </h1>
 
             <p className="mt-5 text-base leading-8 text-white/62 sm:text-lg">
-              Set up your account to access platform workflows, structured data
-              layers, and future analytical tools.
+              {t("auth.signUpDescription")}
             </p>
           </div>
 
@@ -104,11 +105,11 @@ export default function SignUpPage() {
                 <form onSubmit={handleSubmit} className="space-y-5">
                   <div>
                     <label className="mb-2 block text-sm font-medium text-white/80">
-                      Full Name
+                      {t("auth.fullNameLabel")}
                     </label>
                     <input
                       type="text"
-                      placeholder="Your full name"
+                      placeholder={t("auth.fullNamePlaceholder")}
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
                       className="w-full rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-white outline-none transition placeholder:text-white/30 focus:border-[#13b0ff]/40"
@@ -118,11 +119,11 @@ export default function SignUpPage() {
 
                   <div>
                     <label className="mb-2 block text-sm font-medium text-white/80">
-                      Email
+                      {t("auth.emailLabel")}
                     </label>
                     <input
                       type="email"
-                      placeholder="you@company.com"
+                      placeholder={t("auth.emailPlaceholder")}
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       className="w-full rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-white outline-none transition placeholder:text-white/30 focus:border-[#13b0ff]/40"
@@ -132,11 +133,11 @@ export default function SignUpPage() {
 
                   <div>
                     <label className="mb-2 block text-sm font-medium text-white/80">
-                      Password
+                      {t("auth.passwordLabel")}
                     </label>
                     <input
                       type="password"
-                      placeholder="Create a password"
+                      placeholder={t("auth.createPasswordPlaceholder")}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       className="w-full rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-white outline-none transition placeholder:text-white/30 focus:border-[#13b0ff]/40"
@@ -161,16 +162,16 @@ export default function SignUpPage() {
                     disabled={loading}
                     className="w-full cursor-pointer rounded-2xl border border-[#13b0ff]/35 bg-gradient-to-r from-[#0d8fff] to-[#25c8ff] px-6 py-3.5 text-sm font-semibold text-white shadow-[0_0_30px_rgba(19,176,255,0.18)] transition hover:scale-[1.01] disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    {loading ? "Signing Up..." : "Sign Up"}
+                    {loading ? t("auth.signingUp") : t("auth.signUpButton")}
                   </button>
 
                   <div className="rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-3 text-sm text-white/55">
-                    Already have an account?{" "}
+                    {t("auth.alreadyHaveAccount")}{" "}
                     <Link
                       href="/sign-in"
                       className="font-medium text-[#8bdfff] transition hover:text-white"
                     >
-                      Sign In
+                      {t("landing.signIn")}
                     </Link>
                   </div>
                 </form>

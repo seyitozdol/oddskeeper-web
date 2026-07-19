@@ -1,6 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useI18n } from "@/lib/i18n/LanguageProvider";
+import type { Translator } from "@/lib/i18n/messages";
 import { TeamMetricLeaderboardDrawer } from "../components/TeamMetricLeaderboardDrawer";
 import type {
   TeamDetailedCategoryKey,
@@ -49,13 +51,13 @@ const CATEGORY_ORDER: TeamDetailedCategoryKey[] = [
   "goal_composition",
 ];
 
-const CATEGORY_LABELS: Record<TeamDetailedCategoryKey, string> = {
-  attack: "Attack",
-  defence: "Defence",
-  build_up: "Build Up",
-  discipline: "Discipline",
-  set_piece: "Set Piece / Restart",
-  goal_composition: "Goal Composition",
+const CATEGORY_LABEL_KEYS: Record<TeamDetailedCategoryKey, string> = {
+  attack: "teamDetail.categoryAttack",
+  defence: "teamDetail.categoryDefence",
+  build_up: "teamDetail.categoryBuildUp",
+  discipline: "teamDetail.categoryDiscipline",
+  set_piece: "teamDetail.categorySetPiece",
+  goal_composition: "teamDetail.categoryGoalComposition",
 };
 
 function formatRawNumber(value: number, digits = 1) {
@@ -204,17 +206,18 @@ function getDeltaTone(
 
 function formatDirectionBadge(
   rankDirection: string | null | undefined,
-  isHigherBetter: boolean | null | undefined
+  isHigherBetter: boolean | null | undefined,
+  t: Translator
 ) {
   if (!rankDirection) {
     return "—";
   }
 
   if (isHigherBetter === false || rankDirection === "asc") {
-    return "Lower better";
+    return t("teamDetail.directionLowerBetterBadge");
   }
 
-  return "Higher better";
+  return t("teamDetail.directionHigherBetterBadge");
 }
 
 function getMetricAdvantage(row: TeamDetailedMetricRow) {
@@ -305,6 +308,8 @@ function SummaryCard({
 }
 
 function InfoTooltip() {
+  const { t } = useI18n();
+
   return (
     <div className="group relative">
       <button
@@ -315,9 +320,7 @@ function InfoTooltip() {
       </button>
 
       <div className="pointer-events-none absolute left-0 top-7 z-20 hidden w-[340px] rounded-xl border border-white/10 bg-[#0a1220] px-3 py-2 text-[11px] leading-5 text-white/72 shadow-[0_12px_30px_rgba(0,0,0,0.35)] group-hover:block">
-        Totals are season totals. Per Match, Home Per Match, Away Per Match and
-        League Avg Per Match are rate-based columns. Click a rank to open the
-        metric leaderboard. Click column headers to sort the table.
+        {t("teamDetail.detailedStatsInfoTooltip")}
       </div>
     </div>
   );
@@ -357,6 +360,7 @@ function SortableHeader({
   sortConfig: SortConfig;
   onSort: (key: SortKey) => void;
 }) {
+  const { t } = useI18n();
   const isActive = sortConfig?.key === sortKey;
   const direction = sortConfig?.direction;
 
@@ -367,7 +371,7 @@ function SortableHeader({
       className={`inline-flex items-center gap-1 transition hover:text-white ${
         isActive ? "text-white" : "text-white/38"
       }`}
-      title={`Sort by ${label}`}
+      title={t("teamDetail.sortByTooltip", { label })}
     >
       <span>{label}</span>
       <span className="text-[10px]">
@@ -380,6 +384,7 @@ function SortableHeader({
 export default function DetailedStatsPanel({
   rows = [],
 }: DetailedStatsPanelProps) {
+  const { t } = useI18n();
   const [activeCategory, setActiveCategory] = useState<CategoryFilter>("all");
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [selectedMetricKey, setSelectedMetricKey] = useState<string | null>(null);
@@ -546,26 +551,26 @@ export default function DetailedStatsPanel({
     return {
       strongestEdge: strongestRow
         ? `${strongestRow.metric_label} (#${strongestRow.league_rank})`
-        : "No clear edge",
+        : t("teamDetail.strongestEdgeDefaultNoEdge"),
       strongestEdgeSub: strongestRow
-        ? `${strongestRow.category_label} • ${formatMetricValue(
-            strongestRow.vs_league_avg_pct,
-            "pct_1"
-          )} vs avg`
-        : "No metric cleared the strength threshold",
+        ? t("teamDetail.categoryVsAvgSub", {
+            category: strongestRow.category_label,
+            pct: formatMetricValue(strongestRow.vs_league_avg_pct, "pct_1"),
+          })
+        : t("teamDetail.strongestEdgeDefaultSub"),
       strongestEdgeTone: strongestRow
         ? ("positive" as SummaryTone)
         : ("neutral" as SummaryTone),
 
       mainWeakness: weakestRow
         ? `${weakestRow.metric_label} (#${weakestRow.league_rank})`
-        : "No major weakness",
+        : t("teamDetail.mainWeaknessDefaultNoWeakness"),
       mainWeaknessSub: weakestRow
-        ? `${weakestRow.category_label} • ${formatMetricValue(
-            weakestRow.vs_league_avg_pct,
-            "pct_1"
-          )} vs avg`
-        : "No weakness crossed the alert threshold",
+        ? t("teamDetail.categoryVsAvgSub", {
+            category: weakestRow.category_label,
+            pct: formatMetricValue(weakestRow.vs_league_avg_pct, "pct_1"),
+          })
+        : t("teamDetail.mainWeaknessDefaultSub"),
       mainWeaknessTone: weakestRow
         ? ("negative" as SummaryTone)
         : ("neutral" as SummaryTone),
@@ -577,7 +582,10 @@ export default function DetailedStatsPanel({
           )})`
         : "—",
       biggestPositiveDeltaSub: biggestPositiveDeltaRow
-        ? `${biggestPositiveDeltaRow.category_label} • Rank #${biggestPositiveDeltaRow.league_rank}`
+        ? t("teamDetail.categoryRankSub", {
+            category: biggestPositiveDeltaRow.category_label,
+            rank: biggestPositiveDeltaRow.league_rank ?? "—",
+          })
         : undefined,
       biggestPositiveDeltaTone: biggestPositiveDeltaRow
         ? ("accent" as SummaryTone)
@@ -591,21 +599,24 @@ export default function DetailedStatsPanel({
           )}`
         : "—",
       biggestSplitGapSub: biggestGapRow
-        ? `Home PM ${formatMetricCell(
-            biggestGapRow,
-            biggestGapRow.home_value,
-            "home_per_match"
-          )} • Away PM ${formatMetricCell(
-            biggestGapRow,
-            biggestGapRow.away_value,
-            "away_per_match"
-          )}`
+        ? t("teamDetail.homeAwayPmSub", {
+            home: formatMetricCell(
+              biggestGapRow,
+              biggestGapRow.home_value,
+              "home_per_match"
+            ),
+            away: formatMetricCell(
+              biggestGapRow,
+              biggestGapRow.away_value,
+              "away_per_match"
+            ),
+          })
         : undefined,
       biggestSplitGapTone: biggestGapRow
         ? ("warning" as SummaryTone)
         : ("neutral" as SummaryTone),
     };
-  }, [rows]);
+  }, [rows, t]);
 
   const handleSort = (key: SortKey) => {
     setSortConfig((current) => {
@@ -626,7 +637,7 @@ export default function DetailedStatsPanel({
   if (rows.length === 0) {
     return (
       <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-4 text-sm text-white/65">
-        No detailed stats data found for this team.
+        {t("teamDetail.noDetailedStatsData")}
       </div>
     );
   }
@@ -642,7 +653,7 @@ export default function DetailedStatsPanel({
             <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
               <div className="flex items-center gap-2">
                 <div className="text-[11px] font-medium uppercase tracking-[0.18em] text-white/38">
-                  Detailed Team Stats
+                  {t("teamDetail.detailedStatsSectionTitle")}
                 </div>
                 <InfoTooltip />
               </div>
@@ -657,7 +668,7 @@ export default function DetailedStatsPanel({
                       : "border-white/10 bg-white/[0.03] text-white/72 hover:bg-white/[0.06]"
                   }`}
                 >
-                  All
+                  {t("common.all")}
                 </button>
 
                 {availableCategories.map((category) => (
@@ -671,7 +682,7 @@ export default function DetailedStatsPanel({
                         : "border-white/10 bg-white/[0.03] text-white/72 hover:bg-white/[0.06]"
                     }`}
                   >
-                    {CATEGORY_LABELS[category]}
+                    {t(CATEGORY_LABEL_KEYS[category])}
                   </button>
                 ))}
               </div>
@@ -679,25 +690,25 @@ export default function DetailedStatsPanel({
 
             <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
               <SummaryCard
-                label="Strongest Edge"
+                label={t("teamDetail.summaryStrongestEdge")}
                 value={summary.strongestEdge}
                 subvalue={summary.strongestEdgeSub}
                 tone={summary.strongestEdgeTone}
               />
               <SummaryCard
-                label="Main Weakness"
+                label={t("teamDetail.summaryMainWeakness")}
                 value={summary.mainWeakness}
                 subvalue={summary.mainWeaknessSub}
                 tone={summary.mainWeaknessTone}
               />
               <SummaryCard
-                label="Biggest Positive Delta"
+                label={t("teamDetail.summaryBiggestPositiveDelta")}
                 value={summary.biggestPositiveDelta}
                 subvalue={summary.biggestPositiveDeltaSub}
                 tone={summary.biggestPositiveDeltaTone}
               />
               <SummaryCard
-                label="Biggest Split Gap"
+                label={t("teamDetail.summaryBiggestSplitGap")}
                 value={summary.biggestSplitGap}
                 subvalue={summary.biggestSplitGapSub}
                 tone={summary.biggestSplitGapTone}
@@ -710,13 +721,13 @@ export default function DetailedStatsPanel({
           <table className="min-w-full border-collapse">
             <thead className="sticky top-0 z-10 bg-[#0d1624]">
               <tr className="text-left text-[10px] uppercase tracking-[0.14em] text-white/38">
-                <th className="px-4 py-2 font-medium">Metric</th>
+                <th className="px-4 py-2 font-medium">{t("teamDetail.colMetric")}</th>
                 {showCategoryColumn ? (
-                  <th className="px-4 py-2 font-medium">Category</th>
+                  <th className="px-4 py-2 font-medium">{t("teamDetail.colCategory")}</th>
                 ) : null}
                 <th className="px-4 py-2 font-medium">
                   <SortableHeader
-                    label="Total"
+                    label={t("teamDetail.colTotal")}
                     sortKey="total_value"
                     sortConfig={sortConfig}
                     onSort={handleSort}
@@ -724,7 +735,7 @@ export default function DetailedStatsPanel({
                 </th>
                 <th className="px-4 py-2 font-medium">
                   <SortableHeader
-                    label="Per Match"
+                    label={t("teamDetail.colPerMatch")}
                     sortKey="per_match_value"
                     sortConfig={sortConfig}
                     onSort={handleSort}
@@ -732,7 +743,7 @@ export default function DetailedStatsPanel({
                 </th>
                 <th className="px-4 py-2 font-medium">
                   <SortableHeader
-                    label="Home Per Match"
+                    label={t("teamDetail.colHomePerMatch")}
                     sortKey="home_value"
                     sortConfig={sortConfig}
                     onSort={handleSort}
@@ -740,7 +751,7 @@ export default function DetailedStatsPanel({
                 </th>
                 <th className="px-4 py-2 font-medium">
                   <SortableHeader
-                    label="Away Per Match"
+                    label={t("teamDetail.colAwayPerMatch")}
                     sortKey="away_value"
                     sortConfig={sortConfig}
                     onSort={handleSort}
@@ -748,7 +759,7 @@ export default function DetailedStatsPanel({
                 </th>
                 <th className="px-4 py-2 font-medium">
                   <SortableHeader
-                    label="League Avg Per Match"
+                    label={t("teamDetail.colLeagueAvgPerMatch")}
                     sortKey="league_avg"
                     sortConfig={sortConfig}
                     onSort={handleSort}
@@ -756,7 +767,7 @@ export default function DetailedStatsPanel({
                 </th>
                 <th className="px-4 py-2 font-medium">
                   <SortableHeader
-                    label="Rank"
+                    label={t("teamDetail.colRank")}
                     sortKey="league_rank"
                     sortConfig={sortConfig}
                     onSort={handleSort}
@@ -764,13 +775,13 @@ export default function DetailedStatsPanel({
                 </th>
                 <th className="px-4 py-2 font-medium">
                   <SortableHeader
-                    label="Vs Avg %"
+                    label={t("teamDetail.colVsAvgPct")}
                     sortKey="vs_league_avg_pct"
                     sortConfig={sortConfig}
                     onSort={handleSort}
                   />
                 </th>
-                <th className="px-4 py-2 font-medium">Direction</th>
+                <th className="px-4 py-2 font-medium">{t("teamDetail.colDirection")}</th>
               </tr>
             </thead>
 
@@ -819,7 +830,7 @@ export default function DetailedStatsPanel({
                           setSelectedMetricLabel(row.metric_label);
                           setIsDrawerOpen(true);
                         }}
-                        title="Open metric leaderboard"
+                        title={t("teamDetail.openLeaderboardTooltip")}
                         className={`group inline-flex items-center gap-1 font-semibold transition duration-150 hover:underline cursor-pointer ${getRankTone(
                           row.league_rank
                         )}`}
@@ -847,7 +858,8 @@ export default function DetailedStatsPanel({
                     <span className="inline-flex rounded-md border border-white/10 bg-white/[0.03] px-2 py-1 text-[11px] text-white/65">
                       {formatDirectionBadge(
                         row.rank_direction,
-                        row.is_higher_better
+                        row.is_higher_better,
+                        t
                       )}
                     </span>
                   </td>

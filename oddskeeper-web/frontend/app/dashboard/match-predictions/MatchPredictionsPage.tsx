@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useI18n } from "@/lib/i18n/LanguageProvider";
 import { fetchMatchPredictions, type MatchPrediction } from "./queries";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -64,6 +65,7 @@ function calcOverUnder25(homeXg: number, awayXg: number): { over: number; under:
 // ─── Match card ───────────────────────────────────────────────────────────────
 
 function MatchCard({ prediction: p, payback }: { prediction: MatchPrediction; payback: number }) {
+  const { t } = useI18n();
   const homeOdds = probToOdds(p.home_win_prob, payback);
   const drawOdds = probToOdds(p.draw_prob, payback);
   const awayOdds = probToOdds(p.away_win_prob, payback);
@@ -158,8 +160,8 @@ function MatchCard({ prediction: p, payback }: { prediction: MatchPrediction; pa
 
           {/* Üst / Alt */}
           {[
-            { label: "Üst", odds: overOdds,  fav: isOverFav,  color: "teal"   },
-            { label: "Alt", odds: underOdds, fav: !isOverFav, color: "orange" },
+            { label: t("matchPredictions.overLabel"), odds: overOdds,  fav: isOverFav,  color: "teal"   },
+            { label: t("matchPredictions.underLabel"), odds: underOdds, fav: !isOverFav, color: "orange" },
           ].map(({ label, odds, fav, color }) => {
             const tc = fav
               ? color === "teal" ? "text-teal-300" : "text-orange-300"
@@ -184,6 +186,7 @@ function MatchCard({ prediction: p, payback }: { prediction: MatchPrediction; pa
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function MatchPredictionsPage() {
+  const { t } = useI18n();
   const [predictions, setPredictions] = useState<MatchPrediction[]>([]);
   const [loading, setLoading]         = useState(true);
   const [payback, setPayback]         = useState<string>("93");
@@ -207,27 +210,27 @@ export default function MatchPredictionsPage() {
         <div className="flex items-start justify-between flex-wrap gap-4">
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <h1 className="text-[18px] font-bold text-white">Match Predictions</h1>
+              <h1 className="text-[18px] font-bold text-white">{t("nav.matchPredictions")}</h1>
               <span className="rounded-full border border-teal-500/30 bg-teal-500/10 px-2 py-0.5 text-[10px] font-semibold text-teal-400 uppercase tracking-wide">
                 v3
               </span>
             </div>
             <p className="text-[12px] text-white/40">
-              Dixon-Coles + xG · Team home advantage · Form adjustment · Isotonic calibration · Süper Lig 2025/2026
+              {t("matchPredictions.modelDescriptionLabel")}
             </p>
             <div className="mt-2 flex items-center gap-3 text-[11px] text-white/25">
-              <span>RPS skill <span className="text-teal-400/70">+0.333</span></span>
+              <span>{t("matchPredictions.rpsSkillLabel")} <span className="text-teal-400/70">+0.333</span></span>
               <span>·</span>
-              <span>Accuracy <span className="text-white/40">47.4%</span></span>
+              <span>{t("matchPredictions.accuracyLabel")} <span className="text-white/40">47.4%</span></span>
               <span>·</span>
-              <span>219 match backtest</span>
+              <span>{t("matchPredictions.backtestLabel", { count: 219 })}</span>
             </div>
           </div>
 
           {/* Payback input */}
           <div className="flex flex-col gap-1">
             <label className="text-[10px] uppercase tracking-[0.12em] text-white/40">
-              Payback %
+              {t("matchPredictions.paybackLabel")}
             </label>
             <input
               type="number"
@@ -245,18 +248,18 @@ export default function MatchPredictionsPage() {
         <div className="mt-3 flex items-center gap-4 text-[11px] text-white/30">
           <span className="flex items-center gap-1.5">
             <span className="h-2 w-4 rounded-full bg-teal-400/70 inline-block" />
-            Home win
+            {t("matchPredictions.homeWinLabel")}
           </span>
           <span className="flex items-center gap-1.5">
             <span className="h-2 w-4 rounded-full bg-white/25 inline-block" />
-            Draw
+            {t("matchPredictions.drawLabel")}
           </span>
           <span className="flex items-center gap-1.5">
             <span className="h-2 w-4 rounded-full bg-orange-400/70 inline-block" />
-            Away win
+            {t("matchPredictions.awayWinLabel")}
           </span>
           <span className="ml-auto text-white/20">
-            Odds = payback / probability
+            {t("matchPredictions.oddsFormulaLabel")}
           </span>
         </div>
       </div>
@@ -264,14 +267,14 @@ export default function MatchPredictionsPage() {
       {/* Loading */}
       {loading && (
         <div className="rounded-[14px] border border-white/10 bg-[#0d1624] px-5 py-10 text-center text-sm text-white/30">
-          Loading predictions…
+          {t("common.loading")}
         </div>
       )}
 
       {/* No data */}
       {!loading && predictions.length === 0 && (
         <div className="rounded-[14px] border border-white/10 bg-[#0d1624] px-5 py-10 text-center text-sm text-white/30">
-          No upcoming predictions found. Run the model script to generate predictions.
+          {t("matchPredictions.noPredictionsFound")}
         </div>
       )}
 
@@ -285,7 +288,9 @@ export default function MatchPredictionsPage() {
               {fmtDate(date)}
             </span>
             <span className="text-[11px] text-white/20">
-              {grouped[date].length} {grouped[date].length === 1 ? "match" : "matches"}
+              {grouped[date].length === 1
+                ? t("matchPredictions.matchCountOne")
+                : t("matchPredictions.matchesCount", { count: grouped[date].length })}
             </span>
             <div className="flex-1 h-px bg-white/[0.06]" />
           </div>

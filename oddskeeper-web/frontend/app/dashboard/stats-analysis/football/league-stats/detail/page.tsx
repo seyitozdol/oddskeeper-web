@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { getT } from "@/lib/i18n/server";
 import { getLeagueOverview } from "@/features/league-detail/server/getLeagueOverview";
 import { getLeagueFixtures } from "@/features/league-detail/server/getLeagueFixtures";
 import {
@@ -42,13 +43,13 @@ type LeagueDetailTab =
 type ValueBasis = "per90" | "per_match" | "total";
 type RoleFilter = "all" | "starter_core" | "starters" | "substitutes";
 
-const TAB_LABELS: Record<LeagueDetailTab, string> = {
-  overview: "Overview",
-  standings: "Standings",
-  results: "Results",
-  fixtures: "Fixtures",
-  team_leaders: "Team Leaders",
-  player_leaders: "Player Leaders",
+const TAB_LABEL_KEYS: Record<LeagueDetailTab, string> = {
+  overview: "leagueDetail.tabOverview",
+  standings: "leagueDetail.tabStandings",
+  results: "leagueDetail.tabResults",
+  fixtures: "leagueDetail.tabFixtures",
+  team_leaders: "leagueDetail.tabTeamLeaders",
+  player_leaders: "leagueDetail.tabPlayerLeaders",
 };
 
 function getSingleValue(value: string | string[] | undefined): string | null {
@@ -80,7 +81,7 @@ function buildLeagueTabHref(
 }
 
 export default async function LeagueDetailPage({ searchParams }: PageProps) {
-  const resolvedSearchParams = await searchParams;
+  const [resolvedSearchParams, t] = await Promise.all([searchParams, getT()]);
 
   const competition =
     getSingleValue(resolvedSearchParams?.competition)?.trim() ?? "";
@@ -94,7 +95,7 @@ export default async function LeagueDetailPage({ searchParams }: PageProps) {
   if (!competition || !season) {
     return (
       <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-4 text-sm text-white/65">
-        League detail requires both competition and season query params.
+        {t("leagueDetail.requiresParams")}
       </div>
     );
   }
@@ -217,7 +218,7 @@ export default async function LeagueDetailPage({ searchParams }: PageProps) {
         <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
           <div>
             <div className="text-[11px] uppercase tracking-[0.20em] text-white/35">
-              League Stats
+              {t("leagueDetail.kicker")}
             </div>
             <h1 className="mt-2 text-2xl font-semibold text-white">
               {competition}
@@ -250,7 +251,7 @@ export default async function LeagueDetailPage({ searchParams }: PageProps) {
                       : "border-white/10 bg-white/[0.03] text-white/72 hover:bg-white/[0.06]"
                   }`}
                 >
-                  {TAB_LABELS[tab]}
+                  {t(TAB_LABEL_KEYS[tab])}
                 </Link>
               );
             })}

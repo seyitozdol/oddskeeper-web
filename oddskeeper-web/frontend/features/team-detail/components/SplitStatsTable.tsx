@@ -1,3 +1,4 @@
+import { getT } from "@/lib/i18n/server";
 import type { TeamStatisticsSplitRow } from "../types";
 import { formatDecimal } from "../utils/formatDecimal";
 
@@ -5,12 +6,14 @@ type SplitStatsTableProps = {
   rows?: TeamStatisticsSplitRow[];
 };
 
-export function SplitStatsTable({ rows = [] }: SplitStatsTableProps) {
+export async function SplitStatsTable({ rows = [] }: SplitStatsTableProps) {
+  const t = await getT();
+
   return (
     <div className="rounded-[14px] border border-white/10">
       <div className="border-b border-white/10 bg-white/[0.03] px-3 py-2">
         <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-white/42">
-          Home / Away Split
+          {t("teamDetail.homeAwaySplitTitle")}
         </div>
       </div>
 
@@ -18,16 +21,16 @@ export function SplitStatsTable({ rows = [] }: SplitStatsTableProps) {
         <table className="min-w-full border-collapse">
           <thead>
             <tr className="text-left text-[10px] uppercase tracking-[0.14em] text-white/38">
-              <th className="px-3 py-2 font-medium">Split</th>
-              <th className="px-3 py-2 font-medium">P</th>
-              <th className="px-3 py-2 font-medium">W</th>
-              <th className="px-3 py-2 font-medium">D</th>
-              <th className="px-3 py-2 font-medium">L</th>
-              <th className="px-3 py-2 font-medium">GF</th>
-              <th className="px-3 py-2 font-medium">GA</th>
-              <th className="px-3 py-2 font-medium">GD</th>
-              <th className="px-3 py-2 font-medium">PTS</th>
-              <th className="px-3 py-2 font-medium">PPG</th>
+              <th className="px-3 py-2 font-medium">{t("teamDetail.colSplit")}</th>
+              <th className="px-3 py-2 font-medium">{t("teamDetail.colP")}</th>
+              <th className="px-3 py-2 font-medium">{t("teamDetail.colW")}</th>
+              <th className="px-3 py-2 font-medium">{t("teamDetail.colD")}</th>
+              <th className="px-3 py-2 font-medium">{t("teamDetail.colL")}</th>
+              <th className="px-3 py-2 font-medium">{t("teamDetail.colGf")}</th>
+              <th className="px-3 py-2 font-medium">{t("teamDetail.colGa")}</th>
+              <th className="px-3 py-2 font-medium">{t("teamDetail.colGd")}</th>
+              <th className="px-3 py-2 font-medium">{t("teamDetail.colPts")}</th>
+              <th className="px-3 py-2 font-medium">{t("teamDetail.colPpg")}</th>
             </tr>
           </thead>
 

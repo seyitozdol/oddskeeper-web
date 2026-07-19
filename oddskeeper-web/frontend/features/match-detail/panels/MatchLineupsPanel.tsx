@@ -1,5 +1,7 @@
 import Image from "next/image";
 import PlayerLink from "@/components/links/PlayerLink";
+import { getT } from "@/lib/i18n/server";
+import type { Translator } from "@/lib/i18n/messages";
 import type { MatchParticipantRow } from "../types";
 
 type MatchLineupsPanelProps = {
@@ -74,10 +76,12 @@ function TeamParticipantsCard({
   teamSlug,
   teamName,
   rows,
+  t,
 }: {
   teamSlug?: string | null;
   teamName?: string | null;
   rows: MatchParticipantRow[];
+  t: Translator;
 }) {
   return (
     <div className="min-w-0 flex-1 rounded-[16px] border border-white/10 bg-white/[0.03] p-3">
@@ -86,15 +90,15 @@ function TeamParticipantsCard({
         style={{ gridTemplateColumns: "28px minmax(0,220px) 34px 38px 72px" }}
       >
         <TeamLogo teamSlug={teamSlug} teamName={teamName} />
-        <div>Player</div>
-        <div>Pos</div>
-        <div>Min</div>
-        <div>Status</div>
+        <div>{t("common.player")}</div>
+        <div>{t("common.position")}</div>
+        <div>{t("common.minutes")}</div>
+        <div>{t("matchDetail.colStatus")}</div>
       </div>
 
       {rows.length === 0 ? (
         <div className="pt-3 text-sm text-white/55">
-          No participant data found.
+          {t("matchDetail.noParticipantDataTeam")}
         </div>
       ) : (
         <div className="pt-1">
@@ -141,11 +145,13 @@ function TeamParticipantsCard({
   );
 }
 
-export function MatchLineupsPanel({ rows }: MatchLineupsPanelProps) {
+export async function MatchLineupsPanel({ rows }: MatchLineupsPanelProps) {
+  const t = await getT();
+
   if (rows.length === 0) {
     return (
       <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-4 text-sm text-white/65">
-        No participant data found for this match.
+        {t("matchDetail.noParticipantData")}
       </div>
     );
   }
@@ -158,15 +164,15 @@ export function MatchLineupsPanel({ rows }: MatchLineupsPanelProps) {
     .filter((row) => row.team_side === "away")
     .sort(sortParticipants);
 
-  const homeName = homeRows[0]?.team_name ?? "Home";
-  const awayName = awayRows[0]?.team_name ?? "Away";
+  const homeName = homeRows[0]?.team_name ?? t("common.home");
+  const awayName = awayRows[0]?.team_name ?? t("common.away");
   const homeSlug = homeRows[0]?.team_slug ?? null;
   const awaySlug = awayRows[0]?.team_slug ?? null;
 
   return (
     <div className="space-y-2">
       <div className="text-[11px] text-white/40">
-        Participant layer
+        {t("matchDetail.participantLayer")}
       </div>
 
       <div className="flex flex-col gap-3 lg:flex-row">
@@ -174,12 +180,14 @@ export function MatchLineupsPanel({ rows }: MatchLineupsPanelProps) {
           teamSlug={homeSlug}
           teamName={homeName}
           rows={homeRows}
+          t={t}
         />
 
         <TeamParticipantsCard
           teamSlug={awaySlug}
           teamName={awayName}
           rows={awayRows}
+          t={t}
         />
       </div>
     </div>

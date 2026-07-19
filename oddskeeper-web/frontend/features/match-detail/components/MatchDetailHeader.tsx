@@ -1,7 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import TeamLink from "@/components/links/TeamLink";
-import { MATCH_TAB_LABELS, VALID_MATCH_TABS } from "../constants";
+import { getT } from "@/lib/i18n/server";
+import { MATCH_TAB_LABEL_KEYS, VALID_MATCH_TABS } from "../constants";
 import type { MatchProfileRow, ValidMatchTab } from "../types";
 import { formatDateTime } from "../utils/formatDateTime";
 
@@ -52,16 +53,18 @@ function TeamBadge({
   );
 }
 
-export function MatchDetailHeader({
+export async function MatchDetailHeader({
   profile,
   activeTab,
   backHref,
 }: MatchDetailHeaderProps) {
+  const t = await getT();
+
   return (
     <div className="rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(8,14,24,0.96),rgba(5,10,18,0.98))] p-5 shadow-[0_0_50px_rgba(34,104,189,0.08)]">
       <div className="flex flex-col gap-5">
         <div className="text-xs uppercase tracking-[0.28em] text-[#7cbcff]">
-          Football Match Detail
+          {t("matchDetail.kicker")}
         </div>
 
         <div className="flex flex-col items-center justify-between gap-5 xl:flex-row">
@@ -111,7 +114,7 @@ export function MatchDetailHeader({
                     : "border-white/10 bg-white/[0.03] text-white/72 hover:bg-white/[0.06]"
                 }`}
               >
-                {MATCH_TAB_LABELS[tab]}
+                {t(MATCH_TAB_LABEL_KEYS[tab])}
               </Link>
             );
           })}
@@ -120,7 +123,7 @@ export function MatchDetailHeader({
             href={backHref}
             className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-white/80 transition hover:bg-white/[0.06]"
           >
-            ← Back
+            {t("matchDetail.backLabel")}
           </Link>
         </div>
       </div>

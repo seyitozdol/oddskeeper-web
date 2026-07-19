@@ -1,3 +1,4 @@
+import { getT } from "@/lib/i18n/server";
 import type { TeamRecentFormRow } from "../types";
 import { reverseRecentForm } from "../utils/reverseRecentForm";
 import { ResultBadge } from "./ResultBadge";
@@ -6,7 +7,8 @@ type RecentFormStripProps = {
   rows: TeamRecentFormRow[];
 };
 
-export function RecentFormStrip({ rows }: RecentFormStripProps) {
+export async function RecentFormStrip({ rows }: RecentFormStripProps) {
+  const t = await getT();
   const displayRows = reverseRecentForm(rows);
 
   return (
@@ -14,7 +16,9 @@ export function RecentFormStrip({ rows }: RecentFormStripProps) {
       {displayRows.map((row) => (
         <span
           key={`form-${row.source_match_id}`}
-          title={`${row.opponent_name ?? "Unknown"} • ${row.score_display ?? "—"}`}
+          title={`${row.opponent_name ?? t("teamDetail.unknownOpponent")} • ${
+            row.score_display ?? "—"
+          }`}
         >
           <ResultBadge resultCode={row.result_code} />
         </span>

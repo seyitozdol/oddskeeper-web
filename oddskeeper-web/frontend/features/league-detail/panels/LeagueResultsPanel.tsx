@@ -1,5 +1,7 @@
 import MatchLink from "@/components/links/MatchLink";
 import TeamLink from "@/components/links/TeamLink";
+import { getT } from "@/lib/i18n/server";
+import type { Translator } from "@/lib/i18n/messages";
 
 type LeagueResultRow = {
   source_match_id: string | null;
@@ -69,10 +71,10 @@ function getResultBadgeClass(resultCode: LeagueResultRow["result_code"]) {
   return "border-white/10 bg-white/[0.03] text-white/60";
 }
 
-function getResultLabel(resultCode: LeagueResultRow["result_code"]) {
-  if (resultCode === "H") return "Home";
-  if (resultCode === "A") return "Away";
-  if (resultCode === "D") return "Draw";
+function getResultLabel(t: Translator, resultCode: LeagueResultRow["result_code"]) {
+  if (resultCode === "H") return t("common.home");
+  if (resultCode === "A") return t("common.away");
+  if (resultCode === "D") return t("leagueDetail.resultDraw");
   return "—";
 }
 
@@ -100,7 +102,8 @@ function TeamNameLink({
   );
 }
 
-export function LeagueResultsPanel({ rows = [] }: LeagueResultsPanelProps) {
+export async function LeagueResultsPanel({ rows = [] }: LeagueResultsPanelProps) {
+  const t = await getT();
   const resultsReturnTo =
     "/dashboard/stats-analysis/football/league-stats/detail?competition=S%C3%BCper%20Lig&season=2025%2F2026&tab=results";
 
@@ -109,13 +112,13 @@ export function LeagueResultsPanel({ rows = [] }: LeagueResultsPanelProps) {
       <div className="space-y-4">
         <div className="flex items-center gap-3">
           <div className="text-[11px] font-medium uppercase tracking-[0.18em] text-white/38">
-            Results
+            {t("leagueDetail.tabResults")}
           </div>
-          <div className="text-sm text-white/55">0 matches</div>
+          <div className="text-sm text-white/55">{t("leagueDetail.matchesCount", { count: 0 })}</div>
         </div>
 
         <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-4 text-sm text-white/65">
-          No results found for this competition and season.
+          {t("leagueDetail.noResultsFound")}
         </div>
       </div>
     );
@@ -125,21 +128,21 @@ export function LeagueResultsPanel({ rows = [] }: LeagueResultsPanelProps) {
     <div className="space-y-4">
       <div className="flex items-center gap-3">
         <div className="text-[11px] font-medium uppercase tracking-[0.18em] text-white/38">
-          Results
+          {t("leagueDetail.tabResults")}
         </div>
-        <div className="text-sm text-white/55">{rows.length} matches</div>
+        <div className="text-sm text-white/55">{t("leagueDetail.matchesCount", { count: rows.length })}</div>
       </div>
 
       <div className="overflow-x-auto rounded-[14px] border border-white/10">
         <table className="min-w-full border-collapse">
           <thead className="bg-[#0d1624]">
             <tr className="text-left text-[10px] uppercase tracking-[0.14em] text-white/38">
-              <th className="px-4 py-2 font-medium">Date</th>
-              <th className="px-4 py-2 font-medium">Home</th>
-              <th className="px-4 py-2 font-medium">Score</th>
-              <th className="px-4 py-2 font-medium">Away</th>
-              <th className="px-4 py-2 font-medium">Result</th>
-              <th className="px-4 py-2 font-medium">Venue</th>
+              <th className="px-4 py-2 font-medium">{t("common.date")}</th>
+              <th className="px-4 py-2 font-medium">{t("common.home")}</th>
+              <th className="px-4 py-2 font-medium">{t("common.score")}</th>
+              <th className="px-4 py-2 font-medium">{t("common.away")}</th>
+              <th className="px-4 py-2 font-medium">{t("common.result")}</th>
+              <th className="px-4 py-2 font-medium">{t("leagueDetail.colVenue")}</th>
             </tr>
           </thead>
 
@@ -161,7 +164,7 @@ export function LeagueResultsPanel({ rows = [] }: LeagueResultsPanelProps) {
                         sourceMatchId={row.source_match_id}
                         returnTo={resultsReturnTo}
                         className="transition hover:text-white hover:underline"
-                        title="Open match detail"
+                        title={t("leagueDetail.openMatchDetail")}
                       >
                         {formatDate(row.match_datetime ?? row.match_date)}
                       </MatchLink>
@@ -183,7 +186,7 @@ export function LeagueResultsPanel({ rows = [] }: LeagueResultsPanelProps) {
                         sourceMatchId={row.source_match_id}
                         returnTo={resultsReturnTo}
                         className="transition hover:text-white hover:underline"
-                        title="Open match detail"
+                        title={t("leagueDetail.openMatchDetail")}
                       >
                         {row.home_score ?? "—"} - {row.away_score ?? "—"}
                       </MatchLink>
@@ -207,7 +210,7 @@ export function LeagueResultsPanel({ rows = [] }: LeagueResultsPanelProps) {
                         row.result_code,
                       )}`}
                     >
-                      {getResultLabel(row.result_code)}
+                      {getResultLabel(t, row.result_code)}
                     </span>
                   </td>
 

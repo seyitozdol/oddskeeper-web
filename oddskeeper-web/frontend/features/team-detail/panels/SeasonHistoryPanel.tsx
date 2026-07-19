@@ -1,3 +1,4 @@
+import { getT } from "@/lib/i18n/server";
 import type { TeamStatisticsSummaryRow } from "../types";
 import { formatDecimal } from "../utils/formatDecimal";
 import { formatPercentage } from "../utils/formatPercentage";
@@ -6,11 +7,15 @@ type SeasonHistoryPanelProps = {
   rows?: TeamStatisticsSummaryRow[];
 };
 
-export function SeasonHistoryPanel({ rows = [] }: SeasonHistoryPanelProps) {
+export async function SeasonHistoryPanel({
+  rows = [],
+}: SeasonHistoryPanelProps) {
+  const t = await getT();
+
   if (rows.length === 0) {
     return (
       <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-4 text-sm text-white/65">
-        No season history data found for this team.
+        {t("teamDetail.noSeasonHistoryData")}
       </div>
     );
   }
@@ -22,7 +27,7 @@ export function SeasonHistoryPanel({ rows = [] }: SeasonHistoryPanelProps) {
       <div className="rounded-[14px] border border-white/10">
         <div className="border-b border-white/10 bg-white/[0.03] px-3 py-2">
           <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-white/42">
-            Season History
+            {t("teamDetail.seasonHistoryTitle")}
           </div>
         </div>
 
@@ -30,19 +35,19 @@ export function SeasonHistoryPanel({ rows = [] }: SeasonHistoryPanelProps) {
           <table className="min-w-full border-collapse">
             <thead>
               <tr className="text-left text-[10px] uppercase tracking-[0.14em] text-white/38">
-                <th className="px-3 py-2 font-medium">Season</th>
-                <th className="px-3 py-2 font-medium">P</th>
-                <th className="px-3 py-2 font-medium">W</th>
-                <th className="px-3 py-2 font-medium">D</th>
-                <th className="px-3 py-2 font-medium">L</th>
-                <th className="px-3 py-2 font-medium">GF</th>
-                <th className="px-3 py-2 font-medium">GA</th>
-                <th className="px-3 py-2 font-medium">GD</th>
-                <th className="px-3 py-2 font-medium">PTS</th>
-                <th className="px-3 py-2 font-medium">Win %</th>
-                <th className="px-3 py-2 font-medium">PPG</th>
-                <th className="px-3 py-2 font-medium">GF/G</th>
-                <th className="px-3 py-2 font-medium">GA/G</th>
+                <th className="px-3 py-2 font-medium">{t("teamDetail.colSeason")}</th>
+                <th className="px-3 py-2 font-medium">{t("teamDetail.colP")}</th>
+                <th className="px-3 py-2 font-medium">{t("teamDetail.colW")}</th>
+                <th className="px-3 py-2 font-medium">{t("teamDetail.colD")}</th>
+                <th className="px-3 py-2 font-medium">{t("teamDetail.colL")}</th>
+                <th className="px-3 py-2 font-medium">{t("teamDetail.colGf")}</th>
+                <th className="px-3 py-2 font-medium">{t("teamDetail.colGa")}</th>
+                <th className="px-3 py-2 font-medium">{t("teamDetail.colGd")}</th>
+                <th className="px-3 py-2 font-medium">{t("teamDetail.colPts")}</th>
+                <th className="px-3 py-2 font-medium">{t("teamDetail.colWinPct")}</th>
+                <th className="px-3 py-2 font-medium">{t("teamDetail.colPpg")}</th>
+                <th className="px-3 py-2 font-medium">{t("teamDetail.colGfPerGame")}</th>
+                <th className="px-3 py-2 font-medium">{t("teamDetail.colGaPerGame")}</th>
               </tr>
             </thead>
 
@@ -59,7 +64,7 @@ export function SeasonHistoryPanel({ rows = [] }: SeasonHistoryPanelProps) {
                       {row.season_label ?? "—"}
                       {isCurrent ? (
                         <span className="ml-2 rounded-full border border-sky-400/30 bg-sky-400/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.08em] text-sky-300">
-                          Current
+                          {t("teamDetail.currentBadge")}
                         </span>
                       ) : null}
                     </td>
@@ -94,9 +99,7 @@ export function SeasonHistoryPanel({ rows = [] }: SeasonHistoryPanelProps) {
       </div>
 
       <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-[12px] text-white/45">
-        Points are computed from match results only; point deductions are not
-        reflected. Historical seasons (2015/2016 onwards) are sourced from
-        API-Football, the current season from Opta.
+        {t("teamDetail.seasonHistoryFootnote")}
       </div>
     </div>
   );

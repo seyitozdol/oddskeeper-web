@@ -4,10 +4,12 @@ import Link from "next/link";
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "../../lib/supabase/client";
+import { useI18n } from "@/lib/i18n/LanguageProvider";
 
 export default function SignInPage() {
   const router = useRouter();
   const supabase = createClient();
+  const { t } = useI18n();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -50,7 +52,7 @@ export default function SignInPage() {
                 OddsKeeper
               </span>
               <span className="text-[11px] uppercase tracking-[0.24em] text-white/45">
-                Sports Data Intelligence
+                {t("landing.brandTagline")}
               </span>
             </div>
           </Link>
@@ -59,23 +61,22 @@ export default function SignInPage() {
             href="/"
             className="text-sm text-white/60 transition hover:text-white"
           >
-            Back to Home
+            {t("auth.backToHome")}
           </Link>
         </div>
 
         <div className="grid gap-8 lg:grid-cols-[0.95fr_1.05fr] lg:items-center">
           <div className="max-w-[560px]">
             <p className="text-[11px] font-medium uppercase tracking-[0.24em] text-[#8bdfff]">
-              Sign In
+              {t("auth.signInKicker")}
             </p>
 
             <h1 className="mt-4 text-4xl font-semibold leading-tight text-white sm:text-5xl lg:text-6xl">
-              Access your workspace
+              {t("auth.signInTitle")}
             </h1>
 
             <p className="mt-5 text-base leading-8 text-white/62 sm:text-lg">
-              Sign in to continue into the platform interface and access your
-              structured workflow environment.
+              {t("auth.signInDescription")}
             </p>
           </div>
 
@@ -87,11 +88,11 @@ export default function SignInPage() {
                 <form onSubmit={handleSubmit} className="space-y-5">
                   <div>
                     <label className="mb-2 block text-sm font-medium text-white/80">
-                      Email
+                      {t("auth.emailLabel")}
                     </label>
                     <input
                       type="email"
-                      placeholder="you@company.com"
+                      placeholder={t("auth.emailPlaceholder")}
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       className="w-full rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-white outline-none transition placeholder:text-white/30 focus:border-[#13b0ff]/40"
@@ -102,20 +103,20 @@ export default function SignInPage() {
                   <div>
                     <div className="mb-2 flex items-center justify-between">
                       <label className="block text-sm font-medium text-white/80">
-                        Password
+                        {t("auth.passwordLabel")}
                       </label>
 
                       <Link
                         href="/forgot-password"
                         className="text-sm text-[#8bdfff] transition hover:text-white"
                       >
-                        Forgot password?
+                        {t("auth.forgotPasswordLink")}
                       </Link>
                     </div>
 
                     <input
                       type="password"
-                      placeholder="Enter your password"
+                      placeholder={t("auth.passwordPlaceholder")}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       className="w-full rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-white outline-none transition placeholder:text-white/30 focus:border-[#13b0ff]/40"
@@ -134,16 +135,16 @@ export default function SignInPage() {
                     disabled={loading}
                     className="w-full cursor-pointer rounded-2xl border border-[#13b0ff]/35 bg-gradient-to-r from-[#0d8fff] to-[#25c8ff] px-6 py-3.5 text-sm font-semibold text-white shadow-[0_0_30px_rgba(19,176,255,0.18)] transition hover:scale-[1.01] disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    {loading ? "Signing In..." : "Sign In"}
+                    {loading ? t("auth.signingIn") : t("auth.signInButton")}
                   </button>
 
                   <div className="rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-3 text-sm text-white/55">
-                    No account yet?{" "}
+                    {t("auth.noAccountYet")}{" "}
                     <Link
                       href="/sign-up"
                       className="font-medium text-[#8bdfff] transition hover:text-white"
                     >
-                      Sign Up
+                      {t("landing.signUp")}
                     </Link>
                   </div>
                 </form>

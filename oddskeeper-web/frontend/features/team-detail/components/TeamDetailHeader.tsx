@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { getT } from "@/lib/i18n/server";
 import { TEAM_DETAIL_TABS } from "../constants";
 import type { ValidTab } from "../types";
 
@@ -11,13 +12,15 @@ type TeamDetailHeaderProps = {
   resultsCount?: number;
 };
 
-export function TeamDetailHeader({
+export async function TeamDetailHeader({
   logoPath,
   teamName,
   teamSlug,
   activeTab,
   resultsCount = 0,
 }: TeamDetailHeaderProps) {
+  const t = await getT();
+
   return (
     <div className="rounded-[18px] border border-white/10 bg-[linear-gradient(180deg,rgba(8,14,24,0.96),rgba(5,10,18,0.98))] px-4 py-3 shadow-[0_0_22px_rgba(34,104,189,0.04)]">
       <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
@@ -35,7 +38,7 @@ export function TeamDetailHeader({
 
             <div className="min-w-0">
               <p className="mb-1 text-[10px] font-medium uppercase tracking-[0.22em] text-[#7cbcff]">
-                Football Team Stats
+                {t("teamDetail.headerKicker")}
               </p>
 
               <h1 className="truncate text-[28px] font-semibold leading-none text-white lg:text-[32px]">
@@ -63,7 +66,7 @@ export function TeamDetailHeader({
                     : "border-white/10 bg-white/[0.03] text-white/72 hover:border-[#4da2ff]/25 hover:bg-[#0e1d30] hover:text-white"
                 }`}
               >
-                <span>{tab.label}</span>
+                <span>{t(tab.labelKey)}</span>
 
                 {showResultsCount && (
                   <span className="rounded-md border border-white/10 bg-white/[0.05] px-1.5 py-0.5 text-[11px] leading-none text-white/80">
@@ -78,7 +81,7 @@ export function TeamDetailHeader({
             href="/dashboard/stats-analysis/football/team-stats"
             className="ml-0 inline-flex rounded-xl border border-white/10 bg-white/[0.03] px-3 py-1.5 text-sm text-white/70 transition hover:border-[#4da2ff]/30 hover:bg-[#0e1d30] hover:text-white xl:ml-3"
           >
-            ← Back to teams
+            {t("teamDetail.backToTeams")}
           </Link>
         </div>
       </div>

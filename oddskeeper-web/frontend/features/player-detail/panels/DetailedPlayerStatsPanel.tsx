@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { PlayerMetricLeaderboardDrawer } from "../components/PlayerMetricLeaderboardDrawer";
+import { useI18n } from "@/lib/i18n/LanguageProvider";
+import type { Translator } from "@/lib/i18n/messages";
 import type {
   PlayerDetailedCategoryKey,
   PlayerDetailedMetricRow,
@@ -42,14 +44,16 @@ const CATEGORY_ORDER: PlayerDetailedCategoryKey[] = [
   "goalkeeper",
 ];
 
-const CATEGORY_LABELS: Record<PlayerDetailedCategoryKey, string> = {
-  attacking: "Attacking",
-  shooting: "Shooting",
-  passing: "Passing",
-  defence: "Defence",
-  discipline: "Discipline",
-  usage: "Usage",
-  goalkeeper: "Goalkeeper",
+// Kategori görünür etiketleri: render sırasında t() ile çözülür (bkz.
+// PlayerStatsExplorer.tsx içindeki labelKey deseni).
+const CATEGORY_LABEL_KEYS: Record<PlayerDetailedCategoryKey, string> = {
+  attacking: "playerDetail.categoryAttacking",
+  shooting: "playerDetail.categoryShooting",
+  passing: "playerDetail.categoryPassing",
+  defence: "playerDetail.categoryDefence",
+  discipline: "playerDetail.categoryDiscipline",
+  usage: "playerDetail.categoryUsage",
+  goalkeeper: "common.goalkeeper",
 };
 
 function formatRawNumber(value: number, digits = 1) {
@@ -130,6 +134,7 @@ function getDeltaTone(
 }
 
 function formatDirectionBadge(
+  t: Translator,
   rankDirection: string | null | undefined,
   isHigherBetter: boolean | null | undefined
 ) {
@@ -138,10 +143,10 @@ function formatDirectionBadge(
   }
 
   if (isHigherBetter === false || rankDirection === "asc") {
-    return "Lower better";
+    return t("playerDetail.lowerBetterBadge");
   }
 
-  return "Higher better";
+  return t("playerDetail.higherBetterBadge");
 }
 
 function getMetricAdvantage(row: PlayerDetailedMetricRow) {
@@ -227,6 +232,8 @@ function SummaryCard({
 }
 
 function InfoTooltip() {
+  const { t } = useI18n();
+
   return (
     <div className="group relative">
       <button
@@ -237,9 +244,7 @@ function InfoTooltip() {
       </button>
 
       <div className="pointer-events-none absolute left-0 top-7 z-20 hidden w-[300px] rounded-xl border border-white/10 bg-[#0a1220] px-3 py-2 text-[11px] leading-5 text-white/72 shadow-[0_12px_30px_rgba(0,0,0,0.35)] group-hover:block">
-        League-context deep player metrics. Home and Away columns are split
-        values. Click a rank to open the metric leaderboard. Click column
-        headers to sort the table.
+        {t("playerDetail.detailedStatsInfoTooltip")}
       </div>
     </div>
   );
@@ -279,6 +284,7 @@ function SortableHeader({
   sortConfig: SortConfig;
   onSort: (key: SortKey) => void;
 }) {
+  const { t } = useI18n();
   const isActive = sortConfig?.key === sortKey;
   const direction = sortConfig?.direction;
 
@@ -289,7 +295,7 @@ function SortableHeader({
       className={`inline-flex items-center gap-1 transition hover:text-white ${
         isActive ? "text-white" : "text-white/38"
       }`}
-      title={`Sort by ${label}`}
+      title={t("playerDetail.sortByLabel", { label })}
     >
       <span>{label}</span>
       <span className="text-[10px]">
@@ -302,6 +308,7 @@ function SortableHeader({
 export default function DetailedPlayerStatsPanel({
   rows = [],
 }: DetailedPlayerStatsPanelProps) {
+  const { t } = useI18n();
   const [activeCategory, setActiveCategory] = useState<CategoryFilter>("all");
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [selectedMetricKey, setSelectedMetricKey] = useState<string | null>(null);
@@ -467,64 +474,82 @@ export default function DetailedPlayerStatsPanel({
 
     return {
       strongestEdge: strongestRow
-        ? `${strongestRow.metric_label} (#${strongestRow.league_rank})`
-        : "No clear edge",
+        ? t("playerDetail.metricWithRank", {
+            metric: strongestRow.metric_label,
+            rank: strongestRow.league_rank ?? "—",
+          })
+        : t("playerDetail.noClearEdge"),
       strongestEdgeSub: strongestRow
-        ? `${strongestRow.category_label} • ${formatMetricValue(
-            strongestRow.vs_league_avg_pct,
-            "pct_1"
-          )} vs avg`
-        : "No metric cleared the strength threshold",
+        ? t("playerDetail.categoryVsAvg", {
+            category: strongestRow.category_label,
+            value: formatMetricValue(strongestRow.vs_league_avg_pct, "pct_1"),
+          })
+        : t("playerDetail.noMetricClearedThreshold"),
       strongestEdgeTone: strongestRow
         ? ("positive" as SummaryTone)
         : ("neutral" as SummaryTone),
 
       mainWeakness: weakestRow
-        ? `${weakestRow.metric_label} (#${weakestRow.league_rank})`
-        : "No major weakness",
+        ? t("playerDetail.metricWithRank", {
+            metric: weakestRow.metric_label,
+            rank: weakestRow.league_rank ?? "—",
+          })
+        : t("playerDetail.noMajorWeakness"),
       mainWeaknessSub: weakestRow
-        ? `${weakestRow.category_label} • ${formatMetricValue(
-            weakestRow.vs_league_avg_pct,
-            "pct_1"
-          )} vs avg`
-        : "No weakness crossed the alert threshold",
+        ? t("playerDetail.categoryVsAvg", {
+            category: weakestRow.category_label,
+            value: formatMetricValue(weakestRow.vs_league_avg_pct, "pct_1"),
+          })
+        : t("playerDetail.noWeaknessCrossedThreshold"),
       mainWeaknessTone: weakestRow
         ? ("negative" as SummaryTone)
         : ("neutral" as SummaryTone),
 
       biggestPositiveDelta: biggestPositiveDeltaRow
-        ? `${biggestPositiveDeltaRow.metric_label} (${formatMetricValue(
-            biggestPositiveDeltaRow.vs_league_avg_pct,
-            "pct_1"
-          )})`
+        ? t("playerDetail.metricWithValue", {
+            metric: biggestPositiveDeltaRow.metric_label,
+            value: formatMetricValue(
+              biggestPositiveDeltaRow.vs_league_avg_pct,
+              "pct_1"
+            ),
+          })
         : "—",
       biggestPositiveDeltaSub: biggestPositiveDeltaRow
-        ? `${biggestPositiveDeltaRow.category_label} • Rank #${biggestPositiveDeltaRow.league_rank}`
+        ? t("playerDetail.categoryRank", {
+            category: biggestPositiveDeltaRow.category_label,
+            rank: biggestPositiveDeltaRow.league_rank ?? "—",
+          })
         : undefined,
       biggestPositiveDeltaTone: biggestPositiveDeltaRow
         ? ("accent" as SummaryTone)
         : ("neutral" as SummaryTone),
 
       biggestSplitGap: biggestGapRow
-        ? `${biggestGapRow.metric_label} • ${formatMetricValue(
-            biggestGapRow.home_away_gap_abs,
-            biggestGapRow.value_format
-          )}`
+        ? t("playerDetail.metricValue", {
+            metric: biggestGapRow.metric_label,
+            value: formatMetricValue(
+              biggestGapRow.home_away_gap_abs,
+              biggestGapRow.value_format
+            ),
+          })
         : "—",
       biggestSplitGapSub: biggestGapRow
-        ? `Home ${formatMetricValue(
-            biggestGapRow.home_value,
-            biggestGapRow.value_format
-          )} • Away ${formatMetricValue(
-            biggestGapRow.away_value,
-            biggestGapRow.value_format
-          )}`
+        ? t("playerDetail.homeAwayValues", {
+            home: formatMetricValue(
+              biggestGapRow.home_value,
+              biggestGapRow.value_format
+            ),
+            away: formatMetricValue(
+              biggestGapRow.away_value,
+              biggestGapRow.value_format
+            ),
+          })
         : undefined,
       biggestSplitGapTone: biggestGapRow
         ? ("warning" as SummaryTone)
         : ("neutral" as SummaryTone),
     };
-  }, [rows]);
+  }, [rows, t]);
 
   const handleSort = (key: SortKey) => {
     setSortConfig((current) => {
@@ -545,7 +570,7 @@ export default function DetailedPlayerStatsPanel({
   if (rows.length === 0) {
     return (
       <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-4 text-sm text-white/65">
-        No detailed stats data found for this player.
+        {t("playerDetail.noDetailedStatsData")}
       </div>
     );
   }
@@ -561,7 +586,7 @@ export default function DetailedPlayerStatsPanel({
             <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
               <div className="flex items-center gap-2">
                 <div className="text-[11px] font-medium uppercase tracking-[0.18em] text-white/38">
-                  Detailed Player Stats
+                  {t("playerDetail.detailedPlayerStatsHeading")}
                 </div>
                 <InfoTooltip />
               </div>
@@ -576,7 +601,7 @@ export default function DetailedPlayerStatsPanel({
                       : "border-white/10 bg-white/[0.03] text-white/72 hover:bg-white/[0.06]"
                   }`}
                 >
-                  All
+                  {t("common.all")}
                 </button>
 
                 {availableCategories.map((category) => (
@@ -590,7 +615,7 @@ export default function DetailedPlayerStatsPanel({
                         : "border-white/10 bg-white/[0.03] text-white/72 hover:bg-white/[0.06]"
                     }`}
                   >
-                    {CATEGORY_LABELS[category]}
+                    {t(CATEGORY_LABEL_KEYS[category])}
                   </button>
                 ))}
               </div>
@@ -598,25 +623,25 @@ export default function DetailedPlayerStatsPanel({
 
             <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
               <SummaryCard
-                label="Strongest Edge"
+                label={t("playerDetail.strongestEdgeLabel")}
                 value={summary.strongestEdge}
                 subvalue={summary.strongestEdgeSub}
                 tone={summary.strongestEdgeTone}
               />
               <SummaryCard
-                label="Main Weakness"
+                label={t("playerDetail.mainWeaknessLabel")}
                 value={summary.mainWeakness}
                 subvalue={summary.mainWeaknessSub}
                 tone={summary.mainWeaknessTone}
               />
               <SummaryCard
-                label="Biggest Positive Delta"
+                label={t("playerDetail.biggestPositiveDeltaLabel")}
                 value={summary.biggestPositiveDelta}
                 subvalue={summary.biggestPositiveDeltaSub}
                 tone={summary.biggestPositiveDeltaTone}
               />
               <SummaryCard
-                label="Biggest Split Gap"
+                label={t("playerDetail.biggestSplitGapLabel")}
                 value={summary.biggestSplitGap}
                 subvalue={summary.biggestSplitGapSub}
                 tone={summary.biggestSplitGapTone}
@@ -629,13 +654,13 @@ export default function DetailedPlayerStatsPanel({
           <table className="min-w-full border-collapse">
             <thead className="sticky top-0 z-10 bg-[#0d1624]">
               <tr className="text-left text-[10px] uppercase tracking-[0.14em] text-white/38">
-                <th className="px-4 py-2 font-medium">Metric</th>
+                <th className="px-4 py-2 font-medium">{t("playerDetail.metricLabel")}</th>
                 {showCategoryColumn ? (
-                  <th className="px-4 py-2 font-medium">Category</th>
+                  <th className="px-4 py-2 font-medium">{t("playerDetail.categoryColumn")}</th>
                 ) : null}
                 <th className="px-4 py-2 font-medium">
                   <SortableHeader
-                    label="Total"
+                    label={t("playerDetail.totalColumn")}
                     sortKey="total_value"
                     sortConfig={sortConfig}
                     onSort={handleSort}
@@ -643,7 +668,7 @@ export default function DetailedPlayerStatsPanel({
                 </th>
                 <th className="px-4 py-2 font-medium">
                   <SortableHeader
-                    label="Per Match"
+                    label={t("playerDetail.perMatchColumn")}
                     sortKey="per_match_value"
                     sortConfig={sortConfig}
                     onSort={handleSort}
@@ -651,7 +676,7 @@ export default function DetailedPlayerStatsPanel({
                 </th>
                 <th className="px-4 py-2 font-medium">
                   <SortableHeader
-                    label="Per 90"
+                    label={t("playerDetail.per90Label")}
                     sortKey="per90_value"
                     sortConfig={sortConfig}
                     onSort={handleSort}
@@ -659,7 +684,7 @@ export default function DetailedPlayerStatsPanel({
                 </th>
                 <th className="px-4 py-2 font-medium">
                   <SortableHeader
-                    label="Home"
+                    label={t("common.home")}
                     sortKey="home_value"
                     sortConfig={sortConfig}
                     onSort={handleSort}
@@ -667,7 +692,7 @@ export default function DetailedPlayerStatsPanel({
                 </th>
                 <th className="px-4 py-2 font-medium">
                   <SortableHeader
-                    label="Away"
+                    label={t("common.away")}
                     sortKey="away_value"
                     sortConfig={sortConfig}
                     onSort={handleSort}
@@ -675,7 +700,7 @@ export default function DetailedPlayerStatsPanel({
                 </th>
                 <th className="px-4 py-2 font-medium">
                   <SortableHeader
-                    label="Last 5"
+                    label={t("playerDetail.last5Column")}
                     sortKey="last5_value"
                     sortConfig={sortConfig}
                     onSort={handleSort}
@@ -683,7 +708,7 @@ export default function DetailedPlayerStatsPanel({
                 </th>
                 <th className="px-4 py-2 font-medium">
                   <SortableHeader
-                    label="League Avg"
+                    label={t("playerDetail.leagueAvgLabel")}
                     sortKey="league_avg"
                     sortConfig={sortConfig}
                     onSort={handleSort}
@@ -691,7 +716,7 @@ export default function DetailedPlayerStatsPanel({
                 </th>
                 <th className="px-4 py-2 font-medium">
                   <SortableHeader
-                    label="Rank"
+                    label={t("playerDetail.rankColumn")}
                     sortKey="league_rank"
                     sortConfig={sortConfig}
                     onSort={handleSort}
@@ -699,13 +724,13 @@ export default function DetailedPlayerStatsPanel({
                 </th>
                 <th className="px-4 py-2 font-medium">
                   <SortableHeader
-                    label="Vs Avg %"
+                    label={t("playerDetail.vsAvgPctLabel")}
                     sortKey="vs_league_avg_pct"
                     sortConfig={sortConfig}
                     onSort={handleSort}
                   />
                 </th>
-                <th className="px-4 py-2 font-medium">Direction</th>
+                <th className="px-4 py-2 font-medium">{t("playerDetail.directionColumn")}</th>
               </tr>
             </thead>
 
@@ -762,7 +787,7 @@ export default function DetailedPlayerStatsPanel({
                           setSelectedMetricLabel(row.metric_label);
                           setIsDrawerOpen(true);
                         }}
-                        title="Open metric leaderboard"
+                        title={t("playerDetail.openMetricLeaderboardTitle")}
                         className={`group inline-flex items-center gap-1 font-semibold transition duration-150 hover:underline cursor-pointer ${getRankTone(
                           row.league_rank
                         )}`}
@@ -789,6 +814,7 @@ export default function DetailedPlayerStatsPanel({
                   <td className="px-4 py-2 whitespace-nowrap">
                     <span className="inline-flex rounded-md border border-white/10 bg-white/[0.03] px-2 py-1 text-[11px] text-white/65">
                       {formatDirectionBadge(
+                        t,
                         row.rank_direction,
                         row.is_higher_better
                       )}

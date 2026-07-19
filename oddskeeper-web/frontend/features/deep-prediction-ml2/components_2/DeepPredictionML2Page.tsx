@@ -6,9 +6,21 @@ import {
   markets_2,
   type PredictionMatch_2,
 } from "@/features/deep-prediction-ml2/data_2/mockMatches_2";
+import { useI18n } from "@/lib/i18n/LanguageProvider";
+import type { Translator } from "@/lib/i18n/messages";
 
 function cn(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
+}
+
+const CONFIDENCE_LABEL_KEYS: Record<"High" | "Medium" | "Low", string> = {
+  High: "deepPrediction.confidenceHigh",
+  Medium: "deepPrediction.confidenceMedium",
+  Low: "deepPrediction.confidenceLow",
+};
+
+function confidenceLabel(t: Translator, value: "High" | "Medium" | "Low") {
+  return t(CONFIDENCE_LABEL_KEYS[value]);
 }
 
 function formatNumber_2(value?: number | null) {
@@ -54,6 +66,7 @@ function ConfidenceBadge_2({
   confidence?: PredictionMatch_2["confidence"];
   score?: number | null;
 }) {
+  const { t } = useI18n();
   const normalizedConfidence =
     confidence === "High" || confidence === "Medium" || confidence === "Low"
       ? confidence
@@ -73,7 +86,7 @@ function ConfidenceBadge_2({
         tone
       )}
     >
-      {normalizedConfidence} · {score ?? 0}/100
+      {confidenceLabel(t, normalizedConfidence)} · {score ?? 0}/100
     </div>
   );
 }
@@ -116,6 +129,7 @@ function MatchListItem_2({
 }
 
 function SelectedMatchCard_2({ match }: { match: PredictionMatch_2 }) {
+  const { t } = useI18n();
   return (
     <div className="rounded-[26px] border border-white/10 bg-white/[0.04] p-5 backdrop-blur-sm">
       <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
@@ -135,7 +149,7 @@ function SelectedMatchCard_2({ match }: { match: PredictionMatch_2 }) {
           <div className="mt-4 grid max-w-[520px] grid-cols-3 gap-3">
             <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
               <div className="text-[11px] uppercase tracking-[0.18em] text-white/35">
-                Home
+                {t("common.home")}
               </div>
               <div className="mt-1 text-xl font-semibold text-white">
                 {formatNumber_2(match.homeShots)}
@@ -144,7 +158,7 @@ function SelectedMatchCard_2({ match }: { match: PredictionMatch_2 }) {
 
             <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
               <div className="text-[11px] uppercase tracking-[0.18em] text-white/35">
-                Away
+                {t("common.away")}
               </div>
               <div className="mt-1 text-xl font-semibold text-white">
                 {formatNumber_2(match.awayShots)}
@@ -153,7 +167,7 @@ function SelectedMatchCard_2({ match }: { match: PredictionMatch_2 }) {
 
             <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
               <div className="text-[11px] uppercase tracking-[0.18em] text-white/35">
-                Total
+                {t("deepPrediction.totalLabel")}
               </div>
               <div className="mt-1 text-xl font-semibold text-white">
                 {formatNumber_2(match.totalShots)}
@@ -165,7 +179,7 @@ function SelectedMatchCard_2({ match }: { match: PredictionMatch_2 }) {
         <div className="w-full lg:w-[240px]">
           <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
             <div className="text-[11px] uppercase tracking-[0.18em] text-white/35">
-              Edge
+              {t("deepPrediction.edgeLabel")}
             </div>
             <div className="mt-2 text-2xl font-semibold text-white">
               {match.edge ?? "-"}
@@ -188,6 +202,7 @@ export default function DeepPredictionML2Page({
 }: {
   matches: PredictionMatch_2[];
 }) {
+  const { t } = useI18n();
   const [activeMarket, setActiveMarket] = useState("shots");
   const [selectedConfidence, setSelectedConfidence] = useState<
     "All" | "High" | "Medium" | "Low"
@@ -255,10 +270,10 @@ export default function DeepPredictionML2Page({
       <div className="mx-auto max-w-7xl px-4 py-8 md:px-6 lg:px-8">
         <div className="mb-6">
           <div className="text-xs uppercase tracking-[0.22em] text-white/35">
-            Deep Prediction ML2
+            {t("deepPrediction.kicker")}
           </div>
           <h1 className="mt-2 text-2xl font-semibold tracking-tight text-white md:text-3xl">
-            Match shot predictions
+            {t("deepPrediction.title")}
           </h1>
         </div>
 
@@ -278,10 +293,10 @@ export default function DeepPredictionML2Page({
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex flex-wrap gap-2">
               {[
-                { label: "All", value: "All" as const },
-                { label: "High", value: "High" as const },
-                { label: "Medium", value: "Medium" as const },
-                { label: "Low", value: "Low" as const },
+                { label: t("common.all"), value: "All" as const },
+                { label: t("deepPrediction.confidenceHigh"), value: "High" as const },
+                { label: t("deepPrediction.confidenceMedium"), value: "Medium" as const },
+                { label: t("deepPrediction.confidenceLow"), value: "Low" as const },
               ].map((item) => (
                 <button
                   key={item.value}
@@ -303,7 +318,7 @@ export default function DeepPredictionML2Page({
               <input
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search fixture..."
+                placeholder={t("deepPrediction.searchPlaceholder")}
                 className="w-full rounded-2xl border border-white/10 bg-white/5 py-2.5 pl-10 pr-4 text-sm text-white outline-none placeholder:text-white/30"
               />
             </div>
@@ -326,7 +341,7 @@ export default function DeepPredictionML2Page({
 
         {filteredMatches.length === 0 ? (
           <div className="rounded-[26px] border border-white/10 bg-white/[0.04] p-8 text-sm text-white/60">
-            No fixtures matched your filter.
+            {t("deepPrediction.noFixturesMatch")}
           </div>
         ) : (
           <div className="grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
@@ -348,7 +363,7 @@ export default function DeepPredictionML2Page({
                 <SelectedMatchCard_2 match={selectedMatch} />
               ) : (
                 <div className="rounded-[26px] border border-white/10 bg-white/[0.04] p-8 text-sm text-white/60">
-                  No selected fixture.
+                  {t("deepPrediction.noSelectedFixture")}
                 </div>
               )}
             </div>

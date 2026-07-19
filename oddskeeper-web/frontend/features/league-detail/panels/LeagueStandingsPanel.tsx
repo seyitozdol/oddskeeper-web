@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from "react";
 import TeamLink from "@/components/links/TeamLink";
+import { useI18n } from "@/lib/i18n/LanguageProvider";
+import type { Translator } from "@/lib/i18n/messages";
 import type { LeagueStandingRow } from "../types";
 
 type LeagueStandingsPanelProps = {
@@ -90,11 +92,13 @@ function SortableHeader({
   sortKey,
   sortConfig,
   onSort,
+  t,
 }: {
   label: string;
   sortKey: SortKey;
   sortConfig: SortConfig;
   onSort: (key: SortKey) => void;
+  t: Translator;
 }) {
   const isActive = sortConfig.key === sortKey;
 
@@ -105,7 +109,7 @@ function SortableHeader({
       className={`inline-flex items-center gap-1 transition hover:text-white ${
         isActive ? "text-white" : "text-white/38"
       }`}
-      title={`Sort by ${label}`}
+      title={t("leagueDetail.sortByLabel", { label })}
     >
       <span>{label}</span>
       <span className="text-[10px]">
@@ -131,6 +135,7 @@ function compareNullableNumbers(
 }
 
 export function LeagueStandingsPanel({ rows = [] }: LeagueStandingsPanelProps) {
+  const { t } = useI18n();
   const [sortConfig, setSortConfig] = useState<SortConfig>({
     key: "rank",
     direction: "asc",
@@ -180,7 +185,7 @@ export function LeagueStandingsPanel({ rows = [] }: LeagueStandingsPanelProps) {
   if (rows.length === 0) {
     return (
       <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-4 text-sm text-white/65">
-        No standings data found for this competition.
+        {t("leagueDetail.noStandingsData")}
       </div>
     );
   }
@@ -191,23 +196,23 @@ export function LeagueStandingsPanel({ rows = [] }: LeagueStandingsPanelProps) {
         <thead className="sticky top-0 z-10 bg-[#0d1624]">
           <tr className="text-left text-[10px] uppercase tracking-[0.14em] text-white/38">
             <th className="px-4 py-2 font-medium">
-              <SortableHeader label="#" sortKey="rank" sortConfig={sortConfig} onSort={handleSort} />
+              <SortableHeader label="#" sortKey="rank" sortConfig={sortConfig} onSort={handleSort} t={t} />
             </th>
             <th className="px-4 py-2 font-medium">
-              <SortableHeader label="Team" sortKey="team_name" sortConfig={sortConfig} onSort={handleSort} />
+              <SortableHeader label={t("common.team")} sortKey="team_name" sortConfig={sortConfig} onSort={handleSort} t={t} />
             </th>
-            <th className="px-4 py-2 font-medium"><SortableHeader label="P" sortKey="played" sortConfig={sortConfig} onSort={handleSort} /></th>
-            <th className="px-4 py-2 font-medium"><SortableHeader label="W" sortKey="wins" sortConfig={sortConfig} onSort={handleSort} /></th>
-            <th className="px-4 py-2 font-medium"><SortableHeader label="D" sortKey="draws" sortConfig={sortConfig} onSort={handleSort} /></th>
-            <th className="px-4 py-2 font-medium"><SortableHeader label="L" sortKey="losses" sortConfig={sortConfig} onSort={handleSort} /></th>
-            <th className="px-4 py-2 font-medium"><SortableHeader label="GF" sortKey="goals_for" sortConfig={sortConfig} onSort={handleSort} /></th>
-            <th className="px-4 py-2 font-medium"><SortableHeader label="GA" sortKey="goals_against" sortConfig={sortConfig} onSort={handleSort} /></th>
-            <th className="px-4 py-2 font-medium"><SortableHeader label="GD" sortKey="goal_difference" sortConfig={sortConfig} onSort={handleSort} /></th>
-            <th className="px-4 py-2 font-medium"><SortableHeader label="Pts" sortKey="points" sortConfig={sortConfig} onSort={handleSort} /></th>
-            <th className="px-4 py-2 font-medium"><SortableHeader label="PPG" sortKey="points_per_game" sortConfig={sortConfig} onSort={handleSort} /></th>
-            <th className="px-4 py-2 font-medium"><SortableHeader label="Home Pts" sortKey="home_points" sortConfig={sortConfig} onSort={handleSort} /></th>
-            <th className="px-4 py-2 font-medium"><SortableHeader label="Away Pts" sortKey="away_points" sortConfig={sortConfig} onSort={handleSort} /></th>
-            <th className="px-4 py-2 font-medium"><SortableHeader label="Last 5" sortKey="last5_points" sortConfig={sortConfig} onSort={handleSort} /></th>
+            <th className="px-4 py-2 font-medium"><SortableHeader label={t("leagueDetail.colPlayed")} sortKey="played" sortConfig={sortConfig} onSort={handleSort} t={t} /></th>
+            <th className="px-4 py-2 font-medium"><SortableHeader label={t("common.win")} sortKey="wins" sortConfig={sortConfig} onSort={handleSort} t={t} /></th>
+            <th className="px-4 py-2 font-medium"><SortableHeader label={t("common.draw")} sortKey="draws" sortConfig={sortConfig} onSort={handleSort} t={t} /></th>
+            <th className="px-4 py-2 font-medium"><SortableHeader label={t("common.loss")} sortKey="losses" sortConfig={sortConfig} onSort={handleSort} t={t} /></th>
+            <th className="px-4 py-2 font-medium"><SortableHeader label={t("leagueDetail.colGoalsFor")} sortKey="goals_for" sortConfig={sortConfig} onSort={handleSort} t={t} /></th>
+            <th className="px-4 py-2 font-medium"><SortableHeader label={t("leagueDetail.colGoalsAgainst")} sortKey="goals_against" sortConfig={sortConfig} onSort={handleSort} t={t} /></th>
+            <th className="px-4 py-2 font-medium"><SortableHeader label={t("leagueDetail.colGoalDiff")} sortKey="goal_difference" sortConfig={sortConfig} onSort={handleSort} t={t} /></th>
+            <th className="px-4 py-2 font-medium"><SortableHeader label={t("leagueDetail.colPoints")} sortKey="points" sortConfig={sortConfig} onSort={handleSort} t={t} /></th>
+            <th className="px-4 py-2 font-medium"><SortableHeader label={t("leagueDetail.colPointsPerGame")} sortKey="points_per_game" sortConfig={sortConfig} onSort={handleSort} t={t} /></th>
+            <th className="px-4 py-2 font-medium"><SortableHeader label={t("leagueDetail.colHomePoints")} sortKey="home_points" sortConfig={sortConfig} onSort={handleSort} t={t} /></th>
+            <th className="px-4 py-2 font-medium"><SortableHeader label={t("leagueDetail.colAwayPoints")} sortKey="away_points" sortConfig={sortConfig} onSort={handleSort} t={t} /></th>
+            <th className="px-4 py-2 font-medium"><SortableHeader label={t("leagueDetail.colLast5")} sortKey="last5_points" sortConfig={sortConfig} onSort={handleSort} t={t} /></th>
           </tr>
         </thead>
 
@@ -251,7 +256,9 @@ export function LeagueStandingsPanel({ rows = [] }: LeagueStandingsPanelProps) {
               <td className="px-4 py-2 whitespace-nowrap">
                 <div className="flex items-center gap-2">
                   <FormBadges value={row.form_last5} />
-                  <span className="text-[11px] text-white/45">{row.last5_points} pts</span>
+                  <span className="text-[11px] text-white/45">
+                    {t("leagueDetail.ptsSuffix", { count: row.last5_points })}
+                  </span>
                 </div>
               </td>
             </tr>

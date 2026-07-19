@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { useI18n } from "@/lib/i18n/LanguageProvider";
+import type { Translator } from "@/lib/i18n/messages";
 import type {
   TeamComparisonResult,
   TeamComparisonSide,
@@ -16,24 +18,32 @@ type Props = {
 type SplitKey = "overall" | "home" | "away";
 
 type MetricDef = {
-  label: string;
+  labelKey: string;
   key: keyof TeamComparisonSide;
   format: "int" | "dec" | "pct";
   lowerBetter?: boolean;
 };
 
-const METRIC_GROUPS: { label: string; metrics: MetricDef[] }[] = [
+const METRIC_GROUPS: { labelKey: string; metrics: MetricDef[] }[] = [
   {
-    label: "Genel",
+    labelKey: "teamDetail.comparisonGroupGeneral",
     metrics: [
-      { label: "Oynanan maç", key: "played", format: "int" },
-      { label: "Puan", key: "points", format: "int" },
-      { label: "Puan / maç", key: "points_per_game", format: "dec" },
-      { label: "Galibiyet oranı %", key: "win_rate_pct", format: "pct" },
-      { label: "Galibiyet", key: "wins", format: "int" },
-      { label: "Beraberlik", key: "draws", format: "int" },
+      { labelKey: "teamDetail.comparisonMetricPlayed", key: "played", format: "int" },
+      { labelKey: "teamDetail.statPoints", key: "points", format: "int" },
       {
-        label: "Mağlubiyet",
+        labelKey: "teamDetail.comparisonMetricPointsPerGame",
+        key: "points_per_game",
+        format: "dec",
+      },
+      {
+        labelKey: "teamDetail.comparisonMetricWinRate",
+        key: "win_rate_pct",
+        format: "pct",
+      },
+      { labelKey: "teamDetail.comparisonMetricWins", key: "wins", format: "int" },
+      { labelKey: "teamDetail.comparisonMetricDraws", key: "draws", format: "int" },
+      {
+        labelKey: "teamDetail.comparisonMetricLosses",
         key: "losses",
         format: "int",
         lowerBetter: true,
@@ -41,14 +51,31 @@ const METRIC_GROUPS: { label: string; metrics: MetricDef[] }[] = [
     ],
   },
   {
-    label: "Gol",
+    labelKey: "common.goals",
     metrics: [
-      { label: "Attığı gol", key: "goals_for", format: "int" },
-      { label: "Yediği gol", key: "goals_against", format: "int", lowerBetter: true },
-      { label: "Gol farkı", key: "goal_difference", format: "int" },
-      { label: "Gol / maç", key: "goals_for_per_game", format: "dec" },
       {
-        label: "Yenilen / maç",
+        labelKey: "teamDetail.comparisonMetricGoalsFor",
+        key: "goals_for",
+        format: "int",
+      },
+      {
+        labelKey: "teamDetail.comparisonMetricGoalsAgainst",
+        key: "goals_against",
+        format: "int",
+        lowerBetter: true,
+      },
+      {
+        labelKey: "teamDetail.comparisonMetricGoalDifference",
+        key: "goal_difference",
+        format: "int",
+      },
+      {
+        labelKey: "teamDetail.comparisonMetricGoalsForPerGame",
+        key: "goals_for_per_game",
+        format: "dec",
+      },
+      {
+        labelKey: "teamDetail.comparisonMetricGoalsAgainstPerGame",
         key: "goals_against_per_game",
         format: "dec",
         lowerBetter: true,
@@ -68,11 +95,13 @@ function MetricRow({
   teamA,
   teamB,
   leagueAvg,
+  t,
 }: {
   metric: MetricDef;
   teamA: TeamComparisonSide;
   teamB: TeamComparisonSide;
   leagueAvg: LeagueAvg;
+  t: Translator;
 }) {
   const valA = teamA[metric.key] as number;
   const valB = teamB[metric.key] as number;
@@ -107,10 +136,10 @@ function MetricRow({
       {/* Orta — metrik adı + lig ort */}
       <div className="text-center">
         <div className="text-[11px] text-white/40 leading-tight">
-          {metric.label}
+          {t(metric.labelKey)}
         </div>
         <div className="text-[10px] text-white/25 mt-0.5">
-          ort. {fmt(avg, metric.format)}
+          {t("teamDetail.comparisonLeagueAvgPrefix")} {fmt(avg, metric.format)}
         </div>
       </div>
 
@@ -139,6 +168,7 @@ export default function TeamComparisonPanel({
   currentTeamSlug,
   availableTeams,
 }: Props) {
+  const { t } = useI18n();
   const [data, setData] = useState<TeamComparisonResult>(initialData);
   const [splitKey, setSplitKey] = useState<SplitKey>("overall");
   const [opponentSlug, setOpponentSlug] = useState<string>(
@@ -184,10 +214,10 @@ export default function TeamComparisonPanel({
           style={{ colorScheme: "dark" }}
         >
           {availableTeams
-            .filter((t) => t.slug !== currentTeamSlug)
-            .map((t) => (
-              <option key={t.slug} value={t.slug}>
-                {t.name}
+            .filter((team) => team.slug !== currentTeamSlug)
+            .map((team) => (
+              <option key={team.slug} value={team.slug}>
+                {team.name}
               </option>
             ))}
         </select>
@@ -203,7 +233,11 @@ export default function TeamComparisonPanel({
                   : "border-white/10 text-white/40 hover:text-white/70"
               }`}
             >
-              {s === "overall" ? "Tümü" : s === "home" ? "İç saha" : "Deplasman"}
+              {s === "overall"
+                ? t("common.all")
+                : s === "home"
+                  ? t("common.home")
+                  : t("common.away")}
             </button>
           ))}
         </div>
@@ -223,13 +257,13 @@ export default function TeamComparisonPanel({
       {/* Metrik grupları */}
       {loading ? (
         <div className="text-sm text-white/30 py-8 text-center">
-          Yükleniyor...
+          {t("common.loading")}
         </div>
       ) : (
         METRIC_GROUPS.map((group) => (
-          <div key={group.label}>
+          <div key={group.labelKey}>
             <div className="text-[11px] font-medium text-white/30 uppercase tracking-wider mb-2">
-              {group.label}
+              {t(group.labelKey)}
             </div>
             <div>
               {group.metrics.map((metric) => (
@@ -239,6 +273,7 @@ export default function TeamComparisonPanel({
                   teamA={team_a}
                   teamB={team_b}
                   leagueAvg={league_avg}
+                  t={t}
                 />
               ))}
             </div>

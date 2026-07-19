@@ -1,3 +1,4 @@
+import { getT } from "@/lib/i18n/server";
 import type { TeamRecentFormRow } from "../types";
 import { formatDate } from "../utils/formatDate";
 import { ResultBadge } from "./ResultBadge";
@@ -6,12 +7,16 @@ type LastFiveMatchesListProps = {
   rows?: TeamRecentFormRow[];
 };
 
-export function LastFiveMatchesList({ rows = [] }: LastFiveMatchesListProps) {
+export async function LastFiveMatchesList({
+  rows = [],
+}: LastFiveMatchesListProps) {
+  const t = await getT();
+
   return (
     <div className="rounded-[14px] border border-white/10">
       <div className="border-b border-white/10 bg-white/[0.03] px-3 py-2">
         <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-white/42">
-          Last 5 Matches
+          {t("teamDetail.last5MatchesTitle")}
         </div>
       </div>
 
@@ -26,7 +31,8 @@ export function LastFiveMatchesList({ rows = [] }: LastFiveMatchesListProps) {
                 {row.opponent_name ?? "—"}
               </div>
               <div className="mt-0.5 text-[11px] text-white/45">
-                {formatDate(row.match_datetime)} • {row.is_home ? "Home" : "Away"}
+                {formatDate(row.match_datetime)} •{" "}
+                {row.is_home ? t("common.home") : t("common.away")}
               </div>
             </div>
 

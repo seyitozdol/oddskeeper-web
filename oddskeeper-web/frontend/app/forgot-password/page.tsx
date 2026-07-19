@@ -3,9 +3,11 @@
 import Link from "next/link";
 import { useState, type FormEvent } from "react";
 import { createClient } from "../../lib/supabase/client";
+import { useI18n } from "@/lib/i18n/LanguageProvider";
 
 export default function ForgotPasswordPage() {
   const supabase = createClient();
+  const { t } = useI18n();
 
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
@@ -30,9 +32,7 @@ export default function ForgotPasswordPage() {
       return;
     }
 
-    setSuccessText(
-      "Password reset email sent. Please check your inbox."
-    );
+    setSuccessText(t("auth.resetEmailSentSuccess"));
     setLoading(false);
   }
 
@@ -52,7 +52,7 @@ export default function ForgotPasswordPage() {
                 OddsKeeper
               </span>
               <span className="text-[11px] uppercase tracking-[0.24em] text-white/45">
-                Sports Data Intelligence
+                {t("landing.brandTagline")}
               </span>
             </div>
           </Link>
@@ -61,32 +61,32 @@ export default function ForgotPasswordPage() {
             href="/sign-in"
             className="text-sm text-white/60 transition hover:text-white"
           >
-            Back to Sign In
+            {t("auth.backToSignIn")}
           </Link>
         </div>
 
         <div className="mx-auto max-w-[560px] rounded-[32px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.025))] p-4 shadow-[0_28px_110px_rgba(0,0,0,0.42)] backdrop-blur">
           <div className="rounded-[28px] border border-white/8 bg-[#0a1320]/95 p-5 sm:p-6">
             <p className="text-[11px] font-medium uppercase tracking-[0.24em] text-[#8bdfff]">
-              Password Recovery
+              {t("auth.passwordRecoveryKicker")}
             </p>
 
             <h1 className="mt-4 text-3xl font-semibold text-white">
-              Reset your password
+              {t("auth.resetPasswordTitle")}
             </h1>
 
             <p className="mt-4 text-sm leading-7 text-white/62">
-              Enter your email address. We will send you a secure reset link.
+              {t("auth.resetPasswordDescription")}
             </p>
 
             <form onSubmit={handleSubmit} className="mt-6 space-y-5">
               <div>
                 <label className="mb-2 block text-sm font-medium text-white/80">
-                  Email
+                  {t("auth.emailLabel")}
                 </label>
                 <input
                   type="email"
-                  placeholder="you@company.com"
+                  placeholder={t("auth.emailPlaceholder")}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-white outline-none transition placeholder:text-white/30 focus:border-[#13b0ff]/40"
@@ -111,7 +111,7 @@ export default function ForgotPasswordPage() {
                 disabled={loading}
                 className="w-full cursor-pointer rounded-2xl border border-[#13b0ff]/35 bg-gradient-to-r from-[#0d8fff] to-[#25c8ff] px-6 py-3.5 text-sm font-semibold text-white shadow-[0_0_30px_rgba(19,176,255,0.18)] transition hover:scale-[1.01] disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {loading ? "Sending..." : "Send reset link"}
+                {loading ? t("auth.sendingResetLink") : t("auth.sendResetLinkButton")}
               </button>
             </form>
           </div>

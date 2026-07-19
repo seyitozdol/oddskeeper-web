@@ -1,31 +1,31 @@
-const steps = [
-  {
-    number: "01",
-    title: "Raw Match Inputs",
-    description:
-      "Capture match, team, incident, and participant-level source inputs in a structured collection layer.",
-  },
-  {
-    number: "02",
-    title: "Structured Database Layer",
-    description:
-      "Normalize raw records into consistent football data architecture designed for scalable operations.",
-  },
-  {
-    number: "03",
-    title: "Analytical Models & Views",
-    description:
-      "Transform structured data into usable analytical layers for research, interpretation, and workflow support.",
-  },
-  {
-    number: "04",
-    title: "Trading & Enterprise Output",
-    description:
-      "Deliver cleaner decision inputs for trading teams, providers, and enterprise-grade sports data workflows.",
-  },
-];
+import { getT } from "@/lib/i18n/server";
 
-export default function WorkflowSection() {
+export default async function WorkflowSection() {
+  const t = await getT();
+
+  const steps = [
+    {
+      number: "01",
+      titleKey: "landing.workflowStep1Title",
+      descriptionKey: "landing.workflowStep1Description",
+    },
+    {
+      number: "02",
+      titleKey: "landing.workflowStep2Title",
+      descriptionKey: "landing.workflowStep2Description",
+    },
+    {
+      number: "03",
+      titleKey: "landing.workflowStep3Title",
+      descriptionKey: "landing.workflowStep3Description",
+    },
+    {
+      number: "04",
+      titleKey: "landing.workflowStep4Title",
+      descriptionKey: "landing.workflowStep4Description",
+    },
+  ];
+
   return (
     <section
       id="data-layers"
@@ -34,17 +34,15 @@ export default function WorkflowSection() {
       <div className="mx-auto max-w-[1420px]">
         <div className="max-w-[760px]">
           <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-[#8bdfff] sm:text-[11px] sm:tracking-[0.24em]">
-            Workflow
+            {t("landing.workflowKicker")}
           </p>
 
           <h2 className="mt-4 text-3xl font-semibold leading-tight text-white sm:text-4xl lg:text-5xl">
-            From raw data to usable decisions
+            {t("landing.workflowTitle")}
           </h2>
 
           <p className="mt-5 max-w-[700px] text-base leading-7 text-white/62 sm:text-lg sm:leading-8">
-            The platform is designed to move football data through a clean,
-            repeatable structure — from raw source inputs to analytical layers
-            and enterprise-ready outputs.
+            {t("landing.workflowDescription")}
           </p>
         </div>
 
@@ -61,19 +59,19 @@ export default function WorkflowSection() {
                 </div>
 
                 <h3 className="mt-5 text-[30px] font-semibold leading-tight text-white sm:mt-6 sm:text-2xl">
-                  {step.title}
+                  {t(step.titleKey)}
                 </h3>
 
                 <p className="mt-4 text-sm leading-7 text-white/60 sm:text-[15px]">
-                  {step.description}
+                  {t(step.descriptionKey)}
                 </p>
 
                 <div className="mt-6 rounded-2xl border border-white/8 bg-[#0b1524]/70 px-4 py-3 sm:mt-8">
                   <p className="text-xs uppercase tracking-[0.2em] text-white/40">
-                    Layer
+                    {t("landing.workflowLayerLabel")}
                   </p>
                   <p className="mt-2 text-sm font-medium text-white/88">
-                    {step.title}
+                    {t(step.titleKey)}
                   </p>
                 </div>
               </div>

@@ -1,5 +1,7 @@
 import MatchLink from "@/components/links/MatchLink";
 import TeamLink from "@/components/links/TeamLink";
+import { getT } from "@/lib/i18n/server";
+import type { Translator } from "@/lib/i18n/messages";
 import type {
   LeagueFixtureRow,
   LeagueOverviewRow,
@@ -55,9 +57,13 @@ function formatPctPoint(value: number | null | undefined) {
   return `${formatNumber(absValue, 1)} pp`;
 }
 
-function formatTime(kickoffTimeKnown: boolean, kickoffTimeText: string | null | undefined) {
+function formatTime(
+  t: Translator,
+  kickoffTimeKnown: boolean,
+  kickoffTimeText: string | null | undefined
+) {
   if (!kickoffTimeKnown || !kickoffTimeText) {
-    return "TBD";
+    return t("leagueDetail.tbd");
   }
 
   return kickoffTimeText;
@@ -155,12 +161,14 @@ function perGame(total: number, played: number) {
   return formatNumber(total / played, 2);
 }
 
-export function LeagueOverviewPanel({
+export async function LeagueOverviewPanel({
   overview,
   standings = [],
   results = [],
   fixtures = [],
 }: LeagueOverviewPanelProps) {
+  const t = await getT();
+
   const topAttack = [...standings]
     .sort((a, b) => {
       if (b.goals_for !== a.goals_for) return b.goals_for - a.goals_for;
@@ -222,67 +230,86 @@ export function LeagueOverviewPanel({
     <div className="space-y-4">
       <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
         <SnapshotCard
-          label="Completed Matches"
+          label={t("leagueDetail.completedMatches")}
           value={formatNumber(overview?.completed_matches ?? results.length, 0)}
-          subvalue={`Latest: ${formatDate(overview?.latest_match_datetime)}`}
+          subvalue={t("leagueDetail.latestLabel", {
+            date: formatDate(overview?.latest_match_datetime),
+          })}
           accent="accent"
         />
         <SnapshotCard
-          label="Upcoming Fixtures"
+          label={t("leagueDetail.upcomingFixtures")}
           value={formatNumber(overview?.upcoming_fixtures ?? fixtures.length, 0)}
-          subvalue={`Next: ${formatDate(overview?.next_fixture_datetime ?? overview?.next_fixture_date)}`}
+          subvalue={t("leagueDetail.nextLabel", {
+            date: formatDate(
+              overview?.next_fixture_datetime ?? overview?.next_fixture_date
+            ),
+          })}
           accent="warning"
         />
         <SnapshotCard
-          label="Goals / Match"
+          label={t("leagueDetail.goalsPerMatch")}
           value={formatNumber(overview?.goals_per_match, 2)}
-          subvalue={`${formatNumber(overview?.total_goals, 0)} total goals`}
+          subvalue={t("leagueDetail.totalGoalsLabel", {
+            count: formatNumber(overview?.total_goals, 0),
+          })}
           accent="positive"
         />
         <SnapshotCard
-          label="Title Gap"
-          value={titleGap === null ? "—" : `${titleGap} pts`}
-          subvalue={leader && runnerUp ? `${leader.team_name} over ${runnerUp.team_name}` : "Top-two gap unavailable"}
+          label={t("leagueDetail.titleGap")}
+          value={
+            titleGap === null
+              ? "—"
+              : t("leagueDetail.titleGapPts", { count: titleGap })
+          }
+          subvalue={
+            leader && runnerUp
+              ? t("leagueDetail.titleGapTeams", {
+                  leader: leader.team_name,
+                  runnerUp: runnerUp.team_name,
+                })
+              : t("leagueDetail.titleGapUnavailable")
+          }
         />
       </div>
 
-      <SectionCard title="League Outcome Split">
+      <SectionCard title={t("leagueDetail.outcomeSplitTitle")}>
         <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
           <MiniSplitCard
-            label="Home Wins"
+            label={t("leagueDetail.homeWins")}
             value={formatPct(overview?.home_win_pct)}
             toneClass="border-emerald-500/20 bg-emerald-500/10"
           />
           <MiniSplitCard
-            label="Draws"
+            label={t("leagueDetail.draws")}
             value={formatPct(overview?.draw_pct)}
             toneClass="border-amber-500/20 bg-amber-500/10"
           />
           <MiniSplitCard
-            label="Away Wins"
+            label={t("leagueDetail.awayWins")}
             value={formatPct(overview?.away_win_pct)}
             toneClass="border-sky-500/20 bg-sky-500/10"
           />
           <MiniSplitCard
-            label="Home Edge"
+            label={t("leagueDetail.homeEdge")}
             value={formatPctPoint(homeEdge)}
-            subvalue="home wins over away wins"
+            subvalue={t("leagueDetail.homeEdgeSubvalue")}
             toneClass="border-white/10 bg-white/[0.03]"
           />
         </div>
       </SectionCard>
 
       <div className="grid gap-4 xl:grid-cols-3">
-        <SectionCard title="Best Recent Form">
+        <SectionCard title={t("leagueDetail.bestForm")}>
           <div className="space-y-2">
             {bestForm.length === 0 ? (
-              <div className="text-sm text-white/55">No league table data found.</div>
+              <div className="text-sm text-white/55">{t("leagueDetail.noTableData")}</div>
             ) : (
               bestForm.map((row, index) => (
                 <div key={`form-${row.team_source_id}`} className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2">
                   <div className="min-w-0">
                     <div className="text-[10px] uppercase tracking-[0.12em] text-white/35">
-                      Form rank #{index + 1} • Table #{row.rank}
+                      {t("leagueDetail.formRank", { index: index + 1, rank: row.rank })}
                     </div>
                     <div className="truncate text-sm font-medium text-white">
                       {row.team_slug ? (
@@ -295,7 +322,9 @@ export function LeagueOverviewPanel({
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="text-sm font-semibold text-white">{row.last5_points} pts</div>
+                    <div className="text-sm font-semibold text-white">
+                      {t("leagueDetail.ptsSuffix", { count: row.last5_points })}
+                    </div>
                     <div className="text-[11px] text-white/45">{row.form_last5 || "—"}</div>
                   </div>
                 </div>
@@ -304,16 +333,16 @@ export function LeagueOverviewPanel({
           </div>
         </SectionCard>
 
-        <SectionCard title="Most Productive Attacks">
+        <SectionCard title={t("leagueDetail.mostProductiveAttacks")}>
           <div className="space-y-2">
             {topAttack.length === 0 ? (
-              <div className="text-sm text-white/55">No attack ranking available.</div>
+              <div className="text-sm text-white/55">{t("leagueDetail.noAttackRanking")}</div>
             ) : (
               topAttack.map((row, index) => (
                 <div key={`attack-${row.team_source_id}`} className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2">
                   <div className="min-w-0">
                     <div className="text-[10px] uppercase tracking-[0.12em] text-white/35">
-                      Attack rank #{index + 1} • Table #{row.rank}
+                      {t("leagueDetail.attackRank", { index: index + 1, rank: row.rank })}
                     </div>
                     <div className="truncate text-sm font-medium text-white">
                       {row.team_slug ? (
@@ -326,8 +355,12 @@ export function LeagueOverviewPanel({
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="text-sm font-semibold text-white">{row.goals_for} GF</div>
-                    <div className="text-[11px] text-white/45">{perGame(row.goals_for, row.played)} GF / match</div>
+                    <div className="text-sm font-semibold text-white">
+                      {t("leagueDetail.gfSuffix", { count: row.goals_for })}
+                    </div>
+                    <div className="text-[11px] text-white/45">
+                      {t("leagueDetail.gfPerMatch", { value: perGame(row.goals_for, row.played) })}
+                    </div>
                   </div>
                 </div>
               ))
@@ -335,16 +368,16 @@ export function LeagueOverviewPanel({
           </div>
         </SectionCard>
 
-        <SectionCard title="Best Defensive Records">
+        <SectionCard title={t("leagueDetail.bestDefensiveRecords")}>
           <div className="space-y-2">
             {bestDefence.length === 0 ? (
-              <div className="text-sm text-white/55">No defence ranking available.</div>
+              <div className="text-sm text-white/55">{t("leagueDetail.noDefenceRanking")}</div>
             ) : (
               bestDefence.map((row, index) => (
                 <div key={`defence-${row.team_source_id}`} className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2">
                   <div className="min-w-0">
                     <div className="text-[10px] uppercase tracking-[0.12em] text-white/35">
-                      Defence rank #{index + 1} • Table #{row.rank}
+                      {t("leagueDetail.defenceRank", { index: index + 1, rank: row.rank })}
                     </div>
                     <div className="truncate text-sm font-medium text-white">
                       {row.team_slug ? (
@@ -357,8 +390,12 @@ export function LeagueOverviewPanel({
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="text-sm font-semibold text-white">{row.goals_against} GA</div>
-                    <div className="text-[11px] text-white/45">{perGame(row.goals_against, row.played)} GA / match</div>
+                    <div className="text-sm font-semibold text-white">
+                      {t("leagueDetail.gaSuffix", { count: row.goals_against })}
+                    </div>
+                    <div className="text-[11px] text-white/45">
+                      {t("leagueDetail.gaPerMatch", { value: perGame(row.goals_against, row.played) })}
+                    </div>
                   </div>
                 </div>
               ))
@@ -368,10 +405,10 @@ export function LeagueOverviewPanel({
       </div>
 
       <div className="grid gap-4 xl:grid-cols-2">
-        <SectionCard title="Latest Results">
+        <SectionCard title={t("leagueDetail.latestResultsTitle")}>
           <div className="space-y-2">
             {latestResults.length === 0 ? (
-              <div className="text-sm text-white/55">No results available.</div>
+              <div className="text-sm text-white/55">{t("leagueDetail.noResultsAvailable")}</div>
             ) : (
               latestResults.map((row) => (
                 <div key={`result-${row.source_match_id}`} className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2">
@@ -387,7 +424,7 @@ export function LeagueOverviewPanel({
                           row.home_team_name ?? "—"
                         )}
                       </span>
-                      <span className="text-white/45">vs</span>
+                      <span className="text-white/45">{t("leagueDetail.vsLabel")}</span>
                       <span className="truncate">
                         {row.away_team_slug ? (
                           <TeamLink teamSlug={row.away_team_slug} className="transition hover:text-white hover:underline" title={row.away_team_name ?? undefined}>
@@ -400,7 +437,7 @@ export function LeagueOverviewPanel({
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <MatchLink sourceMatchId={row.source_match_id} className="text-sm font-semibold text-white transition hover:text-white hover:underline" title="Open match detail">
+                    <MatchLink sourceMatchId={row.source_match_id} className="text-sm font-semibold text-white transition hover:text-white hover:underline" title={t("leagueDetail.openMatchDetail")}>
                       {row.home_score ?? "—"} - {row.away_score ?? "—"}
                     </MatchLink>
                     <span className={`inline-flex min-w-[56px] items-center justify-center rounded-md border px-2 py-[2px] text-[10px] font-semibold uppercase ${getResultTone(row.result_code)}`}>
@@ -413,16 +450,19 @@ export function LeagueOverviewPanel({
           </div>
         </SectionCard>
 
-        <SectionCard title="Next Fixtures">
+        <SectionCard title={t("leagueDetail.nextFixturesTitle")}>
           <div className="space-y-2">
             {nextFixtures.length === 0 ? (
-              <div className="text-sm text-white/55">No open fixtures available.</div>
+              <div className="text-sm text-white/55">{t("leagueDetail.noOpenFixtures")}</div>
             ) : (
               nextFixtures.map((row) => (
                 <div key={`fixture-${row.fixture_id}`} className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2">
                   <div className="min-w-0 flex-1">
                     <div className="text-[10px] uppercase tracking-[0.12em] text-white/30">
-                      Week {row.round_number ?? "—"} • {formatDate(row.fixture_datetime ?? row.fixture_date)}
+                      {row.round_number
+                        ? t("leagueDetail.weekLabel", { number: row.round_number })
+                        : "—"}{" "}
+                      • {formatDate(row.fixture_datetime ?? row.fixture_date)}
                     </div>
                     <div className="mt-1 flex items-center gap-2 text-sm text-white">
                       <span className="truncate">
@@ -434,7 +474,7 @@ export function LeagueOverviewPanel({
                           row.home_team_name ?? "—"
                         )}
                       </span>
-                      <span className="text-white/45">vs</span>
+                      <span className="text-white/45">{t("leagueDetail.vsLabel")}</span>
                       <span className="truncate">
                         {row.away_team_slug ? (
                           <TeamLink teamSlug={row.away_team_slug} className="transition hover:text-white hover:underline" title={row.away_team_name ?? undefined}>
@@ -447,7 +487,9 @@ export function LeagueOverviewPanel({
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="text-sm font-semibold text-white">{formatTime(row.kickoff_time_known, row.kickoff_time_text)}</div>
+                    <div className="text-sm font-semibold text-white">
+                      {formatTime(t, row.kickoff_time_known, row.kickoff_time_text)}
+                    </div>
                   </div>
                 </div>
               ))

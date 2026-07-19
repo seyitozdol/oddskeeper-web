@@ -7,6 +7,7 @@ import { formatDecimal } from "../utils/formatDecimal";
 import { PlayerResultBadge } from "../components/PlayerResultBadge";
 import TeamLink from "@/components/links/TeamLink";
 import MatchLink from "@/components/links/MatchLink";
+import { useI18n } from "@/lib/i18n/LanguageProvider";
 
 type PlayerMatchLogPanelProps = {
   rows?: PlayerMatchLogRow[];
@@ -92,6 +93,7 @@ function getSortValue(row: PlayerMatchLogRow, sortKey: SortKey) {
 }
 
 export function PlayerMatchLogPanel({ rows = [] }: PlayerMatchLogPanelProps) {
+  const { t } = useI18n();
   const [lineupFilter, setLineupFilter] = useState<LineupFilter>("all");
   const [sortKey, setSortKey] = useState<SortKey>("match_datetime");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
@@ -158,7 +160,7 @@ export function PlayerMatchLogPanel({ rows = [] }: PlayerMatchLogPanelProps) {
   if (rows.length === 0) {
     return (
       <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-4 text-sm text-white/65">
-        No match log data found for this player.
+        {t("playerDetail.noMatchLogData")}
       </div>
     );
   }
@@ -182,7 +184,7 @@ export function PlayerMatchLogPanel({ rows = [] }: PlayerMatchLogPanelProps) {
               : "border-white/10 bg-white/[0.03] text-white/72 hover:bg-white/[0.06]"
           }`}
         >
-          All ({rows.length})
+          {t("playerDetail.allWithCount", { count: rows.length })}
         </button>
 
         <button
@@ -194,7 +196,7 @@ export function PlayerMatchLogPanel({ rows = [] }: PlayerMatchLogPanelProps) {
               : "border-white/10 bg-white/[0.03] text-white/72 hover:bg-white/[0.06]"
           }`}
         >
-          Starters ({starterCount})
+          {t("playerDetail.startersWithCount", { count: starterCount })}
         </button>
 
         <button
@@ -206,13 +208,13 @@ export function PlayerMatchLogPanel({ rows = [] }: PlayerMatchLogPanelProps) {
               : "border-white/10 bg-white/[0.03] text-white/72 hover:bg-white/[0.06]"
           }`}
         >
-          Substitutes ({substituteCount})
+          {t("playerDetail.substitutesWithCount", { count: substituteCount })}
         </button>
       </div>
 
       {sortedRows.length === 0 ? (
         <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-4 text-sm text-white/65">
-          No rows found for this filter.
+          {t("playerDetail.noRowsForFilter")}
         </div>
       ) : (
         <div className="overflow-x-auto rounded-[14px] border border-white/10">
@@ -225,16 +227,17 @@ export function PlayerMatchLogPanel({ rows = [] }: PlayerMatchLogPanelProps) {
                     onClick={() => handleSort("match_datetime")}
                     className="cursor-pointer select-none"
                   >
-                    Date{getSortIndicator(sortKey, sortDirection, "match_datetime")}
+                    {t("common.date")}
+                    {getSortIndicator(sortKey, sortDirection, "match_datetime")}
                   </button>
                 </th>
 
-                <th className="px-4 py-2 font-medium">Opponent</th>
-                <th className="px-4 py-2 font-medium">H/A</th>
-                <th className="px-4 py-2 font-medium">Score</th>
-                <th className="px-4 py-2 font-medium">Result</th>
-                <th className="px-4 py-2 font-medium">Lineup</th>
-                <th className="px-4 py-2 font-medium">Pos</th>
+                <th className="px-4 py-2 font-medium">{t("common.opponent")}</th>
+                <th className="px-4 py-2 font-medium">{t("playerDetail.homeAwayColumn")}</th>
+                <th className="px-4 py-2 font-medium">{t("common.score")}</th>
+                <th className="px-4 py-2 font-medium">{t("common.result")}</th>
+                <th className="px-4 py-2 font-medium">{t("playerDetail.lineupColumn")}</th>
+                <th className="px-4 py-2 font-medium">{t("common.position")}</th>
 
                 <th className="px-4 py-2 font-medium">
                   <button
@@ -242,7 +245,8 @@ export function PlayerMatchLogPanel({ rows = [] }: PlayerMatchLogPanelProps) {
                     onClick={() => handleSort("minutes_played")}
                     className="cursor-pointer select-none"
                   >
-                    Min{getSortIndicator(sortKey, sortDirection, "minutes_played")}
+                    {t("common.minutes")}
+                    {getSortIndicator(sortKey, sortDirection, "minutes_played")}
                   </button>
                 </th>
 
@@ -252,7 +256,8 @@ export function PlayerMatchLogPanel({ rows = [] }: PlayerMatchLogPanelProps) {
                     onClick={() => handleSort("goals")}
                     className="cursor-pointer select-none"
                   >
-                    G{getSortIndicator(sortKey, sortDirection, "goals")}
+                    {t("playerDetail.goalsAbbr")}
+                    {getSortIndicator(sortKey, sortDirection, "goals")}
                   </button>
                 </th>
 
@@ -262,7 +267,8 @@ export function PlayerMatchLogPanel({ rows = [] }: PlayerMatchLogPanelProps) {
                     onClick={() => handleSort("assists")}
                     className="cursor-pointer select-none"
                   >
-                    A{getSortIndicator(sortKey, sortDirection, "assists")}
+                    {t("playerDetail.assistsAbbr")}
+                    {getSortIndicator(sortKey, sortDirection, "assists")}
                   </button>
                 </th>
 
@@ -272,7 +278,8 @@ export function PlayerMatchLogPanel({ rows = [] }: PlayerMatchLogPanelProps) {
                     onClick={() => handleSort("expected_goals")}
                     className="cursor-pointer select-none"
                   >
-                    xG{getSortIndicator(sortKey, sortDirection, "expected_goals")}
+                    {t("playerDetail.xgColumn")}
+                    {getSortIndicator(sortKey, sortDirection, "expected_goals")}
                   </button>
                 </th>
               </tr>
@@ -289,7 +296,7 @@ export function PlayerMatchLogPanel({ rows = [] }: PlayerMatchLogPanelProps) {
                       sourceMatchId={row.source_match_id}
                       returnTo={baseReturnTo}
                       className="transition hover:text-white hover:underline"
-                      title="Open match detail"
+                      title={t("playerDetail.openMatchDetailTitle")}
                     >
                       {formatDate(row.match_datetime)}
                     </MatchLink>
@@ -304,7 +311,7 @@ export function PlayerMatchLogPanel({ rows = [] }: PlayerMatchLogPanelProps) {
 
                   <td className="px-4 py-2 whitespace-nowrap">
                     <span className="rounded-md border border-white/10 bg-white/[0.03] px-2 py-[2px] text-[10px] font-medium text-white/72">
-                      {row.is_home ? "Home" : "Away"}
+                      {row.is_home ? t("common.home") : t("common.away")}
                     </span>
                   </td>
 
@@ -313,7 +320,7 @@ export function PlayerMatchLogPanel({ rows = [] }: PlayerMatchLogPanelProps) {
                       sourceMatchId={row.source_match_id}
                       returnTo={baseReturnTo}
                       className="font-medium text-white transition hover:text-white hover:underline"
-                      title="Open match detail"
+                      title={t("playerDetail.openMatchDetailTitle")}
                     >
                       {row.score_display ?? "—"}
                     </MatchLink>

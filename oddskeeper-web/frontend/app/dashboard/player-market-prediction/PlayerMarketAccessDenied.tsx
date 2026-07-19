@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { useI18n } from "@/lib/i18n/LanguageProvider";
 
 export default function PlayerMarketAccessDenied({ userEmail }: { userEmail?: string | null }) {
+  const { t } = useI18n();
   const [email, setEmail] = useState(userEmail ?? "");
   const [sent, setSent] = useState(false);
   const [sending, setSending] = useState(false);
@@ -11,7 +13,7 @@ export default function PlayerMarketAccessDenied({ userEmail }: { userEmail?: st
   async function handleSend() {
     const trimmed = email.trim();
     if (!trimmed || !trimmed.includes("@")) {
-      setError("Please enter a valid email address.");
+      setError(t("playerMarket.invalidEmailError"));
       return;
     }
 
@@ -28,7 +30,7 @@ export default function PlayerMarketAccessDenied({ userEmail }: { userEmail?: st
       if (!res.ok) throw new Error("Failed to send");
       setSent(true);
     } catch {
-      setError("Something went wrong. Please try again.");
+      setError(t("playerMarket.genericError"));
     } finally {
       setSending(false);
     }
@@ -46,15 +48,14 @@ export default function PlayerMarketAccessDenied({ userEmail }: { userEmail?: st
           </svg>
         </div>
 
-        <h2 className="text-[18px] font-bold text-white">Access Restricted</h2>
+        <h2 className="text-[18px] font-bold text-white">{t("playerMarket.accessRestrictedTitle")}</h2>
         <p className="mt-2 text-[13px] leading-relaxed text-white/50">
-          Sorry, you don&apos;t have access to this page right now.
-          If you&apos;d like to request access, please enter your email address below.
+          {t("playerMarket.accessRestrictedDescription")}
         </p>
 
         {sent ? (
           <div className="mt-8 rounded-[12px] border border-teal-500/20 bg-teal-500/10 px-4 py-4 text-[13px] text-teal-300">
-            ✓ Your request has been sent. We&apos;ll get back to you shortly.
+            ✓ {t("playerMarket.requestSentMessage")}
           </div>
         ) : (
           <div className="mt-8 space-y-3">
@@ -76,7 +77,7 @@ export default function PlayerMarketAccessDenied({ userEmail }: { userEmail?: st
               disabled={sending}
               className="w-full rounded-[10px] border border-[#4da2ff]/25 bg-[#10233b] py-3 text-[13px] font-medium text-white transition hover:border-[#4da2ff]/45 hover:bg-[#14304f] disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {sending ? "Sending…" : "Send Access Request"}
+              {sending ? t("playerMarket.sendingLabel") : t("playerMarket.sendAccessRequestLabel")}
             </button>
           </div>
         )}

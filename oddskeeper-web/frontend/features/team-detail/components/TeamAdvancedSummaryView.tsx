@@ -1,5 +1,6 @@
 "use client";
 
+import { useI18n } from "@/lib/i18n/LanguageProvider";
 import type { TeamAdvancedSummary } from "../types";
 
 function formatScore(value: number | null | undefined) {
@@ -83,6 +84,8 @@ function HighlightCard({
   vsAvg: number | null;
   tone: "positive" | "negative" | "neutral" | "accent" | "warning";
 }) {
+  const { t } = useI18n();
+
   return (
     <div className={`rounded-2xl border px-4 py-4 ${getToneClasses(tone)}`}>
       <div className="text-[10px] uppercase tracking-[0.16em] text-white/38">
@@ -95,10 +98,11 @@ function HighlightCard({
 
       <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-[12px] text-white/65">
         <div>
-          Rank <span className="font-medium text-white">{rank ?? "—"}</span>
+          {t("teamDetail.colRank")}{" "}
+          <span className="font-medium text-white">{rank ?? "—"}</span>
         </div>
         <div>
-          Vs Avg{" "}
+          {t("teamDetail.vsAvgLabel")}{" "}
           <span className="font-medium text-white">{formatPct(vsAvg)}</span>
         </div>
       </div>
@@ -157,10 +161,12 @@ type TeamAdvancedSummaryViewProps = {
 export default function TeamAdvancedSummaryView({
   summary,
 }: TeamAdvancedSummaryViewProps) {
+  const { t } = useI18n();
+
   if (!summary) {
     return (
       <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-4 text-sm text-white/60">
-        Advanced summary could not be generated for this team.
+        {t("teamDetail.noSummaryAvailable")}
       </div>
     );
   }
@@ -169,22 +175,22 @@ export default function TeamAdvancedSummaryView({
     <div className="space-y-4">
       <div className="grid gap-3 xl:grid-cols-4">
         <IdentityCard
-          label="Attack Identity"
+          label={t("teamDetail.identityAttack")}
           title={summary.identity.attack.label}
           reason={summary.identity.attack.reason}
         />
         <IdentityCard
-          label="Defensive Identity"
+          label={t("teamDetail.identityDefence")}
           title={summary.identity.defence.label}
           reason={summary.identity.defence.reason}
         />
         <IdentityCard
-          label="Build-up Identity"
+          label={t("teamDetail.identityBuildUp")}
           title={summary.identity.build_up.label}
           reason={summary.identity.build_up.reason}
         />
         <IdentityCard
-          label="Current Form State"
+          label={t("teamDetail.identityForm")}
           title={summary.identity.form.label}
           reason={summary.identity.form.reason}
         />
@@ -192,7 +198,7 @@ export default function TeamAdvancedSummaryView({
 
       <div className="grid gap-3 xl:grid-cols-4">
         <HighlightCard
-          eyebrow="Primary Strength"
+          eyebrow={t("teamDetail.highlightStrength")}
           label={summary.highlights.strength.label}
           reason={summary.highlights.strength.reason}
           rank={summary.highlights.strength.rank}
@@ -200,7 +206,7 @@ export default function TeamAdvancedSummaryView({
           tone={summary.highlights.strength.tone}
         />
         <HighlightCard
-          eyebrow="Primary Risk"
+          eyebrow={t("teamDetail.highlightRisk")}
           label={summary.highlights.risk.label}
           reason={summary.highlights.risk.reason}
           rank={summary.highlights.risk.rank}
@@ -208,7 +214,7 @@ export default function TeamAdvancedSummaryView({
           tone={summary.highlights.risk.tone}
         />
         <HighlightCard
-          eyebrow="Most Material Trend"
+          eyebrow={t("teamDetail.highlightTrend")}
           label={summary.highlights.trend.label}
           reason={summary.highlights.trend.reason}
           rank={summary.highlights.trend.rank}
@@ -216,7 +222,7 @@ export default function TeamAdvancedSummaryView({
           tone={summary.highlights.trend.tone}
         />
         <HighlightCard
-          eyebrow="Biggest Split Signal"
+          eyebrow={t("teamDetail.highlightSplit")}
           label={summary.highlights.split.label}
           reason={summary.highlights.split.reason}
           rank={summary.highlights.split.rank}
@@ -248,15 +254,15 @@ export default function TeamAdvancedSummaryView({
 
       <div className="grid gap-3 xl:grid-cols-3">
         <TakeawayCard
-          label="Coaching Takeaway"
+          label={t("teamDetail.takeawayCoaching")}
           text={summary.takeaways.coaching}
         />
         <TakeawayCard
-          label="Opponent Prep Note"
+          label={t("teamDetail.takeawayOpponentPrep")}
           text={summary.takeaways.opponent_prep}
         />
         <TakeawayCard
-          label="Recruitment Implication"
+          label={t("teamDetail.takeawayRecruitment")}
           text={summary.takeaways.recruitment}
         />
       </div>

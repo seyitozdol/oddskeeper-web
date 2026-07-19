@@ -1,16 +1,26 @@
 import Image from "next/image";
 import Link from "next/link";
-import { PLAYER_TAB_LABELS, VALID_PLAYER_TABS } from "../constants";
+import { VALID_PLAYER_TABS } from "../constants";
 import type { PlayerProfileRow, ValidPlayerTab } from "../types";
 import { getTeamDetailHref } from "@/lib/routes";
 import { getTeamLogoPath } from "../utils/getTeamLogoPath";
 import { formatDecimal } from "../utils/formatDecimal";
 import type { PlayerCurrentInfoRow } from "../types";
+import { getT } from "@/lib/i18n/server";
 
 type PlayerDetailHeaderProps = {
   profile: PlayerProfileRow;
   activeTab: ValidPlayerTab;
   currentInfo?: PlayerCurrentInfoRow | null;
+};
+
+// Tab görünür etiketleri: URL'de kullanılan tab değerleri (VALID_PLAYER_TABS)
+// değişmeden kalır, sadece görüntülenen metin çeviri anahtarına eşlenir.
+const TAB_LABEL_KEYS: Record<ValidPlayerTab, string> = {
+  overview: "playerDetail.tabOverview",
+  "detailed-stats": "playerDetail.tabDetailedStats",
+  advanced: "playerDetail.tabAdvanced",
+  "match-log": "playerDetail.tabMatchLog",
 };
 
 function StatInline({
@@ -32,11 +42,13 @@ function StatInline({
   );
 }
 
-export function PlayerDetailHeader({
+export async function PlayerDetailHeader({
   profile,
   activeTab,
   currentInfo = null,
 }: PlayerDetailHeaderProps) {
+  const t = await getT();
+
   const backToTeamHref =
     getTeamDetailHref(profile.team_slug)
       ? `${getTeamDetailHref(profile.team_slug)}&tab=squad`
@@ -72,7 +84,7 @@ export function PlayerDetailHeader({
 
           <div className="min-w-0">
             <p className="text-[11px] uppercase tracking-[0.24em] text-[#7cbcff]">
-              Football Player Profile
+              {t("playerDetail.profileKicker")}
             </p>
 
             <h1 className="mt-1 truncate text-3xl font-semibold text-white lg:text-5xl">
@@ -92,7 +104,7 @@ export function PlayerDetailHeader({
             {currentInfo ? (
               <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
                 <span className="rounded-full border border-sky-400/30 bg-sky-400/10 px-2 py-0.5 text-[11px] font-medium uppercase tracking-[0.08em] text-sky-300">
-                  Current
+                  {t("playerDetail.currentBadge")}
                 </span>
                 <span className="text-white/80">
                   {currentInfo.current_team_name}
@@ -114,17 +126,21 @@ export function PlayerDetailHeader({
                 {currentInfo.age !== null ? (
                   <>
                     <span className="text-white/40">•</span>
-                    <span className="text-white/80">Age {currentInfo.age}</span>
+                    <span className="text-white/80">
+                      {t("playerDetail.ageValue", { age: currentInfo.age })}
+                    </span>
                   </>
                 ) : null}
               </div>
             ) : (
               <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
                 <span className="rounded-full border border-white/12 bg-white/[0.04] px-2 py-0.5 text-[11px] font-medium uppercase tracking-[0.08em] text-white/45">
-                  Not in current league squads
+                  {t("common.notInCurrentSquads")}
                 </span>
                 <span className="text-white/50">
-                  Stats below are from past seasons with {profile.team_name}
+                  {t("playerDetail.statsFromPastSeasons", {
+                    team: profile.team_name,
+                  })}
                 </span>
               </div>
             )}
@@ -140,13 +156,21 @@ export function PlayerDetailHeader({
                 {currentInfo.height_cm ? (
                   <>
                     <span className="text-white/30">•</span>
-                    <span>{currentInfo.height_cm} cm</span>
+                    <span>
+                      {t("playerDetail.heightCm", {
+                        value: currentInfo.height_cm,
+                      })}
+                    </span>
                   </>
                 ) : null}
                 {currentInfo.weight_kg ? (
                   <>
                     <span className="text-white/30">•</span>
-                    <span>{currentInfo.weight_kg} kg</span>
+                    <span>
+                      {t("playerDetail.weightKg", {
+                        value: currentInfo.weight_kg,
+                      })}
+                    </span>
                   </>
                 ) : null}
                 {currentInfo.birth_date ? (
@@ -182,7 +206,7 @@ export function PlayerDetailHeader({
                     : "border-white/10 bg-white/[0.03] text-white/72 hover:bg-white/[0.06]"
                 }`}
               >
-                {PLAYER_TAB_LABELS[tab]}
+                {t(TAB_LABEL_KEYS[tab])}
               </Link>
             );
           })}
@@ -191,19 +215,19 @@ export function PlayerDetailHeader({
             href={backToTeamHref}
             className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-white/80 transition hover:bg-white/[0.06]"
           >
-            ← Back
+            {t("playerDetail.backButton")}
           </Link>
         </div>
       </div>
 
       <div className="mt-4 grid gap-x-5 gap-y-3 border-t border-white/10 pt-4 sm:grid-cols-3 xl:grid-cols-6">
-        <StatInline label="Apps" value={profile.appearances} />
-        <StatInline label="Starts" value={profile.starts} />
-        <StatInline label="Minutes" value={profile.total_minutes} />
-        <StatInline label="Goals" value={profile.goals} />
-        <StatInline label="Assists" value={profile.assists} />
+        <StatInline label={t("common.appearances")} value={profile.appearances} />
+        <StatInline label={t("common.starts")} value={profile.starts} />
+        <StatInline label={t("playerDetail.minutesLabel")} value={profile.total_minutes} />
+        <StatInline label={t("common.goals")} value={profile.goals} />
+        <StatInline label={t("common.assists")} value={profile.assists} />
         <StatInline
-          label="Starter %"
+          label={t("playerDetail.starterRateLabel")}
           value={`${formatDecimal(profile.starter_rate_pct)}%`}
         />
       </div>

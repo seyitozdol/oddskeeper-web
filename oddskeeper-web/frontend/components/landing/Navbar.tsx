@@ -1,13 +1,16 @@
 import Link from "next/link";
+import { getT } from "@/lib/i18n/server";
 
-const navItems = [
-  { label: "Platform", href: "#platform" },
-  { label: "Data Layers", href: "#data-layers" },
-  { label: "Use Cases", href: "#use-cases" },
-  { label: "Contact", href: "#contact" },
-];
+export default async function Navbar() {
+  const t = await getT();
 
-export default function Navbar() {
+  const navItems = [
+    { label: t("landing.navPlatform"), href: "#platform" },
+    { label: t("landing.navDataLayers"), href: "#data-layers" },
+    { label: t("landing.navUseCases"), href: "#use-cases" },
+    { label: t("landing.navContact"), href: "#contact" },
+  ];
+
   return (
     <header className="sticky top-0 z-50 border-b border-white/10 bg-[#06111f]/85 backdrop-blur-xl">
       <div className="mx-auto flex h-16 w-full max-w-[1420px] items-center justify-between px-4 sm:px-6 lg:h-20 lg:px-10">
@@ -23,7 +26,7 @@ export default function Navbar() {
               OddsKeeper
             </span>
             <span className="text-[10px] uppercase tracking-[0.22em] text-white/45 sm:text-[11px]">
-              Sports Data Intelligence
+              {t("landing.brandTagline")}
             </span>
           </div>
         </Link>
@@ -45,21 +48,21 @@ export default function Navbar() {
             href="#contact"
             className="inline-flex rounded-xl border border-[#13b0ff]/40 bg-gradient-to-r from-[#0d8fff] to-[#25c8ff] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_0_30px_rgba(19,176,255,0.18)] transition hover:scale-[1.02]"
           >
-            Request Access
+            {t("landing.requestAccess")}
           </a>
 
           <Link
             href="/sign-up"
             className="inline-flex rounded-xl border border-white/12 bg-white/5 px-4 py-2.5 text-sm font-semibold text-white/90 transition hover:bg-white/10"
           >
-            Sign Up
+            {t("landing.signUp")}
           </Link>
 
           <Link
             href="/sign-in"
             className="inline-flex rounded-xl border border-white/12 bg-transparent px-4 py-2.5 text-sm font-semibold text-white/90 transition hover:bg-white/5"
           >
-            Sign In
+            {t("landing.signIn")}
           </Link>
         </div>
 
@@ -90,21 +93,21 @@ export default function Navbar() {
                 href="#contact"
                 className="inline-flex w-full justify-center rounded-xl border border-[#13b0ff]/40 bg-gradient-to-r from-[#0d8fff] to-[#25c8ff] px-4 py-2.5 text-sm font-semibold text-white"
               >
-                Request Access
+                {t("landing.requestAccess")}
               </a>
 
               <Link
                 href="/sign-up"
                 className="inline-flex w-full justify-center rounded-xl border border-white/12 bg-white/5 px-4 py-2.5 text-sm font-semibold text-white/90"
               >
-                Sign Up
+                {t("landing.signUp")}
               </Link>
 
               <Link
                 href="/sign-in"
                 className="inline-flex w-full justify-center rounded-xl border border-white/12 bg-transparent px-4 py-2.5 text-sm font-semibold text-white/90"
               >
-                Sign In
+                {t("landing.signIn")}
               </Link>
             </div>
           </div>

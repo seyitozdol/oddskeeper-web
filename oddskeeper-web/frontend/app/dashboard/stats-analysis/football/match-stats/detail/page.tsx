@@ -9,6 +9,7 @@ import { getMatchTeamStats } from "@/features/match-detail/server/getMatchTeamSt
 import type { ValidMatchTab } from "@/features/match-detail/types";
 import { MatchLineupsPanel } from "@/features/match-detail/panels/MatchLineupsPanel";
 import { getMatchParticipants } from "@/features/match-detail/server/getMatchParticipants";
+import { getT } from "@/lib/i18n/server";
 
 type PageProps = {
   searchParams?: Promise<{
@@ -25,7 +26,8 @@ function isValidMatchTab(value: string | undefined): value is ValidMatchTab {
 export default async function FootballMatchDetailPage({
   searchParams,
 }: PageProps) {
-  const resolvedSearchParams = (await searchParams) ?? {};
+  const [resolvedSearchParamsRaw, t] = await Promise.all([searchParams, getT()]);
+  const resolvedSearchParams = resolvedSearchParamsRaw ?? {};
   const sourceMatchId = resolvedSearchParams.match;
   const requestedTab = resolvedSearchParams.tab;
   const returnTo =
@@ -40,7 +42,7 @@ export default async function FootballMatchDetailPage({
     return (
       <section className="w-full">
         <div className="rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(8,14,24,0.96),rgba(5,10,18,0.98))] p-8">
-          <div className="text-sm text-white/70">No match selected.</div>
+          <div className="text-sm text-white/70">{t("matchDetail.noMatchSelected")}</div>
         </div>
       </section>
     );
@@ -53,7 +55,7 @@ export default async function FootballMatchDetailPage({
       <section className="w-full">
         <div className="rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(8,14,24,0.96),rgba(5,10,18,0.98))] p-8">
           <div className="text-sm text-white/70">
-            Match profile not found for this match id.
+            {t("matchDetail.matchProfileNotFound")}
           </div>
         </div>
       </section>

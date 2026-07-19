@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import PlayerLink from "@/components/links/PlayerLink";
+import { useI18n } from "@/lib/i18n/LanguageProvider";
 import { getTeamDetailHref } from "@/lib/routes";
 import type { PlayerStatsListRow } from "../types";
 
@@ -46,11 +47,11 @@ const POSITION_ORDER: Record<string, number> = {
 };
 
 const POSITION_FILTERS = [
-  { value: "ALL", label: "All positions" },
-  { value: "GK", label: "Goalkeepers" },
-  { value: "DF", label: "Defenders" },
-  { value: "MF", label: "Midfielders" },
-  { value: "FW", label: "Forwards" },
+  { value: "ALL", labelKey: "statsHub.allPositions" },
+  { value: "GK", labelKey: "common.goalkeepers" },
+  { value: "DF", labelKey: "common.defenders" },
+  { value: "MF", labelKey: "common.midfielders" },
+  { value: "FW", labelKey: "common.forwards" },
 ];
 
 // Türkçe karakterlere duyarsız arama için sadeleştirme.
@@ -113,6 +114,7 @@ function PlayerAvatar({ row }: { row: PlayerStatsListRow }) {
 export default function PlayerStatsExplorer({
   rows,
 }: PlayerStatsExplorerProps) {
+  const { t } = useI18n();
   const [search, setSearch] = useState("");
   const [teamFilter, setTeamFilter] = useState("all");
   const [positionFilter, setPositionFilter] = useState("ALL");
@@ -235,7 +237,7 @@ export default function PlayerStatsExplorer({
             type="text"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search player or team..."
+            placeholder={t("statsHub.searchPlaceholder")}
             className="w-full rounded-2xl border border-white/10 bg-white/[0.03] py-2.5 pl-11 pr-4 text-sm text-white placeholder:text-white/35 outline-none transition focus:border-[#4da2ff]/40 focus:bg-[#0e1d30]"
           />
         </div>
@@ -245,7 +247,7 @@ export default function PlayerStatsExplorer({
           onChange={(event) => setTeamFilter(event.target.value)}
           className="rounded-2xl border border-white/10 bg-[#0b1626] px-4 py-2.5 text-sm text-white/85 outline-none transition focus:border-[#4da2ff]/40"
         >
-          <option value="all">All teams</option>
+          <option value="all">{t("statsHub.allTeams")}</option>
           {teams.map((team) => (
             <option key={team.slug} value={team.slug}>
               {team.name}
@@ -265,15 +267,17 @@ export default function PlayerStatsExplorer({
                   : "border-white/10 bg-white/[0.03] text-white/60 hover:border-[#4da2ff]/25 hover:text-white"
               }`}
             >
-              {position.label}
+              {t(position.labelKey)}
             </button>
           ))}
         </div>
       </div>
 
       <div className="text-xs text-white/45">
-        {sortedRows.length} player{sortedRows.length === 1 ? "" : "s"} · Süper
-        Lig 2025/2026
+        {sortedRows.length === 1
+          ? t("statsHub.playerCountOne")
+          : t("statsHub.playersCount", { count: sortedRows.length })}{" "}
+        · Süper Lig 2025/2026
       </div>
 
       <div className="rounded-[18px] border border-white/10">
@@ -285,58 +289,68 @@ export default function PlayerStatsExplorer({
                   className={headerCellClass}
                   onClick={() => handleSort("player_name")}
                 >
-                  Player{getSortIndicator(sortKey, sortDirection, "player_name")}
+                  {t("common.player")}
+                  {getSortIndicator(sortKey, sortDirection, "player_name")}
                 </th>
                 <th
                   className={headerCellClass}
                   onClick={() => handleSort("team_name")}
                 >
-                  Team{getSortIndicator(sortKey, sortDirection, "team_name")}
+                  {t("common.team")}
+                  {getSortIndicator(sortKey, sortDirection, "team_name")}
                 </th>
                 <th
                   className={headerCellClass}
                   onClick={() => handleSort("position_code")}
                 >
-                  Pos{getSortIndicator(sortKey, sortDirection, "position_code")}
+                  {t("common.position")}
+                  {getSortIndicator(sortKey, sortDirection, "position_code")}
                 </th>
                 <th className={headerCellClass} onClick={() => handleSort("age")}>
-                  Age{getSortIndicator(sortKey, sortDirection, "age")}
+                  {t("common.age")}
+                  {getSortIndicator(sortKey, sortDirection, "age")}
                 </th>
                 <th
                   className={headerCellClass}
                   onClick={() => handleSort("appearances")}
                 >
-                  Apps{getSortIndicator(sortKey, sortDirection, "appearances")}
+                  {t("common.appearances")}
+                  {getSortIndicator(sortKey, sortDirection, "appearances")}
                 </th>
                 <th
                   className={headerCellClass}
                   onClick={() => handleSort("starts")}
                 >
-                  Starts{getSortIndicator(sortKey, sortDirection, "starts")}
+                  {t("common.starts")}
+                  {getSortIndicator(sortKey, sortDirection, "starts")}
                 </th>
                 <th
                   className={headerCellClass}
                   onClick={() => handleSort("goals")}
                 >
-                  Goals{getSortIndicator(sortKey, sortDirection, "goals")}
+                  {t("common.goals")}
+                  {getSortIndicator(sortKey, sortDirection, "goals")}
                 </th>
                 <th
                   className={headerCellClass}
                   onClick={() => handleSort("assists")}
                 >
-                  Assists{getSortIndicator(sortKey, sortDirection, "assists")}
+                  {t("common.assists")}
+                  {getSortIndicator(sortKey, sortDirection, "assists")}
                 </th>
                 <th
                   className={headerCellClass}
                   onClick={() => handleSort("total_minutes")}
                 >
-                  Min{getSortIndicator(sortKey, sortDirection, "total_minutes")}
+                  {t("common.minutes")}
+                  {getSortIndicator(sortKey, sortDirection, "total_minutes")}
                 </th>
                 <th
                   className={headerCellClass}
                   onClick={() => handleSort("avg_minutes")}
                 >
-                  Avg Min{getSortIndicator(sortKey, sortDirection, "avg_minutes")}
+                  {t("common.avgMinutes")}
+                  {getSortIndicator(sortKey, sortDirection, "avg_minutes")}
                 </th>
               </tr>
             </thead>
@@ -348,7 +362,7 @@ export default function PlayerStatsExplorer({
                     colSpan={10}
                     className="px-4 py-8 text-center text-sm text-white/55"
                   >
-                    No players match your filters.
+                    {t("statsHub.noPlayersMatch")}
                   </td>
                 </tr>
               ) : (
@@ -420,6 +434,7 @@ export default function PlayerStatsExplorer({
 }
 
 function TeamCell({ row }: { row: PlayerStatsListRow }) {
+  const { t } = useI18n();
   const teamHref = getTeamDetailHref(row.team_slug);
 
   const teamNode = teamHref ? (
@@ -442,9 +457,9 @@ function TeamCell({ row }: { row: PlayerStatsListRow }) {
       {teamNode}
       <span
         className="rounded-full border border-white/12 bg-white/[0.04] px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-[0.06em] text-white/45"
-        title="Not in any current league squad"
+        title={t("common.notInCurrentSquads")}
       >
-        Left club
+        {t("common.leftClub")}
       </span>
     </span>
   );

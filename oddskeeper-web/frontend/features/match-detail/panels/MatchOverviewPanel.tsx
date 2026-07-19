@@ -1,4 +1,5 @@
 import TeamLink from "@/components/links/TeamLink";
+import { getT } from "@/lib/i18n/server";
 import type { MatchProfileRow } from "../types";
 import { formatDateTime } from "../utils/formatDateTime";
 
@@ -6,18 +7,20 @@ type MatchOverviewPanelProps = {
   profile: MatchProfileRow;
 };
 
-export function MatchOverviewPanel({ profile }: MatchOverviewPanelProps) {
+export async function MatchOverviewPanel({ profile }: MatchOverviewPanelProps) {
+  const t = await getT();
+
   return (
     <div className="grid gap-6 xl:grid-cols-2">
       <div className="rounded-[20px] border border-white/10 bg-white/[0.03] p-5">
         <div className="text-xs uppercase tracking-[0.22em] text-white/38">
-          Match Context
+          {t("matchDetail.matchContext")}
         </div>
 
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           <div>
             <div className="text-[11px] uppercase tracking-[0.16em] text-white/35">
-              Competition
+              {t("common.competition")}
             </div>
             <div className="mt-1 text-base font-medium text-white">
               {profile.competition ?? "—"}
@@ -26,7 +29,7 @@ export function MatchOverviewPanel({ profile }: MatchOverviewPanelProps) {
 
           <div>
             <div className="text-[11px] uppercase tracking-[0.16em] text-white/35">
-              Kickoff
+              {t("matchDetail.kickoff")}
             </div>
             <div className="mt-1 text-base font-medium text-white">
               {formatDateTime(profile.match_datetime)}
@@ -35,7 +38,7 @@ export function MatchOverviewPanel({ profile }: MatchOverviewPanelProps) {
 
           <div>
             <div className="text-[11px] uppercase tracking-[0.16em] text-white/35">
-              Venue
+              {t("matchDetail.venue")}
             </div>
             <div className="mt-1 text-base font-medium text-white">
               {profile.venue ?? "—"}
@@ -44,7 +47,7 @@ export function MatchOverviewPanel({ profile }: MatchOverviewPanelProps) {
 
           <div>
             <div className="text-[11px] uppercase tracking-[0.16em] text-white/35">
-              Score
+              {t("common.score")}
             </div>
             <div className="mt-1 text-base font-medium text-white">
               {profile.score_display ?? "—"}
@@ -55,19 +58,19 @@ export function MatchOverviewPanel({ profile }: MatchOverviewPanelProps) {
 
       <div className="rounded-[20px] border border-white/10 bg-white/[0.03] p-5">
         <div className="text-xs uppercase tracking-[0.22em] text-white/38">
-          Teams
+          {t("matchDetail.teamsTitle")}
         </div>
 
         <div className="mt-4 space-y-4">
           <div>
             <div className="text-[11px] uppercase tracking-[0.16em] text-white/35">
-              Home
+              {t("common.home")}
             </div>
             <div className="mt-1 text-base font-medium text-white">
               <TeamLink
                 teamSlug={profile.home_team_slug}
                 className="font-medium text-white transition hover:text-white hover:underline"
-                title={profile.home_team_name ?? "Home team"}
+                title={profile.home_team_name ?? t("common.home")}
               >
                 {profile.home_team_name ?? "—"}
               </TeamLink>
@@ -76,13 +79,13 @@ export function MatchOverviewPanel({ profile }: MatchOverviewPanelProps) {
 
           <div>
             <div className="text-[11px] uppercase tracking-[0.16em] text-white/35">
-              Away
+              {t("common.away")}
             </div>
             <div className="mt-1 text-base font-medium text-white">
               <TeamLink
                 teamSlug={profile.away_team_slug}
                 className="font-medium text-white transition hover:text-white hover:underline"
-                title={profile.away_team_name ?? "Away team"}
+                title={profile.away_team_name ?? t("common.away")}
               >
                 {profile.away_team_name ?? "—"}
               </TeamLink>

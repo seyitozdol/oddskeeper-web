@@ -2,6 +2,7 @@ import type { TeamResultRow } from "../types";
 import { formatDate } from "../utils/formatDate";
 import { ResultBadge } from "../components/ResultBadge";
 import TeamLink from "@/components/links/TeamLink";
+import { getT } from "@/lib/i18n/server";
 
 
 type ResultsPanelProps = {
@@ -32,11 +33,13 @@ function OpponentName({
   );
 }
 
-export function ResultsPanel({ rows = [] }: ResultsPanelProps) {
+export async function ResultsPanel({ rows = [] }: ResultsPanelProps) {
+  const t = await getT();
+
   if (rows.length === 0) {
     return (
       <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-4 text-sm text-white/65">
-        No result data found for this team.
+        {t("teamDetail.noResultData")}
       </div>
     );
   }
@@ -46,13 +49,13 @@ export function ResultsPanel({ rows = [] }: ResultsPanelProps) {
       <table className="min-w-full border-collapse">
         <thead className="bg-white/[0.03]">
           <tr className="text-left text-[10px] uppercase tracking-[0.14em] text-white/38">
-            <th className="px-4 py-2 font-medium">Date</th>
-            <th className="px-4 py-2 font-medium">Competition</th>
-            <th className="px-4 py-2 font-medium">H/A</th>
-            <th className="px-4 py-2 font-medium">Opponent</th>
-            <th className="px-4 py-2 font-medium">Score</th>
-            <th className="px-4 py-2 font-medium">Result</th>
-            <th className="px-4 py-2 font-medium">Venue</th>
+            <th className="px-4 py-2 font-medium">{t("common.date")}</th>
+            <th className="px-4 py-2 font-medium">{t("common.competition")}</th>
+            <th className="px-4 py-2 font-medium">{t("teamDetail.colHomeAway")}</th>
+            <th className="px-4 py-2 font-medium">{t("common.opponent")}</th>
+            <th className="px-4 py-2 font-medium">{t("common.score")}</th>
+            <th className="px-4 py-2 font-medium">{t("common.result")}</th>
+            <th className="px-4 py-2 font-medium">{t("teamDetail.colVenue")}</th>
           </tr>
         </thead>
 
@@ -77,7 +80,7 @@ export function ResultsPanel({ rows = [] }: ResultsPanelProps) {
 
                 <td className="px-4 py-2 whitespace-nowrap">
                   <span className="rounded-md border border-white/10 bg-white/[0.03] px-2 py-[2px] text-[10px] font-medium text-white/72">
-                    {row.is_home ? "Home" : "Away"}
+                    {row.is_home ? t("common.home") : t("common.away")}
                   </span>
                 </td>
 

@@ -16,6 +16,7 @@ import type {
   PlayerProfileRow,
   ValidPlayerTab,
 } from "@/features/player-detail/types";
+import { getT } from "@/lib/i18n/server";
 
 type PageProps = {
   searchParams?: Promise<{
@@ -86,10 +87,14 @@ export default async function FootballPlayerDetailPage({
     : "overview";
 
   if (!playerSlug) {
+    const t = await getT();
+
     return (
       <section className="w-full">
         <div className="rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(8,14,24,0.96),rgba(5,10,18,0.98))] p-8">
-          <div className="text-sm text-white/70">No player selected.</div>
+          <div className="text-sm text-white/70">
+            {t("playerDetail.noPlayerSelected")}
+          </div>
         </div>
       </section>
     );
@@ -106,11 +111,13 @@ export default async function FootballPlayerDetailPage({
     (currentInfo ? buildFallbackProfile(playerSlug, currentInfo) : null);
 
   if (!profile) {
+    const t = await getT();
+
     return (
       <section className="w-full">
         <div className="rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(8,14,24,0.96),rgba(5,10,18,0.98))] p-8">
           <div className="text-sm text-white/70">
-            Player profile not found for this slug.
+            {t("playerDetail.playerProfileNotFound")}
           </div>
         </div>
       </section>

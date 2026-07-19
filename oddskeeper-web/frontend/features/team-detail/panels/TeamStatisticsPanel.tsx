@@ -1,3 +1,4 @@
+import { getT } from "@/lib/i18n/server";
 import { CompactInfoCard } from "../components/CompactInfoCard";
 import { LastFiveMatchesList } from "../components/LastFiveMatchesList";
 import { RecentFormStrip } from "../components/RecentFormStrip";
@@ -24,44 +25,46 @@ type TeamStatisticsPanelProps = {
   recentForm?: TeamRecentFormRow[];
 };
 
-export function TeamStatisticsPanel({
+export async function TeamStatisticsPanel({
   teamProfile = null,
   summary,
   splits = [],
   recentForm = [],
 }: TeamStatisticsPanelProps) {
+  const t = await getT();
+
   if (!summary) {
     return (
       <div className="space-y-3">
         <div className="grid gap-2 md:grid-cols-3 xl:grid-cols-6">
           <CompactInfoCard
-            label="Founded"
+            label={t("teamDetail.labelFounded")}
             value={getMetaValue(teamProfile?.founded_year)}
           />
           <CompactInfoCard
-            label="Stadium"
+            label={t("teamDetail.labelStadium")}
             value={getMetaValue(teamProfile?.stadium_name)}
           />
           <CompactInfoCard
-            label="Head Coach"
+            label={t("teamDetail.labelHeadCoach")}
             value={getMetaValue(teamProfile?.head_coach)}
           />
           <CompactInfoCard
-            label="Website"
+            label={t("teamDetail.labelWebsite")}
             value={getWebsiteLabel(teamProfile?.website_url)}
           />
           <CompactInfoCard
-            label="Capacity"
+            label={t("teamDetail.labelCapacity")}
             value={formatCapacity(teamProfile?.capacity ?? null)}
           />
           <CompactInfoCard
-            label="Market Value"
+            label={t("teamDetail.labelMarketValue")}
             value={getMetaValue(teamProfile?.market_value_display)}
           />
         </div>
 
         <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-4 text-sm text-white/65">
-          No team statistics data found for this team.
+          {t("teamDetail.noTeamStatsData")}
         </div>
       </div>
     );
@@ -73,27 +76,27 @@ export function TeamStatisticsPanel({
     <div className="space-y-3">
       <div className="grid gap-2 md:grid-cols-3 xl:grid-cols-6">
         <CompactInfoCard
-          label="Founded"
+          label={t("teamDetail.labelFounded")}
           value={getMetaValue(teamProfile?.founded_year)}
         />
         <CompactInfoCard
-          label="Stadium"
+          label={t("teamDetail.labelStadium")}
           value={getMetaValue(teamProfile?.stadium_name)}
         />
         <CompactInfoCard
-          label="Head Coach"
+          label={t("teamDetail.labelHeadCoach")}
           value={getMetaValue(teamProfile?.head_coach)}
         />
         <CompactInfoCard
-          label="Website"
+          label={t("teamDetail.labelWebsite")}
           value={getWebsiteLabel(teamProfile?.website_url)}
         />
         <CompactInfoCard
-          label="Capacity"
+          label={t("teamDetail.labelCapacity")}
           value={formatCapacity(teamProfile?.capacity ?? null)}
         />
         <CompactInfoCard
-          label="Market Value"
+          label={t("teamDetail.labelMarketValue")}
           value={getMetaValue(teamProfile?.market_value_display)}
         />
       </div>
@@ -103,30 +106,34 @@ export function TeamStatisticsPanel({
         <span className="text-white/20">•</span>
         <span>{summary.season_label ?? "—"}</span>
         <span className="text-white/20">•</span>
-        <span>Updated through {formatDate(summary.latest_match_datetime)}</span>
+        <span>
+          {t("teamDetail.updatedThrough", {
+            date: formatDate(summary.latest_match_datetime),
+          })}
+        </span>
       </div>
 
       <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
-        <StatCard label="Played" value={String(summary.played)} />
-        <StatCard label="Points" value={String(summary.points)} />
-        <StatCard label="Wins" value={String(summary.wins)} />
-        <StatCard label="Draws" value={String(summary.draws)} />
-        <StatCard label="Losses" value={String(summary.losses)} />
+        <StatCard label={t("teamDetail.statPlayed")} value={String(summary.played)} />
+        <StatCard label={t("teamDetail.statPoints")} value={String(summary.points)} />
+        <StatCard label={t("teamDetail.statWins")} value={String(summary.wins)} />
+        <StatCard label={t("teamDetail.statDraws")} value={String(summary.draws)} />
+        <StatCard label={t("teamDetail.statLosses")} value={String(summary.losses)} />
         <StatCard
-          label="Goal Difference"
+          label={t("teamDetail.statGoalDifference")}
           value={String(summary.goal_difference)}
         />
-        <StatCard label="Goals For" value={String(summary.goals_for)} />
+        <StatCard label={t("teamDetail.statGoalsFor")} value={String(summary.goals_for)} />
         <StatCard
-          label="Goals Against"
+          label={t("teamDetail.statGoalsAgainst")}
           value={String(summary.goals_against)}
         />
         <StatCard
-          label="Win Rate"
+          label={t("teamDetail.statWinRate")}
           value={formatPercentage(summary.win_rate_pct)}
         />
         <StatCard
-          label="Points Per Game"
+          label={t("teamDetail.statPointsPerGame")}
           value={formatDecimal(summary.points_per_game)}
         />
       </div>
@@ -137,22 +144,22 @@ export function TeamStatisticsPanel({
         <div className="space-y-3">
           <div className="rounded-[14px] border border-white/10 bg-white/[0.03] px-3 py-3">
             <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-white/42">
-              Recent Form
+              {t("teamDetail.recentFormTitle")}
             </div>
 
             <RecentFormStrip rows={recentForm} />
 
             <div className="mt-4 grid grid-cols-3 gap-2">
               <StatCard
-                label="Last 5 Points"
+                label={t("teamDetail.statLast5Points")}
                 value={String(lastFiveSummary.points)}
               />
               <StatCard
-                label="Last 5 GF"
+                label={t("teamDetail.statLast5Gf")}
                 value={String(lastFiveSummary.goalsFor)}
               />
               <StatCard
-                label="Last 5 GA"
+                label={t("teamDetail.statLast5Ga")}
                 value={String(lastFiveSummary.goalsAgainst)}
               />
             </div>

@@ -5,6 +5,8 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { createClient } from "../lib/supabase/client";
+import { useI18n } from "../lib/i18n/LanguageProvider";
+import { LOCALES, type Locale } from "../lib/i18n/config";
 
 type AppHeaderProps = {
   userEmail?: string | null;
@@ -13,10 +15,17 @@ type AppHeaderProps = {
 const FOOTBALL_LEAGUE_DETAIL_HREF =
   "/dashboard/stats-analysis/football/league-stats/detail?competition=S%C3%BCper%20Lig&season=2025%2F2026&tab=overview";
 
+const LOCALE_LABEL_KEYS: Record<Locale, string> = {
+  en: "nav.english",
+  tr: "nav.turkish",
+};
+
 export default function AppHeader({ userEmail }: AppHeaderProps) {
   const pathname = usePathname();
   const router = useRouter();
+  const { t, locale, setLocale } = useI18n();
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const [isLangOpen, setIsLangOpen] = useState(false);
 
   const initials = userEmail ? userEmail.slice(0, 1).toUpperCase() : "U";
   const isStatsActive = pathname.startsWith("/dashboard/stats-analysis");
@@ -53,7 +62,7 @@ export default function AppHeader({ userEmail }: AppHeaderProps) {
                 ODDSKEEPER
               </div>
               <div className="text-base font-semibold text-white">
-                Prediction Workspace
+                {t("nav.workspace")}
               </div>
             </div>
           </Link>
@@ -68,7 +77,7 @@ export default function AppHeader({ userEmail }: AppHeaderProps) {
                 : "border-white/10 bg-white/[0.03] text-white/72 hover:border-[#4da2ff]/25 hover:bg-[#0e1d30] hover:text-white"
             }`}
           >
-            Smart Prediction
+            {t("nav.smartPrediction")}
           </Link>
 
           <Link
@@ -79,7 +88,7 @@ export default function AppHeader({ userEmail }: AppHeaderProps) {
                 : "border-white/10 bg-white/[0.03] text-white/72 hover:border-[#4da2ff]/25 hover:bg-[#0e1d30] hover:text-white"
             }`}
           >
-            Deep Prediction ML
+            {t("nav.deepPredictionMl")}
           </Link>
 
           <Link
@@ -90,7 +99,7 @@ export default function AppHeader({ userEmail }: AppHeaderProps) {
                 : "border-white/10 bg-white/[0.03] text-white/72 hover:border-[#4da2ff]/25 hover:bg-[#0e1d30] hover:text-white"
             }`}
           >
-            Match Predictions
+            {t("nav.matchPredictions")}
           </Link>
 
           <Link
@@ -101,7 +110,7 @@ export default function AppHeader({ userEmail }: AppHeaderProps) {
                 : "border-white/10 bg-white/[0.03] text-white/72 hover:border-[#4da2ff]/25 hover:bg-[#0e1d30] hover:text-white"
             }`}
           >
-            Player Market
+            {t("nav.playerMarket")}
           </Link>
 
           <div className="group relative">
@@ -113,15 +122,15 @@ export default function AppHeader({ userEmail }: AppHeaderProps) {
                   : "border-white/10 bg-white/[0.03] text-white/72 hover:border-[#4da2ff]/25 hover:bg-[#0e1d30] hover:text-white"
               }`}
             >
-              <span>Stats & Analysis</span>
+              <span>{t("nav.statsAnalysis")}</span>
               <ChevronDownIcon />
             </Link>
 
             <div className="pointer-events-none absolute left-0 top-full z-50 pt-3 opacity-0 transition duration-200 group-hover:pointer-events-auto group-hover:opacity-100">
               <div className="w-[400px] rounded-[24px] border border-white/10 bg-[#121418]/95 p-3 shadow-[0_12px_50px_rgba(0,0,0,0.45)] backdrop-blur-xl">
                 <StatsMenuItem
-                  title="Football"
-                  subtitle="Türkiye Super League"
+                  title={t("nav.football")}
+                  subtitle={t("nav.footballSubtitle")}
                   iconSrc="/icons/football.svg"
                   playerHref="/dashboard/stats-analysis/football/player-stats"
                   teamHref="/dashboard/stats-analysis/football/team-stats"
@@ -129,8 +138,8 @@ export default function AppHeader({ userEmail }: AppHeaderProps) {
                 />
 
                 <StatsMenuItem
-                  title="Basketball"
-                  subtitle="Türkiye Basketball Super League"
+                  title={t("nav.basketball")}
+                  subtitle={t("nav.basketballSubtitle")}
                   iconSrc="/icons/basketball.svg"
                   playerHref="/dashboard/stats-analysis?sport=basketball&view=player"
                   teamHref="/dashboard/stats-analysis?sport=basketball&view=team"
@@ -141,13 +150,48 @@ export default function AppHeader({ userEmail }: AppHeaderProps) {
         </nav>
 
         <div className="flex items-center gap-3">
-          <button
-            type="button"
-            className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03] text-white/75 transition hover:border-[#4da2ff]/25 hover:bg-[#0e1d30] hover:text-white"
-            title="Language"
-          >
-            <GlobeIcon />
-          </button>
+          <div className="group relative">
+            <button
+              type="button"
+              onClick={() => setIsLangOpen((prev) => !prev)}
+              className="flex h-11 items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.03] px-3 text-white/75 transition hover:border-[#4da2ff]/25 hover:bg-[#0e1d30] hover:text-white"
+              title={t("nav.language")}
+            >
+              <GlobeIcon />
+              <span className="text-xs font-semibold uppercase tracking-[0.08em]">
+                {locale}
+              </span>
+            </button>
+
+            <div
+              className={`absolute right-0 top-full z-50 pt-3 transition duration-200 ${
+                isLangOpen
+                  ? "pointer-events-auto opacity-100"
+                  : "pointer-events-none opacity-0 group-hover:pointer-events-auto group-hover:opacity-100"
+              }`}
+            >
+              <div className="w-[180px] rounded-[18px] border border-white/10 bg-[#121418]/95 p-2 shadow-[0_12px_50px_rgba(0,0,0,0.45)] backdrop-blur-xl">
+                {LOCALES.map((option) => (
+                  <button
+                    key={option}
+                    type="button"
+                    onClick={() => {
+                      setLocale(option);
+                      setIsLangOpen(false);
+                    }}
+                    className={`flex w-full items-center justify-between rounded-[12px] px-4 py-2.5 text-sm transition hover:bg-white/[0.06] ${
+                      locale === option
+                        ? "font-semibold text-white"
+                        : "text-white/70"
+                    }`}
+                  >
+                    <span>{t(LOCALE_LABEL_KEYS[option])}</span>
+                    {locale === option ? <CheckIcon /> : null}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
 
           <button
             type="button"
@@ -167,7 +211,7 @@ export default function AppHeader({ userEmail }: AppHeaderProps) {
             className="flex h-11 items-center gap-2 rounded-2xl border border-[#4da2ff]/25 bg-[#10233b] px-4 text-sm font-medium text-white transition hover:border-[#4da2ff]/45 hover:bg-[#14304f] disabled:cursor-not-allowed disabled:opacity-60"
           >
             <LogOutIcon />
-            {isSigningOut ? "Signing out..." : "Sign out"}
+            {isSigningOut ? t("nav.signingOut") : t("nav.signOut")}
           </button>
         </div>
       </div>
@@ -182,18 +226,18 @@ export default function AppHeader({ userEmail }: AppHeaderProps) {
                 : "border-white/10 bg-white/[0.03] text-white/72"
             }`}
           >
-            Smart Prediction
+            {t("nav.smartPrediction")}
           </Link>
 
           <Link
-            href="/dashboard/deep-prediction-ml"
+            href="/dashboard/deep-prediction-ml2"
             className={`rounded-xl border px-4 py-2 text-xs font-medium transition ${
-              pathname === "/dashboard/deep-prediction-ml"
+              pathname === "/dashboard/deep-prediction-ml2"
                 ? "border-[#4da2ff]/40 bg-[#10233b] text-white"
                 : "border-white/10 bg-white/[0.03] text-white/72"
             }`}
           >
-            Deep Prediction ML
+            {t("nav.deepPredictionMl")}
           </Link>
 
           <Link
@@ -204,42 +248,42 @@ export default function AppHeader({ userEmail }: AppHeaderProps) {
                 : "border-white/10 bg-white/[0.03] text-white/72"
             }`}
           >
-            Stats & Analysis
+            {t("nav.statsAnalysis")}
           </Link>
 
           <Link
             href="/dashboard/stats-analysis/football/player-stats"
             className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2 text-xs font-medium text-white/72"
           >
-            Football Player Stats
+            {t("nav.footballPlayerStats")}
           </Link>
 
           <Link
             href="/dashboard/stats-analysis/football/team-stats"
             className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2 text-xs font-medium text-white/72"
           >
-            Football Team Stats
+            {t("nav.footballTeamStats")}
           </Link>
 
           <Link
             href={FOOTBALL_LEAGUE_DETAIL_HREF}
             className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2 text-xs font-medium text-white/72"
           >
-            Football League Details
+            {t("nav.footballLeagueDetails")}
           </Link>
 
           <Link
             href="/dashboard/stats-analysis?sport=basketball&view=player"
             className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2 text-xs font-medium text-white/72"
           >
-            Basketball Player Stats
+            {t("nav.basketballPlayerStats")}
           </Link>
 
           <Link
             href="/dashboard/stats-analysis?sport=basketball&view=team"
             className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2 text-xs font-medium text-white/72"
           >
-            Basketball Team Stats
+            {t("nav.basketballTeamStats")}
           </Link>
         </div>
       </div>
@@ -264,6 +308,8 @@ function StatsMenuItem({
   teamHref,
   leagueHref,
 }: StatsMenuItemProps) {
+  const { t } = useI18n();
+
   return (
     <div className="group/item relative">
       <div className="flex items-start gap-4 rounded-[18px] px-4 py-4 transition hover:bg-white/[0.04]">
@@ -296,7 +342,7 @@ function StatsMenuItem({
             <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03]">
               <Image
                 src="/icons/player.svg"
-                alt="Player Stats"
+                alt={t("nav.playerStats")}
                 width={20}
                 height={20}
                 className="opacity-85"
@@ -305,10 +351,10 @@ function StatsMenuItem({
 
             <div>
               <div className="text-[15px] font-semibold text-white">
-                Player Stats
+                {t("nav.playerStats")}
               </div>
               <div className="mt-1 text-sm text-white/45">
-                Individual player data
+                {t("nav.playerStatsSubtitle")}
               </div>
             </div>
           </Link>
@@ -320,7 +366,7 @@ function StatsMenuItem({
             <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03]">
               <Image
                 src="/icons/team.svg"
-                alt="Team Stats"
+                alt={t("nav.teamStats")}
                 width={20}
                 height={20}
                 className="opacity-85"
@@ -329,10 +375,10 @@ function StatsMenuItem({
 
             <div>
               <div className="text-[15px] font-semibold text-white">
-                Team Stats
+                {t("nav.teamStats")}
               </div>
               <div className="mt-1 text-sm text-white/45">
-                Team-level performance
+                {t("nav.teamStatsSubtitle")}
               </div>
             </div>
           </Link>
@@ -345,7 +391,7 @@ function StatsMenuItem({
               <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03]">
                 <Image
                   src="/icons/team.svg"
-                  alt="League Details"
+                  alt={t("nav.leagueDetails")}
                   width={20}
                   height={20}
                   className="opacity-85"
@@ -354,10 +400,10 @@ function StatsMenuItem({
 
               <div>
                 <div className="text-[15px] font-semibold text-white">
-                  League Details
+                  {t("nav.leagueDetails")}
                 </div>
                 <div className="mt-1 text-sm text-white/45">
-                  Standings, fixtures, results and leaders
+                  {t("nav.leagueDetailsSubtitle")}
                 </div>
               </div>
             </Link>
@@ -384,6 +430,23 @@ function GlobeIcon() {
       <path d="M3 12h18" />
       <path d="M12 3a15 15 0 0 1 0 18" />
       <path d="M12 3a15 15 0 0 0 0 18" />
+    </svg>
+  );
+}
+
+function CheckIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className="h-4 w-4"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M20 6 9 17l-5-5" />
     </svg>
   );
 }

@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from "react";
 import TeamLink from "@/components/links/TeamLink";
+import { useI18n } from "@/lib/i18n/LanguageProvider";
+import type { Translator } from "@/lib/i18n/messages";
 import type { LeagueFixtureRow } from "../types";
 
 type LeagueFixturesPanelProps = {
@@ -21,9 +23,13 @@ function formatDate(value: string | null | undefined) {
   }).format(date);
 }
 
-function formatTime(kickoffTimeKnown: boolean, kickoffTimeText: string | null | undefined) {
+function formatTime(
+  t: Translator,
+  kickoffTimeKnown: boolean,
+  kickoffTimeText: string | null | undefined
+) {
   if (!kickoffTimeKnown || !kickoffTimeText) {
-    return "TBD";
+    return t("leagueDetail.tbd");
   }
 
   return kickoffTimeText;
@@ -64,6 +70,7 @@ function getStatusClass(status: string | null | undefined) {
 }
 
 export function LeagueFixturesPanel({ rows = [] }: LeagueFixturesPanelProps) {
+  const { t } = useI18n();
   const roundOptions = useMemo(() => {
     return Array.from(
       new Set(rows.map((row) => row.round_number).filter((value): value is number => typeof value === "number")),
@@ -85,7 +92,7 @@ export function LeagueFixturesPanel({ rows = [] }: LeagueFixturesPanelProps) {
   if (rows.length === 0) {
     return (
       <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-4 text-sm text-white/65">
-        No fixture data found for this competition.
+        {t("leagueDetail.noFixtureData")}
       </div>
     );
   }
@@ -93,7 +100,7 @@ export function LeagueFixturesPanel({ rows = [] }: LeagueFixturesPanelProps) {
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
-        <div className="text-[11px] uppercase tracking-[0.18em] text-white/35">Fixtures Filter</div>
+        <div className="text-[11px] uppercase tracking-[0.18em] text-white/35">{t("leagueDetail.fixturesFilterLabel")}</div>
         <select
           value={selectedRound === "all" ? "all" : String(selectedRound)}
           onChange={(event) => {
@@ -102,15 +109,20 @@ export function LeagueFixturesPanel({ rows = [] }: LeagueFixturesPanelProps) {
           }}
           className="rounded-lg border border-white/10 bg-[#0d1624] px-3 py-2 text-sm text-white outline-none transition hover:border-white/20"
         >
-          <option value="all">All weeks</option>
+          <option value="all">{t("leagueDetail.allWeeks")}</option>
           {roundOptions.map((roundNumber) => (
             <option key={roundNumber} value={roundNumber}>
-              Week {roundNumber}
+              {t("leagueDetail.weekLabel", { number: roundNumber })}
             </option>
           ))}
         </select>
         <div className="text-xs text-white/50">
-          {selectedRound === "all" ? `${rows.length} fixtures` : `${filteredRows.length} fixtures in week ${selectedRound}`}
+          {selectedRound === "all"
+            ? t("leagueDetail.fixturesCount", { count: rows.length })
+            : t("leagueDetail.fixturesCountInWeek", {
+                count: filteredRows.length,
+                week: selectedRound,
+              })}
         </div>
       </div>
 
@@ -118,13 +130,13 @@ export function LeagueFixturesPanel({ rows = [] }: LeagueFixturesPanelProps) {
         <table className="min-w-full border-collapse">
           <thead className="sticky top-0 z-10 bg-[#0d1624]">
             <tr className="text-left text-[10px] uppercase tracking-[0.14em] text-white/38">
-              <th className="px-4 py-2 font-medium">Week</th>
-              <th className="px-4 py-2 font-medium">Date</th>
-              <th className="px-4 py-2 font-medium">Time</th>
-              <th className="px-4 py-2 font-medium">Home</th>
-              <th className="px-4 py-2 font-medium">Away</th>
-              <th className="px-4 py-2 font-medium">Status</th>
-              <th className="px-4 py-2 font-medium">Venue</th>
+              <th className="px-4 py-2 font-medium">{t("leagueDetail.colWeek")}</th>
+              <th className="px-4 py-2 font-medium">{t("common.date")}</th>
+              <th className="px-4 py-2 font-medium">{t("leagueDetail.colTime")}</th>
+              <th className="px-4 py-2 font-medium">{t("common.home")}</th>
+              <th className="px-4 py-2 font-medium">{t("common.away")}</th>
+              <th className="px-4 py-2 font-medium">{t("leagueDetail.colStatus")}</th>
+              <th className="px-4 py-2 font-medium">{t("leagueDetail.colVenue")}</th>
             </tr>
           </thead>
 
@@ -141,7 +153,7 @@ export function LeagueFixturesPanel({ rows = [] }: LeagueFixturesPanelProps) {
                   {formatDate(row.fixture_datetime ?? row.fixture_date)}
                 </td>
                 <td className="px-4 py-2 whitespace-nowrap text-white/72">
-                  {formatTime(row.kickoff_time_known, row.kickoff_time_text)}
+                  {formatTime(t, row.kickoff_time_known, row.kickoff_time_text)}
                 </td>
                 <td className="min-w-[210px] px-4 py-2 font-medium text-white">
                   <TeamName teamSlug={row.home_team_slug} name={row.home_team_name} />
@@ -155,7 +167,9 @@ export function LeagueFixturesPanel({ rows = [] }: LeagueFixturesPanelProps) {
                       row.fixture_status,
                     )}`}
                   >
-                    {(row.fixture_status ?? "unknown").replace(/_/g, " ")}
+                    {row.fixture_status
+                      ? row.fixture_status.replace(/_/g, " ")
+                      : t("leagueDetail.fixtureStatusUnknown")}
                   </span>
                 </td>
                 <td className="px-4 py-2 whitespace-nowrap text-white/55">

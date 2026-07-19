@@ -1,6 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useI18n } from "@/lib/i18n/LanguageProvider";
+import type { Translator } from "@/lib/i18n/messages";
 import type { TeamCurrentSquadRow, TeamSquadRow } from "../types";
 import { formatDate } from "../utils/formatDate";
 import { formatDecimal } from "../utils/formatDecimal";
@@ -11,20 +13,31 @@ type SquadPanelProps = {
   currentSquad?: TeamCurrentSquadRow[];
 };
 
-const POSITION_GROUP_LABELS: Record<string, string> = {
-  GOALKEEPER: "Goalkeepers",
-  DEFENDER: "Defenders",
-  MIDFIELDER: "Midfielders",
-  FORWARD: "Forwards",
-  OTHER: "Other",
+const POSITION_GROUP_KEYS: Record<string, string> = {
+  GOALKEEPER: "common.goalkeeper",
+  DEFENDER: "common.defender",
+  MIDFIELDER: "common.midfielder",
+  FORWARD: "common.forward",
+  OTHER: "common.other",
 };
 
+function getPositionGroupLabel(
+  positionGroup: string,
+  position: string | null,
+  t: Translator
+) {
+  const key = POSITION_GROUP_KEYS[positionGroup];
+  return key ? t(key) : position ?? "—";
+}
+
 function CurrentSquadTable({ rows }: { rows: TeamCurrentSquadRow[] }) {
+  const { t } = useI18n();
+
   return (
     <div className="rounded-[14px] border border-white/10">
       <div className="border-b border-white/10 bg-white/[0.03] px-4 py-2">
         <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-white/42">
-          Current Squad
+          {t("teamDetail.currentSquadTitle")}
         </div>
       </div>
 
@@ -32,10 +45,10 @@ function CurrentSquadTable({ rows }: { rows: TeamCurrentSquadRow[] }) {
         <table className="min-w-full border-collapse">
           <thead>
             <tr className="text-left text-[10px] uppercase tracking-[0.14em] text-white/38">
-              <th className="px-4 py-2 font-medium">#</th>
-              <th className="px-4 py-2 font-medium">Player</th>
-              <th className="px-4 py-2 font-medium">Position</th>
-              <th className="px-4 py-2 font-medium">Age</th>
+              <th className="px-4 py-2 font-medium">{t("teamDetail.colShirtNumber")}</th>
+              <th className="px-4 py-2 font-medium">{t("common.player")}</th>
+              <th className="px-4 py-2 font-medium">{t("teamDetail.colPosition")}</th>
+              <th className="px-4 py-2 font-medium">{t("common.age")}</th>
             </tr>
           </thead>
 
@@ -58,15 +71,16 @@ function CurrentSquadTable({ rows }: { rows: TeamCurrentSquadRow[] }) {
                       {row.player_name}
                     </PlayerLink>
                   ) : (
-                    <span className="text-white" title="Oyuncu sayfası henüz yok">
+                    <span
+                      className="text-white"
+                      title={t("teamDetail.playerPageNotYetAvailable")}
+                    >
                       {row.player_name}
                     </span>
                   )}
                 </td>
                 <td className="px-4 py-2">
-                  {POSITION_GROUP_LABELS[row.position_group]?.replace(/s$/, "") ??
-                    row.position ??
-                    "—"}
+                  {getPositionGroupLabel(row.position_group, row.position, t)}
                 </td>
                 <td className="px-4 py-2">{row.age ?? "—"}</td>
               </tr>
@@ -162,17 +176,21 @@ function PlayerName({
 }
 
 function PlayerStatusBadge({ row }: { row: TeamSquadRow }) {
+  const { t } = useI18n();
+
   if (row.current_team_slug === row.team_slug) {
     return null;
   }
 
   if (row.current_team_slug) {
+    const currentTeam = row.current_team_name ?? row.current_team_slug;
+
     return (
       <span
         className="ml-2 rounded-full border border-amber-400/30 bg-amber-400/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-[0.06em] text-amber-300/90"
-        title={`Now plays for ${row.current_team_name ?? row.current_team_slug}`}
+        title={t("teamDetail.nowPlaysForTooltip", { team: currentTeam })}
       >
-        Now at {row.current_team_name ?? row.current_team_slug}
+        {t("common.nowAt", { team: currentTeam })}
       </span>
     );
   }
@@ -180,9 +198,9 @@ function PlayerStatusBadge({ row }: { row: TeamSquadRow }) {
   return (
     <span
       className="ml-2 rounded-full border border-white/12 bg-white/[0.04] px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-[0.06em] text-white/45"
-      title="Not in any current league squad"
+      title={t("common.notInCurrentSquads")}
     >
-      Left club
+      {t("common.leftClub")}
     </span>
   );
 }
@@ -213,6 +231,7 @@ function getMetricSortValue(row: TeamSquadRow, sortKey: SortKey): number {
 }
 
 export function SquadPanel({ rows = [], currentSquad = [] }: SquadPanelProps) {
+  const { t } = useI18n();
   const [sortKey, setSortKey] = useState<SortKey>("primary_position_code");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
 
@@ -269,7 +288,7 @@ export function SquadPanel({ rows = [], currentSquad = [] }: SquadPanelProps) {
   if (rows.length === 0 && currentSquad.length === 0) {
     return (
       <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-4 text-sm text-white/65">
-        No squad data found for this team.
+        {t("teamDetail.noSquadData")}
       </div>
     );
   }
@@ -284,8 +303,8 @@ export function SquadPanel({ rows = [], currentSquad = [] }: SquadPanelProps) {
         <div className="rounded-[14px] border border-white/10">
           <div className="border-b border-white/10 bg-white/[0.03] px-4 py-2">
             <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-white/42">
-              Season Match Stats
-              {rows[0]?.season_label ? ` — ${rows[0].season_label}` : ""}
+              {t("teamDetail.seasonMatchStatsTitle")}
+              {rows[0]?.season_label ? ` · ${rows[0].season_label}` : ""}
             </div>
           </div>
 
@@ -299,7 +318,8 @@ export function SquadPanel({ rows = [], currentSquad = [] }: SquadPanelProps) {
                 onClick={() => handleSort("player_name")}
                 className="cursor-pointer select-none"
               >
-                Player{getSortIndicator(sortKey, sortDirection, "player_name")}
+                {t("common.player")}
+                {getSortIndicator(sortKey, sortDirection, "player_name")}
               </button>
             </th>
 
@@ -309,7 +329,7 @@ export function SquadPanel({ rows = [], currentSquad = [] }: SquadPanelProps) {
                 onClick={() => handleSort("primary_position_code")}
                 className="cursor-pointer select-none"
               >
-                Position
+                {t("teamDetail.colPosition")}
                 {getSortIndicator(sortKey, sortDirection, "primary_position_code")}
               </button>
             </th>
@@ -320,7 +340,8 @@ export function SquadPanel({ rows = [], currentSquad = [] }: SquadPanelProps) {
                 onClick={() => handleSort("appearances")}
                 className="cursor-pointer select-none"
               >
-                Apps{getSortIndicator(sortKey, sortDirection, "appearances")}
+                {t("common.appearances")}
+                {getSortIndicator(sortKey, sortDirection, "appearances")}
               </button>
             </th>
 
@@ -330,7 +351,8 @@ export function SquadPanel({ rows = [], currentSquad = [] }: SquadPanelProps) {
                 onClick={() => handleSort("starts")}
                 className="cursor-pointer select-none"
               >
-                Starts{getSortIndicator(sortKey, sortDirection, "starts")}
+                {t("common.starts")}
+                {getSortIndicator(sortKey, sortDirection, "starts")}
               </button>
             </th>
 
@@ -340,7 +362,8 @@ export function SquadPanel({ rows = [], currentSquad = [] }: SquadPanelProps) {
                 onClick={() => handleSort("sub_appearances")}
                 className="cursor-pointer select-none"
               >
-                Sub{getSortIndicator(sortKey, sortDirection, "sub_appearances")}
+                {t("teamDetail.colSub")}
+                {getSortIndicator(sortKey, sortDirection, "sub_appearances")}
               </button>
             </th>
 
@@ -350,7 +373,7 @@ export function SquadPanel({ rows = [], currentSquad = [] }: SquadPanelProps) {
                 onClick={() => handleSort("starter_rate_pct")}
                 className="cursor-pointer select-none"
               >
-                Starter %
+                {t("teamDetail.colStarterPct")}
                 {getSortIndicator(sortKey, sortDirection, "starter_rate_pct")}
               </button>
             </th>
@@ -361,7 +384,8 @@ export function SquadPanel({ rows = [], currentSquad = [] }: SquadPanelProps) {
                 onClick={() => handleSort("total_minutes")}
                 className="cursor-pointer select-none"
               >
-                Minutes{getSortIndicator(sortKey, sortDirection, "total_minutes")}
+                {t("teamDetail.colMinutesFull")}
+                {getSortIndicator(sortKey, sortDirection, "total_minutes")}
               </button>
             </th>
 
@@ -371,7 +395,8 @@ export function SquadPanel({ rows = [], currentSquad = [] }: SquadPanelProps) {
                 onClick={() => handleSort("avg_minutes")}
                 className="cursor-pointer select-none"
               >
-                Avg Min{getSortIndicator(sortKey, sortDirection, "avg_minutes")}
+                {t("common.avgMinutes")}
+                {getSortIndicator(sortKey, sortDirection, "avg_minutes")}
               </button>
             </th>
 
@@ -381,7 +406,8 @@ export function SquadPanel({ rows = [], currentSquad = [] }: SquadPanelProps) {
                 onClick={() => handleSort("goals")}
                 className="cursor-pointer select-none"
               >
-                Goals{getSortIndicator(sortKey, sortDirection, "goals")}
+                {t("common.goals")}
+                {getSortIndicator(sortKey, sortDirection, "goals")}
               </button>
             </th>
 
@@ -391,7 +417,8 @@ export function SquadPanel({ rows = [], currentSquad = [] }: SquadPanelProps) {
                 onClick={() => handleSort("assists")}
                 className="cursor-pointer select-none"
               >
-                Assists{getSortIndicator(sortKey, sortDirection, "assists")}
+                {t("common.assists")}
+                {getSortIndicator(sortKey, sortDirection, "assists")}
               </button>
             </th>
 
@@ -401,7 +428,7 @@ export function SquadPanel({ rows = [], currentSquad = [] }: SquadPanelProps) {
                 onClick={() => handleSort("last_match_datetime")}
                 className="cursor-pointer select-none"
               >
-                Last Match
+                {t("teamDetail.colLastMatch")}
                 {getSortIndicator(sortKey, sortDirection, "last_match_datetime")}
               </button>
             </th>

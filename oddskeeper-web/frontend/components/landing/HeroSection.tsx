@@ -1,26 +1,29 @@
 import Link from "next/link";
-
-const metricCards = [
-  { label: "Data Reliability", value: "98.4%" },
-  { label: "Match Coverage", value: "24/7" },
-  { label: "Structured Layers", value: "6" },
-];
+import { getT } from "@/lib/i18n/server";
 
 const barHeights = [46, 68, 54, 82, 60, 74, 58];
 
-const participantRows = [
-  { label: "Participant coverage", value: "91%" },
-  { label: "Event mapping", value: "Stable" },
-  { label: "Analytical output", value: "Scalable" },
-];
+export default async function HeroSection() {
+  const t = await getT();
 
-const bottomStats = [
-  { label: "Signal Confidence", value: "82%" },
-  { label: "Trend Strength", value: "+14%" },
-  { label: "Output Velocity", value: "Fast" },
-];
+  const metricCards = [
+    { labelKey: "landing.metricDataReliability", value: "98.4%" },
+    { labelKey: "landing.metricMatchCoverage", value: "24/7" },
+    { labelKey: "landing.metricStructuredLayers", value: "6" },
+  ];
 
-export default function HeroSection() {
+  const participantRows = [
+    { labelKey: "landing.participantCoverage", value: "91%" },
+    { labelKey: "landing.eventMapping", value: t("landing.statusStable") },
+    { labelKey: "landing.analyticalOutput", value: t("landing.statusStable") },
+  ];
+
+  const bottomStats = [
+    { labelKey: "landing.statSignalConfidence", value: "82%" },
+    { labelKey: "landing.statTrendStrength", value: "+14%" },
+    { labelKey: "landing.statOutputVelocity", value: t("landing.statusFast") },
+  ];
+
   return (
     <section className="relative overflow-hidden">
       <div className="pointer-events-none absolute inset-0">
@@ -41,18 +44,15 @@ export default function HeroSection() {
       <div className="mx-auto grid min-h-[auto] w-full max-w-[1420px] items-center gap-8 px-4 pb-6 pt-10 sm:px-6 sm:pb-8 sm:pt-14 lg:grid-cols-[0.92fr_1.08fr] lg:px-10 lg:pb-10 lg:pt-16">
         <div className="relative z-10 max-w-[620px] lg:pl-2">
           <div className="mb-4 inline-flex items-center rounded-full border border-[#13b0ff]/25 bg-white/5 px-3 py-1.5 text-[10px] font-medium uppercase tracking-[0.22em] text-[#8bdfff] sm:mb-5 sm:px-4 sm:py-2 sm:text-[11px] sm:tracking-[0.24em]">
-            Sports Data Intelligence
+            {t("landing.brandTagline")}
           </div>
 
           <h1 className="max-w-[700px] text-[36px] font-semibold leading-[1.05] text-white sm:text-[48px] lg:text-[64px] xl:text-[68px]">
-            Sports data intelligence for betting, trading, and enterprise
-            workflows
+            {t("landing.heroTitle")}
           </h1>
 
           <p className="mt-5 max-w-[560px] text-[15px] leading-7 text-white/68 sm:mt-6 sm:text-[17px] sm:leading-8">
-            Structured football data, analytical layers, and scalable
-            infrastructure designed for trading teams, data providers, and
-            enterprise-grade decision workflows.
+            {t("landing.heroDescription")}
           </p>
 
           <div className="mt-8 flex flex-col gap-3 sm:mt-9 sm:flex-row sm:gap-4">
@@ -60,20 +60,19 @@ export default function HeroSection() {
               href="#contact"
               className="inline-flex justify-center rounded-2xl border border-[#13b0ff]/35 bg-gradient-to-r from-[#0d8fff] to-[#25c8ff] px-6 py-3.5 text-sm font-semibold text-white shadow-[0_0_30px_rgba(19,176,255,0.18)] transition hover:scale-[1.02]"
             >
-              Request Access
+              {t("landing.requestAccess")}
             </a>
 
             <Link
               href="/sign-in"
               className="inline-flex justify-center rounded-2xl border border-white/14 bg-white/5 px-6 py-3.5 text-sm font-semibold text-white/90 transition hover:bg-white/10"
             >
-              Explore Platform
+              {t("landing.explorePlatform")}
             </Link>
           </div>
 
           <p className="mt-5 text-sm text-white/45 sm:mt-6">
-            Built for structured sports data operations — not noise, not
-            guesswork.
+            {t("landing.heroFootnote")}
           </p>
         </div>
 
@@ -85,11 +84,11 @@ export default function HeroSection() {
               <div className="grid gap-3 sm:grid-cols-3">
                 {metricCards.map((card) => (
                   <div
-                    key={card.label}
+                    key={card.labelKey}
                     className="rounded-2xl border border-white/8 bg-white/[0.03] p-4"
                   >
                     <p className="text-[10px] uppercase tracking-[0.18em] text-white/38 sm:text-[11px] sm:tracking-[0.22em]">
-                      {card.label}
+                      {t(card.labelKey)}
                     </p>
                     <p className="mt-3 text-[24px] font-semibold leading-none text-white sm:text-[28px]">
                       {card.value}
@@ -104,15 +103,15 @@ export default function HeroSection() {
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <p className="text-[10px] uppercase tracking-[0.18em] text-white/38 sm:text-[11px] sm:tracking-[0.22em]">
-                          Analytical Trend
+                          {t("landing.analyticalTrendLabel")}
                         </p>
                         <p className="mt-2 text-[20px] font-semibold leading-tight text-white sm:text-[22px]">
-                          Match intensity signal
+                          {t("landing.matchIntensitySignal")}
                         </p>
                       </div>
 
                       <span className="rounded-full border border-[#13b0ff]/20 bg-[#13b0ff]/10 px-3 py-1 text-[11px] text-[#8bdfff]">
-                        Live model layer
+                        {t("landing.liveModelLayer")}
                       </span>
                     </div>
 
@@ -172,26 +171,26 @@ export default function HeroSection() {
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <p className="text-[10px] uppercase tracking-[0.18em] text-white/38 sm:text-[11px] sm:tracking-[0.22em]">
-                          Signal Summary
+                          {t("landing.signalSummaryLabel")}
                         </p>
                         <p className="mt-2 text-xl font-semibold text-white">
-                          Decision support layer
+                          {t("landing.decisionSupportLayer")}
                         </p>
                       </div>
 
                       <span className="rounded-full border border-white/10 px-2.5 py-1 text-xs text-white/62">
-                        Active
+                        {t("landing.statusActive")}
                       </span>
                     </div>
 
                     <div className="mt-4 grid gap-3 sm:grid-cols-3">
                       {bottomStats.map((stat) => (
                         <div
-                          key={stat.label}
+                          key={stat.labelKey}
                           className="rounded-xl border border-white/8 bg-white/[0.03] p-4"
                         >
                           <p className="text-[10px] uppercase tracking-[0.18em] text-white/38">
-                            {stat.label}
+                            {t(stat.labelKey)}
                           </p>
                           <p className="mt-2 text-[22px] font-semibold leading-none text-white sm:text-[26px]">
                             {stat.value}
@@ -202,8 +201,7 @@ export default function HeroSection() {
 
                     <div className="mt-4 rounded-xl border border-white/8 bg-white/[0.03] px-4 py-3">
                       <p className="text-sm leading-6 text-white/60">
-                        Structured model outputs designed to reduce noise and
-                        support faster trading interpretation.
+                        {t("landing.modelOutputsDescription")}
                       </p>
                     </div>
                   </div>
@@ -214,18 +212,18 @@ export default function HeroSection() {
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <p className="text-[10px] uppercase tracking-[0.18em] text-white/38 sm:text-[11px] sm:tracking-[0.22em]">
-                          Team Module
+                          {t("landing.teamModuleLabel")}
                         </p>
                         <p className="mt-2 text-xl font-semibold text-white">
-                          Team performance layer
+                          {t("landing.teamPerformanceLayer")}
                         </p>
                         <p className="mt-2 max-w-[220px] text-sm leading-6 text-white/52">
-                          Match-level structure for faster trading reads
+                          {t("landing.teamPerformanceDescription")}
                         </p>
                       </div>
 
                       <span className="rounded-full border border-white/10 px-2.5 py-1 text-xs text-white/62">
-                        Ready
+                        {t("landing.statusReady")}
                       </span>
                     </div>
 
@@ -244,26 +242,26 @@ export default function HeroSection() {
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <p className="text-[10px] uppercase tracking-[0.18em] text-white/38 sm:text-[11px] sm:tracking-[0.22em]">
-                          Participant & Signal
+                          {t("landing.participantSignalLabel")}
                         </p>
                         <p className="mt-2 text-xl font-semibold text-white">
-                          Participant analytics
+                          {t("landing.participantAnalyticsTitle")}
                         </p>
                       </div>
 
                       <span className="rounded-full border border-white/10 px-2.5 py-1 text-xs text-white/62">
-                        Stable
+                        {t("landing.statusStable")}
                       </span>
                     </div>
 
                     <div className="mt-4 space-y-3">
                       {participantRows.map((row) => (
                         <div
-                          key={row.label}
+                          key={row.labelKey}
                           className="flex items-center justify-between rounded-xl border border-white/8 bg-white/[0.03] px-3 py-3"
                         >
                           <span className="text-sm text-white/70">
-                            {row.label}
+                            {t(row.labelKey)}
                           </span>
                           <span className="text-sm font-semibold text-white">
                             {row.value}
@@ -274,14 +272,18 @@ export default function HeroSection() {
 
                     <div className="mt-4 grid grid-cols-2 gap-3">
                       <div className="rounded-xl border border-white/8 bg-white/[0.03] p-3">
-                        <span className="text-xs text-white/40">Shots</span>
+                        <span className="text-xs text-white/40">
+                          {t("landing.shotsLabel")}
+                        </span>
                         <p className="mt-2 text-lg font-semibold text-white">
                           13.4
                         </p>
                       </div>
 
                       <div className="rounded-xl border border-white/8 bg-white/[0.03] p-3">
-                        <span className="text-xs text-white/40">xG Trend</span>
+                        <span className="text-xs text-white/40">
+                          {t("landing.xgTrendLabel")}
+                        </span>
                         <p className="mt-2 text-lg font-semibold text-white">
                           +0.38
                         </p>

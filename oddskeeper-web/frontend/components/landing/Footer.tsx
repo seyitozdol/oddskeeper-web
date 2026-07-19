@@ -1,11 +1,15 @@
-const footerLinks = [
-  { label: "Platform", href: "#platform" },
-  { label: "Data Layers", href: "#data-layers" },
-  { label: "Use Cases", href: "#use-cases" },
-  { label: "Contact", href: "#contact" },
-];
+import { getT } from "@/lib/i18n/server";
 
-export default function Footer() {
+export default async function Footer() {
+  const t = await getT();
+
+  const footerLinks = [
+    { labelKey: "landing.navPlatform", href: "#platform" },
+    { labelKey: "landing.navDataLayers", href: "#data-layers" },
+    { labelKey: "landing.navUseCases", href: "#use-cases" },
+    { labelKey: "landing.navContact", href: "#contact" },
+  ];
+
   return (
     <footer className="border-t border-white/8 px-4 py-8 sm:px-6 lg:px-10">
       <div className="mx-auto flex max-w-[1420px] flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
@@ -22,24 +26,24 @@ export default function Footer() {
                 OddsKeeper
               </span>
               <span className="text-[11px] uppercase tracking-[0.24em] text-white/45">
-                Sports Data Intelligence
+                {t("landing.brandTagline")}
               </span>
             </div>
           </a>
 
           <p className="mt-3 text-sm leading-6 text-white/45">
-            Structured football intelligence for serious workflows.
+            {t("landing.footerTagline")}
           </p>
         </div>
 
         <div className="flex flex-wrap gap-x-6 gap-y-3">
           {footerLinks.map((item) => (
             <a
-              key={item.label}
+              key={item.labelKey}
               href={item.href}
               className="text-sm text-white/55 transition hover:text-white"
             >
-              {item.label}
+              {t(item.labelKey)}
             </a>
           ))}
         </div>

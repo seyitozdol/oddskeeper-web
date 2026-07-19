@@ -1,4 +1,8 @@
-export default function FinalCTASection() {
+import { getT } from "@/lib/i18n/server";
+
+export default async function FinalCTASection() {
+  const t = await getT();
+
   return (
     <section
       id="contact"
@@ -12,16 +16,15 @@ export default function FinalCTASection() {
 
           <div className="relative z-10 mx-auto max-w-[760px]">
             <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-[#8bdfff] sm:text-[11px] sm:tracking-[0.24em]">
-              Final CTA
+              {t("landing.finalCtaKicker")}
             </p>
 
             <h2 className="mt-4 text-3xl font-semibold leading-tight text-white sm:text-4xl lg:text-5xl">
-              Built for serious football data operations
+              {t("landing.finalCtaTitle")}
             </h2>
 
             <p className="mx-auto mt-5 max-w-[620px] text-base leading-7 text-white/60 sm:text-lg sm:leading-8">
-              Structured intelligence for trading, research, and enterprise
-              workflows.
+              {t("landing.finalCtaDescription")}
             </p>
 
             <div className="mt-8">
@@ -29,7 +32,7 @@ export default function FinalCTASection() {
                 href="mailto:contact@oddskeeper.com"
                 className="inline-flex rounded-2xl border border-[#13b0ff]/35 bg-gradient-to-r from-[#0d8fff] to-[#25c8ff] px-7 py-3.5 text-sm font-semibold text-white shadow-[0_0_30px_rgba(19,176,255,0.18)] transition hover:scale-[1.02]"
               >
-                Request Access
+                {t("landing.requestAccess")}
               </a>
             </div>
           </div>

@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useI18n } from "@/lib/i18n/LanguageProvider";
+import type { Translator } from "@/lib/i18n/messages";
 import type { PlayerMetricLeaderboardRow } from "../types";
 
 type MetricOption = {
@@ -31,110 +33,117 @@ type MetricMeta = {
   interpretation: string;
 };
 
-const METRIC_META: Record<string, MetricMeta> = {
+type MetricMetaKeys = {
+  shortDescriptionKey: string;
+  interpretationKey: string;
+};
+
+// Metrik başına kısa açıklama ve yön yorumu: gerçek metinler render sırasında
+// t() ile çözülür (bkz. PlayerStatsExplorer.tsx içindeki labelKey deseni).
+const METRIC_META_KEYS: Record<string, MetricMetaKeys> = {
   goals_total: {
-    shortDescription: "Total goals scored by the player.",
-    interpretation: "Higher is better.",
+    shortDescriptionKey: "playerDetail.metricDescGoalsTotal",
+    interpretationKey: "playerDetail.higherIsBetter",
   },
   assists_total: {
-    shortDescription: "Total assists created by the player.",
-    interpretation: "Higher is better.",
+    shortDescriptionKey: "playerDetail.metricDescAssistsTotal",
+    interpretationKey: "playerDetail.higherIsBetter",
   },
   expected_goals_total: {
-    shortDescription: "Chance quality translated into expected goals.",
-    interpretation: "Higher is better.",
+    shortDescriptionKey: "playerDetail.metricDescExpectedGoalsTotal",
+    interpretationKey: "playerDetail.higherIsBetter",
   },
   shots_on_target_total: {
-    shortDescription: "Shots that hit the target.",
-    interpretation: "Higher is better.",
+    shortDescriptionKey: "playerDetail.metricDescShotsOnTargetTotal",
+    interpretationKey: "playerDetail.higherIsBetter",
   },
   attempts_ibox_total: {
-    shortDescription: "Attempts taken from inside the box.",
-    interpretation: "Higher is generally better.",
+    shortDescriptionKey: "playerDetail.metricDescAttemptsIboxTotal",
+    interpretationKey: "playerDetail.higherGenerallyBetter",
   },
   attempts_obox_total: {
-    shortDescription: "Attempts taken from outside the box.",
-    interpretation: "Context dependent.",
+    shortDescriptionKey: "playerDetail.metricDescAttemptsOboxTotal",
+    interpretationKey: "playerDetail.contextDependent",
   },
   shot_accuracy_pct: {
-    shortDescription: "Share of attempts that hit the target.",
-    interpretation: "Higher is better.",
+    shortDescriptionKey: "playerDetail.metricDescShotAccuracyPct",
+    interpretationKey: "playerDetail.higherIsBetter",
   },
   xg_per90: {
-    shortDescription: "Expected goals generated every 90 minutes.",
-    interpretation: "Higher is better.",
+    shortDescriptionKey: "playerDetail.metricDescXgPer90",
+    interpretationKey: "playerDetail.higherIsBetter",
   },
   passes_total: {
-    shortDescription: "Total pass volume.",
-    interpretation: "Higher is generally better.",
+    shortDescriptionKey: "playerDetail.metricDescPassesTotal",
+    interpretationKey: "playerDetail.higherGenerallyBetter",
   },
   accurate_pass_total: {
-    shortDescription: "Completed passes.",
-    interpretation: "Higher is better.",
+    shortDescriptionKey: "playerDetail.metricDescAccuratePassTotal",
+    interpretationKey: "playerDetail.higherIsBetter",
   },
   pass_accuracy_pct: {
-    shortDescription: "Pass completion rate.",
-    interpretation: "Higher is better.",
+    shortDescriptionKey: "playerDetail.metricDescPassAccuracyPct",
+    interpretationKey: "playerDetail.higherIsBetter",
   },
   tackles_total: {
-    shortDescription: "Total tackles made.",
-    interpretation: "Higher is generally better.",
+    shortDescriptionKey: "playerDetail.metricDescTacklesTotal",
+    interpretationKey: "playerDetail.higherGenerallyBetter",
   },
   interceptions_total: {
-    shortDescription: "Possession disruptions and passing lane cuts.",
-    interpretation: "Higher is generally better.",
+    shortDescriptionKey: "playerDetail.metricDescInterceptionsTotal",
+    interpretationKey: "playerDetail.higherGenerallyBetter",
   },
   fouls_conceded_total: {
-    shortDescription: "Fouls committed by the player.",
-    interpretation: "Lower is better.",
+    shortDescriptionKey: "playerDetail.metricDescFoulsConcededTotal",
+    interpretationKey: "playerDetail.lowerIsBetter",
   },
   fouls_won_total: {
-    shortDescription: "Fouls drawn from opponents.",
-    interpretation: "Higher is generally better.",
+    shortDescriptionKey: "playerDetail.metricDescFoulsWonTotal",
+    interpretationKey: "playerDetail.higherGenerallyBetter",
   },
   cards_yellow_total: {
-    shortDescription: "Yellow cards received.",
-    interpretation: "Lower is better.",
+    shortDescriptionKey: "playerDetail.metricDescCardsYellowTotal",
+    interpretationKey: "playerDetail.lowerIsBetter",
   },
   cards_red_total: {
-    shortDescription: "Red cards received.",
-    interpretation: "Lower is better.",
+    shortDescriptionKey: "playerDetail.metricDescCardsRedTotal",
+    interpretationKey: "playerDetail.lowerIsBetter",
   },
   appearances: {
-    shortDescription: "Matches appeared in.",
-    interpretation: "Higher is better.",
+    shortDescriptionKey: "playerDetail.metricDescAppearances",
+    interpretationKey: "playerDetail.higherIsBetter",
   },
   starts: {
-    shortDescription: "Matches started.",
-    interpretation: "Higher is better.",
+    shortDescriptionKey: "playerDetail.metricDescStarts",
+    interpretationKey: "playerDetail.higherIsBetter",
   },
   starter_rate_pct: {
-    shortDescription: "Share of appearances that were starts.",
-    interpretation: "Higher is better.",
+    shortDescriptionKey: "playerDetail.metricDescStarterRatePct",
+    interpretationKey: "playerDetail.higherIsBetter",
   },
   total_minutes: {
-    shortDescription: "Total minutes played.",
-    interpretation: "Higher is better.",
+    shortDescriptionKey: "playerDetail.metricDescTotalMinutes",
+    interpretationKey: "playerDetail.higherIsBetter",
   },
   avg_minutes: {
-    shortDescription: "Average minutes played per appearance.",
-    interpretation: "Higher is better.",
+    shortDescriptionKey: "playerDetail.metricDescAvgMinutes",
+    interpretationKey: "playerDetail.higherIsBetter",
   },
   saves_total_total: {
-    shortDescription: "Total saves made.",
-    interpretation: "Higher is generally better.",
+    shortDescriptionKey: "playerDetail.metricDescSavesTotalTotal",
+    interpretationKey: "playerDetail.higherGenerallyBetter",
   },
   goals_conceded_total: {
-    shortDescription: "Goals conceded while playing.",
-    interpretation: "Lower is better.",
+    shortDescriptionKey: "playerDetail.metricDescGoalsConcededTotal",
+    interpretationKey: "playerDetail.lowerIsBetter",
   },
   penalties_saved_total: {
-    shortDescription: "Penalties saved.",
-    interpretation: "Higher is better.",
+    shortDescriptionKey: "playerDetail.metricDescPenaltiesSavedTotal",
+    interpretationKey: "playerDetail.higherIsBetter",
   },
   offsides_total: {
-    shortDescription: "Times caught offside.",
-    interpretation: "Lower is generally better.",
+    shortDescriptionKey: "playerDetail.metricDescOffsidesTotal",
+    interpretationKey: "playerDetail.lowerGenerallyBetter",
   },
 };
 
@@ -215,20 +224,30 @@ function getDeltaTone(
   return isGood ? "text-emerald-300" : "text-rose-300";
 }
 
-function getMetricMeta(metricKey: string | null | undefined): MetricMeta {
+function getMetricMeta(
+  t: Translator,
+  metricKey: string | null | undefined
+): MetricMeta {
   if (!metricKey) {
     return {
-      shortDescription: "Metric context is not available.",
-      interpretation: "Direction depends on metric logic.",
+      shortDescription: t("playerDetail.metricMetaUnknownDesc"),
+      interpretation: t("playerDetail.metricMetaUnknownInterp"),
     };
   }
 
-  return (
-    METRIC_META[metricKey] ?? {
-      shortDescription: "League ranking for the selected player metric.",
-      interpretation: "Check rank direction and league average for context.",
-    }
-  );
+  const keys = METRIC_META_KEYS[metricKey];
+
+  if (!keys) {
+    return {
+      shortDescription: t("playerDetail.metricMetaFallbackDesc"),
+      interpretation: t("playerDetail.metricMetaFallbackInterp"),
+    };
+  }
+
+  return {
+    shortDescription: t(keys.shortDescriptionKey),
+    interpretation: t(keys.interpretationKey),
+  };
 }
 
 function buildLeaderboardRowKey(row: PlayerMetricLeaderboardRow) {
@@ -253,6 +272,7 @@ export function PlayerMetricLeaderboardDrawer({
   selectedPlayerSourceId,
   metricOptions,
 }: PlayerMetricLeaderboardDrawerProps) {
+  const { t } = useI18n();
   const [selectedMetricKey, setSelectedMetricKey] = useState<string | null>(
     initialMetricKey
   );
@@ -333,7 +353,7 @@ export function PlayerMetricLeaderboardDrawer({
             error,
           });
           setRows([]);
-          setErrorText("Could not load metric leaderboard.");
+          setErrorText(t("playerDetail.leaderboardLoadError"));
         }
       } finally {
         if (!isCancelled) {
@@ -347,7 +367,7 @@ export function PlayerMetricLeaderboardDrawer({
     return () => {
       isCancelled = true;
     };
-  }, [isOpen, selectedMetricKey, seasonLabel, competition]);
+  }, [isOpen, selectedMetricKey, seasonLabel, competition, t]);
 
   const selectedMetricLabel = useMemo(() => {
     const fromOptions = metricOptions.find(
@@ -358,8 +378,8 @@ export function PlayerMetricLeaderboardDrawer({
       return fromOptions.metricLabel;
     }
 
-    return initialMetricLabel ?? "Metric";
-  }, [metricOptions, selectedMetricKey, initialMetricLabel]);
+    return initialMetricLabel ?? t("playerDetail.metricLabel");
+  }, [metricOptions, selectedMetricKey, initialMetricLabel, t]);
 
   const normalizedRows = useMemo(() => {
     const uniqueMap = new Map<string, PlayerMetricLeaderboardRow>();
@@ -435,18 +455,21 @@ export function PlayerMetricLeaderboardDrawer({
   }, [activeRows, qualifiedRows, normalizedRows, viewMode, selectedPlayerSourceId]);
 
   const metricMeta = useMemo(() => {
-    return getMetricMeta(selectedMetricKey);
-  }, [selectedMetricKey]);
+    return getMetricMeta(t, selectedMetricKey);
+  }, [t, selectedMetricKey]);
 
   const qualificationContextText = useMemo(() => {
     const ref = selectedRowAny;
 
     if (!ref) {
-      return "Qualified leaderboard";
+      return t("playerDetail.qualifiedLeaderboardFallback");
     }
 
-    return `Qualified leaderboard • min ${ref.qualification_minutes_threshold ?? "—"} mins • min ${ref.qualification_apps_threshold ?? "—"} apps • active recently`;
-  }, [selectedRowAny]);
+    return t("playerDetail.qualifiedLeaderboardContext", {
+      minMinutes: ref.qualification_minutes_threshold ?? "—",
+      minApps: ref.qualification_apps_threshold ?? "—",
+    });
+  }, [selectedRowAny, t]);
 
   if (!isOpen) {
     return null;
@@ -456,7 +479,7 @@ export function PlayerMetricLeaderboardDrawer({
     <div className="fixed inset-0 z-[90]">
       <button
         type="button"
-        aria-label="Close leaderboard drawer"
+        aria-label={t("playerDetail.closeLeaderboardDrawerAriaLabel")}
         onClick={onClose}
         className="absolute inset-0 bg-black/60 backdrop-blur-[2px]"
       />
@@ -467,7 +490,7 @@ export function PlayerMetricLeaderboardDrawer({
             <div className="flex items-start justify-between gap-3">
               <div>
                 <div className="text-[11px] uppercase tracking-[0.18em] text-white/36">
-                  Metric Ranking
+                  {t("playerDetail.metricRankingKicker")}
                 </div>
                 <div className="mt-1 text-xl font-semibold text-white">
                   {selectedMetricLabel}
@@ -485,14 +508,14 @@ export function PlayerMetricLeaderboardDrawer({
                 onClick={onClose}
                 className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-1.5 text-sm text-white/75 transition hover:bg-white/[0.06]"
               >
-                Close
+                {t("common.close")}
               </button>
             </div>
 
             <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
               <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-3">
                 <div className="text-[10px] uppercase tracking-[0.14em] text-white/38">
-                  Metric Context
+                  {t("playerDetail.metricContextLabel")}
                 </div>
                 <div className="mt-2 text-sm font-medium text-white">
                   {selectedMetricLabel}
@@ -507,7 +530,7 @@ export function PlayerMetricLeaderboardDrawer({
 
               <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-3">
                 <div className="text-[10px] uppercase tracking-[0.14em] text-white/38">
-                  Selected Player
+                  {t("playerDetail.selectedPlayerLabel")}
                 </div>
 
                 <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
@@ -520,11 +543,13 @@ export function PlayerMetricLeaderboardDrawer({
                   </div>
 
                   <div className={`${getRankTone(selectedRow?.league_rank)}`}>
-                    Rank #{selectedRow?.league_rank ?? "—"}
+                    {t("playerDetail.rankValue", {
+                      rank: selectedRow?.league_rank ?? "—",
+                    })}
                   </div>
 
                   <div className="text-white/65">
-                    Per 90{" "}
+                    {t("playerDetail.per90Label")}{" "}
                     <span className="font-medium text-white">
                       {formatMetricValue(
                         selectedRowAny?.per90_value,
@@ -534,7 +559,7 @@ export function PlayerMetricLeaderboardDrawer({
                   </div>
 
                   <div className="text-white/65">
-                    League Avg{" "}
+                    {t("playerDetail.leagueAvgLabel")}{" "}
                     <span className="font-medium text-white">
                       {formatMetricValue(
                         selectedRow?.league_avg,
@@ -549,7 +574,7 @@ export function PlayerMetricLeaderboardDrawer({
                       selectedRow?.is_higher_better
                     )}`}
                   >
-                    Vs Avg{" "}
+                    {t("playerDetail.vsAvgLabel")}{" "}
                     <span className="font-medium">
                       {formatMetricValue(selectedRow?.vs_league_avg_pct, "pct_1")}
                     </span>
@@ -557,7 +582,9 @@ export function PlayerMetricLeaderboardDrawer({
 
                   {selectedRowAny?.is_qualified === false ? (
                     <div className="text-[11px] text-amber-300">
-                      Not qualified • {selectedRowAny.qualification_reason ?? "rule"}
+                      {t("playerDetail.notQualifiedReason", {
+                        reason: selectedRowAny.qualification_reason ?? "rule",
+                      })}
                     </div>
                   ) : null}
                 </div>
@@ -567,11 +594,14 @@ export function PlayerMetricLeaderboardDrawer({
             <div className="mt-3 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div className="flex flex-wrap gap-2">
                 {[
-                  { key: "qualified", label: "Qualified" },
-                  { key: "all", label: "All Players" },
-                  { key: "around_selected", label: "Around Selected" },
-                  { key: "top4", label: "Top 4" },
-                  { key: "bottom4", label: "Bottom 4" },
+                  { key: "qualified", labelKey: "playerDetail.viewModeQualified" },
+                  { key: "all", labelKey: "playerDetail.viewModeAllPlayers" },
+                  {
+                    key: "around_selected",
+                    labelKey: "playerDetail.viewModeAroundSelected",
+                  },
+                  { key: "top4", labelKey: "playerDetail.viewModeTop4" },
+                  { key: "bottom4", labelKey: "playerDetail.viewModeBottom4" },
                 ].map((option) => (
                   <button
                     key={option.key}
@@ -583,14 +613,14 @@ export function PlayerMetricLeaderboardDrawer({
                         : "border-white/10 bg-white/[0.03] text-white/72 hover:bg-white/[0.06]"
                     }`}
                   >
-                    {option.label}
+                    {t(option.labelKey)}
                   </button>
                 ))}
               </div>
 
               <div className="min-w-[220px]">
                 <label className="mb-2 block text-[10px] uppercase tracking-[0.14em] text-white/38">
-                  Ranking Metric
+                  {t("playerDetail.rankingMetricLabel")}
                 </label>
                 <select
                   value={selectedMetricKey ?? ""}
@@ -614,7 +644,7 @@ export function PlayerMetricLeaderboardDrawer({
           <div className="flex-1 overflow-y-auto px-5 py-4">
             {isLoading ? (
               <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-4 text-sm text-white/65">
-                Loading leaderboard...
+                {t("playerDetail.loadingLeaderboard")}
               </div>
             ) : errorText ? (
               <div className="rounded-xl border border-rose-500/20 bg-rose-500/[0.06] px-4 py-4 text-sm text-rose-200">
@@ -622,21 +652,21 @@ export function PlayerMetricLeaderboardDrawer({
               </div>
             ) : activeRows.length === 0 ? (
               <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-4 text-sm text-white/65">
-                No leaderboard rows found for this metric.
+                {t("playerDetail.noLeaderboardRows")}
               </div>
             ) : (
               <div className="overflow-x-auto rounded-xl border border-white/10">
                 <table className="min-w-full border-collapse">
                   <thead className="sticky top-0 z-10 bg-[#0d1624]">
                     <tr className="text-left text-[10px] uppercase tracking-[0.14em] text-white/38">
-                      <th className="px-4 py-2 font-medium">Rank</th>
-                      <th className="px-4 py-2 font-medium">Player</th>
-                      <th className="px-4 py-2 font-medium">Team</th>
-                      <th className="px-4 py-2 font-medium">Total</th>
-                      <th className="px-4 py-2 font-medium">Per Match</th>
-                      <th className="px-4 py-2 font-medium">Per 90</th>
-                      <th className="px-4 py-2 font-medium">League Avg</th>
-                      <th className="px-4 py-2 font-medium">Vs Avg %</th>
+                      <th className="px-4 py-2 font-medium">{t("playerDetail.rankColumn")}</th>
+                      <th className="px-4 py-2 font-medium">{t("common.player")}</th>
+                      <th className="px-4 py-2 font-medium">{t("common.team")}</th>
+                      <th className="px-4 py-2 font-medium">{t("playerDetail.totalColumn")}</th>
+                      <th className="px-4 py-2 font-medium">{t("playerDetail.perMatchColumn")}</th>
+                      <th className="px-4 py-2 font-medium">{t("playerDetail.per90Label")}</th>
+                      <th className="px-4 py-2 font-medium">{t("playerDetail.leagueAvgLabel")}</th>
+                      <th className="px-4 py-2 font-medium">{t("playerDetail.vsAvgPctLabel")}</th>
                     </tr>
                   </thead>
 
@@ -668,7 +698,7 @@ export function PlayerMetricLeaderboardDrawer({
                               </span>
                               {isSelected ? (
                                 <span className="rounded-md border border-sky-500/20 bg-sky-500/[0.10] px-1.5 py-0.5 text-[10px] uppercase tracking-[0.12em] text-sky-200">
-                                  Selected
+                                  {t("playerDetail.selectedBadge")}
                                 </span>
                               ) : null}
                             </div>

@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { getT } from "@/lib/i18n/server";
 import type { MatchTeamStatsRow } from "../types";
 import { formatDecimal } from "../utils/formatDecimal";
 
@@ -98,84 +99,85 @@ function SplitBar({
   );
 }
 
-export function MatchTeamStatsPanel({ rows }: MatchTeamStatsPanelProps) {
+export async function MatchTeamStatsPanel({ rows }: MatchTeamStatsPanelProps) {
+  const t = await getT();
   const home = rows.find((row) => row.team_side === "home");
   const away = rows.find((row) => row.team_side === "away");
 
   if (!home || !away) {
     return (
       <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-4 text-sm text-white/65">
-        No team stats found for this match.
+        {t("matchDetail.noTeamStats")}
       </div>
     );
   }
 
   const metrics: MetricRow[] = [
     {
-      label: "Expected goals (xG)",
+      label: t("matchDetail.metricExpectedGoals"),
       homeRaw: home.details_expected_goals,
       awayRaw: away.details_expected_goals,
       homeDisplay: toDisplay(home.details_expected_goals, 3),
       awayDisplay: toDisplay(away.details_expected_goals, 3),
     },
     {
-      label: "Total shots",
+      label: t("matchDetail.metricTotalShots"),
       homeRaw: home.summary_shots,
       awayRaw: away.summary_shots,
       homeDisplay: toDisplay(home.summary_shots),
       awayDisplay: toDisplay(away.summary_shots),
     },
     {
-      label: "Shots on target",
+      label: t("matchDetail.metricShotsOnTarget"),
       homeRaw: home.summary_shots_on_target,
       awayRaw: away.summary_shots_on_target,
       homeDisplay: toDisplay(home.summary_shots_on_target),
       awayDisplay: toDisplay(away.summary_shots_on_target),
     },
     {
-      label: "Blocked shots",
+      label: t("matchDetail.metricBlockedShots"),
       homeRaw: home.summary_blocked_shots,
       awayRaw: away.summary_blocked_shots,
       homeDisplay: toDisplay(home.summary_blocked_shots),
       awayDisplay: toDisplay(away.summary_blocked_shots),
     },
     {
-      label: "Corner kicks",
+      label: t("matchDetail.metricCornerKicks"),
       homeRaw: home.summary_corners_won,
       awayRaw: away.summary_corners_won,
       homeDisplay: toDisplay(home.summary_corners_won),
       awayDisplay: toDisplay(away.summary_corners_won),
     },
     {
-      label: "Passes",
+      label: t("matchDetail.metricPasses"),
       homeRaw: home.summary_passes,
       awayRaw: away.summary_passes,
       homeDisplay: toDisplay(home.summary_passes),
       awayDisplay: toDisplay(away.summary_passes),
     },
     {
-      label: "Accurate pass",
+      label: t("matchDetail.metricAccuratePass"),
       homeRaw: home.details_accurate_pass,
       awayRaw: away.details_accurate_pass,
       homeDisplay: toDisplay(home.details_accurate_pass),
       awayDisplay: toDisplay(away.details_accurate_pass),
     },
     {
-      label: "Tackles",
+      label: t("matchDetail.metricTackles"),
       homeRaw: home.summary_tackles,
       awayRaw: away.summary_tackles,
       homeDisplay: toDisplay(home.summary_tackles),
       awayDisplay: toDisplay(away.summary_tackles),
     },
     {
-      label: "Yellow cards",
+      label: t("matchDetail.metricYellowCards"),
       homeRaw: home.summary_yellow_cards,
       awayRaw: away.summary_yellow_cards,
       homeDisplay: toDisplay(home.summary_yellow_cards),
       awayDisplay: toDisplay(away.summary_yellow_cards),
     },
     {
-      label: "Red cards",
+      label: t("matchDetail.metricRedCards"),
       homeRaw: home.summary_red_cards,
       awayRaw: away.summary_red_cards,
       homeDisplay: toDisplay(home.summary_red_cards),
@@ -194,7 +196,7 @@ export function MatchTeamStatsPanel({ rows }: MatchTeamStatsPanelProps) {
         </div>
 
         <div className="text-center text-[11px] font-semibold uppercase tracking-[0.18em] text-white/72">
-          Top Stats
+          {t("matchDetail.topStats")}
         </div>
 
         <div className="flex justify-end">

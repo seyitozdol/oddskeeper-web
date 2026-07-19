@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useI18n } from "@/lib/i18n/LanguageProvider";
 import {
   fetchUpcomingFixtures,
   fetchTeamPlayers,
@@ -18,6 +19,17 @@ import {
   calcOddsLines,
   type InferredStatus,
 } from "./compute";
+import type { Translator } from "@/lib/i18n/messages";
+
+const STATUS_LABEL_KEYS: Record<InferredStatus, string> = {
+  "Pos. Starter": "playerMarket.statusPosStarter",
+  "Pos. Sub": "playerMarket.statusPosSub",
+  "Out": "playerMarket.statusOut",
+};
+
+function statusLabel(t: Translator, status: InferredStatus): string {
+  return t(STATUS_LABEL_KEYS[status]);
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -64,6 +76,7 @@ function StatusBadge({
   status: InferredStatus;
   onChange: (s: InferredStatus) => void;
 }) {
+  const { t } = useI18n();
   return (
     <div className="relative inline-block">
       <select
@@ -74,7 +87,7 @@ function StatusBadge({
       >
         {STATUS_OPTIONS.map((opt) => (
           <option key={opt} value={opt} className="bg-[#0d1624] text-white">
-            {opt}
+            {statusLabel(t, opt)}
           </option>
         ))}
       </select>
@@ -131,6 +144,7 @@ function TeamPlayerTable({
   onManualChange: (id: string, v: string) => void;
   onCheckedChange: (id: string, v: boolean) => void;
 }) {
+  const { t } = useI18n();
   const [sortCol, setSortCol] = useState<SortCol>("status");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
 
@@ -174,7 +188,7 @@ function TeamPlayerTable({
   return (
     <div className="flex-1 min-w-0">
       <div className="mb-2 flex items-center gap-2">
-        <span className="text-[11px] uppercase tracking-[0.14em] text-white/40">Team</span>
+        <span className="text-[11px] uppercase tracking-[0.14em] text-white/40">{t("common.team")}</span>
         <span className="text-[15px] font-bold text-white">{teamName}</span>
       </div>
 
@@ -183,14 +197,14 @@ function TeamPlayerTable({
           <thead className="bg-[#0d1624]">
             <tr className="text-left text-[10px] uppercase tracking-[0.12em] text-white/38">
               <th className="px-2 py-2 w-6"></th>
-              <SortTh col="player" label="Player" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} className="min-w-[120px]" />
-              <SortTh col="pos" label="Pos" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
-              <SortTh col="status" label="Status" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
-              <SortTh col="avg" label="Avg" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} className="text-right" />
-              <SortTh col="last5" label="Last 5 Avg" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} className="text-right" />
-              <SortTh col="distexp" label="Dist. Exp" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} className="text-right" />
-              <SortTh col="manual" label="Manual" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} className="text-right w-20" />
-              <th className="px-2 py-2 min-w-[160px]">Odds</th>
+              <SortTh col="player" label={t("common.player")} sortCol={sortCol} sortDir={sortDir} onSort={handleSort} className="min-w-[120px]" />
+              <SortTh col="pos" label={t("common.position")} sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
+              <SortTh col="status" label={t("playerMarket.columnStatus")} sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
+              <SortTh col="avg" label={t("playerMarket.avgLabel")} sortCol={sortCol} sortDir={sortDir} onSort={handleSort} className="text-right" />
+              <SortTh col="last5" label={t("playerMarket.last5AvgLabel")} sortCol={sortCol} sortDir={sortDir} onSort={handleSort} className="text-right" />
+              <SortTh col="distexp" label={t("playerMarket.distExpLabel")} sortCol={sortCol} sortDir={sortDir} onSort={handleSort} className="text-right" />
+              <SortTh col="manual" label={t("playerMarket.manualLabel")} sortCol={sortCol} sortDir={sortDir} onSort={handleSort} className="text-right w-20" />
+              <th className="px-2 py-2 min-w-[160px]">{t("playerMarket.oddsColumnLabel")}</th>
             </tr>
           </thead>
           <tbody>
@@ -264,7 +278,7 @@ function TeamPlayerTable({
                               type="checkbox"
                               className={`cursor-pointer ${STATUS_ACCENT[p.status]}`}
                             />
-                            <span className="text-white/40 text-[11px] w-14">Over {ol.line.toFixed(1)}</span>
+                            <span className="text-white/40 text-[11px] w-14">{t("playerMarket.overLineLabel", { line: ol.line.toFixed(1) })}</span>
                             <span className="rounded bg-white/[0.06] px-1.5 py-0.5 text-[12px] font-semibold text-teal-300">
                               {fmtOdds(ol.overOdds)}
                             </span>
@@ -288,6 +302,7 @@ function TeamPlayerTable({
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function PlayerMarketPredictionPage() {
+  const { t } = useI18n();
   // ── Inputs ──
   const [fixtures, setFixtures] = useState<UpcomingFixture[]>([]);
   const [selectedFixtureId, setSelectedFixtureId] = useState<number | null>(null);
@@ -428,9 +443,9 @@ export default function PlayerMarketPredictionPage() {
     <div className="w-full space-y-4 px-1">
       {/* Header */}
       <div className="rounded-[14px] border border-white/10 bg-[#0d1624] px-5 py-4">
-        <h1 className="text-[18px] font-bold text-white">Player Market Prediction</h1>
+        <h1 className="text-[18px] font-bold text-white">{t("playerMarket.pageTitle")}</h1>
         <p className="mt-0.5 text-[12px] text-white/40">
-          Select a fixture and market to calculate player-level odds.
+          {t("playerMarket.pageSubtitle")}
         </p>
       </div>
 
@@ -439,13 +454,13 @@ export default function PlayerMarketPredictionPage() {
         <div className="flex flex-wrap gap-4 items-end">
           {/* Fixture select */}
           <div className="flex flex-col gap-1 min-w-[260px]">
-            <label className="text-[10px] uppercase tracking-[0.12em] text-white/40">Fixture</label>
+            <label className="text-[10px] uppercase tracking-[0.12em] text-white/40">{t("playerMarket.fixtureLabel")}</label>
             <select
               value={selectedFixtureId ?? ""}
               onChange={(e) => setSelectedFixtureId(e.target.value ? Number(e.target.value) : null)}
               className="rounded-[8px] border border-white/10 bg-[#0d1624] px-3 py-2 text-[13px] text-white focus:border-teal-500/50 focus:outline-none [color-scheme:dark]"
             >
-              <option value="">— Fixture seç —</option>
+              <option value="">{t("playerMarket.selectFixturePlaceholder")}</option>
               {fixtures.map((f) => (
                 <option key={f.fixture_id} value={f.fixture_id}>
                   {f.label}
@@ -456,7 +471,7 @@ export default function PlayerMarketPredictionPage() {
 
           {/* Market select */}
           <div className="flex flex-col gap-1 min-w-[180px]">
-            <label className="text-[10px] uppercase tracking-[0.12em] text-white/40">Market</label>
+            <label className="text-[10px] uppercase tracking-[0.12em] text-white/40">{t("playerMarket.marketLabel")}</label>
             <select
               value={selectedMarketKey}
               onChange={(e) => setSelectedMarketKey(e.target.value)}
@@ -473,7 +488,7 @@ export default function PlayerMarketPredictionPage() {
           {/* Home Dist. Exp */}
           <div className="flex flex-col gap-1">
             <label className="text-[10px] uppercase tracking-[0.12em] text-white/40">
-              Home Exp.
+              {t("playerMarket.homeExpLabel")}
             </label>
             <input
               type="number"
@@ -488,7 +503,7 @@ export default function PlayerMarketPredictionPage() {
           {/* Away Dist. Exp */}
           <div className="flex flex-col gap-1">
             <label className="text-[10px] uppercase tracking-[0.12em] text-white/40">
-              Away Exp.
+              {t("playerMarket.awayExpLabel")}
             </label>
             <input
               type="number"
@@ -503,7 +518,7 @@ export default function PlayerMarketPredictionPage() {
           {/* Payback */}
           <div className="flex flex-col gap-1">
             <label className="text-[10px] uppercase tracking-[0.12em] text-white/40">
-              Payback %
+              {t("playerMarket.paybackLabel")}
             </label>
             <input
               type="number"
@@ -521,7 +536,7 @@ export default function PlayerMarketPredictionPage() {
       {/* Loading */}
       {loading && (
         <div className="rounded-[14px] border border-white/10 bg-[#0d1624] px-5 py-8 text-center text-sm text-white/40">
-          Loading players…
+          {t("common.loading")}
         </div>
       )}
 
@@ -534,13 +549,13 @@ export default function PlayerMarketPredictionPage() {
               {selectedMarket.label}
             </span>
             <span className="text-[12px] text-white/40">
-              Home Exp: <span className="text-white/70 font-medium">{homeDistExpNum.toFixed(1)}</span>
+              {t("playerMarket.homeExpLabel")}: <span className="text-white/70 font-medium">{homeDistExpNum.toFixed(1)}</span>
             </span>
             <span className="text-[12px] text-white/40">
-              Away Exp: <span className="text-white/70 font-medium">{awayDistExpNum.toFixed(1)}</span>
+              {t("playerMarket.awayExpLabel")}: <span className="text-white/70 font-medium">{awayDistExpNum.toFixed(1)}</span>
             </span>
             <span className="text-[12px] text-white/40">
-              Payback: <span className="text-white/70 font-medium">{paybackNum}%</span>
+              {t("playerMarket.paybackLabel")}: <span className="text-white/70 font-medium">{paybackNum}%</span>
             </span>
           </div>
 
@@ -571,7 +586,7 @@ export default function PlayerMarketPredictionPage() {
       {/* Empty state */}
       {!loading && !selectedFixture && (
         <div className="rounded-[14px] border border-white/10 bg-[#0d1624] px-5 py-10 text-center text-sm text-white/30">
-          Fixture seçerek başlayın.
+          {t("playerMarket.selectFixturePrompt")}
         </div>
       )}
     </div>

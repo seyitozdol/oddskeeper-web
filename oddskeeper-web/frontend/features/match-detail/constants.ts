@@ -5,12 +5,12 @@ export const VALID_MATCH_TABS = [
   "team-stats",
 ] as const;
 
-export const MATCH_TAB_LABELS: Record<
+export const MATCH_TAB_LABEL_KEYS: Record<
   (typeof VALID_MATCH_TABS)[number],
   string
 > = {
-  overview: "Overview",
-  incidents: "Incidents",
-  lineups: "Lineups",
-  "team-stats": "Team Stats",
+  overview: "matchDetail.tabOverview",
+  incidents: "matchDetail.tabIncidents",
+  lineups: "matchDetail.tabLineups",
+  "team-stats": "matchDetail.tabTeamStats",
 };

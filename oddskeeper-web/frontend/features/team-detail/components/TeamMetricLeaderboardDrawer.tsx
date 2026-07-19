@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useI18n } from "@/lib/i18n/LanguageProvider";
 import type { TeamMetricLeaderboardRow } from "../types";
 
 type MetricOption = {
@@ -22,98 +23,98 @@ type TeamMetricLeaderboardDrawerProps = {
 type LeaderboardViewMode = "all" | "top4" | "bottom4" | "around_selected";
 
 type MetricMeta = {
-  shortDescription: string;
-  interpretation: string;
+  descKey: string;
+  interpKey: string;
 };
 
 const METRIC_META: Record<string, MetricMeta> = {
   team_goals_for: {
-    shortDescription: "How many goals the team scores.",
-    interpretation: "Higher is better.",
+    descKey: "teamDetail.metricDescGoalsFor",
+    interpKey: "teamDetail.interpHigherBetter",
   },
   team_expected_goals: {
-    shortDescription: "Chance quality converted into expected goals.",
-    interpretation: "Higher is better.",
+    descKey: "teamDetail.metricDescExpectedGoals",
+    interpKey: "teamDetail.interpHigherBetter",
   },
   team_shots: {
-    shortDescription: "Total shot volume created.",
-    interpretation: "Higher is better.",
+    descKey: "teamDetail.metricDescShots",
+    interpKey: "teamDetail.interpHigherBetter",
   },
   team_shots_on_target: {
-    shortDescription: "Shots that force a save or become a goal.",
-    interpretation: "Higher is better.",
+    descKey: "teamDetail.metricDescShotsOnTarget",
+    interpKey: "teamDetail.interpHigherBetter",
   },
   team_shot_accuracy_pct: {
-    shortDescription: "Share of shots hitting the target.",
-    interpretation: "Higher is better.",
+    descKey: "teamDetail.metricDescShotAccuracy",
+    interpKey: "teamDetail.interpHigherBetter",
   },
   team_xg_per_shot: {
-    shortDescription: "Average shot quality per attempt.",
-    interpretation: "Higher is better.",
+    descKey: "teamDetail.metricDescXgPerShot",
+    interpKey: "teamDetail.interpHigherBetter",
   },
   team_offsides: {
-    shortDescription: "Offside events committed by the team.",
-    interpretation: "Lower is generally better.",
+    descKey: "teamDetail.metricDescOffsides",
+    interpKey: "teamDetail.interpLowerGenerallyBetter",
   },
   team_goals_against: {
-    shortDescription: "How many goals the team concedes.",
-    interpretation: "Lower is better.",
+    descKey: "teamDetail.metricDescGoalsAgainst",
+    interpKey: "teamDetail.interpLowerBetter",
   },
   team_shots_against: {
-    shortDescription: "Opponent shot volume allowed.",
-    interpretation: "Lower is better.",
+    descKey: "teamDetail.metricDescShotsAgainst",
+    interpKey: "teamDetail.interpLowerBetter",
   },
   team_shots_on_target_against: {
-    shortDescription: "Opponent shots on target allowed.",
-    interpretation: "Lower is better.",
+    descKey: "teamDetail.metricDescShotsOnTargetAgainst",
+    interpKey: "teamDetail.interpLowerBetter",
   },
   team_tackles: {
-    shortDescription: "Total tackles made by the team.",
-    interpretation: "Higher is generally better.",
+    descKey: "teamDetail.metricDescTackles",
+    interpKey: "teamDetail.interpHigherGenerallyBetter",
   },
   team_interceptions: {
-    shortDescription: "Passing lanes cut out and possession disruptions.",
-    interpretation: "Higher is generally better.",
+    descKey: "teamDetail.metricDescInterceptions",
+    interpKey: "teamDetail.interpHigherGenerallyBetter",
   },
   team_fouls_conceded: {
-    shortDescription: "Fouls committed by the team.",
-    interpretation: "Lower is better.",
+    descKey: "teamDetail.metricDescFoulsConceded",
+    interpKey: "teamDetail.interpLowerBetter",
   },
   team_passes: {
-    shortDescription: "Total pass volume.",
-    interpretation: "Higher is generally better.",
+    descKey: "teamDetail.metricDescPasses",
+    interpKey: "teamDetail.interpHigherGenerallyBetter",
   },
   team_accurate_pass: {
-    shortDescription: "Completed passes.",
-    interpretation: "Higher is better.",
+    descKey: "teamDetail.metricDescAccuratePass",
+    interpKey: "teamDetail.interpHigherBetter",
   },
   team_pass_accuracy_pct: {
-    shortDescription: "Share of passes completed successfully.",
-    interpretation: "Higher is better.",
+    descKey: "teamDetail.metricDescPassAccuracy",
+    interpKey: "teamDetail.interpHigherBetter",
   },
   team_yellow_cards: {
-    shortDescription: "Yellow cards received.",
-    interpretation: "Lower is better.",
+    descKey: "teamDetail.metricDescYellowCards",
+    interpKey: "teamDetail.interpLowerBetter",
   },
   team_red_cards: {
-    shortDescription: "Red cards received.",
-    interpretation: "Lower is better.",
+    descKey: "teamDetail.metricDescRedCards",
+    interpKey: "teamDetail.interpLowerBetter",
   },
   team_corners_won: {
-    shortDescription: "Corners earned by the team.",
-    interpretation: "Higher is generally better.",
+    descKey: "teamDetail.metricDescCornersWon",
+    interpKey: "teamDetail.interpHigherGenerallyBetter",
   },
   team_saves: {
-    shortDescription: "Goalkeeper saves made.",
-    interpretation: "Context dependent.",
+    descKey: "teamDetail.metricDescSaves",
+    interpKey: "teamDetail.interpContextDependent",
   },
   team_goal_kicks: {
-    shortDescription: "Goal kicks taken by the team.",
-    interpretation: "Context dependent.",
+    descKey: "teamDetail.metricDescGoalKicks",
+    interpKey: "teamDetail.interpContextDependent",
   },
   team_total_throws: {
-    shortDescription: "Total throw-ins taken.",
-    interpretation: "Context dependent.",
+    descKey: "teamDetail.metricDescTotalThrows",
+    interpKey: "teamDetail.interpContextDependent",
   },
 };
 
@@ -197,15 +198,15 @@ function getDeltaTone(
 function getMetricMeta(metricKey: string | null | undefined): MetricMeta {
   if (!metricKey) {
     return {
-      shortDescription: "Metric context is not available.",
-      interpretation: "Direction depends on metric logic.",
+      descKey: "teamDetail.metricDescNoContext",
+      interpKey: "teamDetail.metricInterpNoContext",
     };
   }
 
   return (
     METRIC_META[metricKey] ?? {
-      shortDescription: "League ranking for the selected team metric.",
-      interpretation: "Check rank direction and league average for context.",
+      descKey: "teamDetail.metricDescFallback",
+      interpKey: "teamDetail.metricInterpFallback",
     }
   );
 }
@@ -220,6 +221,7 @@ export function TeamMetricLeaderboardDrawer({
   selectedTeamSlug,
   metricOptions,
 }: TeamMetricLeaderboardDrawerProps) {
+  const { t } = useI18n();
   const [selectedMetricKey, setSelectedMetricKey] = useState<string | null>(
     initialMetricKey
   );
@@ -300,7 +302,7 @@ export function TeamMetricLeaderboardDrawer({
             error,
           });
           setRows([]);
-          setErrorText("Could not load metric leaderboard.");
+          setErrorText(t("teamDetail.errorLoadLeaderboard"));
         }
       } finally {
         if (!isCancelled) {
@@ -325,8 +327,8 @@ export function TeamMetricLeaderboardDrawer({
       return fromOptions.metricLabel;
     }
 
-    return initialMetricLabel ?? "Metric";
-  }, [metricOptions, selectedMetricKey, initialMetricLabel]);
+    return initialMetricLabel ?? t("teamDetail.colMetric");
+  }, [metricOptions, selectedMetricKey, initialMetricLabel, t]);
 
   const selectedRow = useMemo(() => {
     return rows.find((row) => row.team_slug === selectedTeamSlug) ?? null;
@@ -372,7 +374,7 @@ export function TeamMetricLeaderboardDrawer({
     <div className="fixed inset-0 z-[90]">
       <button
         type="button"
-        aria-label="Close leaderboard drawer"
+        aria-label={t("teamDetail.closeDrawerAriaLabel")}
         onClick={onClose}
         className="absolute inset-0 bg-black/60 backdrop-blur-[2px]"
       />
@@ -383,7 +385,7 @@ export function TeamMetricLeaderboardDrawer({
             <div className="flex items-start justify-between gap-3">
               <div>
                 <div className="text-[11px] uppercase tracking-[0.18em] text-white/36">
-                  Metric Ranking
+                  {t("teamDetail.metricRankingLabel")}
                 </div>
                 <div className="mt-1 text-xl font-semibold text-white">
                   {selectedMetricLabel}
@@ -398,29 +400,29 @@ export function TeamMetricLeaderboardDrawer({
                 onClick={onClose}
                 className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-1.5 text-sm text-white/75 transition hover:bg-white/[0.06]"
               >
-                Close
+                {t("common.close")}
               </button>
             </div>
 
             <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
               <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-3">
                 <div className="text-[10px] uppercase tracking-[0.14em] text-white/38">
-                  Metric Context
+                  {t("teamDetail.metricContextLabel")}
                 </div>
                 <div className="mt-2 text-sm font-medium text-white">
                   {selectedMetricLabel}
                 </div>
                 <div className="mt-1 text-xs leading-5 text-white/60">
-                  {metricMeta.shortDescription}
+                  {t(metricMeta.descKey)}
                 </div>
                 <div className="mt-2 text-[11px] text-white/48">
-                  {metricMeta.interpretation}
+                  {t(metricMeta.interpKey)}
                 </div>
               </div>
 
               <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-3">
                 <div className="text-[10px] uppercase tracking-[0.14em] text-white/38">
-                  Selected Team
+                  {t("teamDetail.selectedTeamLabel")}
                 </div>
 
                 <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
@@ -429,11 +431,13 @@ export function TeamMetricLeaderboardDrawer({
                   </div>
 
                   <div className={`${getRankTone(selectedRow?.league_rank)}`}>
-                    Rank #{selectedRow?.league_rank ?? "—"}
+                    {t("teamDetail.rankHash", {
+                      rank: selectedRow?.league_rank ?? "—",
+                    })}
                   </div>
 
                   <div className="text-white/65">
-                    Per Match{" "}
+                    {t("teamDetail.colPerMatch")}{" "}
                     <span className="font-medium text-white">
                       {formatMetricValue(
                         selectedRow?.per_match_value,
@@ -443,7 +447,7 @@ export function TeamMetricLeaderboardDrawer({
                   </div>
 
                   <div className="text-white/65">
-                    League Avg{" "}
+                    {t("teamDetail.colLeagueAvg")}{" "}
                     <span className="font-medium text-white">
                       {formatMetricValue(
                         selectedRow?.league_avg,
@@ -458,7 +462,7 @@ export function TeamMetricLeaderboardDrawer({
                       selectedRow?.is_higher_better
                     )}`}
                   >
-                    Vs Avg{" "}
+                    {t("teamDetail.vsAvgLabel")}{" "}
                     <span className="font-medium">
                       {formatMetricValue(selectedRow?.vs_league_avg_pct, "pct_1")}
                     </span>
@@ -470,10 +474,13 @@ export function TeamMetricLeaderboardDrawer({
             <div className="mt-3 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div className="flex flex-wrap gap-2">
                 {[
-                  { key: "all", label: "Full Table" },
-                  { key: "around_selected", label: "Around Selected" },
-                  { key: "top4", label: "Top 4" },
-                  { key: "bottom4", label: "Bottom 4" },
+                  { key: "all", labelKey: "teamDetail.viewModeFullTable" },
+                  {
+                    key: "around_selected",
+                    labelKey: "teamDetail.viewModeAroundSelected",
+                  },
+                  { key: "top4", labelKey: "teamDetail.viewModeTop4" },
+                  { key: "bottom4", labelKey: "teamDetail.viewModeBottom4" },
                 ].map((option) => (
                   <button
                     key={option.key}
@@ -485,14 +492,14 @@ export function TeamMetricLeaderboardDrawer({
                         : "border-white/10 bg-white/[0.03] text-white/72 hover:bg-white/[0.06]"
                     }`}
                   >
-                    {option.label}
+                    {t(option.labelKey)}
                   </button>
                 ))}
               </div>
 
               <div className="min-w-[220px]">
                 <label className="mb-2 block text-[10px] uppercase tracking-[0.14em] text-white/38">
-                  Ranking Metric
+                  {t("teamDetail.rankingMetricLabel")}
                 </label>
                 <select
                   value={selectedMetricKey ?? ""}
@@ -516,7 +523,7 @@ export function TeamMetricLeaderboardDrawer({
           <div className="flex-1 overflow-y-auto px-5 py-4">
             {isLoading ? (
               <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-4 text-sm text-white/65">
-                Loading leaderboard...
+                {t("teamDetail.loadingLeaderboard")}
               </div>
             ) : errorText ? (
               <div className="rounded-xl border border-rose-500/20 bg-rose-500/[0.06] px-4 py-4 text-sm text-rose-200">
@@ -524,19 +531,19 @@ export function TeamMetricLeaderboardDrawer({
               </div>
             ) : rows.length === 0 ? (
               <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-4 text-sm text-white/65">
-                No leaderboard rows found for this metric.
+                {t("teamDetail.noLeaderboardRows")}
               </div>
             ) : (
               <div className="overflow-x-auto rounded-xl border border-white/10">
                 <table className="min-w-full border-collapse">
                   <thead className="sticky top-0 z-10 bg-[#0d1624]">
                     <tr className="text-left text-[10px] uppercase tracking-[0.14em] text-white/38">
-                      <th className="px-4 py-2 font-medium">Rank</th>
-                      <th className="px-4 py-2 font-medium">Team</th>
-                      <th className="px-4 py-2 font-medium">Total</th>
-                      <th className="px-4 py-2 font-medium">Per Match</th>
-                      <th className="px-4 py-2 font-medium">League Avg</th>
-                      <th className="px-4 py-2 font-medium">Vs Avg %</th>
+                      <th className="px-4 py-2 font-medium">{t("teamDetail.colRank")}</th>
+                      <th className="px-4 py-2 font-medium">{t("teamDetail.colTeam")}</th>
+                      <th className="px-4 py-2 font-medium">{t("teamDetail.colTotal")}</th>
+                      <th className="px-4 py-2 font-medium">{t("teamDetail.colPerMatch")}</th>
+                      <th className="px-4 py-2 font-medium">{t("teamDetail.colLeagueAvg")}</th>
+                      <th className="px-4 py-2 font-medium">{t("teamDetail.colVsAvgPct")}</th>
                     </tr>
                   </thead>
 
@@ -566,7 +573,7 @@ export function TeamMetricLeaderboardDrawer({
                               </span>
                               {isSelected ? (
                                 <span className="rounded-md border border-sky-500/20 bg-sky-500/[0.10] px-1.5 py-0.5 text-[10px] uppercase tracking-[0.12em] text-sky-200">
-                                  Selected
+                                  {t("teamDetail.selectedBadge")}
                                 </span>
                               ) : null}
                             </div>

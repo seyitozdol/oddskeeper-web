@@ -1,25 +1,26 @@
-const capabilities = [
-  {
-    eyebrow: "Match & Team Intelligence",
-    title: "Structured match and team context",
-    description:
-      "Access organized football data built for faster analysis, cleaner reads, and stronger workflow clarity.",
-  },
-  {
-    eyebrow: "Player-Level Analytical Layers",
-    title: "Participant-focused analytical depth",
-    description:
-      "Track participant-level performance signals through a scalable structure designed for operational use.",
-  },
-  {
-    eyebrow: "Pipeline-Ready Infrastructure",
-    title: "From raw input to usable output",
-    description:
-      "Support repeatable data operations with a system designed for normalized structure and downstream analytics.",
-  },
-];
+import { getT } from "@/lib/i18n/server";
 
-export default function CapabilitiesSection() {
+export default async function CapabilitiesSection() {
+  const t = await getT();
+
+  const capabilities = [
+    {
+      eyebrowKey: "landing.capMatchTeamEyebrow",
+      titleKey: "landing.capMatchTeamTitle",
+      descriptionKey: "landing.capMatchTeamDescription",
+    },
+    {
+      eyebrowKey: "landing.capPlayerLayersEyebrow",
+      titleKey: "landing.capPlayerLayersTitle",
+      descriptionKey: "landing.capPlayerLayersDescription",
+    },
+    {
+      eyebrowKey: "landing.capPipelineEyebrow",
+      titleKey: "landing.capPipelineTitle",
+      descriptionKey: "landing.capPipelineDescription",
+    },
+  ];
+
   return (
     <section
       id="platform"
@@ -28,24 +29,22 @@ export default function CapabilitiesSection() {
       <div className="mx-auto max-w-[1420px]">
         <div className="max-w-[760px]">
           <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-[#8bdfff] sm:text-[11px] sm:tracking-[0.24em]">
-            Core Capabilities
+            {t("landing.capabilitiesKicker")}
           </p>
 
           <h2 className="mt-4 text-3xl font-semibold leading-tight text-white sm:text-4xl lg:text-5xl">
-            Built for serious sports data workflows
+            {t("landing.capabilitiesTitle")}
           </h2>
 
           <p className="mt-5 max-w-[680px] text-base leading-7 text-white/62 sm:text-lg sm:leading-8">
-            The platform is designed to support trading teams, data providers,
-            and enterprise workflows with structured football intelligence and
-            operationally useful analytical layers.
+            {t("landing.capabilitiesDescription")}
           </p>
         </div>
 
         <div className="mt-10 grid gap-5 lg:mt-12 lg:grid-cols-3">
           {capabilities.map((item) => (
             <div
-              key={item.title}
+              key={item.titleKey}
               className="group rounded-[24px] border border-white/10 bg-white/[0.03] p-5 transition hover:border-[#13b0ff]/30 hover:bg-white/[0.045] sm:rounded-[28px] sm:p-6"
             >
               <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-[#13b0ff]/20 bg-[#13b0ff]/10 sm:h-12 sm:w-12">
@@ -53,15 +52,15 @@ export default function CapabilitiesSection() {
               </div>
 
               <p className="mt-5 text-[10px] font-medium uppercase tracking-[0.18em] text-[#8bdfff] sm:mt-6 sm:text-[11px] sm:tracking-[0.22em]">
-                {item.eyebrow}
+                {t(item.eyebrowKey)}
               </p>
 
               <h3 className="mt-4 text-[28px] font-semibold leading-tight text-white sm:text-2xl">
-                {item.title}
+                {t(item.titleKey)}
               </h3>
 
               <p className="mt-4 text-sm leading-7 text-white/60 sm:text-[15px]">
-                {item.description}
+                {t(item.descriptionKey)}
               </p>
 
               <div className="mt-6 rounded-2xl border border-white/8 bg-[#0b1524]/70 p-4 sm:mt-8">
