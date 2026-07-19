@@ -1,0 +1,21 @@
+export type PlayerStatsListRow = {
+  player_slug: string;
+  player_name: string;
+  full_name: string | null;
+  team_slug: string | null;
+  team_name: string | null;
+  position_code: string;
+  position_group: string;
+  age: number | null;
+  shirt_number: number | null;
+  nationality: string | null;
+  photo_url: string | null;
+  in_current_squad: boolean;
+  has_stats: boolean;
+  appearances: number;
+  starts: number;
+  goals: number;
+  assists: number;
+  total_minutes: number;
+  avg_minutes: number | null;
+};

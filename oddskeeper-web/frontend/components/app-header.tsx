@@ -123,7 +123,7 @@ export default function AppHeader({ userEmail }: AppHeaderProps) {
                   title="Football"
                   subtitle="Türkiye Super League"
                   iconSrc="/icons/football.svg"
-                  playerHref="/dashboard/stats-analysis?sport=football&view=player"
+                  playerHref="/dashboard/stats-analysis/football/player-stats"
                   teamHref="/dashboard/stats-analysis/football/team-stats"
                   leagueHref={FOOTBALL_LEAGUE_DETAIL_HREF}
                 />
@@ -208,7 +208,7 @@ export default function AppHeader({ userEmail }: AppHeaderProps) {
           </Link>
 
           <Link
-            href="/dashboard/stats-analysis?sport=football&view=player"
+            href="/dashboard/stats-analysis/football/player-stats"
             className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2 text-xs font-medium text-white/72"
           >
             Football Player Stats
