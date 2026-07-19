@@ -16,7 +16,17 @@ type PlayerDetailHeaderProps = {
   profile: PlayerProfileRow;
   activeTab: ValidPlayerTab;
   currentInfo?: PlayerCurrentInfoRow | null;
+  marketValueEur?: number | null;
 };
+
+function formatMarketValue(value: number): string {
+  if (value >= 1_000_000) {
+    const millions = value / 1_000_000;
+    return `€${millions % 1 === 0 ? millions.toFixed(0) : millions.toFixed(1)}M`;
+  }
+
+  return `€${Math.round(value / 1_000)}K`;
+}
 
 // Tab görünür etiketleri: URL'de kullanılan tab değerleri (VALID_PLAYER_TABS)
 // değişmeden kalır, sadece görüntülenen metin çeviri anahtarına eşlenir.
@@ -50,6 +60,7 @@ export async function PlayerDetailHeader({
   profile,
   activeTab,
   currentInfo = null,
+  marketValueEur = null,
 }: PlayerDetailHeaderProps) {
   const t = await getT();
 
@@ -154,6 +165,17 @@ export async function PlayerDetailHeader({
                     <span className="text-white/40">•</span>
                     <span className="text-white/80">
                       {t("playerDetail.ageValue", { age: currentInfo.age })}
+                    </span>
+                  </>
+                ) : null}
+                {marketValueEur !== null ? (
+                  <>
+                    <span className="text-white/40">•</span>
+                    <span
+                      className="font-semibold text-emerald-300"
+                      title={t("common.marketValue")}
+                    >
+                      {formatMarketValue(marketValueEur)}
                     </span>
                   </>
                 ) : null}

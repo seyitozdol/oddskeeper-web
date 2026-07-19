@@ -18,4 +18,5 @@ export type PlayerStatsListRow = {
   assists: number;
   total_minutes: number;
   avg_minutes: number | null;
+  market_value_eur: number | null;
 };

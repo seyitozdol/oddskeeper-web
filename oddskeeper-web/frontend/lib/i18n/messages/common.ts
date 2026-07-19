@@ -43,6 +43,8 @@ export const common = defineMessages({
     opponent: "Opponent",
     result: "Result",
     score: "Score",
+    marketValue: "Market Value",
+    marketValueShort: "Value",
   },
   tr: {
     loading: "Yükleniyor...",
@@ -86,5 +88,7 @@ export const common = defineMessages({
     opponent: "Rakip",
     result: "Sonuç",
     score: "Skor",
+    marketValue: "Piyasa Değeri",
+    marketValueShort: "Değer",
   },
 });

@@ -22,6 +22,7 @@ type SortKey =
   | "team_name"
   | "position_code"
   | "age"
+  | "market_value_eur"
   | "appearances"
   | "starts"
   | "goals"
@@ -36,6 +37,7 @@ const DEFAULT_DIRECTIONS: Record<SortKey, SortDirection> = {
   team_name: "asc",
   position_code: "asc",
   age: "desc",
+  market_value_eur: "desc",
   appearances: "desc",
   starts: "desc",
   goals: "desc",
@@ -87,6 +89,7 @@ function getSortIndicator(
 
 function getMetricValue(row: PlayerStatsListRow, key: SortKey): number {
   if (key === "age") return row.age ?? -1;
+  if (key === "market_value_eur") return row.market_value_eur ?? -1;
   if (key === "appearances") return row.appearances;
   if (key === "starts") return row.starts;
   if (key === "goals") return row.goals;
@@ -94,6 +97,19 @@ function getMetricValue(row: PlayerStatsListRow, key: SortKey): number {
   if (key === "total_minutes") return row.total_minutes;
   if (key === "avg_minutes") return row.avg_minutes ?? -1;
   return 0;
+}
+
+function formatMarketValue(value: number | null): string {
+  if (value === null) {
+    return "—";
+  }
+
+  if (value >= 1_000_000) {
+    const millions = value / 1_000_000;
+    return `€${millions % 1 === 0 ? millions.toFixed(0) : millions.toFixed(1)}M`;
+  }
+
+  return `€${Math.round(value / 1_000)}K`;
 }
 
 function getDisplayName(row: PlayerStatsListRow) {
@@ -377,6 +393,13 @@ export default function PlayerStatsExplorer({
                 </th>
                 <th
                   className={headerCellClass}
+                  onClick={() => handleSort("market_value_eur")}
+                >
+                  {t("common.marketValueShort")}
+                  {getSortIndicator(sortKey, sortDirection, "market_value_eur")}
+                </th>
+                <th
+                  className={headerCellClass}
                   onClick={() => handleSort("appearances")}
                 >
                   {t("common.appearances")}
@@ -424,7 +447,7 @@ export default function PlayerStatsExplorer({
               {sortedRows.length === 0 ? (
                 <tr className="border-t border-white/10">
                   <td
-                    colSpan={10}
+                    colSpan={11}
                     className="px-4 py-8 text-center text-sm text-white/55"
                   >
                     {t("statsHub.noPlayersMatch")}
@@ -466,6 +489,9 @@ export default function PlayerStatsExplorer({
                     </td>
                     <td className="px-4 py-2">{row.position_code}</td>
                     <td className="px-4 py-2">{row.age ?? "—"}</td>
+                    <td className="whitespace-nowrap px-4 py-2">
+                      {formatMarketValue(row.market_value_eur)}
+                    </td>
                     <td className="px-4 py-2">
                       {row.has_stats ? row.appearances : "—"}
                     </td>

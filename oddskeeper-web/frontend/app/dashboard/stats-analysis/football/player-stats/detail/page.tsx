@@ -11,6 +11,7 @@ import { getPlayerMatchLog } from "@/features/player-detail/server/getPlayerMatc
 import { getPlayerMetricBenchmarks } from "@/features/player-detail/server/getPlayerMetricBenchmarks";
 import { getPlayerProfile } from "@/features/player-detail/server/getPlayerProfile";
 import { getPlayerCurrentInfo } from "@/features/player-detail/server/getPlayerCurrentInfo";
+import { getPlayerMarketValue } from "@/features/player-detail/server/getPlayerMarketValue";
 import type {
   PlayerCurrentInfoRow,
   PlayerProfileRow,
@@ -100,10 +101,11 @@ export default async function FootballPlayerDetailPage({
     );
   }
 
-  const [optaProfile, matchLog, currentInfo] = await Promise.all([
+  const [optaProfile, matchLog, currentInfo, marketValueEur] = await Promise.all([
     getPlayerProfile(playerSlug),
     getPlayerMatchLog(playerSlug),
     getPlayerCurrentInfo(playerSlug),
+    getPlayerMarketValue(playerSlug),
   ]);
 
   const profile =
@@ -147,6 +149,7 @@ export default async function FootballPlayerDetailPage({
         profile={profile}
         activeTab={activeTab}
         currentInfo={currentInfo}
+        marketValueEur={marketValueEur}
       />
 
       {activeTab === "overview" ? (

@@ -50,7 +50,7 @@ function toNumberOrNull(value: number | string | null): number | null {
 export async function getPlayerStatsList(): Promise<PlayerStatsListRow[]> {
   const supabase = await createClient();
 
-  const [currentInfoResult, profileResult] = await Promise.all([
+  const [currentInfoResult, profileResult, marketValueResult] = await Promise.all([
     supabase
       .schema("analytics")
       .from("player_current_info_v1")
@@ -94,6 +94,13 @@ export async function getPlayerStatsList(): Promise<PlayerStatsListRow[]> {
       )
       .limit(2000)
       .returns<ProfileDbRow[]>(),
+
+    supabase
+      .schema("analytics")
+      .from("player_market_value_v1")
+      .select("player_slug, market_value_eur")
+      .limit(2000)
+      .returns<{ player_slug: string; market_value_eur: number | null }[]>(),
   ]);
 
   if (currentInfoResult.error) {
@@ -114,6 +121,12 @@ export async function getPlayerStatsList(): Promise<PlayerStatsListRow[]> {
 
   const currentInfoRows = currentInfoResult.data ?? [];
   const profileRows = profileResult.data ?? [];
+  const marketValueBySlug = new Map(
+    (marketValueResult.data ?? []).map((row) => [
+      row.player_slug,
+      row.market_value_eur,
+    ])
+  );
 
   const profileBySlug = new Map(
     profileRows.map((row) => [row.player_slug, row])
@@ -145,6 +158,7 @@ export async function getPlayerStatsList(): Promise<PlayerStatsListRow[]> {
       photo_url: info.photo_url,
       in_current_squad: true,
       has_stats: Boolean(profile),
+      market_value_eur: marketValueBySlug.get(info.player_slug) ?? null,
       appearances: profile?.appearances ?? 0,
       starts: profile?.starts ?? 0,
       goals: profile?.goals ?? 0,
@@ -174,6 +188,7 @@ export async function getPlayerStatsList(): Promise<PlayerStatsListRow[]> {
       photo_url: null,
       in_current_squad: false,
       has_stats: true,
+      market_value_eur: marketValueBySlug.get(profile.player_slug) ?? null,
       appearances: profile.appearances,
       starts: profile.starts,
       goals: profile.goals,
