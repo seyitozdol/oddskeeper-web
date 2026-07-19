@@ -20,3 +20,8 @@ __pycache__/
 # OS
 .DS_Store
 Thumbs.db
+
+# Pipeline calisma verileri (yeniden uretilebilir) ve venv
+pipeline/data/
+pipeline/.venv/
+pipeline/.env
