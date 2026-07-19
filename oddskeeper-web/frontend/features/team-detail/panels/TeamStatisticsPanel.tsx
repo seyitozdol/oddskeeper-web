@@ -1,5 +1,6 @@
 import { getT } from "@/lib/i18n/server";
 import { CompactInfoCard } from "../components/CompactInfoCard";
+import { SeasonSelect } from "../components/SeasonSelect";
 import { LastFiveMatchesList } from "../components/LastFiveMatchesList";
 import { RecentFormStrip } from "../components/RecentFormStrip";
 import { SplitStatsTable } from "../components/SplitStatsTable";
@@ -23,6 +24,8 @@ type TeamStatisticsPanelProps = {
   summary: TeamStatisticsSummaryRow | null;
   splits?: TeamStatisticsSplitRow[];
   recentForm?: TeamRecentFormRow[];
+  teamSlug?: string;
+  seasons?: string[];
 };
 
 export async function TeamStatisticsPanel({
@@ -30,6 +33,8 @@ export async function TeamStatisticsPanel({
   summary,
   splits = [],
   recentForm = [],
+  teamSlug,
+  seasons = [],
 }: TeamStatisticsPanelProps) {
   const t = await getT();
 
@@ -104,7 +109,15 @@ export async function TeamStatisticsPanel({
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-white/48">
         <span>{summary.competition ?? "—"}</span>
         <span className="text-white/20">•</span>
-        <span>{summary.season_label ?? "—"}</span>
+        {teamSlug && seasons.length > 1 ? (
+          <SeasonSelect
+            teamSlug={teamSlug}
+            seasons={seasons}
+            selectedSeason={summary.season_label}
+          />
+        ) : (
+          <span>{summary.season_label ?? "—"}</span>
+        )}
         <span className="text-white/20">•</span>
         <span>
           {t("teamDetail.updatedThrough", {

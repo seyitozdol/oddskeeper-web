@@ -32,6 +32,7 @@ type TeamDetailPageProps = {
     team?: string;
     tab?: string;
     opponent?: string;
+    season?: string;
   }>;
 };
 
@@ -58,6 +59,7 @@ export default async function TeamDetailPage({
   const resolvedSearchParams = await searchParams;
   const teamSlug = resolvedSearchParams.team;
   const activeTab = getValidTab(resolvedSearchParams.tab);
+  const requestedSeason = resolvedSearchParams.season;
 
   const opponentSlug = resolvedSearchParams.opponent;
 
@@ -96,29 +98,47 @@ export default async function TeamDetailPage({
   ] = await Promise.all([
     getTeamProfile(teamSlug),
     activeTab === "results" ? getTeamResults(teamSlug) : Promise.resolve([]),
-    activeTab === "season-history"
+    activeTab === "season-history" || activeTab === "team-statistics"
       ? getTeamSeasonHistory(teamSlug)
       : Promise.resolve([]),
     activeTab === "squad" ? getTeamSquad(teamSlug) : Promise.resolve([]),
     activeTab === "squad" ? getTeamCurrentSquad(teamSlug) : Promise.resolve([]),
     activeTab === "fixture" ? getTeamFixtures(teamSlug) : Promise.resolve([]),
-    activeTab === "team-statistics" ||
-    activeTab === "detailed-stats" ||
-    activeTab === "advanced"
+    activeTab === "detailed-stats" || activeTab === "advanced"
       ? getTeamStatisticsSummary(teamSlug)
       : Promise.resolve(null),
   ]);
 
+  // Takım İstatistikleri sekmesi geçmiş sezonları da destekler: özet,
+  // sezon geçmişi satırlarından seçilen sezona göre alınır.
+  const seasonsSorted = [...seasonHistoryRows].sort((a, b) =>
+    (b.season_label ?? "").localeCompare(a.season_label ?? "")
+  );
+  const statsSummary =
+    activeTab === "team-statistics"
+      ? seasonsSorted.find((row) => row.season_label === requestedSeason) ??
+        seasonsSorted[0] ??
+        null
+      : summary;
+
   const [splitRows, recentFormRows, detailedMetricRows] = await Promise.all([
     activeTab === "team-statistics" &&
-    summary?.competition &&
-    summary?.season_label
-      ? getTeamStatisticsSplit(teamSlug, summary.competition, summary.season_label)
+    statsSummary?.competition &&
+    statsSummary?.season_label
+      ? getTeamStatisticsSplit(
+          teamSlug,
+          statsSummary.competition,
+          statsSummary.season_label
+        )
       : Promise.resolve([]),
     (activeTab === "team-statistics" || activeTab === "advanced") &&
-    summary?.competition &&
-    summary?.season_label
-      ? getTeamRecentForm(teamSlug, summary.competition, summary.season_label)
+    statsSummary?.competition &&
+    statsSummary?.season_label
+      ? getTeamRecentForm(
+          teamSlug,
+          statsSummary.competition,
+          statsSummary.season_label
+        )
       : Promise.resolve([]),
     (activeTab === "detailed-stats" || activeTab === "advanced") &&
     summary?.season_label
@@ -168,9 +188,13 @@ export default async function TeamDetailPage({
         {activeTab === "team-statistics" ? (
           <TeamStatisticsPanel
             teamProfile={teamProfile}
-            summary={summary}
+            summary={statsSummary}
             splits={splitRows}
             recentForm={recentFormRows}
+            teamSlug={teamSlug}
+            seasons={seasonsSorted
+              .map((row) => row.season_label)
+              .filter((label): label is string => Boolean(label))}
           />
         ) : activeTab === "detailed-stats" ? (
           <DetailedStatsPanel rows={detailedMetricRows} />

@@ -143,7 +143,15 @@ export default async function LeagueDetailPage({ searchParams }: PageProps) {
 
   switch (activeTab) {
     case "overview":
-      overviewData = await getLeagueOverview(competition, season);
+      // Genel bakış paneli puan durumu, sonuç ve fikstür özetleri de
+      // gösterir; hepsi paralel çekilir.
+      [overviewData, standingsData, resultsData, fixturesData] =
+        await Promise.all([
+          getLeagueOverview(competition, season),
+          getLeagueStandings(competition, season),
+          getLeagueResults(competition, season),
+          getLeagueFixtures(competition, season),
+        ]);
       break;
 
     case "standings":
@@ -182,6 +190,9 @@ export default async function LeagueDetailPage({ searchParams }: PageProps) {
         categoryScopedOptions.find((item) => item.metric_key === requestedMetric)
           ?.metric_key ??
         playerMetricOptions.find((item) => item.metric_key === requestedMetric)
+          ?.metric_key ??
+        // Metrik seçilmemişse alfabetik ilk metrik yerine gol ile başla.
+        categoryScopedOptions.find((item) => item.metric_key === "goals_total")
           ?.metric_key ??
         categoryScopedOptions[0]?.metric_key ??
         playerMetricOptions[0]?.metric_key ??
@@ -260,7 +271,12 @@ export default async function LeagueDetailPage({ searchParams }: PageProps) {
       </div>
 
       {activeTab === "overview" && overviewData ? (
-        <LeagueOverviewPanel overview={overviewData} />
+        <LeagueOverviewPanel
+          overview={overviewData}
+          standings={standingsData}
+          results={resultsData}
+          fixtures={fixturesData}
+        />
       ) : null}
 
       {activeTab === "standings" ? (

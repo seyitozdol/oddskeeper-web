@@ -360,12 +360,19 @@ export function LeagueTeamLeadersPanel({
       (option) => option.key === selectedMetricKey
     );
     if (!exists) {
-      setSelectedMetricKey(metricOptions[0].key);
+      // Metrik seçilmemişse alfabetik ilk metrik yerine gol ile başla.
+      setSelectedMetricKey(
+        metricOptions.find((option) => option.key === "team_goals")?.key ??
+          metricOptions[0].key
+      );
     }
   }, [metricOptions, selectedMetricKey]);
 
   const metricRows = useMemo(() => {
-    const metricKey = selectedMetricKey || metricOptions[0]?.key;
+    const metricKey =
+      selectedMetricKey ||
+      metricOptions.find((option) => option.key === "team_goals")?.key ||
+      metricOptions[0]?.key;
     if (!metricKey) return [];
 
     return rows
@@ -522,9 +529,6 @@ export function LeagueTeamLeadersPanel({
             </div>
             <div className="mt-2 text-[15px] font-semibold text-white">
               {metricDefinition.titleText}
-            </div>
-            <div className="mt-1 max-w-[760px] text-[12px] leading-5 text-white/58">
-              {metricDefinition.text}
             </div>
           </div>
 

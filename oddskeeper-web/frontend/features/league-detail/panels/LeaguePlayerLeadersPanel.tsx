@@ -349,8 +349,21 @@ export function LeaguePlayerLeadersPanel({
   }, [metricOptions]);
 
   const categoryScopedMetricOptions = useMemo(() => {
-    if (currentCategory === "all") return metricOptions;
-    return metricOptions.filter((row) => row.category_key === currentCategory);
+    const scoped =
+      currentCategory === "all"
+        ? metricOptions
+        : metricOptions.filter((row) => row.category_key === currentCategory);
+
+    // Menü kategori + metrik adına göre sıralı olsun; karışık sıra okunmuyor.
+    return [...scoped].sort((a, b) => {
+      const byCategory = (a.category_label ?? a.category_key ?? "").localeCompare(
+        b.category_label ?? b.category_key ?? ""
+      );
+      if (byCategory !== 0) return byCategory;
+      return (a.metric_label ?? a.metric_key).localeCompare(
+        b.metric_label ?? b.metric_key
+      );
+    });
   }, [metricOptions, currentCategory]);
 
   const availableTeams = useMemo(() => {
@@ -641,9 +654,6 @@ export function LeaguePlayerLeadersPanel({
               {metricDefinition.titleText}
             </div>
 
-            <div className="mt-1 text-[12px] leading-5 text-white/58">
-              {metricDefinition.text}
-            </div>
           </div>
 
           <div className="flex flex-col gap-2 xl:items-end">
@@ -697,10 +707,23 @@ export function LeaguePlayerLeadersPanel({
                 onChange={(event) => handleMetricChange(event.target.value)}
                 className="min-w-[220px] rounded-lg border border-white/10 bg-[#0d1624] px-3 py-2 text-[13px] text-white outline-none transition focus:border-[#4da2ff]/40"
               >
-                {categoryScopedMetricOptions.map((option) => (
-                  <option key={option.metric_key} value={option.metric_key}>
-                    {option.metric_label}
-                  </option>
+                {Object.entries(
+                  categoryScopedMetricOptions.reduce<
+                    Record<string, typeof categoryScopedMetricOptions>
+                  >((groups, option) => {
+                    const groupLabel =
+                      option.category_label ?? option.category_key ?? "";
+                    (groups[groupLabel] ??= []).push(option);
+                    return groups;
+                  }, {})
+                ).map(([groupLabel, options]) => (
+                  <optgroup key={groupLabel} label={groupLabel}>
+                    {options.map((option) => (
+                      <option key={option.metric_key} value={option.metric_key}>
+                        {option.metric_label}
+                      </option>
+                    ))}
+                  </optgroup>
                 ))}
               </select>
             </div>

@@ -17,10 +17,6 @@ export default async function FootballTeamStatsPage() {
           <h1 className="text-3xl font-semibold text-white lg:text-5xl">
             {t("statsHub.teamStatsTitle")}
           </h1>
-
-          <p className="mt-4 max-w-2xl text-sm leading-7 text-white/70 lg:text-base">
-            {t("statsHub.teamStatsDescription")}
-          </p>
         </div>
 
         {teams.length === 0 ? (

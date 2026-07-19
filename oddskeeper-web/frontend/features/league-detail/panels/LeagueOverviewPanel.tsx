@@ -293,7 +293,6 @@ export async function LeagueOverviewPanel({
           <MiniSplitCard
             label={t("leagueDetail.homeEdge")}
             value={formatPctPoint(homeEdge)}
-            subvalue={t("leagueDetail.homeEdgeSubvalue")}
             toneClass="border-white/10 bg-white/[0.03]"
           />
         </div>

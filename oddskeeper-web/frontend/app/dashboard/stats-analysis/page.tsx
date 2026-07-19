@@ -13,10 +13,6 @@ export default async function StatsAnalysisPage() {
         <h1 className="text-3xl font-semibold text-white lg:text-5xl">
           {t("statsHub.hubTitle")}
         </h1>
-
-        <p className="mt-4 max-w-2xl text-sm leading-7 text-white/70 lg:text-base">
-          {t("statsHub.hubDescription")}
-        </p>
       </div>
     </section>
   );
