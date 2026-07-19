@@ -13,6 +13,7 @@ type Props = {
   initialData: TeamComparisonResult;
   currentTeamSlug: string;
   availableTeams: { slug: string; name: string }[];
+  seasonLabel?: string | null;
 };
 
 type SplitKey = "overall" | "home" | "away";
@@ -167,6 +168,7 @@ export default function TeamComparisonPanel({
   initialData,
   currentTeamSlug,
   availableTeams,
+  seasonLabel,
 }: Props) {
   const { t } = useI18n();
   const [data, setData] = useState<TeamComparisonResult>(initialData);
@@ -180,7 +182,9 @@ export default function TeamComparisonPanel({
     setLoading(true);
     try {
       const res = await fetch(
-        `/api/team-comparison?a=${currentTeamSlug}&b=${newOpponent}&split=${newSplit}`
+        `/api/team-comparison?a=${currentTeamSlug}&b=${newOpponent}&split=${newSplit}${
+          seasonLabel ? `&season=${encodeURIComponent(seasonLabel)}` : ""
+        }`
       );
       if (res.ok) {
         const json = await res.json();

@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useI18n } from "@/lib/i18n/LanguageProvider";
 import type { Translator } from "@/lib/i18n/messages";
+import { categoryLabel, metricLabel } from "@/lib/i18n/metricLabel";
 import { TeamMetricLeaderboardDrawer } from "../components/TeamMetricLeaderboardDrawer";
 import type {
   TeamDetailedCategoryKey,
@@ -101,12 +102,12 @@ function formatMetricValue(
 
 function getMetricDisplayProfile(row: TeamDetailedMetricRow): MetricDisplayProfile {
   const metricKey = row.metric_key.toLowerCase();
-  const metricLabel = row.metric_label.toLowerCase();
+  const metricLabelText = row.metric_label.toLowerCase();
   const valueFormat = row.value_format;
 
   if (
     valueFormat === "pct_1" ||
-    metricLabel.includes("%") ||
+    metricLabelText.includes("%") ||
     metricKey.includes("_pct")
   ) {
     return "pct";
@@ -440,11 +441,13 @@ export default function DetailedStatsPanel({
         return priorityA - priorityB;
       }
 
-      return a.metric_label.localeCompare(b.metric_label);
+      return metricLabel(t, a.metric_key, a.metric_label).localeCompare(
+        metricLabel(t, b.metric_key, b.metric_label)
+      );
     });
 
     return sorted;
-  }, [rows, activeCategory, sortConfig]);
+  }, [rows, activeCategory, sortConfig, t]);
 
   const metricOptions = useMemo(() => {
     const uniqueMap = new Map<string, string>();
@@ -455,9 +458,9 @@ export default function DetailedStatsPanel({
       }
     });
 
-    return Array.from(uniqueMap.entries()).map(([metricKey, metricLabel]) => ({
-      metricKey,
-      metricLabel,
+    return Array.from(uniqueMap.entries()).map(([metricKeyValue, metricLabelValue]) => ({
+      metricKey: metricKeyValue,
+      metricLabel: metricLabelValue,
     }));
   }, [rows]);
 
@@ -550,11 +553,11 @@ export default function DetailedStatsPanel({
 
     return {
       strongestEdge: strongestRow
-        ? `${strongestRow.metric_label} (#${strongestRow.league_rank})`
+        ? `${metricLabel(t, strongestRow.metric_key, strongestRow.metric_label)} (#${strongestRow.league_rank})`
         : t("teamDetail.strongestEdgeDefaultNoEdge"),
       strongestEdgeSub: strongestRow
         ? t("teamDetail.categoryVsAvgSub", {
-            category: strongestRow.category_label,
+            category: categoryLabel(t, strongestRow.category_key, strongestRow.category_label),
             pct: formatMetricValue(strongestRow.vs_league_avg_pct, "pct_1"),
           })
         : t("teamDetail.strongestEdgeDefaultSub"),
@@ -563,11 +566,11 @@ export default function DetailedStatsPanel({
         : ("neutral" as SummaryTone),
 
       mainWeakness: weakestRow
-        ? `${weakestRow.metric_label} (#${weakestRow.league_rank})`
+        ? `${metricLabel(t, weakestRow.metric_key, weakestRow.metric_label)} (#${weakestRow.league_rank})`
         : t("teamDetail.mainWeaknessDefaultNoWeakness"),
       mainWeaknessSub: weakestRow
         ? t("teamDetail.categoryVsAvgSub", {
-            category: weakestRow.category_label,
+            category: categoryLabel(t, weakestRow.category_key, weakestRow.category_label),
             pct: formatMetricValue(weakestRow.vs_league_avg_pct, "pct_1"),
           })
         : t("teamDetail.mainWeaknessDefaultSub"),
@@ -576,14 +579,18 @@ export default function DetailedStatsPanel({
         : ("neutral" as SummaryTone),
 
       biggestPositiveDelta: biggestPositiveDeltaRow
-        ? `${biggestPositiveDeltaRow.metric_label} (${formatMetricValue(
+        ? `${metricLabel(t, biggestPositiveDeltaRow.metric_key, biggestPositiveDeltaRow.metric_label)} (${formatMetricValue(
             biggestPositiveDeltaRow.vs_league_avg_pct,
             "pct_1"
           )})`
         : "—",
       biggestPositiveDeltaSub: biggestPositiveDeltaRow
         ? t("teamDetail.categoryRankSub", {
-            category: biggestPositiveDeltaRow.category_label,
+            category: categoryLabel(
+              t,
+              biggestPositiveDeltaRow.category_key,
+              biggestPositiveDeltaRow.category_label
+            ),
             rank: biggestPositiveDeltaRow.league_rank ?? "—",
           })
         : undefined,
@@ -592,7 +599,7 @@ export default function DetailedStatsPanel({
         : ("neutral" as SummaryTone),
 
       biggestSplitGap: biggestGapRow
-        ? `${biggestGapRow.metric_label} • ${formatMetricCell(
+        ? `${metricLabel(t, biggestGapRow.metric_key, biggestGapRow.metric_label)} • ${formatMetricCell(
             biggestGapRow,
             biggestGapRow.home_away_gap_abs,
             "gap"
@@ -792,12 +799,12 @@ export default function DetailedStatsPanel({
                   className="border-t border-white/10 text-[13px] text-white/80 transition hover:bg-white/[0.02]"
                 >
                   <td className="px-4 py-2 font-medium whitespace-nowrap text-white">
-                    {row.metric_label}
+                    {metricLabel(t, row.metric_key, row.metric_label)}
                   </td>
 
                   {showCategoryColumn ? (
                     <td className="px-4 py-2 whitespace-nowrap text-white/58">
-                      {row.category_label}
+                      {categoryLabel(t, row.category_key, row.category_label)}
                     </td>
                   ) : null}
 

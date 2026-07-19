@@ -1,4 +1,5 @@
 import { createClient } from "../../../lib/supabase/server";
+import { getPlayerDisplayNameMap } from "../../../lib/player-display-names";
 import type { TeamCurrentSquadRow } from "../types";
 
 export async function getTeamCurrentSquad(
@@ -42,5 +43,15 @@ export async function getTeamCurrentSquad(
     return [];
   }
 
-  return data ?? [];
+  const rows = data ?? [];
+  const nameMap = await getPlayerDisplayNameMap(
+    rows.map((row) => row.player_slug)
+  );
+
+  return rows.map((row) => ({
+    ...row,
+    player_name:
+      (row.player_slug ? nameMap.get(row.player_slug) : null) ??
+      row.player_name,
+  }));
 }

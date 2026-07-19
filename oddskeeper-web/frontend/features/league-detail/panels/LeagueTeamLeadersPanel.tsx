@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import TeamLink from "@/components/links/TeamLink";
 import { useI18n } from "@/lib/i18n/LanguageProvider";
 import type { Translator } from "@/lib/i18n/messages";
+import { categoryLabel, metricLabel } from "@/lib/i18n/metricLabel";
 
 type LeagueTeamLeaderboardRow = {
   competition?: string | null;
@@ -188,7 +189,7 @@ function getMetricDefinition(
       : t("leagueDetail.buttonPerMatch");
 
   const key = (row.metric_key ?? "").toLowerCase();
-  const label = row.metric_label ?? t("leagueDetail.defaultSelectedMetric");
+  const label = metricLabel(t, row.metric_key, row.metric_label) || t("leagueDetail.defaultSelectedMetric");
 
   let titleText = label;
   let text = t("leagueDetail.defaultTeamMetricText");
@@ -339,7 +340,7 @@ export function LeagueTeamLeadersPanel({
       if (!unique.has(key)) {
         unique.set(key, {
           key,
-          label: row.metric_label ?? key,
+          label: metricLabel(t, row.metric_key, row.metric_label),
           category: row.category_key,
         });
       }
@@ -348,7 +349,7 @@ export function LeagueTeamLeadersPanel({
     return Array.from(unique.values()).sort((a, b) =>
       a.label.localeCompare(b.label)
     );
-  }, [filteredByCategory]);
+  }, [filteredByCategory, t]);
 
   useEffect(() => {
     if (!metricOptions.length) {
@@ -518,7 +519,8 @@ export function LeagueTeamLeadersPanel({
                   selectedMetricRow.category_key
                 )}`}
               >
-                {selectedMetricRow.category_label ?? t("leagueDetail.categoryGeneral")}
+                {categoryLabel(t, selectedMetricRow.category_key, selectedMetricRow.category_label) ||
+                  t("leagueDetail.categoryGeneral")}
               </span>
               <span className="inline-flex rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-1 text-[11px] font-medium text-white/70">
                 {metricDefinition.directionLabel}
@@ -614,8 +616,8 @@ export function LeagueTeamLeadersPanel({
         <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
           <MetricSummaryCard
             label={t("leagueDetail.selectedMetricLabel")}
-            value={selectedMetricRow.metric_label ?? "—"}
-            subvalue={selectedMetricRow.category_label ?? "—"}
+            value={metricLabel(t, selectedMetricRow.metric_key, selectedMetricRow.metric_label)}
+            subvalue={categoryLabel(t, selectedMetricRow.category_key, selectedMetricRow.category_label)}
           />
           <MetricSummaryCard
             label={t("leagueDetail.leagueLeaderLabel")}

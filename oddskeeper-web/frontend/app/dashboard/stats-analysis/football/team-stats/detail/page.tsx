@@ -15,7 +15,8 @@ import { getTeamResults } from "../../../../../../features/team-detail/server/ge
 import { getTeamSquad } from "../../../../../../features/team-detail/server/getTeamSquad";
 import { getTeamCurrentSquad } from "../../../../../../features/team-detail/server/getTeamCurrentSquad";
 import { getTeamStatisticsSplit } from "../../../../../../features/team-detail/server/getTeamStatisticsSplit";
-import { getTeamStatisticsSummary } from "../../../../../../features/team-detail/server/getTeamStatisticsSummary";
+import { SeasonSelect } from "../../../../../../features/team-detail/components/SeasonSelect";
+import { getT } from "@/lib/i18n/server";
 import { getTeamSeasonHistory } from "../../../../../../features/team-detail/server/getTeamSeasonHistory";
 import { SeasonHistoryPanel } from "../../../../../../features/team-detail/panels/SeasonHistoryPanel";
 import { getTeamComparison } from "../../../../../../features/team-detail/server/getTeamComparison";
@@ -68,7 +69,8 @@ export default async function TeamDetailPage({
         ? await getTeamComparison(
             teamSlug,
             opponentSlug ?? "galatasaray",
-            "overall"
+            "overall",
+            requestedSeason ?? null
             )
         : null;
 
@@ -86,6 +88,11 @@ export default async function TeamDetailPage({
     notFound();
   }
 
+  // Fikstür sekmesinde geçmiş sezon seçilirse yaklaşan fikstür yerine o
+  // sezonun oynanmış programı (sonuçlarla) gösterilir.
+  const fixturePastSeason =
+    activeTab === "fixture" && requestedSeason ? requestedSeason : null;
+
   // Birbirinden bağımsız sorgular paralel; summary'e bağımlı olanlar ikinci grupta.
   const [
     teamProfile,
@@ -94,32 +101,39 @@ export default async function TeamDetailPage({
     squadRows,
     currentSquadRows,
     fixtureRows,
-    summary,
   ] = await Promise.all([
     getTeamProfile(teamSlug),
-    activeTab === "results" ? getTeamResults(teamSlug) : Promise.resolve([]),
-    activeTab === "season-history" || activeTab === "team-statistics"
-      ? getTeamSeasonHistory(teamSlug)
+    activeTab === "results" || fixturePastSeason
+      ? getTeamResults(teamSlug, requestedSeason ?? null)
       : Promise.resolve([]),
+    getTeamSeasonHistory(teamSlug),
     activeTab === "squad" ? getTeamSquad(teamSlug) : Promise.resolve([]),
     activeTab === "squad" ? getTeamCurrentSquad(teamSlug) : Promise.resolve([]),
-    activeTab === "fixture" ? getTeamFixtures(teamSlug) : Promise.resolve([]),
-    activeTab === "detailed-stats" || activeTab === "advanced"
-      ? getTeamStatisticsSummary(teamSlug)
-      : Promise.resolve(null),
+    activeTab === "fixture" && !fixturePastSeason
+      ? getTeamFixtures(teamSlug)
+      : Promise.resolve([]),
   ]);
 
-  // Takım İstatistikleri sekmesi geçmiş sezonları da destekler: özet,
-  // sezon geçmişi satırlarından seçilen sezona göre alınır.
+  // Sekmelerin çoğu geçmiş sezonları destekler: özet, sezon geçmişi
+  // satırlarından seçilen sezona göre alınır (varsayılan: en güncel sezon).
   const seasonsSorted = [...seasonHistoryRows].sort((a, b) =>
     (b.season_label ?? "").localeCompare(a.season_label ?? "")
   );
+  const seasonLabels = seasonsSorted
+    .map((row) => row.season_label)
+    .filter((label): label is string => Boolean(label));
   const statsSummary =
-    activeTab === "team-statistics"
-      ? seasonsSorted.find((row) => row.season_label === requestedSeason) ??
-        seasonsSorted[0] ??
-        null
-      : summary;
+    seasonsSorted.find((row) => row.season_label === requestedSeason) ??
+    seasonsSorted[0] ??
+    null;
+
+  // Sonuçlar sekmesi: sezon seçilmemişse en güncel sezona daralt.
+  const resultsRows =
+    activeTab === "results" && !requestedSeason && statsSummary?.season_label
+      ? teamResults.filter(
+          (row) => row.season_label === statsSummary.season_label
+        )
+      : teamResults;
 
   const [splitRows, recentFormRows, detailedMetricRows] = await Promise.all([
     activeTab === "team-statistics" &&
@@ -141,22 +155,26 @@ export default async function TeamDetailPage({
         )
       : Promise.resolve([]),
     (activeTab === "detailed-stats" || activeTab === "advanced") &&
-    summary?.season_label
-      ? getTeamDetailedMetrics(teamSlug, { seasonLabel: summary.season_label })
+    statsSummary?.season_label
+      ? getTeamDetailedMetrics(teamSlug, {
+          seasonLabel: statsSummary.season_label,
+        })
       : Promise.resolve([]),
   ]);
 
   const advancedForm: TeamAdvancedFormSnapshot | undefined =
-    summary && recentFormRows.length > 0
+    statsSummary && recentFormRows.length > 0
       ? {
-          season_points_per_game: toNullableNumber(summary.points_per_game),
+          season_points_per_game: toNullableNumber(
+            statsSummary.points_per_game
+          ),
           last5_points_per_game:
             recentFormRows.reduce(
               (sum, row) => sum + (toNullableNumber(row.result_points) ?? 0),
               0
             ) / recentFormRows.length,
           season_goals_for_per_game: toNullableNumber(
-            summary.goals_for_per_game
+            statsSummary.goals_for_per_game
           ),
           last5_goals_for_per_game:
             recentFormRows.reduce(
@@ -164,7 +182,7 @@ export default async function TeamDetailPage({
               0
             ) / recentFormRows.length,
           season_goals_against_per_game: toNullableNumber(
-            summary.goals_against_per_game
+            statsSummary.goals_against_per_game
           ),
           last5_goals_against_per_game:
             recentFormRows.reduce(
@@ -174,6 +192,26 @@ export default async function TeamDetailPage({
         }
       : undefined;
 
+  const t = await getT();
+
+  // Sezon seçici gösterilen sekmeler ve sekmeye göre seçili sezon.
+  const SEASON_TABS: ValidTab[] = [
+    "team-statistics",
+    "detailed-stats",
+    "advanced",
+    "results",
+    "fixture",
+    "comparison",
+  ];
+  const selectedSeasonForTab =
+    activeTab === "fixture"
+      ? requestedSeason ?? "upcoming"
+      : activeTab === "comparison"
+      ? comparisonData?.season_label ?? requestedSeason ?? null
+      : activeTab === "results"
+      ? requestedSeason ?? statsSummary?.season_label ?? null
+      : statsSummary?.season_label ?? null;
+
   return (
     <section className="w-full">
       <TeamDetailHeader
@@ -181,8 +219,37 @@ export default async function TeamDetailPage({
         teamName={teamProfile?.display_name ?? localTeam.name}
         teamSlug={localTeam.slug}
         activeTab={activeTab}
-        resultsCount={teamResults.length}
+        resultsCount={resultsRows.length}
       />
+
+      {SEASON_TABS.includes(activeTab) && seasonLabels.length > 1 ? (
+        <div className="mt-3 flex items-center justify-end gap-3">
+          {fixturePastSeason ? (
+            <span className="text-[12px] text-white/45">
+              {t("teamDetail.pastSeasonScheduleNote")}
+            </span>
+          ) : null}
+          <SeasonSelect
+            teamSlug={teamSlug}
+            tab={activeTab}
+            seasons={seasonLabels}
+            selectedSeason={selectedSeasonForTab}
+            extraParams={
+              activeTab === "comparison" && opponentSlug
+                ? { opponent: opponentSlug }
+                : undefined
+            }
+            leadingOption={
+              activeTab === "fixture"
+                ? {
+                    value: "upcoming",
+                    label: t("teamDetail.upcomingFixturesOption"),
+                  }
+                : null
+            }
+          />
+        </div>
+      ) : null}
 
       <div className="mt-3 rounded-[18px] border border-white/10 bg-[linear-gradient(180deg,rgba(8,14,24,0.90),rgba(5,10,18,0.96))] p-3 shadow-[0_0_16px_rgba(34,104,189,0.03)]">
         {activeTab === "team-statistics" ? (
@@ -191,10 +258,6 @@ export default async function TeamDetailPage({
             summary={statsSummary}
             splits={splitRows}
             recentForm={recentFormRows}
-            teamSlug={teamSlug}
-            seasons={seasonsSorted
-              .map((row) => row.season_label)
-              .filter((label): label is string => Boolean(label))}
           />
         ) : activeTab === "detailed-stats" ? (
           <DetailedStatsPanel rows={detailedMetricRows} />
@@ -206,16 +269,21 @@ export default async function TeamDetailPage({
         ) : activeTab === "season-history" ? (
           <SeasonHistoryPanel rows={seasonHistoryRows} />
         ) : activeTab === "results" ? (
-          <ResultsPanel rows={teamResults} />
+          <ResultsPanel rows={resultsRows} />
         ) : activeTab === "squad" ? (
           <SquadPanel rows={squadRows} currentSquad={currentSquadRows} />
         ) : activeTab === "fixture" ? (
-          <FixturePanel rows={fixtureRows} />
+          fixturePastSeason ? (
+            <ResultsPanel rows={resultsRows} />
+          ) : (
+            <FixturePanel rows={fixtureRows} />
+          )
         ) : activeTab === "comparison" && comparisonData ? (
           <TeamComparisonPanel
             initialData={comparisonData}
             currentTeamSlug={teamSlug}
             availableTeams={allTeams.map((t) => ({ slug: t.slug, name: t.name }))}
+            seasonLabel={comparisonData.season_label ?? null}
           />
          ) : null}
       </div>

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useI18n } from "@/lib/i18n/LanguageProvider";
 import type { Translator } from "@/lib/i18n/messages";
+import { metricLabel } from "@/lib/i18n/metricLabel";
 import type { PlayerMetricLeaderboardRow } from "../types";
 
 type MetricOption = {
@@ -374,11 +375,9 @@ export function PlayerMetricLeaderboardDrawer({
       (option) => option.metricKey === selectedMetricKey
     );
 
-    if (fromOptions?.metricLabel) {
-      return fromOptions.metricLabel;
-    }
-
-    return initialMetricLabel ?? t("playerDetail.metricLabel");
+    const fallbackLabel = fromOptions?.metricLabel ?? initialMetricLabel;
+    const label = metricLabel(t, selectedMetricKey, fallbackLabel);
+    return label || t("playerDetail.metricLabel");
   }, [metricOptions, selectedMetricKey, initialMetricLabel, t]);
 
   const normalizedRows = useMemo(() => {
@@ -633,7 +632,7 @@ export function PlayerMetricLeaderboardDrawer({
                       value={option.metricKey}
                       className="bg-[#0b1220] text-white"
                     >
-                      {option.metricLabel}
+                      {metricLabel(t, option.metricKey, option.metricLabel)}
                     </option>
                   ))}
                 </select>

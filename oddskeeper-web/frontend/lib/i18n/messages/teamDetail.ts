@@ -105,6 +105,8 @@ export const teamDetail = defineMessages({
 
     // FixturePanel
     noFixtureData: "No fixture data found for this team.",
+    upcomingFixturesOption: "Upcoming fixtures",
+    pastSeasonScheduleNote: "Season schedule with results",
     statusUnknown: "Unknown",
     statusScheduled: "Scheduled",
     statusCompleted: "Completed",
@@ -338,6 +340,8 @@ export const teamDetail = defineMessages({
 
     // FixturePanel
     noFixtureData: "Bu takım için fikstür verisi bulunamadı.",
+    upcomingFixturesOption: "Yaklaşan fikstür",
+    pastSeasonScheduleNote: "Sezon programı ve sonuçları",
     statusUnknown: "Bilinmiyor",
     statusScheduled: "Planlandı",
     statusCompleted: "Tamamlandı",

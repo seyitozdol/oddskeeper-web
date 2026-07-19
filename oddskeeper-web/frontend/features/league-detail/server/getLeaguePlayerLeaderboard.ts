@@ -1,4 +1,5 @@
 import { createClient } from "../../../lib/supabase/server";
+import { getPlayerDisplayNameMap } from "../../../lib/player-display-names";
 
 export type LeaguePlayerMetricOption = {
   metric_key: string;
@@ -201,5 +202,15 @@ export async function getLeaguePlayerLeaderboard({
     return [];
   }
 
-  return (data ?? []).map(mapLeaderboardRow);
+  const rows = (data ?? []).map(mapLeaderboardRow);
+  const nameMap = await getPlayerDisplayNameMap(
+    rows.map((row) => row.player_slug)
+  );
+
+  return rows.map((row) => ({
+    ...row,
+    player_name:
+      (row.player_slug ? nameMap.get(row.player_slug) : null) ??
+      row.player_name,
+  }));
 }

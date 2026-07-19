@@ -91,11 +91,15 @@ function getMetricValue(row: PlayerStatsListRow, key: SortKey): number {
   return 0;
 }
 
+function getDisplayName(row: PlayerStatsListRow) {
+  return row.full_name ?? row.player_name;
+}
+
 function PlayerAvatar({ row }: { row: PlayerStatsListRow }) {
   if (!row.photo_url) {
     return (
       <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.05] text-[11px] font-semibold text-white/45">
-        {row.player_name.slice(0, 1).toUpperCase()}
+        {getDisplayName(row).slice(0, 1).toUpperCase()}
       </span>
     );
   }
@@ -103,7 +107,7 @@ function PlayerAvatar({ row }: { row: PlayerStatsListRow }) {
   return (
     <Image
       src={row.photo_url}
-      alt={row.player_name}
+      alt={getDisplayName(row)}
       width={36}
       height={36}
       className="h-9 w-9 shrink-0 rounded-full border border-white/10 bg-white/[0.05] object-cover"
@@ -185,7 +189,7 @@ export default function PlayerStatsExplorer({
 
     cloned.sort((a, b) => {
       if (sortKey === "player_name") {
-        return compareText(a.player_name, b.player_name, sortDirection);
+        return compareText(getDisplayName(a), getDisplayName(b), sortDirection);
       }
 
       if (sortKey === "team_name") {
@@ -400,9 +404,9 @@ export default function PlayerStatsExplorer({
                           <PlayerLink
                             playerSlug={row.player_slug}
                             className="font-medium text-[#8dc8ff] transition hover:text-[#bfe0ff] hover:underline"
-                            title={row.full_name ?? row.player_name}
+                            title={getDisplayName(row)}
                           >
-                            {row.player_name}
+                            {getDisplayName(row)}
                           </PlayerLink>
 
                           <div className="text-[11px] text-white/40">

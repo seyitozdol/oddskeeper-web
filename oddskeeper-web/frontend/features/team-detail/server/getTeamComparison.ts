@@ -46,7 +46,8 @@ export type TeamComparisonResult = {
 export async function getTeamComparison(
   teamSlugA: string,
   teamSlugB: string,
-  splitKey: "overall" | "home" | "away" = "overall"
+  splitKey: "overall" | "home" | "away" = "overall",
+  seasonLabel?: string | null
 ): Promise<TeamComparisonResult | null> {
   const supabase = await createClient();
 
@@ -54,6 +55,7 @@ export async function getTeamComparison(
     p_team_slug_a: teamSlugA,
     p_team_slug_b: teamSlugB,
     p_split_key: splitKey,
+    p_season_label: seasonLabel ?? null,
   });
 
   if (error || !data) {

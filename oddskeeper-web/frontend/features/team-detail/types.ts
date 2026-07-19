@@ -41,6 +41,7 @@ export type TeamResultRow = {
   venue: string | null;
   venue_label?: string | null;
   match_date_label?: string | null;
+  season_label?: string | null;
 };
 
 export type TeamStatisticsSummaryRow = {

@@ -25,6 +25,7 @@ type TeamResultsDbRow = {
   result_points: number | null;
 
   venue: string | null;
+  season_label: string | null;
 };
 
 function mapResultLabel(resultCode: "W" | "D" | "L" | null): string | null {
@@ -62,14 +63,18 @@ function mapRow(row: TeamResultsDbRow): TeamResultRow {
 
     venue: row.venue,
     venue_label: row.venue,
+    season_label: row.season_label,
     match_date_label: row.match_datetime,
   };
 }
 
-export async function getTeamResults(teamSlug: string): Promise<TeamResultRow[]> {
+export async function getTeamResults(
+  teamSlug: string,
+  seasonLabel?: string | null
+): Promise<TeamResultRow[]> {
   const supabase = await createClient();
 
-  const { data, error } = await supabase
+  let query = supabase
     .schema("analytics")
     .from("team_results_v1")
     .select(
@@ -90,12 +95,18 @@ export async function getTeamResults(teamSlug: string): Promise<TeamResultRow[]>
         score_display,
         result_code,
         result_points,
-        venue
+        venue,
+        season_label
       `
     )
     .eq("team_slug", teamSlug)
-    .order("match_datetime", { ascending: false })
-    .returns<TeamResultsDbRow[]>();
+    .order("match_datetime", { ascending: false });
+
+  if (seasonLabel) {
+    query = query.eq("season_label", seasonLabel);
+  }
+
+  const { data, error } = await query.returns<TeamResultsDbRow[]>();
 
   if (error) {
     console.error("team results fetch error:", {

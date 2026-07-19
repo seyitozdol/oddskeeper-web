@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useI18n } from "@/lib/i18n/LanguageProvider";
+import { metricLabel } from "@/lib/i18n/metricLabel";
 import type { TeamMetricLeaderboardRow } from "../types";
 
 type MetricOption = {
@@ -323,11 +324,9 @@ export function TeamMetricLeaderboardDrawer({
       (option) => option.metricKey === selectedMetricKey
     );
 
-    if (fromOptions?.metricLabel) {
-      return fromOptions.metricLabel;
-    }
-
-    return initialMetricLabel ?? t("teamDetail.colMetric");
+    const fallbackLabel = fromOptions?.metricLabel ?? initialMetricLabel;
+    const label = metricLabel(t, selectedMetricKey, fallbackLabel);
+    return label || t("teamDetail.colMetric");
   }, [metricOptions, selectedMetricKey, initialMetricLabel, t]);
 
   const selectedRow = useMemo(() => {
@@ -512,7 +511,7 @@ export function TeamMetricLeaderboardDrawer({
                       value={option.metricKey}
                       className="bg-[#0b1220] text-white"
                     >
-                      {option.metricLabel}
+                      {metricLabel(t, option.metricKey, option.metricLabel)}
                     </option>
                   ))}
                 </select>

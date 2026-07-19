@@ -10,11 +10,13 @@ export async function GET(req: NextRequest) {
     | "home"
     | "away";
 
+  const season = searchParams.get("season");
+
   if (!a || !b) {
     return NextResponse.json({ error: "missing params" }, { status: 400 });
   }
 
-  const data = await getTeamComparison(a, b, split);
+  const data = await getTeamComparison(a, b, split, season);
 
   if (!data) {
     return NextResponse.json({ error: "not found" }, { status: 404 });

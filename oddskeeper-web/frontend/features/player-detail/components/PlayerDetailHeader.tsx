@@ -49,12 +49,23 @@ export async function PlayerDetailHeader({
 }: PlayerDetailHeaderProps) {
   const t = await getT();
 
+  // Kart güncel takımı gösterir; opta profili eski takımda kalmış olsa bile
+  // (ara transfer) başlıkta güncel kadro bilgisi esas alınır.
+  const displayTeamSlug = currentInfo?.current_team_slug ?? profile.team_slug;
+  const displayTeamName = currentInfo?.current_team_name ?? profile.team_name;
+  const displayPlayerName =
+    [currentInfo?.first_name, currentInfo?.last_name]
+      .filter(Boolean)
+      .join(" ") ||
+    currentInfo?.full_name ||
+    profile.player_name;
+
   const backToTeamHref =
-    getTeamDetailHref(profile.team_slug)
-      ? `${getTeamDetailHref(profile.team_slug)}&tab=squad`
+    getTeamDetailHref(displayTeamSlug)
+      ? `${getTeamDetailHref(displayTeamSlug)}&tab=squad`
       : "/dashboard/stats-analysis/football/team-stats";
 
-  const logoPath = getTeamLogoPath(profile.team_slug);
+  const logoPath = getTeamLogoPath(displayTeamSlug);
 
   return (
     <div className="rounded-[24px] border border-white/10 bg-[linear-gradient(180deg,rgba(8,14,24,0.96),rgba(5,10,18,0.98))] p-4 shadow-[0_0_40px_rgba(34,104,189,0.06)]">
@@ -88,11 +99,11 @@ export async function PlayerDetailHeader({
             </p>
 
             <h1 className="mt-1 truncate text-3xl font-semibold text-white lg:text-5xl">
-              {profile.player_name}
+              {displayPlayerName}
             </h1>
 
             <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-white/60">
-              <span>{profile.team_name}</span>
+              <span>{displayTeamName}</span>
               <span>•</span>
               <span>{profile.primary_position_code}</span>
               <span>•</span>

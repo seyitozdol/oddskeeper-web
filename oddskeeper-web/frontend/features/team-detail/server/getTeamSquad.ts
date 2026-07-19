@@ -35,6 +35,9 @@ type PlayerCurrentTeamDbRow = {
   player_slug: string;
   current_team_slug: string | null;
   current_team_name: string | null;
+  full_name: string | null;
+  first_name: string | null;
+  last_name: string | null;
 };
 
 function mapRow(row: TeamSquadDbRow): TeamSquadRow {
@@ -126,7 +129,9 @@ export async function getTeamSquad(teamSlug: string): Promise<TeamSquadRow[]> {
     const { data: currentData, error: currentError } = await supabase
       .schema("analytics")
       .from("player_current_info_v1")
-      .select("player_slug, current_team_slug, current_team_name")
+      .select(
+        "player_slug, current_team_slug, current_team_name, full_name, first_name, last_name"
+      )
       .in("player_slug", playerSlugs)
       .returns<PlayerCurrentTeamDbRow[]>();
 
@@ -146,6 +151,14 @@ export async function getTeamSquad(teamSlug: string): Promise<TeamSquadRow[]> {
         if (current) {
           row.current_team_slug = current.current_team_slug;
           row.current_team_name = current.current_team_name;
+
+          // Opta kısaltması yerine bio'daki uzun isim.
+          const longName =
+            [current.first_name, current.last_name].filter(Boolean).join(" ") ||
+            current.full_name;
+          if (longName) {
+            row.player_name = longName;
+          }
         }
       }
     }

@@ -7,6 +7,7 @@ import { landing } from "./landing";
 import { leagueDetail } from "./leagueDetail";
 import { matchDetail } from "./matchDetail";
 import { matchPredictions } from "./matchPredictions";
+import { metrics } from "./metrics";
 import { nav } from "./nav";
 import { playerDetail } from "./playerDetail";
 import { playerMarket } from "./playerMarket";
@@ -26,6 +27,7 @@ const MESSAGES: Record<
   leagueDetail,
   matchDetail,
   matchPredictions,
+  metrics,
   nav,
   playerDetail,
   playerMarket,

@@ -6,6 +6,7 @@ import TeamLink from "@/components/links/TeamLink";
 import PlayerLink from "@/components/links/PlayerLink";
 import { useI18n } from "@/lib/i18n/LanguageProvider";
 import type { Translator } from "@/lib/i18n/messages";
+import { categoryLabel, metricLabel } from "@/lib/i18n/metricLabel";
 import type {
   LeaguePlayerLeaderboardRow,
   LeaguePlayerMetricOption,
@@ -232,7 +233,7 @@ function getMetricDefinition(
       : t("leagueDetail.basisPer90");
 
   const key = (row.metric_key ?? "").toLowerCase();
-  const label = row.metric_label ?? t("leagueDetail.defaultSelectedMetric");
+  const label = metricLabel(t, row.metric_key, row.metric_label) || t("leagueDetail.defaultSelectedMetric");
 
   let titleText = label;
   let text = t("leagueDetail.defaultMetricDescription");
@@ -337,7 +338,7 @@ export function LeaguePlayerLeadersPanel({
 
     metricOptions.forEach((row) => {
       const key = (row.category_key ?? "").trim();
-      const label = (row.category_label ?? row.category_key ?? "").trim();
+      const label = categoryLabel(t, row.category_key, row.category_label).trim();
       if (key && !unique.has(key)) {
         unique.set(key, label || key);
       }
@@ -346,7 +347,7 @@ export function LeaguePlayerLeadersPanel({
     return Array.from(unique.entries())
       .map(([key, label]) => ({ key, label }))
       .sort((a, b) => a.label.localeCompare(b.label));
-  }, [metricOptions]);
+  }, [metricOptions, t]);
 
   const categoryScopedMetricOptions = useMemo(() => {
     const scoped =
@@ -356,15 +357,15 @@ export function LeaguePlayerLeadersPanel({
 
     // Menü kategori + metrik adına göre sıralı olsun; karışık sıra okunmuyor.
     return [...scoped].sort((a, b) => {
-      const byCategory = (a.category_label ?? a.category_key ?? "").localeCompare(
-        b.category_label ?? b.category_key ?? ""
+      const byCategory = categoryLabel(t, a.category_key, a.category_label).localeCompare(
+        categoryLabel(t, b.category_key, b.category_label)
       );
       if (byCategory !== 0) return byCategory;
-      return (a.metric_label ?? a.metric_key).localeCompare(
-        b.metric_label ?? b.metric_key
+      return metricLabel(t, a.metric_key, a.metric_label).localeCompare(
+        metricLabel(t, b.metric_key, b.metric_label)
       );
     });
-  }, [metricOptions, currentCategory]);
+  }, [metricOptions, currentCategory, t]);
 
   const availableTeams = useMemo(() => {
     const unique = new Map<string, string>();
@@ -638,7 +639,8 @@ export function LeaguePlayerLeadersPanel({
                   selectedMetricRow.category_key
                 )}`}
               >
-                {selectedMetricRow.category_label ?? t("leagueDetail.categoryGeneral")}
+                {categoryLabel(t, selectedMetricRow.category_key, selectedMetricRow.category_label) ||
+                  t("leagueDetail.categoryGeneral")}
               </span>
 
               <span className="inline-flex rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-1 text-[11px] font-medium text-white/70">
@@ -711,8 +713,11 @@ export function LeaguePlayerLeadersPanel({
                   categoryScopedMetricOptions.reduce<
                     Record<string, typeof categoryScopedMetricOptions>
                   >((groups, option) => {
-                    const groupLabel =
-                      option.category_label ?? option.category_key ?? "";
+                    const groupLabel = categoryLabel(
+                      t,
+                      option.category_key,
+                      option.category_label
+                    );
                     (groups[groupLabel] ??= []).push(option);
                     return groups;
                   }, {})
@@ -720,7 +725,7 @@ export function LeaguePlayerLeadersPanel({
                   <optgroup key={groupLabel} label={groupLabel}>
                     {options.map((option) => (
                       <option key={option.metric_key} value={option.metric_key}>
-                        {option.metric_label}
+                        {metricLabel(t, option.metric_key, option.metric_label)}
                       </option>
                     ))}
                   </optgroup>
@@ -809,8 +814,8 @@ export function LeaguePlayerLeadersPanel({
         <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
           <MetricSummaryCard
             label={t("leagueDetail.selectedMetricLabel")}
-            value={selectedMetricRow.metric_label ?? "—"}
-            subvalue={selectedMetricRow.category_label ?? "—"}
+            value={metricLabel(t, selectedMetricRow.metric_key, selectedMetricRow.metric_label)}
+            subvalue={categoryLabel(t, selectedMetricRow.category_key, selectedMetricRow.category_label)}
           />
           <MetricSummaryCard
             label={t("leagueDetail.leagueLeaderLabel")}

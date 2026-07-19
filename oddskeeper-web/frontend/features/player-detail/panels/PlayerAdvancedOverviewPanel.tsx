@@ -1,5 +1,6 @@
 import { getT } from "@/lib/i18n/server";
 import type { Translator } from "@/lib/i18n/messages";
+import { metricLabel } from "@/lib/i18n/metricLabel";
 import type { PlayerAdvancedOverviewRow } from "../types";
 
 type Props = {
@@ -91,7 +92,11 @@ export default async function PlayerAdvancedOverviewPanel({ overview }: Props) {
             <MetricRow
               t={t}
               label={t("playerDetail.metricLabel")}
-              value={overview.primary_strength_metric_label}
+              value={metricLabel(
+                t,
+                overview.primary_strength_metric_key,
+                overview.primary_strength_metric_label
+              )}
             />
             <MetricRow
               t={t}
@@ -118,7 +123,11 @@ export default async function PlayerAdvancedOverviewPanel({ overview }: Props) {
           <MetricRow
             t={t}
             label={t("playerDetail.metricLabel")}
-            value={overview.secondary_strength_metric_label}
+            value={metricLabel(
+              t,
+              overview.secondary_strength_metric_key,
+              overview.secondary_strength_metric_label
+            )}
           />
           <MetricRow
             t={t}
