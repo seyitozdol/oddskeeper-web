@@ -1,9 +1,18 @@
 import PlayerStatsExplorer from "@/features/player-stats/components/PlayerStatsExplorer";
 import { getPlayerStatsList } from "@/features/player-stats/server/getPlayerStatsList";
+import { getFootballTeams } from "@/lib/football-teams";
 import { getT } from "@/lib/i18n/server";
 
 export default async function FootballPlayerStatsPage() {
-  const [rows, t] = await Promise.all([getPlayerStatsList(), getT()]);
+  const [rows, teams, t] = await Promise.all([
+    getPlayerStatsList(),
+    getFootballTeams(),
+    getT(),
+  ]);
+
+  const teamLogos = Object.fromEntries(
+    teams.map((team) => [team.slug, team.logoPath])
+  );
 
   return (
     <section className="w-full">
@@ -23,7 +32,7 @@ export default async function FootballPlayerStatsPage() {
             {t("statsHub.playersNotFound")}
           </div>
         ) : (
-          <PlayerStatsExplorer rows={rows} />
+          <PlayerStatsExplorer rows={rows} teamLogos={teamLogos} />
         )}
       </div>
     </section>

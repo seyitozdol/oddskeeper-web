@@ -7,6 +7,10 @@ import { getTeamLogoPath } from "../utils/getTeamLogoPath";
 import { formatDecimal } from "../utils/formatDecimal";
 import type { PlayerCurrentInfoRow } from "../types";
 import { getT } from "@/lib/i18n/server";
+import {
+  canonicalNationality,
+  getCountryFlagUrl,
+} from "@/lib/country-flags";
 
 type PlayerDetailHeaderProps = {
   profile: PlayerProfileRow;
@@ -103,7 +107,18 @@ export async function PlayerDetailHeader({
             </h1>
 
             <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-white/60">
-              <span>{displayTeamName}</span>
+              <span className="inline-flex items-center gap-1.5">
+                {logoPath ? (
+                  <Image
+                    src={logoPath}
+                    alt={displayTeamName}
+                    width={18}
+                    height={18}
+                    className="h-[18px] w-[18px] shrink-0 object-contain"
+                  />
+                ) : null}
+                <span>{displayTeamName}</span>
+              </span>
               <span>•</span>
               <span>{profile.primary_position_code}</span>
               <span>•</span>
@@ -162,7 +177,20 @@ export async function PlayerDetailHeader({
               currentInfo.birth_date) ? (
               <div className="mt-1 flex flex-wrap items-center gap-2 text-[13px] text-white/50">
                 {currentInfo.nationality ? (
-                  <span>{currentInfo.nationality}</span>
+                  <span className="inline-flex items-center gap-1.5">
+                    {getCountryFlagUrl(currentInfo.nationality) ? (
+                      <Image
+                        src={getCountryFlagUrl(currentInfo.nationality)!}
+                        alt={currentInfo.nationality}
+                        width={16}
+                        height={12}
+                        className="h-3 w-4 shrink-0 rounded-[2px] object-cover"
+                      />
+                    ) : null}
+                    <span>
+                      {canonicalNationality(currentInfo.nationality)}
+                    </span>
+                  </span>
                 ) : null}
                 {currentInfo.height_cm ? (
                   <>

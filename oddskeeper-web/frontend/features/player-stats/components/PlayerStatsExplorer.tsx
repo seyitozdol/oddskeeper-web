@@ -6,10 +6,15 @@ import { useMemo, useState } from "react";
 import PlayerLink from "@/components/links/PlayerLink";
 import { useI18n } from "@/lib/i18n/LanguageProvider";
 import { getTeamDetailHref } from "@/lib/routes";
+import {
+  canonicalNationality,
+  getCountryFlagUrl,
+} from "@/lib/country-flags";
 import type { PlayerStatsListRow } from "../types";
 
 type PlayerStatsExplorerProps = {
   rows: PlayerStatsListRow[];
+  teamLogos?: Record<string, string>;
 };
 
 type SortKey =
@@ -117,10 +122,12 @@ function PlayerAvatar({ row }: { row: PlayerStatsListRow }) {
 
 export default function PlayerStatsExplorer({
   rows,
+  teamLogos = {},
 }: PlayerStatsExplorerProps) {
   const { t } = useI18n();
   const [search, setSearch] = useState("");
   const [teamFilter, setTeamFilter] = useState("all");
+  const [nationalityFilter, setNationalityFilter] = useState("all");
   const [positionFilter, setPositionFilter] = useState("ALL");
   const [hideDeparted, setHideDeparted] = useState(false);
   const [sortKey, setSortKey] = useState<SortKey>("goals");
@@ -138,6 +145,19 @@ export default function PlayerStatsExplorer({
     return Array.from(bySlug.entries())
       .map(([slug, name]) => ({ slug, name }))
       .sort((a, b) => a.name.localeCompare(b.name));
+  }, [rows]);
+
+  const nationalities = useMemo(() => {
+    const unique = new Set<string>();
+
+    for (const row of rows) {
+      const canonical = canonicalNationality(row.nationality);
+      if (canonical) {
+        unique.add(canonical);
+      }
+    }
+
+    return Array.from(unique).sort((a, b) => a.localeCompare(b, "tr"));
   }, [rows]);
 
   function handleSort(key: SortKey) {
@@ -166,6 +186,13 @@ export default function PlayerStatsExplorer({
         return false;
       }
 
+      if (
+        nationalityFilter !== "all" &&
+        canonicalNationality(row.nationality) !== nationalityFilter
+      ) {
+        return false;
+      }
+
       if (positionFilter !== "ALL" && row.position_code !== positionFilter) {
         return false;
       }
@@ -182,7 +209,7 @@ export default function PlayerStatsExplorer({
 
       return queryTokens.every((token) => haystack.includes(token));
     });
-  }, [rows, search, teamFilter, positionFilter, hideDeparted]);
+  }, [rows, search, teamFilter, nationalityFilter, positionFilter, hideDeparted]);
 
   const sortedRows = useMemo(() => {
     const cloned = [...filteredRows];
@@ -264,6 +291,19 @@ export default function PlayerStatsExplorer({
           {teams.map((team) => (
             <option key={team.slug} value={team.slug}>
               {team.name}
+            </option>
+          ))}
+        </select>
+
+        <select
+          value={nationalityFilter}
+          onChange={(event) => setNationalityFilter(event.target.value)}
+          className="rounded-2xl border border-white/10 bg-[#0b1626] px-4 py-2.5 text-sm text-white/85 outline-none transition focus:border-[#4da2ff]/40"
+        >
+          <option value="all">{t("statsHub.allNationalities")}</option>
+          {nationalities.map((nationality) => (
+            <option key={nationality} value={nationality}>
+              {nationality}
             </option>
           ))}
         </select>
@@ -409,21 +449,20 @@ export default function PlayerStatsExplorer({
                             {getDisplayName(row)}
                           </PlayerLink>
 
-                          <div className="text-[11px] text-white/40">
-                            {[
-                              row.shirt_number != null
-                                ? `#${row.shirt_number}`
-                                : null,
-                              row.nationality,
-                            ]
-                              .filter(Boolean)
-                              .join(" · ") || "—"}
+                          <div className="flex items-center gap-1.5 text-[11px] text-white/40">
+                            {row.shirt_number != null ? (
+                              <span>#{row.shirt_number}</span>
+                            ) : null}
+                            <NationalityBadge nationality={row.nationality} />
+                            {row.shirt_number == null && !row.nationality ? (
+                              <span>—</span>
+                            ) : null}
                           </div>
                         </div>
                       </div>
                     </td>
                     <td className="whitespace-nowrap px-4 py-2">
-                      <TeamCell row={row} />
+                      <TeamCell row={row} teamLogos={teamLogos} />
                     </td>
                     <td className="px-4 py-2">{row.position_code}</td>
                     <td className="px-4 py-2">{row.age ?? "—"}</td>
@@ -458,19 +497,41 @@ export default function PlayerStatsExplorer({
   );
 }
 
-function TeamCell({ row }: { row: PlayerStatsListRow }) {
+function TeamCell({
+  row,
+  teamLogos,
+}: {
+  row: PlayerStatsListRow;
+  teamLogos: Record<string, string>;
+}) {
   const { t } = useI18n();
   const teamHref = getTeamDetailHref(row.team_slug);
+  const logoPath = row.team_slug ? teamLogos[row.team_slug] : undefined;
+
+  const teamContent = (
+    <span className="inline-flex items-center gap-2">
+      {logoPath ? (
+        <Image
+          src={logoPath}
+          alt={row.team_name ?? ""}
+          width={18}
+          height={18}
+          className="h-[18px] w-[18px] shrink-0 object-contain"
+        />
+      ) : null}
+      <span>{row.team_name ?? "—"}</span>
+    </span>
+  );
 
   const teamNode = teamHref ? (
     <Link
       href={teamHref}
       className="text-white/75 transition hover:text-white hover:underline"
     >
-      {row.team_name}
+      {teamContent}
     </Link>
   ) : (
-    <span>{row.team_name ?? "—"}</span>
+    teamContent
   );
 
   if (row.in_current_squad) {
@@ -486,6 +547,30 @@ function TeamCell({ row }: { row: PlayerStatsListRow }) {
       >
         {t("common.leftClub")}
       </span>
+    </span>
+  );
+}
+
+function NationalityBadge({ nationality }: { nationality: string | null }) {
+  if (!nationality) {
+    return null;
+  }
+
+  const flagUrl = getCountryFlagUrl(nationality);
+  const label = canonicalNationality(nationality) ?? nationality;
+
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      {flagUrl ? (
+        <Image
+          src={flagUrl}
+          alt={label}
+          width={16}
+          height={12}
+          className="h-3 w-4 shrink-0 rounded-[2px] object-cover"
+        />
+      ) : null}
+      <span>{label}</span>
     </span>
   );
 }
