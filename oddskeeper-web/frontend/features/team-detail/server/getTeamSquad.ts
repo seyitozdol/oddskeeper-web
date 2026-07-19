@@ -31,6 +31,12 @@ type TeamSquadDbRow = {
   last_match_datetime: string | null;
 };
 
+type PlayerCurrentTeamDbRow = {
+  player_slug: string;
+  current_team_slug: string | null;
+  current_team_name: string | null;
+};
+
 function mapRow(row: TeamSquadDbRow): TeamSquadRow {
   return {
     team_slug: row.team_slug,
@@ -60,6 +66,9 @@ function mapRow(row: TeamSquadDbRow): TeamSquadRow {
 
     first_match_datetime: row.first_match_datetime,
     last_match_datetime: row.last_match_datetime,
+
+    current_team_slug: null,
+    current_team_name: null,
   };
 }
 
@@ -107,5 +116,40 @@ export async function getTeamSquad(teamSlug: string): Promise<TeamSquadRow[]> {
     return [];
   }
 
-  return (data ?? []).map(mapRow);
+  const rows = (data ?? []).map(mapRow);
+
+  const playerSlugs = [
+    ...new Set(rows.map((row) => row.player_slug).filter(Boolean)),
+  ];
+
+  if (playerSlugs.length > 0) {
+    const { data: currentData, error: currentError } = await supabase
+      .schema("analytics")
+      .from("player_current_info_v1")
+      .select("player_slug, current_team_slug, current_team_name")
+      .in("player_slug", playerSlugs)
+      .returns<PlayerCurrentTeamDbRow[]>();
+
+    if (currentError) {
+      console.error("team squad current-info fetch error:", {
+        teamSlug,
+        message: currentError.message,
+        code: currentError.code,
+      });
+    } else if (currentData) {
+      const currentBySlug = new Map(
+        currentData.map((row) => [row.player_slug, row])
+      );
+
+      for (const row of rows) {
+        const current = currentBySlug.get(row.player_slug);
+        if (current) {
+          row.current_team_slug = current.current_team_slug;
+          row.current_team_name = current.current_team_name;
+        }
+      }
+    }
+  }
+
+  return rows;
 }

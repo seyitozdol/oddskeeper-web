@@ -161,6 +161,32 @@ function PlayerName({
   );
 }
 
+function PlayerStatusBadge({ row }: { row: TeamSquadRow }) {
+  if (row.current_team_slug === row.team_slug) {
+    return null;
+  }
+
+  if (row.current_team_slug) {
+    return (
+      <span
+        className="ml-2 rounded-full border border-amber-400/30 bg-amber-400/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-[0.06em] text-amber-300/90"
+        title={`Now plays for ${row.current_team_name ?? row.current_team_slug}`}
+      >
+        Now at {row.current_team_name ?? row.current_team_slug}
+      </span>
+    );
+  }
+
+  return (
+    <span
+      className="ml-2 rounded-full border border-white/12 bg-white/[0.04] px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-[0.06em] text-white/45"
+      title="Not in any current league squad"
+    >
+      Left club
+    </span>
+  );
+}
+
 function getMetricSortValue(row: TeamSquadRow, sortKey: SortKey): number {
   if (sortKey === "last_match_datetime") {
     return row.last_match_datetime
@@ -189,6 +215,10 @@ function getMetricSortValue(row: TeamSquadRow, sortKey: SortKey): number {
 export function SquadPanel({ rows = [], currentSquad = [] }: SquadPanelProps) {
   const [sortKey, setSortKey] = useState<SortKey>("primary_position_code");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+
+  // Rozetler güncel kadro verisi olan takımlarda anlamlı; ligden düşen
+  // takımlarda her satır "left club" olacağından gösterme.
+  const showStatusBadges = currentSquad.length > 0;
 
   function handleSort(key: SortKey) {
     if (sortKey === key) {
@@ -389,6 +419,7 @@ export function SquadPanel({ rows = [], currentSquad = [] }: SquadPanelProps) {
                   playerSlug={row.player_slug}
                   playerName={row.player_name}
                 />
+                {showStatusBadges ? <PlayerStatusBadge row={row} /> : null}
               </td>
 
               <td className="px-4 py-2 whitespace-nowrap text-white/70">

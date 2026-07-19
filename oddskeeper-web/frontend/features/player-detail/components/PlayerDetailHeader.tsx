@@ -118,7 +118,16 @@ export function PlayerDetailHeader({
                   </>
                 ) : null}
               </div>
-            ) : null}
+            ) : (
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
+                <span className="rounded-full border border-white/12 bg-white/[0.04] px-2 py-0.5 text-[11px] font-medium uppercase tracking-[0.08em] text-white/45">
+                  Not in current league squads
+                </span>
+                <span className="text-white/50">
+                  Stats below are from past seasons with {profile.team_name}
+                </span>
+              </div>
+            )}
 
             {currentInfo &&
             (currentInfo.nationality ||

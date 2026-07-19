@@ -146,6 +146,9 @@ export type TeamSquadRow = {
 
   first_match_datetime: string | null;
   last_match_datetime: string | null;
+
+  current_team_slug: string | null;
+  current_team_name: string | null;
 };
 
 export type TeamFixtureRow = {
