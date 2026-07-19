@@ -118,6 +118,7 @@ export default function PlayerStatsExplorer({
   const [search, setSearch] = useState("");
   const [teamFilter, setTeamFilter] = useState("all");
   const [positionFilter, setPositionFilter] = useState("ALL");
+  const [hideDeparted, setHideDeparted] = useState(false);
   const [sortKey, setSortKey] = useState<SortKey>("goals");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
 
@@ -146,9 +147,17 @@ export default function PlayerStatsExplorer({
   }
 
   const filteredRows = useMemo(() => {
-    const query = normalizeSearchText(search.trim());
+    // Kelime bazlı arama: "victor osimhen" gibi sorgular, veride
+    // "Victor James Osimhen" yazsa bile her kelime ayrı eşleşerek bulunur.
+    const queryTokens = normalizeSearchText(search)
+      .split(/\s+/)
+      .filter(Boolean);
 
     return rows.filter((row) => {
+      if (hideDeparted && !row.in_current_squad) {
+        return false;
+      }
+
       if (teamFilter !== "all" && row.team_slug !== teamFilter) {
         return false;
       }
@@ -157,7 +166,7 @@ export default function PlayerStatsExplorer({
         return false;
       }
 
-      if (!query) {
+      if (queryTokens.length === 0) {
         return true;
       }
 
@@ -167,9 +176,9 @@ export default function PlayerStatsExplorer({
           .join(" ")
       );
 
-      return haystack.includes(query);
+      return queryTokens.every((token) => haystack.includes(token));
     });
-  }, [rows, search, teamFilter, positionFilter]);
+  }, [rows, search, teamFilter, positionFilter, hideDeparted]);
 
   const sortedRows = useMemo(() => {
     const cloned = [...filteredRows];
@@ -270,6 +279,18 @@ export default function PlayerStatsExplorer({
               {t(position.labelKey)}
             </button>
           ))}
+
+          <button
+            type="button"
+            onClick={() => setHideDeparted((prev) => !prev)}
+            className={`rounded-2xl border px-4 py-2.5 text-xs font-medium transition ${
+              hideDeparted
+                ? "border-[#4da2ff]/40 bg-[#10233b] text-white"
+                : "border-white/10 bg-white/[0.03] text-white/60 hover:border-[#4da2ff]/25 hover:text-white"
+            }`}
+          >
+            {t("statsHub.hideDeparted")}
+          </button>
         </div>
       </div>
 

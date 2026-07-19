@@ -24,6 +24,7 @@ export const statsHub = defineMessages({
     playersCount: "{count} players",
     playerCountOne: "1 player",
     noPlayersMatch: "No players match your filters.",
+    hideDeparted: "Hide departed",
   },
   tr: {
     hubKicker: "İstatistik & Analiz",
@@ -48,5 +49,6 @@ export const statsHub = defineMessages({
     playersCount: "{count} oyuncu",
     playerCountOne: "1 oyuncu",
     noPlayersMatch: "Filtrelere uyan oyuncu yok.",
+    hideDeparted: "Ayrılanları gizle",
   },
 });
