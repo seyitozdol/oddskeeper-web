@@ -49,6 +49,8 @@ export async function getPredictionMatches_2(): Promise<PredictionMatch_2[]> {
   try {
     const supabase = await createClient();
 
+    const nowIso = new Date().toISOString();
+
     const { data, error } = await supabase
       .schema("analytics")
       .from("prediction_match_shots_v1")
@@ -68,6 +70,7 @@ export async function getPredictionMatches_2(): Promise<PredictionMatch_2[]> {
       `
       )
       .eq("is_active", true)
+      .gte("match_datetime", nowIso)
       .order("match_datetime", { ascending: true });
 
     if (error) {

@@ -72,9 +72,9 @@ export default function AppHeader({ userEmail }: AppHeaderProps) {
           </Link>
 
           <Link
-            href="/dashboard/deep-prediction-ml"
+            href="/dashboard/deep-prediction-ml2"
             className={`rounded-2xl border px-5 py-2.5 text-sm font-medium transition ${
-              pathname === "/dashboard/deep-prediction-ml"
+              pathname === "/dashboard/deep-prediction-ml2"
                 ? "border-[#4da2ff]/40 bg-[#10233b] text-white shadow-[0_0_25px_rgba(77,162,255,0.15)]"
                 : "border-white/10 bg-white/[0.03] text-white/72 hover:border-[#4da2ff]/25 hover:bg-[#0e1d30] hover:text-white"
             }`}
