@@ -18,6 +18,10 @@ export const PLAYER_METRIC_META: Record<string, PlayerMetricMetaKeys> = {
     shortDescriptionKey: "playerDetail.metricDescExpectedGoalsTotal",
     interpretationKey: "playerDetail.higherIsBetter",
   },
+  shots_total: {
+    shortDescriptionKey: "playerDetail.metricDescShotsTotal",
+    interpretationKey: "playerDetail.higherIsBetter",
+  },
   shots_on_target_total: {
     shortDescriptionKey: "playerDetail.metricDescShotsOnTargetTotal",
     interpretationKey: "playerDetail.higherIsBetter",

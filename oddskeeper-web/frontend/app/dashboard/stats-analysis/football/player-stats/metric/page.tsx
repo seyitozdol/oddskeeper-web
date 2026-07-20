@@ -1,5 +1,10 @@
 import Image from "next/image";
 import Link from "next/link";
+import MetricSelect from "@/components/rankings/MetricSelect";
+import SortableRankingTable, {
+  type RankingColumn,
+  type RankingRow,
+} from "@/components/rankings/SortableRankingTable";
 import { PLAYER_METRIC_META } from "@/features/player-detail/metricMeta";
 import { getPlayerCurrentInfo } from "@/features/player-detail/server/getPlayerCurrentInfo";
 import { getPlayerDetailedMetrics } from "@/features/player-detail/server/getPlayerDetailedMetrics";
@@ -110,8 +115,6 @@ export default async function PlayerMetricLeaderboardPage({
         )
       : [];
 
-  const optionRows = playerSlug ? detailedRows : catalogOptions;
-
   const playerSourceId = profile?.player_source_id ?? null;
   const selectedRow = playerSourceId
     ? leaderboard.find(
@@ -149,25 +152,19 @@ export default async function PlayerMetricLeaderboardPage({
       )}&tab=detailed-stats`
     : "/dashboard/stats-analysis";
 
-  const pageHref = (params: {
-    metric?: string | null;
-    view?: ViewMode | null;
-  }) => {
-    const search = new URLSearchParams();
-    if (playerSlug) search.set("player", playerSlug);
-    const metric = params.metric === undefined ? metricKey : params.metric;
-    if (metric) search.set("metric", metric);
-    const view = params.view === undefined ? requestedView : params.view;
-    if (view && view !== "all") search.set("view", view);
-    return `/dashboard/stats-analysis/football/player-stats/metric?${search.toString()}`;
-  };
-
-  // Görünüm modları: Tümü / İlk 10 / Son 10 / Seçilenin çevresi (±10)
   const requestedView: ViewMode = isViewMode(resolved.view)
     ? resolved.view === "around" && !selectedRow
       ? "all"
       : resolved.view
     : "all";
+
+  const viewHref = (view: ViewMode) => {
+    const search = new URLSearchParams();
+    if (playerSlug) search.set("player", playerSlug);
+    if (metricKey) search.set("metric", metricKey);
+    if (view !== "all") search.set("view", view);
+    return `/dashboard/stats-analysis/football/player-stats/metric?${search.toString()}`;
+  };
 
   let visibleRows = rankedRows;
   if (requestedView === "top10") {
@@ -191,24 +188,21 @@ export default async function PlayerMetricLeaderboardPage({
       : []),
   ];
 
-  const optionsByCategory = new Map<
-    string,
-    { key: string; label: string }[]
-  >();
-  for (const row of optionRows) {
-    const catLabel = categoryLabel(
-      t,
-      row.category_key,
-      "category_label" in row ? row.category_label : null
-    );
-    if (!optionsByCategory.has(catLabel)) {
-      optionsByCategory.set(catLabel, []);
-    }
-    optionsByCategory.get(catLabel)!.push({
+  const metricOptions = (playerSlug ? detailedRows : catalogOptions).map(
+    (row) => ({
       key: row.metric_key,
       label: metricLabel(t, row.metric_key, row.metric_label),
-    });
-  }
+      category: categoryLabel(
+        t,
+        row.category_key,
+        "category_label" in row ? row.category_label : null
+      ),
+    })
+  );
+
+  const metricSelectParams: Record<string, string> = {};
+  if (playerSlug) metricSelectParams.player = playerSlug;
+  if (requestedView !== "all") metricSelectParams.view = requestedView;
 
   // Anlamsız (tamamen boş) kolonları gizle.
   const hasAny = (pick: (r: (typeof rankedRows)[number]) => number | null) =>
@@ -217,6 +211,152 @@ export default async function PlayerMetricLeaderboardPage({
   const showPerMatch = hasAny((r) => r.per_match_value);
   const showTotal = hasAny((r) => r.total_value);
   const showVsAvg = hasAny((r) => r.vs_league_avg_pct);
+
+  const columns: RankingColumn[] = [
+    { id: "rank", label: t("common.rank"), defaultDir: "asc" },
+    { id: "player", label: t("common.player"), defaultDir: "asc" },
+    { id: "team", label: t("common.team"), defaultDir: "asc" },
+    ...(showPer90
+      ? [{ id: "per90", label: t("common.per90Label"), defaultDir: "desc" as const }]
+      : []),
+    ...(showPerMatch
+      ? [
+          {
+            id: "perMatch",
+            label: t("common.perMatchLabel"),
+            defaultDir: "desc" as const,
+          },
+        ]
+      : []),
+    ...(showTotal
+      ? [{ id: "total", label: t("common.totalLabel"), defaultDir: "desc" as const }]
+      : []),
+    ...(showVsAvg
+      ? [{ id: "vsAvg", label: t("common.vsAvgLabel"), defaultDir: "desc" as const }]
+      : []),
+  ];
+
+  const tableRows: RankingRow[] = visibleRows.map((row, index) => {
+    const isSelected =
+      playerSourceId !== null &&
+      String(row.player_source_id) === String(playerSourceId);
+    const nameEntry = nameMap[String(row.player_source_id)];
+    const rowPlayerHref = getPlayerDetailHref(nameEntry?.slug);
+    const rowName = nameEntry?.fullName ?? row.player_name ?? "—";
+    const teamHref = getTeamDetailHref(row.team_slug);
+    const logoPath = row.team_slug ? logoBySlug[row.team_slug] : undefined;
+    const prevRank = prevRankById.get(String(row.player_source_id));
+
+    const cells = [
+      <span key="rank" className="font-semibold">
+        {row.league_rank ?? "—"}
+        {prevRank !== undefined ? (
+          <span
+            className="ml-1 text-[11px] font-normal text-white/40"
+            title={t("common.prevSeasonRank", { rank: prevRank })}
+          >
+            ({prevRank})
+          </span>
+        ) : null}
+      </span>,
+      rowPlayerHref ? (
+        <Link
+          key="player"
+          href={rowPlayerHref}
+          className={`transition hover:underline ${
+            isSelected
+              ? "font-semibold text-white"
+              : "text-[#8dc8ff] hover:text-[#bfe0ff]"
+          }`}
+        >
+          {rowName}
+        </Link>
+      ) : (
+        <span
+          key="player"
+          className={isSelected ? "font-semibold text-white" : undefined}
+        >
+          {rowName}
+        </span>
+      ),
+      <span key="team" className="inline-flex items-center gap-2">
+        {logoPath ? (
+          <Image
+            src={logoPath}
+            alt={row.team_name ?? ""}
+            width={16}
+            height={16}
+            className="h-4 w-4 shrink-0 object-contain"
+          />
+        ) : null}
+        {teamHref ? (
+          <Link
+            href={teamHref}
+            className="text-white/70 transition hover:text-white hover:underline"
+          >
+            {row.team_name}
+          </Link>
+        ) : (
+          <span>{row.team_name ?? "—"}</span>
+        )}
+      </span>,
+      ...(showPer90
+        ? [
+            <span key="per90" className="font-medium">
+              {formatRateValue(row.per90_value, row.value_format)}
+            </span>,
+          ]
+        : []),
+      ...(showPerMatch
+        ? [
+            <span key="perMatch">
+              {formatRateValue(row.per_match_value, row.value_format)}
+            </span>,
+          ]
+        : []),
+      ...(showTotal
+        ? [
+            <span key="total">
+              {formatMetricValue(row.total_value, row.value_format)}
+            </span>,
+          ]
+        : []),
+      ...(showVsAvg
+        ? [
+            <span
+              key="vsAvg"
+              className={`font-medium ${
+                row.vs_league_avg_pct == null
+                  ? "text-white/55"
+                  : (row.vs_league_avg_pct >= 0) ===
+                    (row.is_higher_better !== false)
+                  ? "text-emerald-300"
+                  : "text-rose-300"
+              }`}
+            >
+              {formatMetricValue(row.vs_league_avg_pct, "pct_1")}
+            </span>,
+          ]
+        : []),
+    ];
+
+    const sortValues: (number | string | null)[] = [
+      row.league_rank,
+      rowName,
+      row.team_name ?? null,
+      ...(showPer90 ? [row.per90_value] : []),
+      ...(showPerMatch ? [row.per_match_value] : []),
+      ...(showTotal ? [row.total_value] : []),
+      ...(showVsAvg ? [row.vs_league_avg_pct] : []),
+    ];
+
+    return {
+      id: `${row.player_source_id}-${row.team_slug}-${index}`,
+      highlighted: isSelected,
+      cells,
+      sortValues,
+    };
+  });
 
   return (
     <section className="w-full space-y-3">
@@ -228,17 +368,26 @@ export default async function PlayerMetricLeaderboardPage({
           ← {playerSlug ? t("common.backToDetailedStats") : t("nav.statsAnalysis")}
         </Link>
 
-        <div className="mt-3">
-          <div className="text-[11px] uppercase tracking-[0.20em] text-white/40">
-            {t("nav.playerRankings")}
-            {leaderRow?.season_label ? ` · ${leaderRow.season_label}` : ""}
+        <div className="mt-3 flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <div className="text-[11px] uppercase tracking-[0.20em] text-white/40">
+              {t("nav.playerRankings")}
+              {leaderRow?.season_label ? ` · ${leaderRow.season_label}` : ""}
+            </div>
+            <h1 className="mt-1 text-2xl font-semibold text-white">
+              {metricTitle}
+            </h1>
+            {displayName ? (
+              <div className="mt-1 text-sm text-white/55">{displayName}</div>
+            ) : null}
           </div>
-          <h1 className="mt-1 text-2xl font-semibold text-white">
-            {metricTitle}
-          </h1>
-          {displayName ? (
-            <div className="mt-1 text-sm text-white/55">{displayName}</div>
-          ) : null}
+
+          <MetricSelect
+            options={metricOptions}
+            selectedKey={metricKey}
+            basePath="/dashboard/stats-analysis/football/player-stats/metric"
+            baseParams={metricSelectParams}
+          />
         </div>
 
         <div className="mt-3 flex flex-wrap gap-2">
@@ -331,37 +480,12 @@ export default async function PlayerMetricLeaderboardPage({
         </div>
       </div>
 
-      <div className="rounded-[18px] border border-white/10 bg-white/[0.02] p-4">
-        <div className="space-y-2">
-          {Array.from(optionsByCategory.entries()).map(([catLabel, options]) => (
-            <div key={catLabel} className="flex flex-wrap items-center gap-1.5">
-              <span className="mr-1 w-24 shrink-0 text-[11px] uppercase tracking-[0.12em] text-white/35">
-                {catLabel}
-              </span>
-              {options.map((option) => (
-                <Link
-                  key={option.key}
-                  href={pageHref({ metric: option.key })}
-                  className={`rounded-lg border px-2.5 py-1 text-[12px] font-medium transition ${
-                    option.key === metricKey
-                      ? "border-[#4da2ff]/40 bg-[#10335d]/70 text-white"
-                      : "border-white/10 bg-white/[0.03] text-white/65 hover:bg-white/[0.06] hover:text-white"
-                  }`}
-                >
-                  {option.label}
-                </Link>
-              ))}
-            </div>
-          ))}
-        </div>
-      </div>
-
       <div className="rounded-[18px] border border-white/10">
         <div className="flex flex-wrap items-center gap-2 border-b border-white/10 px-4 py-3">
           {viewOptions.map((option) => (
             <Link
               key={option.mode}
-              href={pageHref({ view: option.mode })}
+              href={viewHref(option.mode)}
               className={`rounded-lg border px-3 py-1.5 text-[12px] font-medium transition ${
                 requestedView === option.mode
                   ? "border-[#4da2ff]/40 bg-[#10335d]/70 text-white"
@@ -376,149 +500,12 @@ export default async function PlayerMetricLeaderboardPage({
           </span>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="min-w-full border-collapse">
-            <thead>
-              <tr className="text-left text-[10px] uppercase tracking-[0.14em] text-white/38">
-                <th className="px-4 py-2.5 font-medium">{t("common.rank")}</th>
-                <th className="px-4 py-2.5 font-medium">{t("common.player")}</th>
-                <th className="px-4 py-2.5 font-medium">{t("common.team")}</th>
-                {showPer90 ? (
-                  <th className="px-4 py-2.5 font-medium">
-                    {t("common.per90Label")}
-                  </th>
-                ) : null}
-                {showPerMatch ? (
-                  <th className="px-4 py-2.5 font-medium">
-                    {t("common.perMatchLabel")}
-                  </th>
-                ) : null}
-                {showTotal ? (
-                  <th className="px-4 py-2.5 font-medium">
-                    {t("common.totalLabel")}
-                  </th>
-                ) : null}
-                {showVsAvg ? (
-                  <th className="px-4 py-2.5 font-medium">
-                    {t("common.vsAvgLabel")}
-                  </th>
-                ) : null}
-              </tr>
-            </thead>
-            <tbody>
-              {visibleRows.map((row, index) => {
-                const isSelected =
-                  playerSourceId !== null &&
-                  String(row.player_source_id) === String(playerSourceId);
-                const nameEntry = nameMap[String(row.player_source_id)];
-                const rowPlayerHref = getPlayerDetailHref(nameEntry?.slug);
-                const rowName = nameEntry?.fullName ?? row.player_name ?? "—";
-                const teamHref = getTeamDetailHref(row.team_slug);
-                const logoPath = row.team_slug
-                  ? logoBySlug[row.team_slug]
-                  : undefined;
-                const prevRank = prevRankById.get(String(row.player_source_id));
-
-                return (
-                  <tr
-                    key={`${row.player_source_id}-${row.team_slug}-${index}`}
-                    className={`border-t text-[13px] transition ${
-                      isSelected
-                        ? "border-[#4da2ff]/30 bg-[#10335d]/40 text-white"
-                        : "border-white/10 text-white/80 hover:bg-white/[0.03]"
-                    }`}
-                  >
-                    <td className="whitespace-nowrap px-4 py-2 font-semibold">
-                      {row.league_rank ?? "—"}
-                      {prevRank !== undefined ? (
-                        <span
-                          className="ml-1 text-[11px] font-normal text-white/40"
-                          title={t("common.prevSeasonRank", { rank: prevRank })}
-                        >
-                          ({prevRank})
-                        </span>
-                      ) : null}
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-2">
-                      {rowPlayerHref ? (
-                        <Link
-                          href={rowPlayerHref}
-                          className={`transition hover:underline ${
-                            isSelected
-                              ? "font-semibold text-white"
-                              : "text-[#8dc8ff] hover:text-[#bfe0ff]"
-                          }`}
-                        >
-                          {rowName}
-                        </Link>
-                      ) : (
-                        <span
-                          className={
-                            isSelected ? "font-semibold text-white" : undefined
-                          }
-                        >
-                          {rowName}
-                        </span>
-                      )}
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-2">
-                      <span className="inline-flex items-center gap-2">
-                        {logoPath ? (
-                          <Image
-                            src={logoPath}
-                            alt={row.team_name ?? ""}
-                            width={16}
-                            height={16}
-                            className="h-4 w-4 shrink-0 object-contain"
-                          />
-                        ) : null}
-                        {teamHref ? (
-                          <Link
-                            href={teamHref}
-                            className="text-white/70 transition hover:text-white hover:underline"
-                          >
-                            {row.team_name}
-                          </Link>
-                        ) : (
-                          <span>{row.team_name ?? "—"}</span>
-                        )}
-                      </span>
-                    </td>
-                    {showPer90 ? (
-                      <td className="px-4 py-2 font-medium">
-                        {formatRateValue(row.per90_value, row.value_format)}
-                      </td>
-                    ) : null}
-                    {showPerMatch ? (
-                      <td className="px-4 py-2">
-                        {formatRateValue(row.per_match_value, row.value_format)}
-                      </td>
-                    ) : null}
-                    {showTotal ? (
-                      <td className="px-4 py-2">
-                        {formatMetricValue(row.total_value, row.value_format)}
-                      </td>
-                    ) : null}
-                    {showVsAvg ? (
-                      <td
-                        className={`px-4 py-2 font-medium ${
-                          row.vs_league_avg_pct == null
-                            ? "text-white/55"
-                            : (row.vs_league_avg_pct >= 0) ===
-                              (row.is_higher_better !== false)
-                            ? "text-emerald-300"
-                            : "text-rose-300"
-                        }`}
-                      >
-                        {formatMetricValue(row.vs_league_avg_pct, "pct_1")}
-                      </td>
-                    ) : null}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+        <SortableRankingTable
+          columns={columns}
+          rows={tableRows}
+          initialSortIndex={0}
+          initialSortDir="asc"
+        />
       </div>
     </section>
   );

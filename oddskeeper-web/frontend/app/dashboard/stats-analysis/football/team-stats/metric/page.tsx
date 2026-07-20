@@ -1,5 +1,10 @@
 import Image from "next/image";
 import Link from "next/link";
+import MetricSelect from "@/components/rankings/MetricSelect";
+import SortableRankingTable, {
+  type RankingColumn,
+  type RankingRow,
+} from "@/components/rankings/SortableRankingTable";
 import { TEAM_METRIC_META } from "@/features/team-detail/metricMeta";
 import { getTeamDetailedMetrics } from "@/features/team-detail/server/getTeamDetailedMetrics";
 import { getTeamMetricLeaderboard } from "@/features/team-detail/server/getTeamMetricLeaderboard";
@@ -116,28 +121,15 @@ export default async function TeamMetricLeaderboardPage({
       })()
     : "/dashboard/stats-analysis";
 
-  const metricHref = (key: string) => {
-    const params = new URLSearchParams();
-    if (teamSlug) params.set("team", teamSlug);
-    params.set("metric", key);
-    if (resolved.season) params.set("season", resolved.season);
-    return `/dashboard/stats-analysis/football/team-stats/metric?${params.toString()}`;
-  };
+  const metricOptions = detailedRows.map((row) => ({
+    key: row.metric_key,
+    label: metricLabel(t, row.metric_key, row.metric_label),
+    category: categoryLabel(t, row.category_key, row.category_label),
+  }));
 
-  const optionsByCategory = new Map<
-    string,
-    { key: string; label: string }[]
-  >();
-  for (const row of detailedRows) {
-    const catLabel = categoryLabel(t, row.category_key, row.category_label);
-    if (!optionsByCategory.has(catLabel)) {
-      optionsByCategory.set(catLabel, []);
-    }
-    optionsByCategory.get(catLabel)!.push({
-      key: row.metric_key,
-      label: metricLabel(t, row.metric_key, row.metric_label),
-    });
-  }
+  const metricSelectParams: Record<string, string> = {};
+  if (teamSlug) metricSelectParams.team = teamSlug;
+  if (resolved.season) metricSelectParams.season = resolved.season;
 
   // Anlamsız (tamamen boş) kolonları gizle: ör. yüzde metriklerinde Toplam.
   const hasAny = (pick: (r: (typeof leaderboard)[number]) => number | null) =>
@@ -146,6 +138,130 @@ export default async function TeamMetricLeaderboardPage({
   const showHome = hasAny((r) => r.home_value);
   const showAway = hasAny((r) => r.away_value);
   const showVsAvg = hasAny((r) => r.vs_league_avg_pct);
+
+  const columns: RankingColumn[] = [
+    { id: "rank", label: t("common.rank"), defaultDir: "asc" },
+    { id: "team", label: t("common.team"), defaultDir: "asc" },
+    ...(showTotal
+      ? [{ id: "total", label: t("common.totalLabel"), defaultDir: "desc" as const }]
+      : []),
+    { id: "perMatch", label: t("common.perMatchLabel"), defaultDir: "desc" },
+    ...(showHome
+      ? [{ id: "home", label: t("common.home"), defaultDir: "desc" as const }]
+      : []),
+    ...(showAway
+      ? [{ id: "away", label: t("common.away"), defaultDir: "desc" as const }]
+      : []),
+    ...(showVsAvg
+      ? [{ id: "vsAvg", label: t("common.vsAvgLabel"), defaultDir: "desc" as const }]
+      : []),
+  ];
+
+  const tableRows: RankingRow[] = leaderboard.map((row, index) => {
+    const isSelected = teamSlug !== null && row.team_slug === teamSlug;
+    const teamHref = getTeamDetailHref(row.team_slug);
+    const logoPath = row.team_slug ? logoBySlug[row.team_slug] : undefined;
+    const prevRank = row.team_slug
+      ? prevRankBySlug.get(row.team_slug)
+      : undefined;
+
+    const cells = [
+      <span key="rank" className="font-semibold">
+        {row.league_rank ?? "—"}
+        {prevRank !== undefined ? (
+          <span
+            className="ml-1 text-[11px] font-normal text-white/40"
+            title={t("common.prevSeasonRank", { rank: prevRank })}
+          >
+            ({prevRank})
+          </span>
+        ) : null}
+      </span>,
+      <span key="team" className="inline-flex items-center gap-2">
+        {logoPath ? (
+          <Image
+            src={logoPath}
+            alt={row.team_name ?? ""}
+            width={18}
+            height={18}
+            className="h-[18px] w-[18px] shrink-0 object-contain"
+          />
+        ) : null}
+        {teamHref ? (
+          <Link
+            href={teamHref}
+            className={`transition hover:underline ${
+              isSelected
+                ? "font-semibold text-white"
+                : "text-white/80 hover:text-white"
+            }`}
+          >
+            {row.team_name}
+          </Link>
+        ) : (
+          <span>{row.team_name ?? "—"}</span>
+        )}
+      </span>,
+      ...(showTotal
+        ? [
+            <span key="total">
+              {formatMetricValue(row.total_value, row.value_format)}
+            </span>,
+          ]
+        : []),
+      <span key="perMatch" className="font-medium">
+        {formatRateValue(row.per_match_value, row.value_format)}
+      </span>,
+      ...(showHome
+        ? [
+            <span key="home">
+              {formatRateValue(row.home_value, row.value_format)}
+            </span>,
+          ]
+        : []),
+      ...(showAway
+        ? [
+            <span key="away">
+              {formatRateValue(row.away_value, row.value_format)}
+            </span>,
+          ]
+        : []),
+      ...(showVsAvg
+        ? [
+            <span
+              key="vsAvg"
+              className={`font-medium ${
+                row.vs_league_avg_pct == null
+                  ? "text-white/55"
+                  : (row.vs_league_avg_pct >= 0) ===
+                    (row.is_higher_better !== false)
+                  ? "text-emerald-300"
+                  : "text-rose-300"
+              }`}
+            >
+              {formatMetricValue(row.vs_league_avg_pct, "pct_1")}
+            </span>,
+          ]
+        : []),
+    ];
+
+    const sortValues: (number | string | null)[] = [
+      row.league_rank,
+      row.team_name ?? null,
+      ...(showTotal ? [row.total_value] : []),
+      row.per_match_value,
+      ...(showHome ? [row.home_value] : []),
+      ...(showAway ? [row.away_value] : []),
+      ...(showVsAvg ? [row.vs_league_avg_pct] : []),
+    ];
+
+    return {
+      id: `${row.team_slug}-${index}`,
+      highlighted: isSelected,
+      cells,
+      sortValues,
+    };
+  });
 
   return (
     <section className="w-full space-y-3">
@@ -157,26 +273,35 @@ export default async function TeamMetricLeaderboardPage({
           ← {teamSlug ? t("common.backToDetailedStats") : t("nav.statsAnalysis")}
         </Link>
 
-        <div className="mt-3 flex flex-wrap items-center gap-3">
-          {localTeam ? (
-            <Image
-              src={localTeam.logoPath}
-              alt={localTeam.name}
-              width={44}
-              height={44}
-              className="h-11 w-11 object-contain"
-            />
-          ) : null}
+        <div className="mt-3 flex flex-wrap items-end justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            {localTeam ? (
+              <Image
+                src={localTeam.logoPath}
+                alt={localTeam.name}
+                width={44}
+                height={44}
+                className="h-11 w-11 object-contain"
+              />
+            ) : null}
 
-          <div>
-            <div className="text-[11px] uppercase tracking-[0.20em] text-white/40">
-              {t("nav.teamRankings")}
-              {seasonLabel ? ` · ${seasonLabel}` : ""}
+            <div>
+              <div className="text-[11px] uppercase tracking-[0.20em] text-white/40">
+                {t("nav.teamRankings")}
+                {seasonLabel ? ` · ${seasonLabel}` : ""}
+              </div>
+              <h1 className="mt-1 text-2xl font-semibold text-white">
+                {metricTitle}
+              </h1>
             </div>
-            <h1 className="mt-1 text-2xl font-semibold text-white">
-              {metricTitle}
-            </h1>
           </div>
+
+          <MetricSelect
+            options={metricOptions}
+            selectedKey={metricKey}
+            basePath="/dashboard/stats-analysis/football/team-stats/metric"
+            baseParams={metricSelectParams}
+          />
         </div>
 
         <div className="mt-3 flex flex-wrap gap-2">
@@ -261,155 +386,13 @@ export default async function TeamMetricLeaderboardPage({
         </div>
       </div>
 
-      <div className="rounded-[18px] border border-white/10 bg-white/[0.02] p-4">
-        <div className="space-y-2">
-          {Array.from(optionsByCategory.entries()).map(([catLabel, options]) => (
-            <div key={catLabel} className="flex flex-wrap items-center gap-1.5">
-              <span className="mr-1 w-24 shrink-0 text-[11px] uppercase tracking-[0.12em] text-white/35">
-                {catLabel}
-              </span>
-              {options.map((option) => (
-                <Link
-                  key={option.key}
-                  href={metricHref(option.key)}
-                  className={`rounded-lg border px-2.5 py-1 text-[12px] font-medium transition ${
-                    option.key === metricKey
-                      ? "border-[#4da2ff]/40 bg-[#10335d]/70 text-white"
-                      : "border-white/10 bg-white/[0.03] text-white/65 hover:bg-white/[0.06] hover:text-white"
-                  }`}
-                >
-                  {option.label}
-                </Link>
-              ))}
-            </div>
-          ))}
-        </div>
-      </div>
-
       <div className="rounded-[18px] border border-white/10">
-        <div className="overflow-x-auto">
-          <table className="min-w-full border-collapse">
-            <thead>
-              <tr className="text-left text-[10px] uppercase tracking-[0.14em] text-white/38">
-                <th className="px-4 py-2.5 font-medium">{t("common.rank")}</th>
-                <th className="px-4 py-2.5 font-medium">{t("common.team")}</th>
-                {showTotal ? (
-                  <th className="px-4 py-2.5 font-medium">
-                    {t("common.totalLabel")}
-                  </th>
-                ) : null}
-                <th className="px-4 py-2.5 font-medium">
-                  {t("common.perMatchLabel")}
-                </th>
-                {showHome ? (
-                  <th className="px-4 py-2.5 font-medium">{t("common.home")}</th>
-                ) : null}
-                {showAway ? (
-                  <th className="px-4 py-2.5 font-medium">{t("common.away")}</th>
-                ) : null}
-                {showVsAvg ? (
-                  <th className="px-4 py-2.5 font-medium">
-                    {t("common.vsAvgLabel")}
-                  </th>
-                ) : null}
-              </tr>
-            </thead>
-            <tbody>
-              {leaderboard.map((row, index) => {
-                const isSelected = teamSlug !== null && row.team_slug === teamSlug;
-                const teamHref = getTeamDetailHref(row.team_slug);
-                const logoPath = row.team_slug
-                  ? logoBySlug[row.team_slug]
-                  : undefined;
-                const prevRank = row.team_slug
-                  ? prevRankBySlug.get(row.team_slug)
-                  : undefined;
-
-                return (
-                  <tr
-                    key={`${row.team_slug}-${index}`}
-                    className={`border-t text-[13px] transition ${
-                      isSelected
-                        ? "border-[#4da2ff]/30 bg-[#10335d]/40 text-white"
-                        : "border-white/10 text-white/80 hover:bg-white/[0.03]"
-                    }`}
-                  >
-                    <td className="whitespace-nowrap px-4 py-2 font-semibold">
-                      {row.league_rank ?? "—"}
-                      {prevRank !== undefined ? (
-                        <span
-                          className="ml-1 text-[11px] font-normal text-white/40"
-                          title={t("common.prevSeasonRank", { rank: prevRank })}
-                        >
-                          ({prevRank})
-                        </span>
-                      ) : null}
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-2">
-                      <span className="inline-flex items-center gap-2">
-                        {logoPath ? (
-                          <Image
-                            src={logoPath}
-                            alt={row.team_name ?? ""}
-                            width={18}
-                            height={18}
-                            className="h-[18px] w-[18px] shrink-0 object-contain"
-                          />
-                        ) : null}
-                        {teamHref ? (
-                          <Link
-                            href={teamHref}
-                            className={`transition hover:underline ${
-                              isSelected
-                                ? "font-semibold text-white"
-                                : "text-white/80 hover:text-white"
-                            }`}
-                          >
-                            {row.team_name}
-                          </Link>
-                        ) : (
-                          <span>{row.team_name ?? "—"}</span>
-                        )}
-                      </span>
-                    </td>
-                    {showTotal ? (
-                      <td className="px-4 py-2">
-                        {formatMetricValue(row.total_value, row.value_format)}
-                      </td>
-                    ) : null}
-                    <td className="px-4 py-2 font-medium">
-                      {formatRateValue(row.per_match_value, row.value_format)}
-                    </td>
-                    {showHome ? (
-                      <td className="px-4 py-2">
-                        {formatRateValue(row.home_value, row.value_format)}
-                      </td>
-                    ) : null}
-                    {showAway ? (
-                      <td className="px-4 py-2">
-                        {formatRateValue(row.away_value, row.value_format)}
-                      </td>
-                    ) : null}
-                    {showVsAvg ? (
-                      <td
-                        className={`px-4 py-2 font-medium ${
-                          row.vs_league_avg_pct == null
-                            ? "text-white/55"
-                            : (row.vs_league_avg_pct >= 0) ===
-                              (row.is_higher_better !== false)
-                            ? "text-emerald-300"
-                            : "text-rose-300"
-                        }`}
-                      >
-                        {formatMetricValue(row.vs_league_avg_pct, "pct_1")}
-                      </td>
-                    ) : null}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+        <SortableRankingTable
+          columns={columns}
+          rows={tableRows}
+          initialSortIndex={0}
+          initialSortDir="asc"
+        />
       </div>
     </section>
   );

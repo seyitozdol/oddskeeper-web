@@ -70,6 +70,7 @@ export const playerDetail = defineMessages({
     metricDescExpectedGoalsTotal:
       "Chance quality translated into expected goals.",
     metricDescShotsOnTargetTotal: "Shots that hit the target.",
+    metricDescShotsTotal: "Total shot attempts (inside and outside the box).",
     metricDescAttemptsIboxTotal: "Attempts taken from inside the box.",
     metricDescAttemptsOboxTotal: "Attempts taken from outside the box.",
     metricDescShotAccuracyPct: "Share of attempts that hit the target.",
@@ -302,6 +303,7 @@ export const playerDetail = defineMessages({
     metricDescExpectedGoalsTotal:
       "Pozisyon kalitesinin beklenen gole (xG) dönüşümü.",
     metricDescShotsOnTargetTotal: "İsabetli şut sayısı.",
+    metricDescShotsTotal: "Toplam şut denemesi (ceza sahası içi ve dışı).",
     metricDescAttemptsIboxTotal: "Ceza sahası içinden yapılan şutlar.",
     metricDescAttemptsOboxTotal: "Ceza sahası dışından yapılan şutlar.",
     metricDescShotAccuracyPct: "İsabetli şut oranı.",
