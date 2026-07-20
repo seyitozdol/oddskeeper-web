@@ -85,6 +85,56 @@ export async function fetchLatestMetricSeason(): Promise<string> {
   return data?.[0]?.season_label ?? "2025/2026";
 }
 
+// ─── All current squad players (Player List tab) ─────────────────────────────
+
+export type DirectoryPlayer = {
+  player_slug: string;
+  full_name: string;
+  team_slug: string | null;
+  team_name: string | null;
+  nationality: string | null;
+  position: string | null;
+};
+
+export async function fetchAllCurrentPlayers(): Promise<DirectoryPlayer[]> {
+  const supabase = createClient();
+
+  const { data, error } = await supabase
+    .schema("analytics")
+    .from("player_current_info_v1")
+    .select(
+      "player_slug, player_name, full_name, first_name, last_name, current_team_slug, current_team_name, nationality, position"
+    )
+    .order("current_team_name", { ascending: true })
+    .order("player_name", { ascending: true })
+    .limit(2000);
+
+  if (error) {
+    console.error("fetchAllCurrentPlayers error:", error);
+    return [];
+  }
+
+  // Slug bazinda mukerrer satirlar olabiliyor; ilkini al.
+  const seen = new Set<string>();
+  const result: DirectoryPlayer[] = [];
+  for (const row of data ?? []) {
+    if (!row.player_slug || seen.has(row.player_slug)) continue;
+    seen.add(row.player_slug);
+    result.push({
+      player_slug: row.player_slug,
+      full_name:
+        [row.first_name, row.last_name].filter(Boolean).join(" ") ||
+        row.full_name ||
+        row.player_name,
+      team_slug: row.current_team_slug ?? null,
+      team_name: row.current_team_name ?? null,
+      nationality: row.nationality ?? null,
+      position: row.position ?? null,
+    });
+  }
+  return result;
+}
+
 // ─── Fetch upcoming fixtures ──────────────────────────────────────────────────
 
 export async function fetchUpcomingFixtures(): Promise<UpcomingFixture[]> {

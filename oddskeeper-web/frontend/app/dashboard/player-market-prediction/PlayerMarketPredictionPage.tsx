@@ -15,6 +15,7 @@ import {
   type PlayerMetricStat,
 } from "./queries";
 import { previousSeasonLabel } from "@/lib/season";
+import { PlayerListTab, MarketListTab } from "./list-tabs";
 import {
   inferPlayerStatus,
   distributeExpectation,
@@ -89,7 +90,7 @@ function StatusBadge({
       <select
         value={status}
         onChange={(e) => onChange(e.target.value as InferredStatus)}
-        className={`cursor-pointer appearance-none rounded border px-2 py-0.5 text-[11px] font-semibold tracking-wide pr-5
+        className={`cursor-pointer appearance-none rounded border px-1.5 py-0.5 text-[10px] font-semibold tracking-wide pr-4
           ${STATUS_COLORS[status]} bg-field focus:outline-none`}
       >
         {STATUS_OPTIONS.map((opt) => (
@@ -208,15 +209,15 @@ function TeamPlayerTable({
           <thead className="bg-card-2">
             <tr className="text-left text-[10px] uppercase tracking-[0.12em] text-ink-3">
               <th className="px-2 py-2 w-6"></th>
-              <SortTh col="player" label={t("common.player")} sortCol={sortCol} sortDir={sortDir} onSort={handleSort} className="min-w-[120px]" />
+              <SortTh col="player" label={t("common.player")} sortCol={sortCol} sortDir={sortDir} onSort={handleSort} className="min-w-[110px]" />
               <SortTh col="pos" label={t("common.position")} sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
               <SortTh col="status" label={t("playerMarket.columnStatus")} sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
               <SortTh col="avg" label={t("playerMarket.avgLabel")} sortCol={sortCol} sortDir={sortDir} onSort={handleSort} className="text-right" />
               <SortTh col="last5" label={t("playerMarket.last5AvgLabel")} sortCol={sortCol} sortDir={sortDir} onSort={handleSort} className="text-right" />
               <SortTh col="lyavg" label={t("playerMarket.lyAvgLabel")} sortCol={sortCol} sortDir={sortDir} onSort={handleSort} className="text-right" />
               <SortTh col="distexp" label={t("playerMarket.distExpLabel")} sortCol={sortCol} sortDir={sortDir} onSort={handleSort} className="text-right" />
-              <SortTh col="manual" label={t("playerMarket.manualLabel")} sortCol={sortCol} sortDir={sortDir} onSort={handleSort} className="text-right w-20" />
-              <th className="px-2 py-2 min-w-[160px]">{t("playerMarket.oddsColumnLabel")}</th>
+              <SortTh col="manual" label={t("playerMarket.manualLabel")} sortCol={sortCol} sortDir={sortDir} onSort={handleSort} className="text-right w-14" />
+              <th className="px-1.5 py-2 min-w-[168px]">{t("playerMarket.oddsOverHeader")}</th>
             </tr>
           </thead>
           <tbody>
@@ -243,7 +244,10 @@ function TeamPlayerTable({
                     />
                   </td>
 
-                  <td className="px-2 py-1.5 font-medium text-ink whitespace-nowrap">
+                  <td
+                    className="px-2 py-1.5 font-medium text-ink whitespace-nowrap overflow-hidden text-ellipsis max-w-[150px]"
+                    title={p.player_name}
+                  >
                     {p.player_name}
                   </td>
 
@@ -280,24 +284,30 @@ function TeamPlayerTable({
                       placeholder="0"
                       value={p.manualValue}
                       onChange={(e) => onManualChange(p.player_source_id, e.target.value)}
-                      className={`w-16 rounded border border-line bg-field px-1.5 py-0.5 text-right text-[11px] text-ink placeholder-ink-3 focus:border-teal-500/50 focus:outline-none ${NO_SPINNER}`}
+                      className={`w-12 rounded border border-line bg-field px-1 py-0.5 text-right text-[11px] text-ink placeholder-ink-3 focus:border-teal-500/50 focus:outline-none ${NO_SPINNER}`}
                     />
                   </td>
 
-                  {/* Odds - over only, with tick box per line */}
-                  <td className="px-2 py-1.5">
+                  {/* Odds - over only, 2x2 kompakt grid, satir basina tik + line + oran */}
+                  <td className="px-1.5 py-1">
                     {oddsLines.length > 0 ? (
-                      <div className="flex flex-col gap-0.5">
+                      <div className="grid grid-cols-2 gap-x-2 gap-y-0.5">
                         {oddsLines.map((ol) => {
                           const editKey = `${p.player_source_id}:${ol.line}`;
                           const computed = fmtOdds(ol.overOdds);
                           return (
-                            <div key={editKey} className="flex items-center gap-1.5">
+                            <div
+                              key={editKey}
+                              className="flex items-center gap-1"
+                              title={t("playerMarket.overLineLabel", { line: ol.line.toFixed(1) })}
+                            >
                               <input
                                 type="checkbox"
                                 className={`cursor-pointer ${STATUS_ACCENT[p.status]}`}
                               />
-                              <span className="text-ink-3 text-[11px] w-14">{t("playerMarket.overLineLabel", { line: ol.line.toFixed(1) })}</span>
+                              <span className="text-ink-3 text-[10px] w-6 text-right tabular-nums">
+                                {ol.line.toFixed(1)}
+                              </span>
                               {computed === "—" ? (
                                 <span className="text-ink-3">—</span>
                               ) : (
@@ -309,7 +319,7 @@ function TeamPlayerTable({
                                   onChange={(e) =>
                                     setOddsEdit((prev) => ({ ...prev, [editKey]: e.target.value }))
                                   }
-                                  className={`w-14 rounded bg-veil px-1.5 py-0.5 text-right text-[12px] font-semibold text-teal-300 border border-transparent focus:border-teal-500/50 focus:outline-none ${NO_SPINNER}`}
+                                  className={`w-12 rounded bg-veil px-1 py-0.5 text-right text-[11px] font-semibold text-teal-300 border border-transparent focus:border-teal-500/50 focus:outline-none ${NO_SPINNER}`}
                                 />
                               )}
                             </div>
@@ -332,7 +342,11 @@ function TeamPlayerTable({
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 
-export default function PlayerMarketPredictionPage() {
+export default function PlayerMarketPredictionPage({
+  teamLogos = {},
+}: {
+  teamLogos?: Record<string, string>;
+}) {
   const { t } = useI18n();
   // ── Inputs ──
   const [fixtures, setFixtures] = useState<UpcomingFixture[]>([]);
@@ -346,7 +360,7 @@ export default function PlayerMarketPredictionPage() {
   const [homePlayers, setHomePlayers] = useState<PlayerState[]>([]);
   const [awayPlayers, setAwayPlayers] = useState<PlayerState[]>([]);
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<"model" | "players" | "markets">("model");
+  const [activeTab, setActiveTab] = useState<"model" | "players" | "markets" | "input">("model");
   // Avg bu sezondan, LY Avg bir onceki sezondan okunur.
   const [currentSeason, setCurrentSeason] = useState<string | null>(null);
 
@@ -496,6 +510,7 @@ export default function PlayerMarketPredictionPage() {
     { id: "model" as const, label: t("playerMarket.tabModel") },
     { id: "players" as const, label: t("playerMarket.tabPlayerList") },
     { id: "markets" as const, label: t("playerMarket.tabMarketList") },
+    { id: "input" as const, label: t("playerMarket.tabInput") },
   ];
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -519,7 +534,9 @@ export default function PlayerMarketPredictionPage() {
         ))}
       </div>
 
-      {activeTab !== "model" && (
+      {activeTab === "players" && <PlayerListTab teamLogos={teamLogos} />}
+      {activeTab === "markets" && <MarketListTab />}
+      {activeTab === "input" && (
         <div className="rounded-xl border border-line bg-card px-5 py-10 text-center text-sm text-ink-3">
           {t("playerMarket.comingSoon")}
         </div>

@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import PlayerMarketPredictionPage from "./PlayerMarketPredictionPage";
 import PlayerMarketAccessDenied from "./PlayerMarketAccessDenied";
 import { hasPlayerMarketAccess } from "./access";
+import { getAllFootballTeamLogos } from "@/lib/football-teams";
 
 async function getUser() {
   const cookieStore = await cookies();
@@ -37,5 +38,7 @@ export default async function Page() {
     return <PlayerMarketAccessDenied userEmail={userEmail} />;
   }
 
-  return <PlayerMarketPredictionPage />;
+  const teamLogos = await getAllFootballTeamLogos();
+
+  return <PlayerMarketPredictionPage teamLogos={teamLogos} />;
 }
