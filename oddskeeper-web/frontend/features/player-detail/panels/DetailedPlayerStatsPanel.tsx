@@ -1,7 +1,8 @@
 "use client";
 
+import Link from "next/link";
+
 import { useMemo, useState } from "react";
-import { PlayerMetricLeaderboardDrawer } from "../components/PlayerMetricLeaderboardDrawer";
 import { useI18n } from "@/lib/i18n/LanguageProvider";
 import type { Translator } from "@/lib/i18n/messages";
 import { categoryLabel, metricLabel } from "@/lib/i18n/metricLabel";
@@ -12,6 +13,7 @@ import type {
 
 type DetailedPlayerStatsPanelProps = {
   rows?: PlayerDetailedMetricRow[];
+  playerSlug?: string;
 };
 
 type CategoryFilter = "all" | PlayerDetailedCategoryKey;
@@ -308,15 +310,19 @@ function SortableHeader({
 
 export default function DetailedPlayerStatsPanel({
   rows = [],
+  playerSlug,
 }: DetailedPlayerStatsPanelProps) {
   const { t } = useI18n();
   const [activeCategory, setActiveCategory] = useState<CategoryFilter>("all");
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [selectedMetricKey, setSelectedMetricKey] = useState<string | null>(null);
-  const [selectedMetricLabel, setSelectedMetricLabel] = useState<string | null>(
-    null
-  );
   const [sortConfig, setSortConfig] = useState<SortConfig>(null);
+
+  // Sıra hücresi artık metrik sıralama sayfasına gider (drawer kaldırıldı).
+  const buildMetricHref = (metricKey: string) => {
+    const params = new URLSearchParams();
+    if (playerSlug) params.set("player", playerSlug);
+    params.set("metric", metricKey);
+    return `/dashboard/stats-analysis/football/player-stats/metric?${params.toString()}`;
+  };
 
   const availableCategories = useMemo(() => {
     const categorySet = new Set<PlayerDetailedCategoryKey>();
@@ -791,13 +797,8 @@ export default function DetailedPlayerStatsPanel({
 
                   <td className="px-4 py-2 whitespace-nowrap">
                     {row.league_rank !== null && row.league_rank !== undefined ? (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSelectedMetricKey(row.metric_key);
-                          setSelectedMetricLabel(row.metric_label);
-                          setIsDrawerOpen(true);
-                        }}
+                      <Link
+                        href={buildMetricHref(row.metric_key)}
                         title={t("playerDetail.openMetricLeaderboardTitle")}
                         className={`group inline-flex items-center gap-1 font-semibold transition duration-150 hover:underline cursor-pointer ${getRankTone(
                           row.league_rank
@@ -807,7 +808,7 @@ export default function DetailedPlayerStatsPanel({
                         <span className="text-[10px] opacity-60 transition group-hover:opacity-100">
                           ↗
                         </span>
-                      </button>
+                      </Link>
                     ) : (
                       <span className="text-white/55">—</span>
                     )}
@@ -838,16 +839,6 @@ export default function DetailedPlayerStatsPanel({
         </div>
       </div>
 
-      <PlayerMetricLeaderboardDrawer
-        isOpen={isDrawerOpen}
-        onClose={() => setIsDrawerOpen(false)}
-        initialMetricKey={selectedMetricKey}
-        initialMetricLabel={selectedMetricLabel}
-        seasonLabel={selectedPlayer?.season_label ?? null}
-        competition={selectedPlayer?.competition ?? null}
-        selectedPlayerSourceId={selectedPlayer?.player_source_id ?? null}
-        metricOptions={metricOptions}
-      />
     </>
   );
 }

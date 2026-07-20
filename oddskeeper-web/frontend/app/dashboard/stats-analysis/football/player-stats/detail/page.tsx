@@ -155,7 +155,10 @@ export default async function FootballPlayerDetailPage({
       {activeTab === "overview" ? (
         <PlayerOverviewPanel profile={profile} matchLog={matchLog} />
       ) : activeTab === "detailed-stats" ? (
-        <DetailedPlayerStatsPanel rows={detailedMetricRows} />
+        <DetailedPlayerStatsPanel
+          rows={detailedMetricRows}
+          playerSlug={playerSlug}
+        />
       ) : activeTab === "advanced" ? (
         <PlayerAdvancedOverviewPanel overview={advancedOverview} />
       ) : activeTab === "match-log" ? (

@@ -1,10 +1,11 @@
 "use client";
 
+import Link from "next/link";
+
 import { useMemo, useState } from "react";
 import { useI18n } from "@/lib/i18n/LanguageProvider";
 import type { Translator } from "@/lib/i18n/messages";
 import { categoryLabel, metricLabel } from "@/lib/i18n/metricLabel";
-import { TeamMetricLeaderboardDrawer } from "../components/TeamMetricLeaderboardDrawer";
 import type {
   TeamDetailedCategoryKey,
   TeamDetailedMetricRow,
@@ -387,12 +388,16 @@ export default function DetailedStatsPanel({
 }: DetailedStatsPanelProps) {
   const { t } = useI18n();
   const [activeCategory, setActiveCategory] = useState<CategoryFilter>("all");
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [selectedMetricKey, setSelectedMetricKey] = useState<string | null>(null);
-  const [selectedMetricLabel, setSelectedMetricLabel] = useState<string | null>(
-    null
-  );
   const [sortConfig, setSortConfig] = useState<SortConfig>(null);
+
+  // Sıra hücresi artık metrik sıralama sayfasına gider (drawer kaldırıldı).
+  const buildMetricHref = (row: TeamDetailedMetricRow) => {
+    const params = new URLSearchParams();
+    if (row.team_slug) params.set("team", row.team_slug);
+    params.set("metric", row.metric_key);
+    if (row.season_label) params.set("season", row.season_label);
+    return `/dashboard/stats-analysis/football/team-stats/metric?${params.toString()}`;
+  };
 
   const availableCategories = useMemo(() => {
     const categorySet = new Set<TeamDetailedCategoryKey>();
@@ -830,13 +835,8 @@ export default function DetailedStatsPanel({
 
                   <td className="px-4 py-2 whitespace-nowrap">
                     {row.league_rank !== null && row.league_rank !== undefined ? (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSelectedMetricKey(row.metric_key);
-                          setSelectedMetricLabel(row.metric_label);
-                          setIsDrawerOpen(true);
-                        }}
+                      <Link
+                        href={buildMetricHref(row)}
                         title={t("teamDetail.openLeaderboardTooltip")}
                         className={`group inline-flex items-center gap-1 font-semibold transition duration-150 hover:underline cursor-pointer ${getRankTone(
                           row.league_rank
@@ -846,7 +846,7 @@ export default function DetailedStatsPanel({
                         <span className="text-[10px] opacity-60 transition group-hover:opacity-100">
                           ↗
                         </span>
-                      </button>
+                      </Link>
                     ) : (
                       <span className="text-white/55">—</span>
                     )}
@@ -877,16 +877,6 @@ export default function DetailedStatsPanel({
         </div>
       </div>
 
-      <TeamMetricLeaderboardDrawer
-        isOpen={isDrawerOpen}
-        onClose={() => setIsDrawerOpen(false)}
-        initialMetricKey={selectedMetricKey}
-        initialMetricLabel={selectedMetricLabel}
-        seasonLabel={selectedTeam?.season_label ?? null}
-        competition={selectedTeam?.competition ?? null}
-        selectedTeamSlug={selectedTeam?.team_slug ?? null}
-        metricOptions={metricOptions}
-      />
     </>
   );
 }
