@@ -71,12 +71,12 @@ export default function SortableRankingTable({
     <div className="overflow-x-auto">
       <table className="min-w-full border-collapse">
         <thead>
-          <tr className="text-left text-[10px] uppercase tracking-[0.14em] text-white/38">
+          <tr className="text-left text-[10px] uppercase tracking-[0.14em] text-ink-3">
             {columns.map((column, index) => (
               <th
                 key={column.id}
                 onClick={() => handleSort(index)}
-                className="cursor-pointer select-none whitespace-nowrap px-4 py-2.5 font-medium transition hover:text-white/75"
+                className="cursor-pointer select-none whitespace-nowrap px-4 py-2.5 font-medium transition hover:text-ink-2"
               >
                 {column.label}
                 {index === sortIndex ? (sortDir === "asc" ? " ↑" : " ↓") : ""}
@@ -90,8 +90,8 @@ export default function SortableRankingTable({
               key={row.id}
               className={`border-t text-[13px] transition ${
                 row.highlighted
-                  ? "border-[#4da2ff]/30 bg-[#10335d]/40 text-white"
-                  : "border-white/10 text-white/80 hover:bg-white/[0.03]"
+                  ? "border-line-strong bg-card-2 text-ink"
+                  : "border-line text-ink hover:bg-veil"
               }`}
             >
               {row.cells.map((cell, cellIndex) => (

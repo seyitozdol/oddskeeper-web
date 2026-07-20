@@ -42,7 +42,7 @@ export default function MetricSelect({
         params.set("metric", event.target.value);
         router.push(`${basePath}?${params.toString()}`);
       }}
-      className="min-w-[220px] rounded-lg border border-white/10 bg-[#0d1624] px-3 py-2 text-[13px] text-white outline-none transition focus:border-[#4da2ff]/40"
+      className="min-w-[220px] rounded-lg border border-line bg-field px-3 py-2 text-[13px] text-ink outline-none transition focus:border-line-strong"
     >
       {Array.from(groups.entries()).map(([category, groupOptions]) => (
         <optgroup key={category} label={category}>

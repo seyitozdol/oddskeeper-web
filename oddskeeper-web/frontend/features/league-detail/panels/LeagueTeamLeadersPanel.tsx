@@ -119,25 +119,25 @@ function getDeltaTone(
   isHigherBetter: boolean | null | undefined
 ) {
   if (value === null || value === undefined || Number.isNaN(value)) {
-    return "text-white/55";
+    return "text-ink-2";
   }
 
   if (value === 0) {
-    return "text-white/65";
+    return "text-ink-2";
   }
 
   const isPositive = value > 0;
   const isGood = isHigherBetter === false ? !isPositive : isPositive;
-  return isGood ? "text-emerald-300" : "text-rose-300";
+  return isGood ? "text-pos" : "text-neg";
 }
 
 function getCategoryTone(category: string | null | undefined) {
   if (category === "attack") {
-    return "border-[#4da2ff]/20 bg-[#4da2ff]/[0.05] text-[#8fc2ff]";
+    return "border-line-strong bg-accent-soft text-accent-ink";
   }
 
   if (category === "defence") {
-    return "border-emerald-500/20 bg-emerald-500/[0.05] text-emerald-300";
+    return "border-pos/20 bg-pos/5 text-pos";
   }
 
   if (category === "build_up") {
@@ -145,10 +145,10 @@ function getCategoryTone(category: string | null | undefined) {
   }
 
   if (category === "discipline") {
-    return "border-rose-500/20 bg-rose-500/[0.05] text-rose-300";
+    return "border-neg/20 bg-neg/5 text-neg";
   }
 
-  return "border-white/10 bg-white/[0.03] text-white/70";
+  return "border-line bg-veil text-ink-2";
 }
 
 function isTotalMeaningful(
@@ -256,13 +256,13 @@ function MetricSummaryCard({
   subvalue?: string;
 }) {
   return (
-    <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
-      <div className="text-[10px] uppercase tracking-[0.14em] text-white/35">
+    <div className="rounded-xl border border-line bg-veil px-4 py-3">
+      <div className="text-[10px] uppercase tracking-[0.14em] text-ink-3">
         {label}
       </div>
-      <div className="mt-1 text-[15px] font-semibold text-white">{value}</div>
+      <div className="mt-1 text-[15px] font-semibold text-ink">{value}</div>
       {subvalue ? (
-        <div className="mt-1 text-[11px] leading-4 text-white/58">{subvalue}</div>
+        <div className="mt-1 text-[11px] leading-4 text-ink-2">{subvalue}</div>
       ) : null}
     </div>
   );
@@ -472,7 +472,7 @@ export function LeagueTeamLeadersPanel({
 
   if (empty) {
     return (
-      <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-4 text-sm text-white/65">
+      <div className="rounded-xl border border-line bg-veil px-3 py-3 text-sm text-ink-2">
         {t("leagueDetail.noTeamLeaderboardData")}
       </div>
     );
@@ -507,10 +507,10 @@ export function LeagueTeamLeadersPanel({
 
   return (
     <div className="space-y-3">
-      <div className="rounded-[16px] border border-white/10 bg-white/[0.03] px-4 py-4">
+      <div className="rounded-lg border border-line bg-veil px-3 py-3">
         <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
           <div className="max-w-[860px]">
-            <div className="text-[11px] uppercase tracking-[0.18em] text-white/35">
+            <div className="text-[11px] uppercase tracking-[0.18em] text-ink-3">
               {t("leagueDetail.teamLeadersTitle")}
             </div>
             <div className="mt-2 flex flex-wrap gap-2">
@@ -522,27 +522,27 @@ export function LeagueTeamLeadersPanel({
                 {categoryLabel(t, selectedMetricRow.category_key, selectedMetricRow.category_label) ||
                   t("leagueDetail.categoryGeneral")}
               </span>
-              <span className="inline-flex rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-1 text-[11px] font-medium text-white/70">
+              <span className="inline-flex rounded-lg border border-line bg-veil px-2.5 py-1 text-[11px] font-medium text-ink-2">
                 {metricDefinition.directionLabel}
               </span>
-              <span className="inline-flex rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-1 text-[11px] font-medium text-white/70">
+              <span className="inline-flex rounded-lg border border-line bg-veil px-2.5 py-1 text-[11px] font-medium text-ink-2">
                 {metricDefinition.basisLabel}
               </span>
             </div>
-            <div className="mt-2 text-[15px] font-semibold text-white">
+            <div className="mt-2 text-[15px] font-semibold text-ink">
               {metricDefinition.titleText}
             </div>
           </div>
 
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-            <div className="inline-flex rounded-lg border border-white/10 bg-white/[0.03] p-1">
+            <div className="inline-flex rounded-lg border border-line bg-veil p-1">
               <button
                 type="button"
                 onClick={() => setBasis("per_match")}
                 className={`rounded-md px-3 py-1.5 text-[12px] font-medium transition ${
                   visibleBasis === "per_match"
-                    ? "border border-[#4da2ff]/40 bg-[#10335d]/70 text-white"
-                    : "text-white/72 hover:bg-white/[0.04]"
+                    ? "border border-line-strong bg-card-2 text-ink"
+                    : "text-ink-2 hover:bg-veil"
                 }`}
               >
                 {t("leagueDetail.buttonPerMatch")}
@@ -555,10 +555,10 @@ export function LeagueTeamLeadersPanel({
                 disabled={!totalAllowed}
                 className={`rounded-md px-3 py-1.5 text-[12px] font-medium transition ${
                   visibleBasis === "total" && totalAllowed
-                    ? "border border-[#4da2ff]/40 bg-[#10335d]/70 text-white"
+                    ? "border border-line-strong bg-card-2 text-ink"
                     : totalAllowed
-                    ? "text-white/72 hover:bg-white/[0.04]"
-                    : "cursor-not-allowed text-white/25"
+                    ? "text-ink-2 hover:bg-veil"
+                    : "cursor-not-allowed text-ink-3"
                 }`}
                 title={
                   totalAllowed
@@ -573,7 +573,7 @@ export function LeagueTeamLeadersPanel({
             <select
               value={selectedMetricKey}
               onChange={(event) => setSelectedMetricKey(event.target.value)}
-              className="min-w-[220px] rounded-lg border border-white/10 bg-[#0d1624] px-3 py-2 text-[13px] text-white outline-none transition focus:border-[#4da2ff]/40"
+              className="min-w-[220px] rounded-lg border border-line bg-field px-3 py-2 text-[13px] text-ink outline-none transition focus:border-line-strong"
             >
               {metricOptions.map((option) => (
                 <option key={option.key} value={option.key}>
@@ -590,8 +590,8 @@ export function LeagueTeamLeadersPanel({
             onClick={() => setActiveCategory("all")}
             className={`rounded-lg border px-3 py-1.5 text-[12px] font-medium transition ${
               activeCategory === "all"
-                ? "border-[#4da2ff]/40 bg-[#10335d]/70 text-white"
-                : "border-white/10 bg-white/[0.03] text-white/72 hover:bg-white/[0.06]"
+                ? "border-line-strong bg-card-2 text-ink"
+                : "border-line bg-veil text-ink-2 hover:bg-veil"
             }`}
           >
             {t("common.all")}
@@ -604,8 +604,8 @@ export function LeagueTeamLeadersPanel({
               onClick={() => setActiveCategory(category)}
               className={`rounded-lg border px-3 py-1.5 text-[12px] font-medium transition ${
                 activeCategory === category
-                  ? "border-[#4da2ff]/40 bg-[#10335d]/70 text-white"
-                  : "border-white/10 bg-white/[0.03] text-white/72 hover:bg-white/[0.06]"
+                  ? "border-line-strong bg-card-2 text-ink"
+                  : "border-line bg-veil text-ink-2 hover:bg-veil"
               }`}
             >
               {t(CATEGORY_LABEL_KEYS[category])}
@@ -648,17 +648,17 @@ export function LeagueTeamLeadersPanel({
         </div>
       </div>
 
-      <div className="overflow-x-auto rounded-[14px] border border-white/10">
+      <div className="overflow-x-auto rounded-lg border border-line">
         <table className="min-w-full border-collapse">
-          <thead className="sticky top-0 z-10 bg-[#0d1624]">
-            <tr className="text-left text-[10px] uppercase tracking-[0.14em] text-white/38">
-              <th className="px-4 py-2 font-medium cursor-pointer hover:text-white/70 select-none" onClick={() => handleColSort("rank")}>{t("leagueDetail.colRank")}<SortIcon col="rank" /></th>
-              <th className="px-4 py-2 font-medium cursor-pointer hover:text-white/70 select-none" onClick={() => handleColSort("team")}>{t("common.team")}<SortIcon col="team" /></th>
-              <th className="px-4 py-2 font-medium cursor-pointer hover:text-white/70 select-none" onClick={() => handleColSort("value")}>
+          <thead className="sticky top-0 z-10 bg-field">
+            <tr className="text-left text-[10px] uppercase tracking-[0.14em] text-ink-3">
+              <th className="px-3 py-1.5 font-medium cursor-pointer hover:text-ink-2 select-none" onClick={() => handleColSort("rank")}>{t("leagueDetail.colRank")}<SortIcon col="rank" /></th>
+              <th className="px-3 py-1.5 font-medium cursor-pointer hover:text-ink-2 select-none" onClick={() => handleColSort("team")}>{t("common.team")}<SortIcon col="team" /></th>
+              <th className="px-3 py-1.5 font-medium cursor-pointer hover:text-ink-2 select-none" onClick={() => handleColSort("value")}>
                 {visibleBasis === "total" && totalAllowed ? t("leagueDetail.basisTotal") : t("leagueDetail.buttonPerMatch")}<SortIcon col="value" />
               </th>
-              <th className="px-4 py-2 font-medium cursor-pointer hover:text-white/70 select-none" onClick={() => handleColSort("avg")}>{t("leagueDetail.colLeagueAvg")}<SortIcon col="avg" /></th>
-              <th className="px-4 py-2 font-medium cursor-pointer hover:text-white/70 select-none" onClick={() => handleColSort("vsavg")}>{t("leagueDetail.colVsAvgPct")}<SortIcon col="vsavg" /></th>
+              <th className="px-3 py-1.5 font-medium cursor-pointer hover:text-ink-2 select-none" onClick={() => handleColSort("avg")}>{t("leagueDetail.colLeagueAvg")}<SortIcon col="avg" /></th>
+              <th className="px-3 py-1.5 font-medium cursor-pointer hover:text-ink-2 select-none" onClick={() => handleColSort("vsavg")}>{t("leagueDetail.colVsAvgPct")}<SortIcon col="vsavg" /></th>
             </tr>
           </thead>
 
@@ -680,23 +680,23 @@ export function LeagueTeamLeadersPanel({
               return (
                 <tr
                   key={`${row.metric_key}-${row.team_slug}-${visibleBasis}`}
-                  className="border-t border-white/10 text-[13px] text-white/80 transition hover:bg-white/[0.02]"
+                  className="border-t border-line text-[13px] text-ink transition hover:bg-veil"
                 >
-                  <td className="px-4 py-2 whitespace-nowrap font-semibold text-white">
+                  <td className="px-3 py-1.5 whitespace-nowrap font-semibold text-ink">
                     {row.league_rank ?? "—"}
                   </td>
 
-                  <td className="px-4 py-2 min-w-[220px] font-medium text-white">
+                  <td className="px-3 py-1.5 min-w-[220px] font-medium text-ink">
                     <TeamLink
                       teamSlug={row.team_slug}
-                      className="transition hover:text-white hover:underline"
+                      className="transition hover:text-ink hover:underline"
                       title={row.team_name ?? undefined}
                     >
                       {row.team_name ?? "—"}
                     </TeamLink>
                   </td>
 
-                  <td className="px-4 py-2 whitespace-nowrap font-medium text-white">
+                  <td className="px-3 py-1.5 whitespace-nowrap font-medium text-ink">
                     {formatMetricValue(
                       row.displayValue,
                       visibleBasis === "total" && totalAllowed
@@ -705,12 +705,12 @@ export function LeagueTeamLeadersPanel({
                     )}
                   </td>
 
-                  <td className="px-4 py-2 whitespace-nowrap text-white/70">
+                  <td className="px-3 py-1.5 whitespace-nowrap text-ink-2">
                     {formatMetricValue(row.league_avg, row.value_format)}
                   </td>
 
                   <td
-                    className={`px-4 py-2 whitespace-nowrap font-medium ${getDeltaTone(
+                    className={`px-3 py-1.5 whitespace-nowrap font-medium ${getDeltaTone(
                       row.vs_league_avg_pct,
                       row.is_higher_better
                     )}`}

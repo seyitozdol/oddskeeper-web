@@ -22,26 +22,26 @@ export async function TeamDetailHeader({
   const t = await getT();
 
   return (
-    <div className="rounded-[18px] border border-white/10 bg-[linear-gradient(180deg,rgba(8,14,24,0.96),rgba(5,10,18,0.98))] px-4 py-3 shadow-[0_0_22px_rgba(34,104,189,0.04)]">
+    <div className="rounded-xl border border-line bg-card px-4 py-3">
       <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
         <div className="min-w-0">
           <div className="flex items-center gap-3">
-            <div className="flex h-[58px] w-[58px] shrink-0 items-center justify-center rounded-[14px] border border-white/10 bg-[#08111d] p-2">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-line bg-card-2 p-2">
               <Image
                 src={logoPath}
                 alt={teamName}
-                width={48}
-                height={48}
-                className="h-auto max-h-[48px] w-auto max-w-[48px] object-contain"
+                width={36}
+                height={36}
+                className="h-auto max-h-9 w-auto max-w-9 object-contain"
               />
             </div>
 
             <div className="min-w-0">
-              <p className="mb-1 text-[10px] font-medium uppercase tracking-[0.22em] text-[#7cbcff]">
+              <p className="mb-1 text-[10px] font-medium uppercase tracking-[0.22em] text-accent-ink">
                 {t("teamDetail.headerKicker")}
               </p>
 
-              <h1 className="truncate text-[28px] font-semibold leading-none text-white lg:text-[32px]">
+              <h1 className="truncate text-xl font-semibold leading-none text-ink lg:text-2xl">
                 {teamName}
               </h1>
             </div>
@@ -60,16 +60,16 @@ export async function TeamDetailHeader({
               <Link
                 key={tab.key}
                 href={`/dashboard/stats-analysis/football/team-stats/detail?team=${teamSlug}&tab=${tab.key}`}
-                className={`inline-flex items-center gap-2 rounded-xl border px-3 py-1.5 text-sm font-medium whitespace-nowrap transition ${
+                className={`inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm font-medium whitespace-nowrap transition ${
                   isActive
-                    ? "border-[#4da2ff]/40 bg-[#10233b] text-white shadow-[0_0_14px_rgba(77,162,255,0.08)]"
-                    : "border-white/10 bg-white/[0.03] text-white/72 hover:border-[#4da2ff]/25 hover:bg-[#0e1d30] hover:text-white"
+                    ? "border-line-strong bg-card-2 text-ink"
+                    : "border-line bg-veil text-ink-2 hover:border-line-strong hover:bg-card-2 hover:text-ink"
                 }`}
               >
                 <span>{t(tab.labelKey)}</span>
 
                 {showResultsCount && (
-                  <span className="rounded-md border border-white/10 bg-white/[0.05] px-1.5 py-0.5 text-[11px] leading-none text-white/80">
+                  <span className="rounded-md border border-line bg-veil px-1.5 py-0.5 text-[11px] leading-none text-ink-2">
                     {resultsCount}
                   </span>
                 )}
@@ -79,7 +79,7 @@ export async function TeamDetailHeader({
 
           <Link
             href="/dashboard/stats-analysis/football/team-stats"
-            className="ml-0 inline-flex rounded-xl border border-white/10 bg-white/[0.03] px-3 py-1.5 text-sm text-white/70 transition hover:border-[#4da2ff]/30 hover:bg-[#0e1d30] hover:text-white xl:ml-3"
+            className="ml-0 inline-flex rounded-lg border border-line bg-veil px-3 py-1.5 text-sm text-ink-2 transition hover:border-line-strong hover:bg-card-2 hover:text-ink xl:ml-3"
           >
             {t("teamDetail.backToTeams")}
           </Link>

@@ -34,9 +34,9 @@ function CurrentSquadTable({ rows }: { rows: TeamCurrentSquadRow[] }) {
   const { t } = useI18n();
 
   return (
-    <div className="rounded-[14px] border border-white/10">
-      <div className="border-b border-white/10 bg-white/[0.03] px-4 py-2">
-        <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-white/42">
+    <div className="rounded-xl border border-line">
+      <div className="border-b border-line bg-veil px-3 py-2">
+        <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-ink-3">
           {t("teamDetail.currentSquadTitle")}
         </div>
       </div>
@@ -44,11 +44,11 @@ function CurrentSquadTable({ rows }: { rows: TeamCurrentSquadRow[] }) {
       <div className="overflow-x-auto">
         <table className="min-w-full border-collapse">
           <thead>
-            <tr className="text-left text-[10px] uppercase tracking-[0.14em] text-white/38">
-              <th className="px-4 py-2 font-medium">{t("teamDetail.colShirtNumber")}</th>
-              <th className="px-4 py-2 font-medium">{t("common.player")}</th>
-              <th className="px-4 py-2 font-medium">{t("teamDetail.colPosition")}</th>
-              <th className="px-4 py-2 font-medium">{t("common.age")}</th>
+            <tr className="text-left text-[10px] uppercase tracking-[0.14em] text-ink-3">
+              <th className="px-3 py-2 font-medium">{t("teamDetail.colShirtNumber")}</th>
+              <th className="px-3 py-2 font-medium">{t("common.player")}</th>
+              <th className="px-3 py-2 font-medium">{t("teamDetail.colPosition")}</th>
+              <th className="px-3 py-2 font-medium">{t("common.age")}</th>
             </tr>
           </thead>
 
@@ -56,33 +56,33 @@ function CurrentSquadTable({ rows }: { rows: TeamCurrentSquadRow[] }) {
             {rows.map((row) => (
               <tr
                 key={row.player_source_id}
-                className="border-t border-white/10 text-[13px] text-white/80"
+                className="border-t border-line text-[13px] text-ink-2"
               >
-                <td className="px-4 py-2 text-white/55">
+                <td className="px-3 py-1.5 text-ink-2">
                   {row.shirt_number ?? "—"}
                 </td>
-                <td className="px-4 py-2 font-medium">
+                <td className="px-3 py-1.5 font-medium">
                   {row.player_slug ? (
                     <PlayerLink
                       playerSlug={row.player_slug}
-                      className="font-medium text-[#8dc8ff] transition hover:text-[#bfe0ff] hover:underline"
+                      className="font-medium text-accent-ink transition hover:text-accent hover:underline"
                       title={row.player_name}
                     >
                       {row.player_name}
                     </PlayerLink>
                   ) : (
                     <span
-                      className="text-white"
+                      className="text-ink"
                       title={t("teamDetail.playerPageNotYetAvailable")}
                     >
                       {row.player_name}
                     </span>
                   )}
                 </td>
-                <td className="px-4 py-2">
+                <td className="px-3 py-1.5">
                   {getPositionGroupLabel(row.position_group, row.position, t)}
                 </td>
-                <td className="px-4 py-2">{row.age ?? "—"}</td>
+                <td className="px-3 py-1.5">{row.age ?? "—"}</td>
               </tr>
             ))}
           </tbody>
@@ -167,7 +167,7 @@ function PlayerName({
   return (
     <PlayerLink
       playerSlug={playerSlug}
-      className="font-medium text-[#8dc8ff] transition hover:text-[#bfe0ff] hover:underline"
+      className="font-medium text-accent-ink transition hover:text-accent hover:underline"
       title={playerName}
     >
       {playerName}
@@ -187,7 +187,7 @@ function PlayerStatusBadge({ row }: { row: TeamSquadRow }) {
 
     return (
       <span
-        className="ml-2 rounded-full border border-amber-400/30 bg-amber-400/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-[0.06em] text-amber-300/90"
+        className="ml-2 rounded-full border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-[0.06em] text-amber-500"
         title={t("teamDetail.nowPlaysForTooltip", { team: currentTeam })}
       >
         {t("common.nowAt", { team: currentTeam })}
@@ -197,7 +197,7 @@ function PlayerStatusBadge({ row }: { row: TeamSquadRow }) {
 
   return (
     <span
-      className="ml-2 rounded-full border border-white/12 bg-white/[0.04] px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-[0.06em] text-white/45"
+      className="ml-2 rounded-full border border-line bg-veil px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-[0.06em] text-ink-3"
       title={t("common.notInCurrentSquads")}
     >
       {t("common.leftClub")}
@@ -287,7 +287,7 @@ export function SquadPanel({ rows = [], currentSquad = [] }: SquadPanelProps) {
 
   if (rows.length === 0 && currentSquad.length === 0) {
     return (
-      <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-4 text-sm text-white/65">
+      <div className="rounded-xl border border-line bg-veil px-4 py-3 text-sm text-ink-2">
         {t("teamDetail.noSquadData")}
       </div>
     );
@@ -300,9 +300,9 @@ export function SquadPanel({ rows = [], currentSquad = [] }: SquadPanelProps) {
       ) : null}
 
       {rows.length > 0 ? (
-        <div className="rounded-[14px] border border-white/10">
-          <div className="border-b border-white/10 bg-white/[0.03] px-4 py-2">
-            <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-white/42">
+        <div className="rounded-xl border border-line">
+          <div className="border-b border-line bg-veil px-3 py-2">
+            <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-ink-3">
               {t("teamDetail.seasonMatchStatsTitle")}
               {rows[0]?.season_label ? ` · ${rows[0].season_label}` : ""}
             </div>
@@ -310,9 +310,9 @@ export function SquadPanel({ rows = [], currentSquad = [] }: SquadPanelProps) {
 
           <div className="overflow-x-auto">
             <table className="min-w-full border-collapse">
-        <thead className="bg-white/[0.03]">
-          <tr className="text-left text-[10px] uppercase tracking-[0.14em] text-white/38">
-            <th className="px-4 py-2 font-medium">
+        <thead className="bg-veil">
+          <tr className="text-left text-[10px] uppercase tracking-[0.14em] text-ink-3">
+            <th className="px-3 py-2 font-medium">
               <button
                 type="button"
                 onClick={() => handleSort("player_name")}
@@ -323,7 +323,7 @@ export function SquadPanel({ rows = [], currentSquad = [] }: SquadPanelProps) {
               </button>
             </th>
 
-            <th className="px-4 py-2 font-medium">
+            <th className="px-3 py-2 font-medium">
               <button
                 type="button"
                 onClick={() => handleSort("primary_position_code")}
@@ -334,7 +334,7 @@ export function SquadPanel({ rows = [], currentSquad = [] }: SquadPanelProps) {
               </button>
             </th>
 
-            <th className="px-4 py-2 font-medium">
+            <th className="px-3 py-2 font-medium">
               <button
                 type="button"
                 onClick={() => handleSort("appearances")}
@@ -345,7 +345,7 @@ export function SquadPanel({ rows = [], currentSquad = [] }: SquadPanelProps) {
               </button>
             </th>
 
-            <th className="px-4 py-2 font-medium">
+            <th className="px-3 py-2 font-medium">
               <button
                 type="button"
                 onClick={() => handleSort("starts")}
@@ -356,7 +356,7 @@ export function SquadPanel({ rows = [], currentSquad = [] }: SquadPanelProps) {
               </button>
             </th>
 
-            <th className="px-4 py-2 font-medium">
+            <th className="px-3 py-2 font-medium">
               <button
                 type="button"
                 onClick={() => handleSort("sub_appearances")}
@@ -367,7 +367,7 @@ export function SquadPanel({ rows = [], currentSquad = [] }: SquadPanelProps) {
               </button>
             </th>
 
-            <th className="px-4 py-2 font-medium">
+            <th className="px-3 py-2 font-medium">
               <button
                 type="button"
                 onClick={() => handleSort("starter_rate_pct")}
@@ -378,7 +378,7 @@ export function SquadPanel({ rows = [], currentSquad = [] }: SquadPanelProps) {
               </button>
             </th>
 
-            <th className="px-4 py-2 font-medium">
+            <th className="px-3 py-2 font-medium">
               <button
                 type="button"
                 onClick={() => handleSort("total_minutes")}
@@ -389,7 +389,7 @@ export function SquadPanel({ rows = [], currentSquad = [] }: SquadPanelProps) {
               </button>
             </th>
 
-            <th className="px-4 py-2 font-medium">
+            <th className="px-3 py-2 font-medium">
               <button
                 type="button"
                 onClick={() => handleSort("avg_minutes")}
@@ -400,7 +400,7 @@ export function SquadPanel({ rows = [], currentSquad = [] }: SquadPanelProps) {
               </button>
             </th>
 
-            <th className="px-4 py-2 font-medium">
+            <th className="px-3 py-2 font-medium">
               <button
                 type="button"
                 onClick={() => handleSort("goals")}
@@ -411,7 +411,7 @@ export function SquadPanel({ rows = [], currentSquad = [] }: SquadPanelProps) {
               </button>
             </th>
 
-            <th className="px-4 py-2 font-medium">
+            <th className="px-3 py-2 font-medium">
               <button
                 type="button"
                 onClick={() => handleSort("assists")}
@@ -422,7 +422,7 @@ export function SquadPanel({ rows = [], currentSquad = [] }: SquadPanelProps) {
               </button>
             </th>
 
-            <th className="px-4 py-2 font-medium">
+            <th className="px-3 py-2 font-medium">
               <button
                 type="button"
                 onClick={() => handleSort("last_match_datetime")}
@@ -439,9 +439,9 @@ export function SquadPanel({ rows = [], currentSquad = [] }: SquadPanelProps) {
           {sortedRows.map((row) => (
             <tr
               key={row.player_source_id}
-              className="border-t border-white/10 text-[13px] text-white/80 transition hover:bg-white/[0.018]"
+              className="border-t border-line text-[13px] text-ink-2 transition hover:bg-veil"
             >
-              <td className="px-4 py-2 font-medium whitespace-nowrap text-white">
+              <td className="px-3 py-1.5 font-medium whitespace-nowrap text-ink">
                 <PlayerName
                   playerSlug={row.player_slug}
                   playerName={row.player_name}
@@ -449,28 +449,28 @@ export function SquadPanel({ rows = [], currentSquad = [] }: SquadPanelProps) {
                 {showStatusBadges ? <PlayerStatusBadge row={row} /> : null}
               </td>
 
-              <td className="px-4 py-2 whitespace-nowrap text-white/70">
+              <td className="px-3 py-1.5 whitespace-nowrap text-ink-2">
                 {row.primary_position_code}
               </td>
 
-              <td className="px-4 py-2 whitespace-nowrap">{row.appearances}</td>
-              <td className="px-4 py-2 whitespace-nowrap">{row.starts}</td>
-              <td className="px-4 py-2 whitespace-nowrap">{row.sub_appearances}</td>
+              <td className="px-3 py-1.5 whitespace-nowrap">{row.appearances}</td>
+              <td className="px-3 py-1.5 whitespace-nowrap">{row.starts}</td>
+              <td className="px-3 py-1.5 whitespace-nowrap">{row.sub_appearances}</td>
 
-              <td className="px-4 py-2 whitespace-nowrap">
+              <td className="px-3 py-1.5 whitespace-nowrap">
                 {formatDecimal(row.starter_rate_pct)}%
               </td>
 
-              <td className="px-4 py-2 whitespace-nowrap">{row.total_minutes}</td>
+              <td className="px-3 py-1.5 whitespace-nowrap">{row.total_minutes}</td>
 
-              <td className="px-4 py-2 whitespace-nowrap">
+              <td className="px-3 py-1.5 whitespace-nowrap">
                 {formatDecimal(row.avg_minutes)}
               </td>
 
-              <td className="px-4 py-2 whitespace-nowrap">{row.goals}</td>
-              <td className="px-4 py-2 whitespace-nowrap">{row.assists}</td>
+              <td className="px-3 py-1.5 whitespace-nowrap">{row.goals}</td>
+              <td className="px-3 py-1.5 whitespace-nowrap">{row.assists}</td>
 
-              <td className="px-4 py-2 whitespace-nowrap text-white/60">
+              <td className="px-3 py-1.5 whitespace-nowrap text-ink-2">
                 {formatDate(row.last_match_datetime)}
               </td>
             </tr>

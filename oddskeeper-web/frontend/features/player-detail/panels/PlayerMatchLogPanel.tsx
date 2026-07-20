@@ -64,7 +64,7 @@ function OpponentName({
   return (
     <TeamLink
       teamSlug={teamSlug}
-      className="font-medium text-white transition hover:text-white hover:underline"
+      className="font-medium text-ink transition hover:text-ink hover:underline"
       title={displayName}
     >
       {displayName}
@@ -159,7 +159,7 @@ export function PlayerMatchLogPanel({ rows = [] }: PlayerMatchLogPanelProps) {
 
   if (rows.length === 0) {
     return (
-      <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-4 text-sm text-white/65">
+      <div className="rounded-xl border border-line bg-veil px-4 py-4 text-sm text-ink-2">
         {t("playerDetail.noMatchLogData")}
       </div>
     );
@@ -180,8 +180,8 @@ export function PlayerMatchLogPanel({ rows = [] }: PlayerMatchLogPanelProps) {
           onClick={() => setLineupFilter("all")}
           className={`rounded-xl border px-3 py-2 text-sm transition ${
             lineupFilter === "all"
-              ? "border-[#4da2ff]/40 bg-[#10335d]/70 text-white"
-              : "border-white/10 bg-white/[0.03] text-white/72 hover:bg-white/[0.06]"
+              ? "border-line-strong bg-card-2 text-ink"
+              : "border-line bg-veil text-ink-2 hover:bg-veil"
           }`}
         >
           {t("playerDetail.allWithCount", { count: rows.length })}
@@ -192,8 +192,8 @@ export function PlayerMatchLogPanel({ rows = [] }: PlayerMatchLogPanelProps) {
           onClick={() => setLineupFilter("starter")}
           className={`rounded-xl border px-3 py-2 text-sm transition ${
             lineupFilter === "starter"
-              ? "border-[#4da2ff]/40 bg-[#10335d]/70 text-white"
-              : "border-white/10 bg-white/[0.03] text-white/72 hover:bg-white/[0.06]"
+              ? "border-line-strong bg-card-2 text-ink"
+              : "border-line bg-veil text-ink-2 hover:bg-veil"
           }`}
         >
           {t("playerDetail.startersWithCount", { count: starterCount })}
@@ -204,8 +204,8 @@ export function PlayerMatchLogPanel({ rows = [] }: PlayerMatchLogPanelProps) {
           onClick={() => setLineupFilter("substitute")}
           className={`rounded-xl border px-3 py-2 text-sm transition ${
             lineupFilter === "substitute"
-              ? "border-[#4da2ff]/40 bg-[#10335d]/70 text-white"
-              : "border-white/10 bg-white/[0.03] text-white/72 hover:bg-white/[0.06]"
+              ? "border-line-strong bg-card-2 text-ink"
+              : "border-line bg-veil text-ink-2 hover:bg-veil"
           }`}
         >
           {t("playerDetail.substitutesWithCount", { count: substituteCount })}
@@ -213,15 +213,15 @@ export function PlayerMatchLogPanel({ rows = [] }: PlayerMatchLogPanelProps) {
       </div>
 
       {sortedRows.length === 0 ? (
-        <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-4 text-sm text-white/65">
+        <div className="rounded-xl border border-line bg-veil px-4 py-4 text-sm text-ink-2">
           {t("playerDetail.noRowsForFilter")}
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-[14px] border border-white/10">
+        <div className="overflow-x-auto rounded-lg border border-line">
           <table className="min-w-full border-collapse">
-            <thead className="bg-white/[0.03]">
-              <tr className="text-left text-[10px] uppercase tracking-[0.14em] text-white/38">
-                <th className="px-4 py-2 font-medium">
+            <thead className="bg-veil">
+              <tr className="text-left text-[10px] uppercase tracking-[0.14em] text-ink-3">
+                <th className="px-3 py-1.5 font-medium">
                   <button
                     type="button"
                     onClick={() => handleSort("match_datetime")}
@@ -232,14 +232,14 @@ export function PlayerMatchLogPanel({ rows = [] }: PlayerMatchLogPanelProps) {
                   </button>
                 </th>
 
-                <th className="px-4 py-2 font-medium">{t("common.opponent")}</th>
-                <th className="px-4 py-2 font-medium">{t("playerDetail.homeAwayColumn")}</th>
-                <th className="px-4 py-2 font-medium">{t("common.score")}</th>
-                <th className="px-4 py-2 font-medium">{t("common.result")}</th>
-                <th className="px-4 py-2 font-medium">{t("playerDetail.lineupColumn")}</th>
-                <th className="px-4 py-2 font-medium">{t("common.position")}</th>
+                <th className="px-3 py-1.5 font-medium">{t("common.opponent")}</th>
+                <th className="px-3 py-1.5 font-medium">{t("playerDetail.homeAwayColumn")}</th>
+                <th className="px-3 py-1.5 font-medium">{t("common.score")}</th>
+                <th className="px-3 py-1.5 font-medium">{t("common.result")}</th>
+                <th className="px-3 py-1.5 font-medium">{t("playerDetail.lineupColumn")}</th>
+                <th className="px-3 py-1.5 font-medium">{t("common.position")}</th>
 
-                <th className="px-4 py-2 font-medium">
+                <th className="px-3 py-1.5 font-medium">
                   <button
                     type="button"
                     onClick={() => handleSort("minutes_played")}
@@ -250,7 +250,7 @@ export function PlayerMatchLogPanel({ rows = [] }: PlayerMatchLogPanelProps) {
                   </button>
                 </th>
 
-                <th className="px-4 py-2 font-medium">
+                <th className="px-3 py-1.5 font-medium">
                   <button
                     type="button"
                     onClick={() => handleSort("goals")}
@@ -261,7 +261,7 @@ export function PlayerMatchLogPanel({ rows = [] }: PlayerMatchLogPanelProps) {
                   </button>
                 </th>
 
-                <th className="px-4 py-2 font-medium">
+                <th className="px-3 py-1.5 font-medium">
                   <button
                     type="button"
                     onClick={() => handleSort("assists")}
@@ -272,7 +272,7 @@ export function PlayerMatchLogPanel({ rows = [] }: PlayerMatchLogPanelProps) {
                   </button>
                 </th>
 
-                <th className="px-4 py-2 font-medium">
+                <th className="px-3 py-1.5 font-medium">
                   <button
                     type="button"
                     onClick={() => handleSort("expected_goals")}
@@ -289,68 +289,68 @@ export function PlayerMatchLogPanel({ rows = [] }: PlayerMatchLogPanelProps) {
               {sortedRows.map((row) => (
                 <tr
                   key={`${row.source_match_id}-${row.player_source_id}`}
-                  className="border-t border-white/10 text-[13px] text-white/80 transition hover:bg-white/[0.018]"
+                  className="border-t border-line text-[13px] text-ink transition hover:bg-veil"
                 >
-                  <td className="px-4 py-2 whitespace-nowrap">
+                  <td className="px-3 py-1.5 whitespace-nowrap">
                     <MatchLink
                       sourceMatchId={row.source_match_id}
                       returnTo={baseReturnTo}
-                      className="transition hover:text-white hover:underline"
+                      className="transition hover:text-ink hover:underline"
                       title={t("playerDetail.openMatchDetailTitle")}
                     >
                       {formatDate(row.match_datetime)}
                     </MatchLink>
                   </td>
 
-                  <td className="px-4 py-2 min-w-[220px]">
+                  <td className="px-3 py-1.5 min-w-[220px]">
                     <OpponentName
                       teamSlug={row.opponent_team_slug}
                       name={row.opponent_name}
                     />
                   </td>
 
-                  <td className="px-4 py-2 whitespace-nowrap">
-                    <span className="rounded-md border border-white/10 bg-white/[0.03] px-2 py-[2px] text-[10px] font-medium text-white/72">
+                  <td className="px-3 py-1.5 whitespace-nowrap">
+                    <span className="rounded-md border border-line bg-veil px-2 py-[2px] text-[10px] font-medium text-ink-2">
                       {row.is_home ? t("common.home") : t("common.away")}
                     </span>
                   </td>
 
-                  <td className="px-4 py-2 whitespace-nowrap font-medium text-white">
+                  <td className="px-3 py-1.5 whitespace-nowrap font-medium text-ink">
                     <MatchLink
                       sourceMatchId={row.source_match_id}
                       returnTo={baseReturnTo}
-                      className="font-medium text-white transition hover:text-white hover:underline"
+                      className="font-medium text-ink transition hover:text-ink hover:underline"
                       title={t("playerDetail.openMatchDetailTitle")}
                     >
                       {row.score_display ?? "—"}
                     </MatchLink>
                   </td>
 
-                  <td className="px-4 py-2 whitespace-nowrap">
+                  <td className="px-3 py-1.5 whitespace-nowrap">
                     <PlayerResultBadge resultCode={row.result_code} />
                   </td>
 
-                  <td className="px-4 py-2 whitespace-nowrap text-white/70">
+                  <td className="px-3 py-1.5 whitespace-nowrap text-ink-2">
                     {row.lineup_status ?? "—"}
                   </td>
 
-                  <td className="px-4 py-2 whitespace-nowrap text-white/70">
+                  <td className="px-3 py-1.5 whitespace-nowrap text-ink-2">
                     {row.position_code ?? "—"}
                   </td>
 
-                  <td className="px-4 py-2 whitespace-nowrap">
+                  <td className="px-3 py-1.5 whitespace-nowrap">
                     {row.minutes_played ?? "—"}
                   </td>
 
-                  <td className="px-4 py-2 whitespace-nowrap">
+                  <td className="px-3 py-1.5 whitespace-nowrap">
                     {row.goals ?? "—"}
                   </td>
 
-                  <td className="px-4 py-2 whitespace-nowrap">
+                  <td className="px-3 py-1.5 whitespace-nowrap">
                     {row.assists ?? "—"}
                   </td>
 
-                  <td className="px-4 py-2 whitespace-nowrap">
+                  <td className="px-3 py-1.5 whitespace-nowrap">
                     {formatDecimal(row.expected_goals, 3)}
                   </td>
                 </tr>

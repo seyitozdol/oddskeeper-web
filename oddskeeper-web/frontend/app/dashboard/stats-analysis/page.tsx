@@ -37,12 +37,12 @@ export default async function StatsAnalysisPage() {
 
   return (
     <section className="w-full">
-      <div className="rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(12,24,40,0.95),rgba(7,14,24,0.95))] p-8 shadow-[0_0_60px_rgba(34,104,189,0.12)]">
-        <p className="mb-3 text-sm font-medium uppercase tracking-[0.25em] text-[#7cbcff]">
+      <div className="rounded-2xl border border-line bg-card p-8">
+        <p className="mb-3 text-sm font-medium uppercase tracking-[0.25em] text-accent-ink">
           {t("statsHub.hubKicker")}
         </p>
 
-        <h1 className="text-3xl font-semibold text-white lg:text-5xl">
+        <h1 className="text-3xl font-semibold text-ink lg:text-5xl">
           {t("statsHub.hubTitle")}
         </h1>
 
@@ -51,12 +51,12 @@ export default async function StatsAnalysisPage() {
             <Link
               key={card.href}
               href={card.href}
-              className="group rounded-[22px] border border-white/10 bg-white/[0.03] p-6 transition hover:-translate-y-0.5 hover:border-[#4da2ff]/30 hover:bg-[#0e1d30]"
+              className="group rounded-xl border border-line bg-veil p-6 transition hover:-translate-y-0.5 hover:border-line-strong hover:bg-card-2"
             >
-              <div className="text-lg font-semibold text-white transition group-hover:text-[#9fd3ff]">
+              <div className="text-lg font-semibold text-ink transition group-hover:text-accent-ink">
                 {card.title}
               </div>
-              <div className="mt-2 text-sm text-white/50">{card.subtitle}</div>
+              <div className="mt-2 text-sm text-ink-3">{card.subtitle}</div>
             </Link>
           ))}
         </div>

@@ -94,7 +94,7 @@ export default async function LeagueDetailPage({ searchParams }: PageProps) {
 
   if (!competition || !season) {
     return (
-      <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-4 text-sm text-white/65">
+      <div className="rounded-xl border border-line bg-veil px-3 py-3 text-sm text-ink-2">
         {t("leagueDetail.requiresParams")}
       </div>
     );
@@ -225,16 +225,16 @@ export default async function LeagueDetailPage({ searchParams }: PageProps) {
 
   return (
     <div className="space-y-4">
-      <div className="rounded-[18px] border border-white/10 bg-white/[0.03] px-4 py-4">
+      <div className="rounded-xl border border-line bg-veil px-3 py-3">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
           <div>
-            <div className="text-[11px] uppercase tracking-[0.20em] text-white/35">
+            <div className="text-[11px] uppercase tracking-[0.20em] text-ink-3">
               {t("leagueDetail.kicker")}
             </div>
-            <h1 className="mt-2 text-2xl font-semibold text-white">
+            <h1 className="mt-2 text-xl font-semibold text-ink">
               {competition}
             </h1>
-            <div className="mt-1 text-sm text-white/60">{season}</div>
+            <div className="mt-1 text-sm text-ink-2">{season}</div>
           </div>
 
           <div className="flex flex-wrap gap-2">
@@ -258,8 +258,8 @@ export default async function LeagueDetailPage({ searchParams }: PageProps) {
                   scroll={false}
                   className={`rounded-lg border px-3 py-1.5 text-[12px] font-medium transition ${
                     isActive
-                      ? "border-[#4da2ff]/40 bg-[#10335d]/70 text-white"
-                      : "border-white/10 bg-white/[0.03] text-white/72 hover:bg-white/[0.06]"
+                      ? "border-line-strong bg-card-2 text-ink"
+                      : "border-line bg-veil text-ink-2 hover:bg-veil"
                   }`}
                 >
                   {t(TAB_LABEL_KEYS[tab])}

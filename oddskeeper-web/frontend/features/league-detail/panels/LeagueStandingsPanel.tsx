@@ -45,27 +45,27 @@ function formatDecimal(value: number | null | undefined, digits = 2) {
 }
 
 function getRankTone(rank: number) {
-  if (rank <= 4) return "text-emerald-300";
-  if (rank >= 16) return "text-rose-300";
-  if (rank >= 13) return "text-amber-300";
-  return "text-white/84";
+  if (rank <= 4) return "text-pos";
+  if (rank >= 16) return "text-neg";
+  if (rank >= 13) return "text-amber-500";
+  return "text-ink";
 }
 
 function getFormBadgeClass(code: string) {
   if (code === "W") {
-    return "border-emerald-500/25 bg-emerald-500/10 text-emerald-300";
+    return "border-pos/25 bg-pos/10 text-pos";
   }
 
   if (code === "L") {
-    return "border-rose-500/25 bg-rose-500/10 text-rose-300";
+    return "border-neg/25 bg-neg/10 text-neg";
   }
 
-  return "border-amber-500/25 bg-amber-500/10 text-amber-300";
+  return "border-amber-500/25 bg-amber-400/15 text-amber-500";
 }
 
 function FormBadges({ value }: { value: string }) {
   if (!value || !value.trim()) {
-    return <span className="text-white/45">—</span>;
+    return <span className="text-ink-3">—</span>;
   }
 
   return (
@@ -106,8 +106,8 @@ function SortableHeader({
     <button
       type="button"
       onClick={() => onSort(sortKey)}
-      className={`inline-flex items-center gap-1 transition hover:text-white ${
-        isActive ? "text-white" : "text-white/38"
+      className={`inline-flex items-center gap-1 transition hover:text-ink ${
+        isActive ? "text-ink" : "text-ink-3"
       }`}
       title={t("leagueDetail.sortByLabel", { label })}
     >
@@ -184,35 +184,35 @@ export function LeagueStandingsPanel({ rows = [] }: LeagueStandingsPanelProps) {
 
   if (rows.length === 0) {
     return (
-      <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-4 text-sm text-white/65">
+      <div className="rounded-xl border border-line bg-veil px-3 py-3 text-sm text-ink-2">
         {t("leagueDetail.noStandingsData")}
       </div>
     );
   }
 
   return (
-    <div className="overflow-x-auto rounded-[14px] border border-white/10">
+    <div className="overflow-x-auto rounded-lg border border-line">
       <table className="min-w-full border-collapse">
-        <thead className="sticky top-0 z-10 bg-[#0d1624]">
-          <tr className="text-left text-[10px] uppercase tracking-[0.14em] text-white/38">
-            <th className="px-4 py-2 font-medium">
+        <thead className="sticky top-0 z-10 bg-field">
+          <tr className="text-left text-[10px] uppercase tracking-[0.14em] text-ink-3">
+            <th className="px-3 py-2 font-medium">
               <SortableHeader label="#" sortKey="rank" sortConfig={sortConfig} onSort={handleSort} t={t} />
             </th>
-            <th className="px-4 py-2 font-medium">
+            <th className="px-3 py-2 font-medium">
               <SortableHeader label={t("common.team")} sortKey="team_name" sortConfig={sortConfig} onSort={handleSort} t={t} />
             </th>
-            <th className="px-4 py-2 font-medium"><SortableHeader label={t("leagueDetail.colPlayed")} sortKey="played" sortConfig={sortConfig} onSort={handleSort} t={t} /></th>
-            <th className="px-4 py-2 font-medium"><SortableHeader label={t("common.win")} sortKey="wins" sortConfig={sortConfig} onSort={handleSort} t={t} /></th>
-            <th className="px-4 py-2 font-medium"><SortableHeader label={t("common.draw")} sortKey="draws" sortConfig={sortConfig} onSort={handleSort} t={t} /></th>
-            <th className="px-4 py-2 font-medium"><SortableHeader label={t("common.loss")} sortKey="losses" sortConfig={sortConfig} onSort={handleSort} t={t} /></th>
-            <th className="px-4 py-2 font-medium"><SortableHeader label={t("leagueDetail.colGoalsFor")} sortKey="goals_for" sortConfig={sortConfig} onSort={handleSort} t={t} /></th>
-            <th className="px-4 py-2 font-medium"><SortableHeader label={t("leagueDetail.colGoalsAgainst")} sortKey="goals_against" sortConfig={sortConfig} onSort={handleSort} t={t} /></th>
-            <th className="px-4 py-2 font-medium"><SortableHeader label={t("leagueDetail.colGoalDiff")} sortKey="goal_difference" sortConfig={sortConfig} onSort={handleSort} t={t} /></th>
-            <th className="px-4 py-2 font-medium"><SortableHeader label={t("leagueDetail.colPoints")} sortKey="points" sortConfig={sortConfig} onSort={handleSort} t={t} /></th>
-            <th className="px-4 py-2 font-medium"><SortableHeader label={t("leagueDetail.colPointsPerGame")} sortKey="points_per_game" sortConfig={sortConfig} onSort={handleSort} t={t} /></th>
-            <th className="px-4 py-2 font-medium"><SortableHeader label={t("leagueDetail.colHomePoints")} sortKey="home_points" sortConfig={sortConfig} onSort={handleSort} t={t} /></th>
-            <th className="px-4 py-2 font-medium"><SortableHeader label={t("leagueDetail.colAwayPoints")} sortKey="away_points" sortConfig={sortConfig} onSort={handleSort} t={t} /></th>
-            <th className="px-4 py-2 font-medium"><SortableHeader label={t("leagueDetail.colLast5")} sortKey="last5_points" sortConfig={sortConfig} onSort={handleSort} t={t} /></th>
+            <th className="px-3 py-2 font-medium"><SortableHeader label={t("leagueDetail.colPlayed")} sortKey="played" sortConfig={sortConfig} onSort={handleSort} t={t} /></th>
+            <th className="px-3 py-2 font-medium"><SortableHeader label={t("common.win")} sortKey="wins" sortConfig={sortConfig} onSort={handleSort} t={t} /></th>
+            <th className="px-3 py-2 font-medium"><SortableHeader label={t("common.draw")} sortKey="draws" sortConfig={sortConfig} onSort={handleSort} t={t} /></th>
+            <th className="px-3 py-2 font-medium"><SortableHeader label={t("common.loss")} sortKey="losses" sortConfig={sortConfig} onSort={handleSort} t={t} /></th>
+            <th className="px-3 py-2 font-medium"><SortableHeader label={t("leagueDetail.colGoalsFor")} sortKey="goals_for" sortConfig={sortConfig} onSort={handleSort} t={t} /></th>
+            <th className="px-3 py-2 font-medium"><SortableHeader label={t("leagueDetail.colGoalsAgainst")} sortKey="goals_against" sortConfig={sortConfig} onSort={handleSort} t={t} /></th>
+            <th className="px-3 py-2 font-medium"><SortableHeader label={t("leagueDetail.colGoalDiff")} sortKey="goal_difference" sortConfig={sortConfig} onSort={handleSort} t={t} /></th>
+            <th className="px-3 py-2 font-medium"><SortableHeader label={t("leagueDetail.colPoints")} sortKey="points" sortConfig={sortConfig} onSort={handleSort} t={t} /></th>
+            <th className="px-3 py-2 font-medium"><SortableHeader label={t("leagueDetail.colPointsPerGame")} sortKey="points_per_game" sortConfig={sortConfig} onSort={handleSort} t={t} /></th>
+            <th className="px-3 py-2 font-medium"><SortableHeader label={t("leagueDetail.colHomePoints")} sortKey="home_points" sortConfig={sortConfig} onSort={handleSort} t={t} /></th>
+            <th className="px-3 py-2 font-medium"><SortableHeader label={t("leagueDetail.colAwayPoints")} sortKey="away_points" sortConfig={sortConfig} onSort={handleSort} t={t} /></th>
+            <th className="px-3 py-2 font-medium"><SortableHeader label={t("leagueDetail.colLast5")} sortKey="last5_points" sortConfig={sortConfig} onSort={handleSort} t={t} /></th>
           </tr>
         </thead>
 
@@ -220,16 +220,16 @@ export function LeagueStandingsPanel({ rows = [] }: LeagueStandingsPanelProps) {
           {sortedRows.map((row) => (
             <tr
               key={`${row.team_source_id}-${row.rank}`}
-              className="border-t border-white/10 text-[13px] text-white/80 transition hover:bg-white/[0.02]"
+              className="border-t border-line text-[13px] text-ink transition hover:bg-veil"
             >
-              <td className={`px-4 py-2 whitespace-nowrap font-semibold ${getRankTone(row.rank)}`}>
+              <td className={`px-3 py-1.5 whitespace-nowrap font-semibold ${getRankTone(row.rank)}`}>
                 {row.rank}
               </td>
-              <td className="min-w-[220px] px-4 py-2 font-medium text-white">
+              <td className="min-w-[220px] px-3 py-1.5 font-medium text-ink">
                 {row.team_slug ? (
                   <TeamLink
                     teamSlug={row.team_slug}
-                    className="transition hover:text-white hover:underline"
+                    className="transition hover:text-ink hover:underline"
                     title={row.team_name}
                   >
                     {row.team_name}
@@ -238,25 +238,25 @@ export function LeagueStandingsPanel({ rows = [] }: LeagueStandingsPanelProps) {
                   row.team_name
                 )}
               </td>
-              <td className="px-4 py-2 whitespace-nowrap">{row.played}</td>
-              <td className="px-4 py-2 whitespace-nowrap">{row.wins}</td>
-              <td className="px-4 py-2 whitespace-nowrap">{row.draws}</td>
-              <td className="px-4 py-2 whitespace-nowrap">{row.losses}</td>
-              <td className="px-4 py-2 whitespace-nowrap">{row.goals_for}</td>
-              <td className="px-4 py-2 whitespace-nowrap">{row.goals_against}</td>
-              <td className="px-4 py-2 whitespace-nowrap font-medium text-white">
+              <td className="px-3 py-1.5 whitespace-nowrap">{row.played}</td>
+              <td className="px-3 py-1.5 whitespace-nowrap">{row.wins}</td>
+              <td className="px-3 py-1.5 whitespace-nowrap">{row.draws}</td>
+              <td className="px-3 py-1.5 whitespace-nowrap">{row.losses}</td>
+              <td className="px-3 py-1.5 whitespace-nowrap">{row.goals_for}</td>
+              <td className="px-3 py-1.5 whitespace-nowrap">{row.goals_against}</td>
+              <td className="px-3 py-1.5 whitespace-nowrap font-medium text-ink">
                 {row.goal_difference > 0 ? `+${row.goal_difference}` : row.goal_difference}
               </td>
-              <td className="px-4 py-2 whitespace-nowrap font-semibold text-white">{row.points}</td>
-              <td className="px-4 py-2 whitespace-nowrap text-white/72">
+              <td className="px-3 py-1.5 whitespace-nowrap font-semibold text-ink">{row.points}</td>
+              <td className="px-3 py-1.5 whitespace-nowrap text-ink-2">
                 {formatDecimal(row.points_per_game, 2)}
               </td>
-              <td className="px-4 py-2 whitespace-nowrap text-white/72">{row.home_points}</td>
-              <td className="px-4 py-2 whitespace-nowrap text-white/72">{row.away_points}</td>
-              <td className="px-4 py-2 whitespace-nowrap">
+              <td className="px-3 py-1.5 whitespace-nowrap text-ink-2">{row.home_points}</td>
+              <td className="px-3 py-1.5 whitespace-nowrap text-ink-2">{row.away_points}</td>
+              <td className="px-3 py-1.5 whitespace-nowrap">
                 <div className="flex items-center gap-2">
                   <FormBadges value={row.form_last5} />
-                  <span className="text-[11px] text-white/45">
+                  <span className="text-[11px] text-ink-3">
                     {t("leagueDetail.ptsSuffix", { count: row.last5_points })}
                   </span>
                 </div>

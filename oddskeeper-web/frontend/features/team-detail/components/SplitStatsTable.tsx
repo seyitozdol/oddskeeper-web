@@ -10,9 +10,9 @@ export async function SplitStatsTable({ rows = [] }: SplitStatsTableProps) {
   const t = await getT();
 
   return (
-    <div className="rounded-[14px] border border-white/10">
-      <div className="border-b border-white/10 bg-white/[0.03] px-3 py-2">
-        <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-white/42">
+    <div className="rounded-xl border border-line">
+      <div className="border-b border-line bg-veil px-3 py-2">
+        <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-ink-3">
           {t("teamDetail.homeAwaySplitTitle")}
         </div>
       </div>
@@ -20,7 +20,7 @@ export async function SplitStatsTable({ rows = [] }: SplitStatsTableProps) {
       <div className="overflow-x-auto">
         <table className="min-w-full border-collapse">
           <thead>
-            <tr className="text-left text-[10px] uppercase tracking-[0.14em] text-white/38">
+            <tr className="text-left text-[10px] uppercase tracking-[0.14em] text-ink-3">
               <th className="px-3 py-2 font-medium">{t("teamDetail.colSplit")}</th>
               <th className="px-3 py-2 font-medium">{t("teamDetail.colP")}</th>
               <th className="px-3 py-2 font-medium">{t("teamDetail.colW")}</th>
@@ -38,9 +38,9 @@ export async function SplitStatsTable({ rows = [] }: SplitStatsTableProps) {
             {(rows ?? []).map((row) => (
               <tr
                 key={`${row.team_slug}-${row.split_key}`}
-                className="border-t border-white/10 text-[13px] text-white/80"
+                className="border-t border-line text-[13px] text-ink-2"
               >
-                <td className="px-3 py-2 font-medium text-white">
+                <td className="px-3 py-2 font-medium text-ink">
                   {row.split_label}
                 </td>
                 <td className="px-3 py-2">{row.played}</td>

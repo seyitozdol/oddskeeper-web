@@ -7,9 +7,12 @@ import { useState } from "react";
 import { createClient } from "../lib/supabase/client";
 import { useI18n } from "../lib/i18n/LanguageProvider";
 import { LOCALES, type Locale } from "../lib/i18n/config";
+import type { Theme } from "../lib/theme";
+import ThemeSelect from "./ThemeSelect";
 
 type AppHeaderProps = {
   userEmail?: string | null;
+  theme?: Theme;
 };
 
 const FOOTBALL_LEAGUE_DETAIL_HREF =
@@ -20,7 +23,10 @@ const LOCALE_LABEL_KEYS: Record<Locale, string> = {
   tr: "nav.turkish",
 };
 
-export default function AppHeader({ userEmail }: AppHeaderProps) {
+export default function AppHeader({
+  userEmail,
+  theme = "night",
+}: AppHeaderProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { t, locale, setLocale } = useI18n();
@@ -46,133 +52,122 @@ export default function AppHeader({ userEmail }: AppHeaderProps) {
     }
   }
 
+  const navLinkClass = (active: boolean) =>
+    `rounded-lg px-3 py-1.5 text-[13px] font-medium transition ${
+      active
+        ? "bg-card-2 text-ink"
+        : "text-ink-2 hover:bg-veil hover:text-ink"
+    }`;
+
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-white/10 bg-[#07111f]/85 backdrop-blur-md">
-      <div className="flex h-20 w-full items-center justify-between px-6 lg:px-10">
-        <div className="flex items-center gap-4">
-          <Link href="/dashboard" className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-[#4da2ff]/30 bg-[#0b1a2b] shadow-[0_0_30px_rgba(77,162,255,0.10)]">
-              <span className="bg-gradient-to-br from-[#8fd0ff] via-[#4da2ff] to-[#1b6fff] bg-clip-text text-lg font-bold text-transparent">
-                OK
-              </span>
+    <header className="sticky top-0 z-50 w-full border-b border-line bg-canvas/90 backdrop-blur-md">
+      <div className="flex h-14 w-full items-center justify-between px-4 lg:px-8">
+        <div className="flex min-w-0 items-center gap-5">
+          <Link href="/dashboard" className="flex shrink-0 items-center gap-2.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-line-strong bg-card-2">
+              <span className="text-[13px] font-bold text-accent-ink">OK</span>
             </div>
-
-            <div className="leading-tight">
-              <div className="text-sm font-semibold tracking-[0.25em] text-white/55">
-                ODDSKEEPER
-              </div>
-              <div className="text-base font-semibold text-white">
-                {t("nav.workspace")}
-              </div>
-            </div>
-          </Link>
-        </div>
-
-        <nav className="hidden items-center gap-3 md:flex">
-          <Link
-            href="/dashboard/smart-prediction"
-            className={`rounded-2xl border px-5 py-2.5 text-sm font-medium transition ${
-              pathname === "/dashboard/smart-prediction"
-                ? "border-[#4da2ff]/40 bg-[#10233b] text-white shadow-[0_0_25px_rgba(77,162,255,0.15)]"
-                : "border-white/10 bg-white/[0.03] text-white/72 hover:border-[#4da2ff]/25 hover:bg-[#0e1d30] hover:text-white"
-            }`}
-          >
-            {t("nav.smartPrediction")}
+            <span className="hidden text-sm font-semibold tracking-[0.14em] text-ink lg:block">
+              ODDSKEEPER
+            </span>
           </Link>
 
-          <Link
-            href="/dashboard/deep-prediction-ml2"
-            className={`rounded-2xl border px-5 py-2.5 text-sm font-medium transition ${
-              pathname === "/dashboard/deep-prediction-ml2"
-                ? "border-[#4da2ff]/40 bg-[#10233b] text-white shadow-[0_0_25px_rgba(77,162,255,0.15)]"
-                : "border-white/10 bg-white/[0.03] text-white/72 hover:border-[#4da2ff]/25 hover:bg-[#0e1d30] hover:text-white"
-            }`}
-          >
-            {t("nav.deepPredictionMl")}
-          </Link>
-
-          <Link
-            href="/dashboard/match-predictions"
-            className={`rounded-2xl border px-5 py-2.5 text-sm font-medium transition ${
-              pathname === "/dashboard/match-predictions"
-                ? "border-[#4da2ff]/40 bg-[#10233b] text-white shadow-[0_0_25px_rgba(77,162,255,0.15)]"
-                : "border-white/10 bg-white/[0.03] text-white/72 hover:border-[#4da2ff]/25 hover:bg-[#0e1d30] hover:text-white"
-            }`}
-          >
-            {t("nav.matchPredictions")}
-          </Link>
-
-          <Link
-            href="/dashboard/player-market-prediction"
-            className={`rounded-2xl border px-5 py-2.5 text-sm font-medium transition ${
-              pathname === "/dashboard/player-market-prediction"
-                ? "border-[#4da2ff]/40 bg-[#10233b] text-white shadow-[0_0_25px_rgba(77,162,255,0.15)]"
-                : "border-white/10 bg-white/[0.03] text-white/72 hover:border-[#4da2ff]/25 hover:bg-[#0e1d30] hover:text-white"
-            }`}
-          >
-            {t("nav.playerMarket")}
-          </Link>
-
-          <div className="group relative">
+          <nav className="hidden items-center gap-1 md:flex">
             <Link
-              href="/dashboard/stats-analysis"
-              className={`flex items-center gap-2 rounded-2xl border px-5 py-2.5 text-sm font-medium transition ${
-                isStatsActive
-                  ? "border-[#4da2ff]/40 bg-[#10233b] text-white shadow-[0_0_25px_rgba(77,162,255,0.15)]"
-                  : "border-white/10 bg-white/[0.03] text-white/72 hover:border-[#4da2ff]/25 hover:bg-[#0e1d30] hover:text-white"
-              }`}
+              href="/dashboard/smart-prediction"
+              className={navLinkClass(pathname === "/dashboard/smart-prediction")}
             >
-              <span>{t("nav.statsAnalysis")}</span>
-              <ChevronDownIcon />
+              {t("nav.smartPrediction")}
             </Link>
 
-            <div className="pointer-events-none absolute left-0 top-full z-50 pt-3 opacity-0 transition duration-200 group-hover:pointer-events-auto group-hover:opacity-100">
-              <div className="w-[400px] rounded-[24px] border border-white/10 bg-[#121418]/95 p-3 shadow-[0_12px_50px_rgba(0,0,0,0.45)] backdrop-blur-xl">
-                <StatsMenuItem
-                  title={t("nav.football")}
-                  subtitle={t("nav.footballSubtitle")}
-                  iconSrc="/icons/football.svg"
-                  playerHref="/dashboard/stats-analysis/football/player-stats"
-                  teamHref="/dashboard/stats-analysis/football/team-stats"
-                  leagueHref={FOOTBALL_LEAGUE_DETAIL_HREF}
-                  playerRankingsHref="/dashboard/stats-analysis/football/player-stats/metric"
-                  teamRankingsHref="/dashboard/stats-analysis/football/team-stats/metric"
-                />
+            <Link
+              href="/dashboard/deep-prediction-ml2"
+              className={navLinkClass(
+                pathname === "/dashboard/deep-prediction-ml2"
+              )}
+            >
+              {t("nav.deepPredictionMl")}
+            </Link>
 
-                <StatsMenuItem
-                  title={t("nav.basketball")}
-                  subtitle={t("nav.basketballSubtitle")}
-                  iconSrc="/icons/basketball.svg"
-                  playerHref="/dashboard/stats-analysis?sport=basketball&view=player"
-                  teamHref="/dashboard/stats-analysis?sport=basketball&view=team"
-                />
+            <Link
+              href="/dashboard/match-predictions"
+              className={navLinkClass(
+                pathname === "/dashboard/match-predictions"
+              )}
+            >
+              {t("nav.matchPredictions")}
+            </Link>
+
+            <Link
+              href="/dashboard/player-market-prediction"
+              className={navLinkClass(
+                pathname === "/dashboard/player-market-prediction"
+              )}
+            >
+              {t("nav.playerMarket")}
+            </Link>
+
+            <div className="group relative">
+              <Link
+                href="/dashboard/stats-analysis"
+                className={`flex items-center gap-1.5 ${navLinkClass(
+                  isStatsActive
+                )}`}
+              >
+                <span>{t("nav.statsAnalysis")}</span>
+                <ChevronDownIcon />
+              </Link>
+
+              <div className="pointer-events-none absolute left-0 top-full z-50 pt-2 opacity-0 transition duration-200 group-hover:pointer-events-auto group-hover:opacity-100">
+                <div className="w-[360px] rounded-xl border border-line bg-card p-2 shadow-lg">
+                  <StatsMenuItem
+                    title={t("nav.football")}
+                    subtitle={t("nav.footballSubtitle")}
+                    iconSrc="/icons/football.svg"
+                    playerHref="/dashboard/stats-analysis/football/player-stats"
+                    teamHref="/dashboard/stats-analysis/football/team-stats"
+                    leagueHref={FOOTBALL_LEAGUE_DETAIL_HREF}
+                    playerRankingsHref="/dashboard/stats-analysis/football/player-stats/metric"
+                    teamRankingsHref="/dashboard/stats-analysis/football/team-stats/metric"
+                  />
+
+                  <StatsMenuItem
+                    title={t("nav.basketball")}
+                    subtitle={t("nav.basketballSubtitle")}
+                    iconSrc="/icons/basketball.svg"
+                    playerHref="/dashboard/stats-analysis?sport=basketball&view=player"
+                    teamHref="/dashboard/stats-analysis?sport=basketball&view=team"
+                  />
+                </div>
               </div>
             </div>
-          </div>
-        </nav>
+          </nav>
+        </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex shrink-0 items-center gap-1.5">
+          <ThemeSelect currentTheme={theme} />
+
           <div className="group relative">
             <button
               type="button"
               onClick={() => setIsLangOpen((prev) => !prev)}
-              className="flex h-11 items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.03] px-3 text-white/75 transition hover:border-[#4da2ff]/25 hover:bg-[#0e1d30] hover:text-white"
+              className="flex h-9 items-center gap-1.5 rounded-xl border border-line bg-veil px-2.5 text-ink-2 transition hover:border-line-strong hover:text-ink"
               title={t("nav.language")}
             >
               <GlobeIcon />
-              <span className="text-xs font-semibold uppercase tracking-[0.08em]">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.08em]">
                 {locale}
               </span>
             </button>
 
             <div
-              className={`absolute right-0 top-full z-50 pt-3 transition duration-200 ${
+              className={`absolute right-0 top-full z-50 pt-2 transition duration-200 ${
                 isLangOpen
                   ? "pointer-events-auto opacity-100"
                   : "pointer-events-none opacity-0 group-hover:pointer-events-auto group-hover:opacity-100"
               }`}
             >
-              <div className="w-[180px] rounded-[18px] border border-white/10 bg-[#121418]/95 p-2 shadow-[0_12px_50px_rgba(0,0,0,0.45)] backdrop-blur-xl">
+              <div className="w-[160px] rounded-xl border border-line bg-card p-1.5 shadow-lg">
                 {LOCALES.map((option) => (
                   <button
                     key={option}
@@ -181,10 +176,10 @@ export default function AppHeader({ userEmail }: AppHeaderProps) {
                       setLocale(option);
                       setIsLangOpen(false);
                     }}
-                    className={`flex w-full items-center justify-between rounded-[12px] px-4 py-2.5 text-sm transition hover:bg-white/[0.06] ${
+                    className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-[13px] transition hover:bg-veil ${
                       locale === option
-                        ? "font-semibold text-white"
-                        : "text-white/70"
+                        ? "font-semibold text-ink"
+                        : "text-ink-2"
                     }`}
                   >
                     <span>{t(LOCALE_LABEL_KEYS[option])}</span>
@@ -195,111 +190,82 @@ export default function AppHeader({ userEmail }: AppHeaderProps) {
             </div>
           </div>
 
-          <button
-            type="button"
-            className="flex h-11 min-w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03] px-3 text-sm font-semibold text-white/85 transition hover:border-[#4da2ff]/25 hover:bg-[#0e1d30]"
+          <span
+            className="flex h-9 w-9 items-center justify-center rounded-xl border border-line bg-veil text-[12px] font-semibold text-accent-ink"
             title={userEmail ?? "User"}
           >
-            <span className="mr-2 flex h-7 w-7 items-center justify-center rounded-full bg-[#123255] text-xs text-[#9dd7ff]">
-              {initials}
-            </span>
-            <UserIcon />
-          </button>
+            {initials}
+          </span>
 
           <button
             type="button"
             onClick={handleSignOut}
             disabled={isSigningOut}
-            className="flex h-11 items-center gap-2 rounded-2xl border border-[#4da2ff]/25 bg-[#10233b] px-4 text-sm font-medium text-white transition hover:border-[#4da2ff]/45 hover:bg-[#14304f] disabled:cursor-not-allowed disabled:opacity-60"
+            className="flex h-9 items-center gap-1.5 rounded-xl border border-line bg-veil px-3 text-[13px] font-medium text-ink-2 transition hover:border-line-strong hover:text-ink disabled:cursor-not-allowed disabled:opacity-60"
           >
             <LogOutIcon />
-            {isSigningOut ? t("nav.signingOut") : t("nav.signOut")}
+            <span className="hidden sm:block">
+              {isSigningOut ? t("nav.signingOut") : t("nav.signOut")}
+            </span>
           </button>
         </div>
       </div>
 
-      <div className="px-6 pb-3 md:hidden lg:px-10">
-        <div className="flex flex-wrap gap-2">
+      <div className="px-4 pb-2 md:hidden">
+        <div className="flex flex-wrap gap-1.5">
           <Link
             href="/dashboard/smart-prediction"
-            className={`rounded-xl border px-4 py-2 text-xs font-medium transition ${
-              pathname === "/dashboard/smart-prediction"
-                ? "border-[#4da2ff]/40 bg-[#10233b] text-white"
-                : "border-white/10 bg-white/[0.03] text-white/72"
-            }`}
+            className={navLinkClass(pathname === "/dashboard/smart-prediction")}
           >
             {t("nav.smartPrediction")}
           </Link>
 
           <Link
             href="/dashboard/deep-prediction-ml2"
-            className={`rounded-xl border px-4 py-2 text-xs font-medium transition ${
+            className={navLinkClass(
               pathname === "/dashboard/deep-prediction-ml2"
-                ? "border-[#4da2ff]/40 bg-[#10233b] text-white"
-                : "border-white/10 bg-white/[0.03] text-white/72"
-            }`}
+            )}
           >
             {t("nav.deepPredictionMl")}
           </Link>
 
           <Link
             href="/dashboard/stats-analysis"
-            className={`rounded-xl border px-4 py-2 text-xs font-medium transition ${
-              isStatsActive
-                ? "border-[#4da2ff]/40 bg-[#10233b] text-white"
-                : "border-white/10 bg-white/[0.03] text-white/72"
-            }`}
+            className={navLinkClass(isStatsActive)}
           >
             {t("nav.statsAnalysis")}
           </Link>
 
           <Link
             href="/dashboard/stats-analysis/football/player-stats"
-            className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2 text-xs font-medium text-white/72"
+            className={navLinkClass(false)}
           >
             {t("nav.footballPlayerStats")}
           </Link>
 
           <Link
             href="/dashboard/stats-analysis/football/team-stats"
-            className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2 text-xs font-medium text-white/72"
+            className={navLinkClass(false)}
           >
             {t("nav.footballTeamStats")}
           </Link>
 
-          <Link
-            href={FOOTBALL_LEAGUE_DETAIL_HREF}
-            className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2 text-xs font-medium text-white/72"
-          >
+          <Link href={FOOTBALL_LEAGUE_DETAIL_HREF} className={navLinkClass(false)}>
             {t("nav.footballLeagueDetails")}
           </Link>
 
           <Link
             href="/dashboard/stats-analysis/football/player-stats/metric"
-            className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2 text-xs font-medium text-white/72"
+            className={navLinkClass(false)}
           >
             {t("nav.playerRankings")}
           </Link>
 
           <Link
             href="/dashboard/stats-analysis/football/team-stats/metric"
-            className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2 text-xs font-medium text-white/72"
+            className={navLinkClass(false)}
           >
             {t("nav.teamRankings")}
-          </Link>
-
-          <Link
-            href="/dashboard/stats-analysis?sport=basketball&view=player"
-            className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2 text-xs font-medium text-white/72"
-          >
-            {t("nav.basketballPlayerStats")}
-          </Link>
-
-          <Link
-            href="/dashboard/stats-analysis?sport=basketball&view=team"
-            className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2 text-xs font-medium text-white/72"
-          >
-            {t("nav.basketballTeamStats")}
           </Link>
         </div>
       </div>
@@ -330,157 +296,44 @@ function StatsMenuItem({
 }: StatsMenuItemProps) {
   const { t } = useI18n();
 
+  const links = [
+    { href: playerHref, label: t("nav.playerStats") },
+    { href: teamHref, label: t("nav.teamStats") },
+    ...(leagueHref ? [{ href: leagueHref, label: t("nav.leagueDetails") }] : []),
+    ...(playerRankingsHref
+      ? [{ href: playerRankingsHref, label: t("nav.playerRankings") }]
+      : []),
+    ...(teamRankingsHref
+      ? [{ href: teamRankingsHref, label: t("nav.teamRankings") }]
+      : []),
+  ];
+
   return (
-    <div className="group/item relative">
-      <div className="flex items-start gap-4 rounded-[18px] px-4 py-4 transition hover:bg-white/[0.04]">
-        <div className="mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03]">
-          <Image
-            src={iconSrc}
-            alt={title}
-            width={22}
-            height={22}
-            className="opacity-85"
-          />
-        </div>
-
-        <div className="flex-1">
-          <div className="text-[17px] font-semibold text-white">{title}</div>
-          <div className="mt-1 text-sm text-white/45">{subtitle}</div>
-        </div>
-
-        <div className="pt-2 text-white/35 transition group-hover/item:text-white/70">
-          <ChevronRightIcon />
+    <div className="rounded-lg p-2 transition hover:bg-veil">
+      <div className="flex items-center gap-2.5 px-1 pb-1.5">
+        <Image
+          src={iconSrc}
+          alt={title}
+          width={16}
+          height={16}
+          className="opacity-85"
+        />
+        <div>
+          <span className="text-[13px] font-semibold text-ink">{title}</span>
+          <span className="ml-2 text-[11px] text-ink-3">{subtitle}</span>
         </div>
       </div>
 
-      <div className="pointer-events-none absolute left-[calc(100%-10px)] top-0 z-50 pl-4 opacity-0 transition duration-200 group-hover/item:pointer-events-auto group-hover/item:opacity-100">
-        <div className="w-[280px] rounded-[22px] border border-white/10 bg-[#121418]/95 p-3 shadow-[0_12px_50px_rgba(0,0,0,0.45)] backdrop-blur-xl">
+      <div className="flex flex-wrap gap-1">
+        {links.map((link) => (
           <Link
-            href={playerHref}
-            className="flex items-start gap-3 rounded-[16px] px-4 py-4 transition hover:bg-white/[0.04]"
+            key={link.href}
+            href={link.href}
+            className="rounded-md border border-line bg-veil px-2.5 py-1 text-[12px] text-ink-2 transition hover:border-line-strong hover:text-ink"
           >
-            <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03]">
-              <Image
-                src="/icons/player.svg"
-                alt={t("nav.playerStats")}
-                width={20}
-                height={20}
-                className="opacity-85"
-              />
-            </div>
-
-            <div>
-              <div className="text-[15px] font-semibold text-white">
-                {t("nav.playerStats")}
-              </div>
-              <div className="mt-1 text-sm text-white/45">
-                {t("nav.playerStatsSubtitle")}
-              </div>
-            </div>
+            {link.label}
           </Link>
-
-          <Link
-            href={teamHref}
-            className="flex items-start gap-3 rounded-[16px] px-4 py-4 transition hover:bg-white/[0.04]"
-          >
-            <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03]">
-              <Image
-                src="/icons/team.svg"
-                alt={t("nav.teamStats")}
-                width={20}
-                height={20}
-                className="opacity-85"
-              />
-            </div>
-
-            <div>
-              <div className="text-[15px] font-semibold text-white">
-                {t("nav.teamStats")}
-              </div>
-              <div className="mt-1 text-sm text-white/45">
-                {t("nav.teamStatsSubtitle")}
-              </div>
-            </div>
-          </Link>
-
-          {leagueHref ? (
-            <Link
-              href={leagueHref}
-              className="flex items-start gap-3 rounded-[16px] px-4 py-4 transition hover:bg-white/[0.04]"
-            >
-              <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03]">
-                <Image
-                  src="/icons/team.svg"
-                  alt={t("nav.leagueDetails")}
-                  width={20}
-                  height={20}
-                  className="opacity-85"
-                />
-              </div>
-
-              <div>
-                <div className="text-[15px] font-semibold text-white">
-                  {t("nav.leagueDetails")}
-                </div>
-                <div className="mt-1 text-sm text-white/45">
-                  {t("nav.leagueDetailsSubtitle")}
-                </div>
-              </div>
-            </Link>
-          ) : null}
-
-          {playerRankingsHref ? (
-            <Link
-              href={playerRankingsHref}
-              className="flex items-start gap-3 rounded-[16px] px-4 py-4 transition hover:bg-white/[0.04]"
-            >
-              <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03]">
-                <Image
-                  src="/icons/player.svg"
-                  alt={t("nav.playerRankings")}
-                  width={20}
-                  height={20}
-                  className="opacity-85"
-                />
-              </div>
-
-              <div>
-                <div className="text-[15px] font-semibold text-white">
-                  {t("nav.playerRankings")}
-                </div>
-                <div className="mt-1 text-sm text-white/45">
-                  {t("nav.playerRankingsSubtitle")}
-                </div>
-              </div>
-            </Link>
-          ) : null}
-
-          {teamRankingsHref ? (
-            <Link
-              href={teamRankingsHref}
-              className="flex items-start gap-3 rounded-[16px] px-4 py-4 transition hover:bg-white/[0.04]"
-            >
-              <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03]">
-                <Image
-                  src="/icons/team.svg"
-                  alt={t("nav.teamRankings")}
-                  width={20}
-                  height={20}
-                  className="opacity-85"
-                />
-              </div>
-
-              <div>
-                <div className="text-[15px] font-semibold text-white">
-                  {t("nav.teamRankings")}
-                </div>
-                <div className="mt-1 text-sm text-white/45">
-                  {t("nav.teamRankingsSubtitle")}
-                </div>
-              </div>
-            </Link>
-          ) : null}
-        </div>
+        ))}
       </div>
     </div>
   );
@@ -491,7 +344,7 @@ function GlobeIcon() {
     <svg
       aria-hidden="true"
       viewBox="0 0 24 24"
-      className="h-5 w-5"
+      className="h-4 w-4"
       fill="none"
       stroke="currentColor"
       strokeWidth="1.8"
@@ -511,7 +364,7 @@ function CheckIcon() {
     <svg
       aria-hidden="true"
       viewBox="0 0 24 24"
-      className="h-4 w-4"
+      className="h-3.5 w-3.5"
       fill="none"
       stroke="currentColor"
       strokeWidth="2"
@@ -519,24 +372,6 @@ function CheckIcon() {
       strokeLinejoin="round"
     >
       <path d="M20 6 9 17l-5-5" />
-    </svg>
-  );
-}
-
-function UserIcon() {
-  return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 24 24"
-      className="h-4 w-4"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M20 21a8 8 0 0 0-16 0" />
-      <circle cx="12" cy="8" r="4" />
     </svg>
   );
 }
@@ -565,7 +400,7 @@ function ChevronDownIcon() {
     <svg
       aria-hidden="true"
       viewBox="0 0 24 24"
-      className="h-4 w-4"
+      className="h-3.5 w-3.5"
       fill="none"
       stroke="currentColor"
       strokeWidth="1.8"
@@ -573,23 +408,6 @@ function ChevronDownIcon() {
       strokeLinejoin="round"
     >
       <path d="m6 9 6 6 6-6" />
-    </svg>
-  );
-}
-
-function ChevronRightIcon() {
-  return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 24 24"
-      className="h-4 w-4"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="m9 6 6 6-6 6" />
     </svg>
   );
 }

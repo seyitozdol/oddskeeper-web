@@ -36,14 +36,14 @@ function getStatusBadgeClass(lineupStatus?: string | null) {
   const value = (lineupStatus ?? "").toLowerCase();
 
   if (value === "starter") {
-    return "border-emerald-500/25 bg-emerald-500/10 text-emerald-300";
+    return "border-pos/25 bg-pos/10 text-pos";
   }
 
   if (value === "substitute") {
     return "border-sky-500/25 bg-sky-500/10 text-sky-300";
   }
 
-  return "border-white/10 bg-white/[0.03] text-white/60";
+  return "border-line bg-veil text-ink-2";
 }
 
 function TeamLogo({
@@ -56,7 +56,7 @@ function TeamLogo({
   const logoPath = getTeamLogoPath(teamSlug);
 
   return (
-    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/[0.03]">
+    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-line bg-veil">
       {logoPath ? (
         <Image
           src={logoPath}
@@ -66,7 +66,7 @@ function TeamLogo({
           className="h-auto max-h-[20px] w-auto max-w-[20px] object-contain"
         />
       ) : (
-        <div className="text-[10px] text-white/35">—</div>
+        <div className="text-[10px] text-ink-3">—</div>
       )}
     </div>
   );
@@ -84,9 +84,9 @@ function TeamParticipantsCard({
   t: Translator;
 }) {
   return (
-    <div className="min-w-0 flex-1 rounded-[16px] border border-white/10 bg-white/[0.03] p-3">
+    <div className="min-w-0 flex-1 rounded-lg border border-line bg-veil p-3">
       <div
-        className="grid items-center gap-2 border-b border-white/10 pb-2 text-[9px] uppercase tracking-[0.12em] text-white/35"
+        className="grid items-center gap-2 border-b border-line pb-2 text-[9px] uppercase tracking-[0.12em] text-ink-3"
         style={{ gridTemplateColumns: "28px minmax(0,220px) 34px 38px 72px" }}
       >
         <TeamLogo teamSlug={teamSlug} teamName={teamName} />
@@ -97,7 +97,7 @@ function TeamParticipantsCard({
       </div>
 
       {rows.length === 0 ? (
-        <div className="pt-3 text-sm text-white/55">
+        <div className="pt-3 text-sm text-ink-2">
           {t("matchDetail.noParticipantDataTeam")}
         </div>
       ) : (
@@ -105,7 +105,7 @@ function TeamParticipantsCard({
           {rows.map((row) => (
             <div
               key={`${row.source_match_id}-${row.player_source_id}`}
-              className="grid items-center gap-2 border-b border-white/8 px-0 py-1.5 text-[12px] text-white/80 last:border-b-0"
+              className="grid items-center gap-2 border-b border-line px-0 py-1.5 text-[12px] text-ink last:border-b-0"
               style={{ gridTemplateColumns: "28px minmax(0,220px) 34px 38px 72px" }}
             >
               <div />
@@ -113,14 +113,14 @@ function TeamParticipantsCard({
               <div className="min-w-0">
                 <PlayerLink
                   playerSlug={row.player_slug}
-                  className="block truncate font-medium text-white transition hover:text-white hover:underline"
+                  className="block truncate font-medium text-ink transition hover:text-ink hover:underline"
                   title={row.player_name}
                 >
                   {row.player_name}
                 </PlayerLink>
               </div>
 
-              <div className="whitespace-nowrap text-white/65">
+              <div className="whitespace-nowrap text-ink-2">
                 {row.position_code ?? "—"}
               </div>
 
@@ -150,7 +150,7 @@ export async function MatchLineupsPanel({ rows }: MatchLineupsPanelProps) {
 
   if (rows.length === 0) {
     return (
-      <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-4 text-sm text-white/65">
+      <div className="rounded-xl border border-line bg-veil px-3 py-3 text-sm text-ink-2">
         {t("matchDetail.noParticipantData")}
       </div>
     );
@@ -171,7 +171,7 @@ export async function MatchLineupsPanel({ rows }: MatchLineupsPanelProps) {
 
   return (
     <div className="space-y-2">
-      <div className="text-[11px] text-white/40">
+      <div className="text-[11px] text-ink-3">
         {t("matchDetail.participantLayer")}
       </div>
 

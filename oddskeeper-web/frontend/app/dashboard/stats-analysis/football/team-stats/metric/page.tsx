@@ -170,7 +170,7 @@ export default async function TeamMetricLeaderboardPage({
         {row.league_rank ?? "—"}
         {prevRank !== undefined ? (
           <span
-            className="ml-1 text-[11px] font-normal text-white/40"
+            className="ml-1 text-[11px] font-normal text-ink-3"
             title={t("common.prevSeasonRank", { rank: prevRank })}
           >
             ({prevRank})
@@ -192,8 +192,8 @@ export default async function TeamMetricLeaderboardPage({
             href={teamHref}
             className={`transition hover:underline ${
               isSelected
-                ? "font-semibold text-white"
-                : "text-white/80 hover:text-white"
+                ? "font-semibold text-ink"
+                : "text-ink hover:text-ink"
             }`}
           >
             {row.team_name}
@@ -232,11 +232,11 @@ export default async function TeamMetricLeaderboardPage({
               key="vsAvg"
               className={`font-medium ${
                 row.vs_league_avg_pct == null
-                  ? "text-white/55"
+                  ? "text-ink-2"
                   : (row.vs_league_avg_pct >= 0) ===
                     (row.is_higher_better !== false)
-                  ? "text-emerald-300"
-                  : "text-rose-300"
+                  ? "text-pos"
+                  : "text-neg"
               }`}
             >
               {formatMetricValue(row.vs_league_avg_pct, "pct_1")}
@@ -265,10 +265,10 @@ export default async function TeamMetricLeaderboardPage({
 
   return (
     <section className="w-full space-y-3">
-      <div className="rounded-[18px] border border-white/10 bg-[linear-gradient(180deg,rgba(8,14,24,0.90),rgba(5,10,18,0.96))] p-5">
+      <div className="rounded-lg border border-line bg-card p-5">
         <Link
           href={backHref}
-          className="text-[12px] text-white/50 transition hover:text-white"
+          className="text-[12px] text-ink-3 transition hover:text-ink"
         >
           ← {teamSlug ? t("common.backToDetailedStats") : t("nav.statsAnalysis")}
         </Link>
@@ -286,11 +286,11 @@ export default async function TeamMetricLeaderboardPage({
             ) : null}
 
             <div>
-              <div className="text-[11px] uppercase tracking-[0.20em] text-white/40">
+              <div className="text-[11px] uppercase tracking-[0.20em] text-ink-3">
                 {t("nav.teamRankings")}
                 {seasonLabel ? ` · ${seasonLabel}` : ""}
               </div>
-              <h1 className="mt-1 text-2xl font-semibold text-white">
+              <h1 className="mt-1 text-2xl font-semibold text-ink">
                 {metricTitle}
               </h1>
             </div>
@@ -306,12 +306,12 @@ export default async function TeamMetricLeaderboardPage({
 
         <div className="mt-3 flex flex-wrap gap-2">
           {leaderRow ? (
-            <span className="inline-flex rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-1 text-[11px] font-medium text-white/70">
+            <span className="inline-flex rounded-lg border border-line bg-veil px-2.5 py-1 text-[11px] font-medium text-ink-2">
               {categoryLabel(t, leaderRow.category_key, leaderRow.category_label)}
             </span>
           ) : null}
           {leaderRow ? (
-            <span className="inline-flex rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-1 text-[11px] font-medium text-white/70">
+            <span className="inline-flex rounded-lg border border-line bg-veil px-2.5 py-1 text-[11px] font-medium text-ink-2">
               {leaderRow.is_higher_better === false
                 ? t("common.lowerIsBetter")
                 : t("common.higherIsBetter")}
@@ -320,7 +320,7 @@ export default async function TeamMetricLeaderboardPage({
         </div>
 
         {meta ? (
-          <p className="mt-3 max-w-3xl text-[13px] leading-6 text-white/60">
+          <p className="mt-3 max-w-3xl text-[13px] leading-6 text-ink-2">
             {t(meta.descKey)} {t(meta.interpKey)}
           </p>
         ) : null}
@@ -386,7 +386,7 @@ export default async function TeamMetricLeaderboardPage({
         </div>
       </div>
 
-      <div className="rounded-[18px] border border-white/10">
+      <div className="rounded-lg border border-line">
         <SortableRankingTable
           columns={columns}
           rows={tableRows}
@@ -411,20 +411,20 @@ function SummaryCard({
 }) {
   return (
     <div
-      className={`rounded-[14px] border p-3 ${
+      className={`rounded-lg border p-3 ${
         highlight
-          ? "border-[#4da2ff]/35 bg-[#10335d]/40"
-          : "border-white/10 bg-white/[0.03]"
+          ? "border-line-strong bg-card-2"
+          : "border-line bg-veil"
       }`}
     >
-      <div className="text-[10px] uppercase tracking-[0.14em] text-white/40">
+      <div className="text-[10px] uppercase tracking-[0.14em] text-ink-3">
         {label}
       </div>
-      <div className="mt-1 truncate text-lg font-semibold text-white">
+      <div className="mt-1 truncate text-lg font-semibold text-ink">
         {value}
       </div>
       {subvalue ? (
-        <div className="mt-0.5 text-[12px] text-white/55">{subvalue}</div>
+        <div className="mt-0.5 text-[12px] text-ink-2">{subvalue}</div>
       ) : null}
     </div>
   );

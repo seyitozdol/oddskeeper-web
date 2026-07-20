@@ -51,7 +51,7 @@ function TeamLogo({
   const logoPath = getTeamLogoPath(teamSlug);
 
   return (
-    <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/10 bg-white/[0.03]">
+    <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-line bg-veil">
       {logoPath ? (
         <Image
           src={logoPath}
@@ -61,7 +61,7 @@ function TeamLogo({
           className="h-auto max-h-[22px] w-auto max-w-[22px] object-contain"
         />
       ) : (
-        <div className="text-[10px] text-white/35">—</div>
+        <div className="text-[10px] text-ink-3">—</div>
       )}
     </div>
   );
@@ -83,16 +83,16 @@ function SplitBar({
   const awayWidth = `${awayRatio * 50}%`;
 
   return (
-    <div className="relative h-2 w-full rounded-full bg-white/[0.05] overflow-hidden">
-      <div className="absolute left-1/2 top-0 h-full w-px -translate-x-1/2 bg-white/[0.08]" />
+    <div className="relative h-2 w-full rounded-full bg-veil overflow-hidden">
+      <div className="absolute left-1/2 top-0 h-full w-px -translate-x-1/2 bg-veil" />
 
       <div
-        className="absolute right-1/2 top-0 h-full rounded-l-full bg-white/85"
+        className="absolute right-1/2 top-0 h-full rounded-l-full bg-ink/85"
         style={{ width: homeWidth }}
       />
 
       <div
-        className="absolute left-1/2 top-0 h-full rounded-r-full bg-[#4da2ff]"
+        className="absolute left-1/2 top-0 h-full rounded-r-full bg-accent"
         style={{ width: awayWidth }}
       />
     </div>
@@ -106,7 +106,7 @@ export async function MatchTeamStatsPanel({ rows }: MatchTeamStatsPanelProps) {
 
   if (!home || !away) {
     return (
-      <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-4 text-sm text-white/65">
+      <div className="rounded-xl border border-line bg-veil px-3 py-3 text-sm text-ink-2">
         {t("matchDetail.noTeamStats")}
       </div>
     );
@@ -186,16 +186,16 @@ export async function MatchTeamStatsPanel({ rows }: MatchTeamStatsPanelProps) {
   ];
 
   return (
-    <div className="mx-auto max-w-4xl rounded-[18px] border border-white/10 bg-[linear-gradient(180deg,rgba(8,14,24,0.95),rgba(5,10,18,0.99))] px-4 py-4 md:px-5 md:py-5">
+    <div className="mx-auto max-w-4xl rounded-xl border border-line bg-card px-3 py-3 md:px-5 md:py-5">
       <div
-        className="grid items-center gap-3 border-b border-white/10 pb-3"
+        className="grid items-center gap-3 border-b border-line pb-3"
         style={{ gridTemplateColumns: "44px 1fr 44px" }}
       >
         <div className="flex justify-start">
           <TeamLogo teamSlug={home.team_slug} teamName={home.team_name} />
         </div>
 
-        <div className="text-center text-[11px] font-semibold uppercase tracking-[0.18em] text-white/72">
+        <div className="text-center text-[11px] font-semibold uppercase tracking-[0.18em] text-ink-2">
           {t("matchDetail.topStats")}
         </div>
 
@@ -215,15 +215,15 @@ export async function MatchTeamStatsPanel({ rows }: MatchTeamStatsPanelProps) {
                 className="grid items-center gap-3"
                 style={{ gridTemplateColumns: "72px 1fr 72px" }}
               >
-                <div className="text-left text-[15px] font-semibold text-white">
+                <div className="text-left text-[15px] font-semibold text-ink">
                   {metric.homeDisplay}
                 </div>
 
-                <div className="text-center text-[14px] font-medium text-white">
+                <div className="text-center text-[14px] font-medium text-ink">
                   {metric.label}
                 </div>
 
-                <div className="text-right text-[15px] font-semibold text-white">
+                <div className="text-right text-[15px] font-semibold text-ink">
                   {metric.awayDisplay}
                 </div>
               </div>

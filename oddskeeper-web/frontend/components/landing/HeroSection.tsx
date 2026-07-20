@@ -27,70 +27,70 @@ export default async function HeroSection() {
   return (
     <section className="relative overflow-hidden">
       <div className="pointer-events-none absolute inset-0">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_22%,rgba(19,176,255,0.09),transparent_26%),radial-gradient(circle_at_82%_18%,rgba(36,203,255,0.06),transparent_22%),radial-gradient(circle_at_52%_88%,rgba(13,143,255,0.07),transparent_28%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_22%,var(--accent-soft),transparent_26%),radial-gradient(circle_at_82%_18%,var(--accent-soft),transparent_22%),radial-gradient(circle_at_52%_88%,var(--accent-soft),transparent_28%)]" />
         <div
           className="absolute inset-0 opacity-[0.05]"
           style={{
             backgroundImage:
-              "linear-gradient(rgba(255,255,255,0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.08) 1px, transparent 1px)",
+              "linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px)",
             backgroundSize: "72px 72px",
           }}
         />
-        <div className="absolute left-[8%] top-[16%] h-[220px] w-[220px] rounded-full bg-[#0aa8ff]/10 blur-3xl sm:h-[320px] sm:w-[320px]" />
-        <div className="absolute right-[10%] top-[14%] h-[220px] w-[220px] rounded-full bg-[#25c8ff]/10 blur-3xl sm:h-[280px] sm:w-[280px]" />
-        <div className="absolute bottom-[-90px] left-1/2 h-[180px] w-[320px] -translate-x-1/2 rounded-full bg-[#0d8fff]/8 blur-3xl sm:h-[260px] sm:w-[520px]" />
+        <div className="absolute left-[8%] top-[16%] h-[220px] w-[220px] rounded-full bg-accent/10 blur-3xl sm:h-[320px] sm:w-[320px]" />
+        <div className="absolute right-[10%] top-[14%] h-[220px] w-[220px] rounded-full bg-accent/10 blur-3xl sm:h-[280px] sm:w-[280px]" />
+        <div className="absolute bottom-[-90px] left-1/2 h-[180px] w-[320px] -translate-x-1/2 rounded-full bg-accent/10 blur-3xl sm:h-[260px] sm:w-[520px]" />
       </div>
 
-      <div className="mx-auto grid min-h-[auto] w-full max-w-[1420px] items-center gap-8 px-4 pb-6 pt-10 sm:px-6 sm:pb-8 sm:pt-14 lg:grid-cols-[0.92fr_1.08fr] lg:px-10 lg:pb-10 lg:pt-16">
+      <div className="mx-auto grid min-h-[auto] w-full max-w-[1420px] items-center gap-8 px-4 pb-6 pt-8 sm:px-6 sm:pb-8 sm:pt-12 lg:grid-cols-[0.92fr_1.08fr] lg:px-10 lg:pb-8 lg:pt-14">
         <div className="relative z-10 max-w-[620px] lg:pl-2">
-          <div className="mb-4 inline-flex items-center rounded-full border border-[#13b0ff]/25 bg-white/5 px-3 py-1.5 text-[10px] font-medium uppercase tracking-[0.22em] text-[#8bdfff] sm:mb-5 sm:px-4 sm:py-2 sm:text-[11px] sm:tracking-[0.24em]">
+          <div className="mb-4 inline-flex items-center rounded-full border border-line-strong bg-veil px-3 py-1.5 text-[10px] font-medium uppercase tracking-[0.22em] text-accent-ink sm:mb-5 sm:px-4 sm:py-2 sm:text-[11px] sm:tracking-[0.24em]">
             {t("landing.brandTagline")}
           </div>
 
-          <h1 className="max-w-[700px] text-[36px] font-semibold leading-[1.05] text-white sm:text-[48px] lg:text-[64px] xl:text-[68px]">
+          <h1 className="max-w-[700px] text-3xl font-semibold leading-[1.05] text-ink sm:text-4xl lg:text-5xl xl:text-6xl">
             {t("landing.heroTitle")}
           </h1>
 
-          <p className="mt-5 max-w-[560px] text-[15px] leading-7 text-white/68 sm:mt-6 sm:text-[17px] sm:leading-8">
+          <p className="mt-5 max-w-[560px] text-[15px] leading-7 text-ink-2 sm:mt-6 sm:text-[17px] sm:leading-8">
             {t("landing.heroDescription")}
           </p>
 
           <div className="mt-8 flex flex-col gap-3 sm:mt-9 sm:flex-row sm:gap-4">
             <a
               href="#contact"
-              className="inline-flex justify-center rounded-2xl border border-[#13b0ff]/35 bg-gradient-to-r from-[#0d8fff] to-[#25c8ff] px-6 py-3.5 text-sm font-semibold text-white shadow-[0_0_30px_rgba(19,176,255,0.18)] transition hover:scale-[1.02]"
+              className="inline-flex justify-center rounded-2xl bg-accent px-6 py-2.5 text-sm font-semibold text-on-accent transition hover:opacity-90"
             >
               {t("landing.requestAccess")}
             </a>
 
             <Link
               href="/sign-in"
-              className="inline-flex justify-center rounded-2xl border border-white/14 bg-white/5 px-6 py-3.5 text-sm font-semibold text-white/90 transition hover:bg-white/10"
+              className="inline-flex justify-center rounded-2xl border border-line bg-veil px-6 py-2.5 text-sm font-semibold text-ink transition hover:bg-card-2"
             >
               {t("landing.explorePlatform")}
             </Link>
           </div>
 
-          <p className="mt-5 text-sm text-white/45 sm:mt-6">
+          <p className="mt-5 text-sm text-ink-3 sm:mt-6">
             {t("landing.heroFootnote")}
           </p>
         </div>
 
         <div className="relative z-10 mt-2 lg:-ml-4 lg:mt-0">
-          <div className="absolute inset-x-8 top-10 h-[78%] rounded-[44px] bg-[#0aa8ff]/8 blur-3xl sm:inset-x-16" />
+          <div className="absolute inset-x-8 top-10 h-[78%] rounded-full bg-accent/10 blur-3xl sm:inset-x-16" />
 
-          <div className="relative mx-auto w-full max-w-[720px] rounded-[24px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.025))] p-3 shadow-[0_28px_110px_rgba(0,0,0,0.42)] backdrop-blur sm:rounded-[32px] sm:p-4">
-            <div className="rounded-[20px] border border-white/8 bg-[#0a1320]/95 p-4 sm:rounded-[28px] sm:p-5 md:p-6">
+          <div className="relative mx-auto w-full max-w-[720px] rounded-xl border border-line bg-card-2 p-3 backdrop-blur sm:rounded-2xl sm:p-4">
+            <div className="rounded-xl border border-line bg-card p-4 sm:rounded-2xl sm:p-5 md:p-6">
               <div className="grid gap-3 sm:grid-cols-3">
                 {metricCards.map((card) => (
                   <div
                     key={card.labelKey}
-                    className="rounded-2xl border border-white/8 bg-white/[0.03] p-4"
+                    className="rounded-2xl border border-line bg-card-2 p-4"
                   >
-                    <p className="text-[10px] uppercase tracking-[0.18em] text-white/38 sm:text-[11px] sm:tracking-[0.22em]">
+                    <p className="text-[10px] uppercase tracking-[0.18em] text-ink-3 sm:text-[11px] sm:tracking-[0.22em]">
                       {t(card.labelKey)}
                     </p>
-                    <p className="mt-3 text-[24px] font-semibold leading-none text-white sm:text-[28px]">
+                    <p className="mt-3 text-[24px] font-semibold leading-none text-ink sm:text-[28px]">
                       {card.value}
                     </p>
                   </div>
@@ -99,23 +99,23 @@ export default async function HeroSection() {
 
               <div className="mt-4 grid gap-4 xl:grid-cols-[1.12fr_0.88fr]">
                 <div className="space-y-4">
-                  <div className="rounded-[22px] border border-white/8 bg-white/[0.03] p-4">
+                  <div className="rounded-xl border border-line bg-card-2 p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <p className="text-[10px] uppercase tracking-[0.18em] text-white/38 sm:text-[11px] sm:tracking-[0.22em]">
+                        <p className="text-[10px] uppercase tracking-[0.18em] text-ink-3 sm:text-[11px] sm:tracking-[0.22em]">
                           {t("landing.analyticalTrendLabel")}
                         </p>
-                        <p className="mt-2 text-[20px] font-semibold leading-tight text-white sm:text-[22px]">
+                        <p className="mt-2 text-[20px] font-semibold leading-tight text-ink sm:text-[22px]">
                           {t("landing.matchIntensitySignal")}
                         </p>
                       </div>
 
-                      <span className="rounded-full border border-[#13b0ff]/20 bg-[#13b0ff]/10 px-3 py-1 text-[11px] text-[#8bdfff]">
+                      <span className="rounded-full border border-line-strong bg-accent-soft px-3 py-1 text-[11px] text-accent-ink">
                         {t("landing.liveModelLayer")}
                       </span>
                     </div>
 
-                    <div className="mt-5 rounded-[20px] border border-white/6 bg-[#08111d] p-4">
+                    <div className="mt-5 rounded-xl border border-line bg-field p-4">
                       <svg
                         viewBox="0 0 340 140"
                         className="h-32 w-full sm:h-36"
@@ -167,18 +167,18 @@ export default async function HeroSection() {
                     </div>
                   </div>
 
-                  <div className="rounded-[22px] border border-white/8 bg-white/[0.03] p-4">
+                  <div className="rounded-xl border border-line bg-card-2 p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <p className="text-[10px] uppercase tracking-[0.18em] text-white/38 sm:text-[11px] sm:tracking-[0.22em]">
+                        <p className="text-[10px] uppercase tracking-[0.18em] text-ink-3 sm:text-[11px] sm:tracking-[0.22em]">
                           {t("landing.signalSummaryLabel")}
                         </p>
-                        <p className="mt-2 text-xl font-semibold text-white">
+                        <p className="mt-2 text-xl font-semibold text-ink">
                           {t("landing.decisionSupportLayer")}
                         </p>
                       </div>
 
-                      <span className="rounded-full border border-white/10 px-2.5 py-1 text-xs text-white/62">
+                      <span className="rounded-full border border-line px-2.5 py-1 text-xs text-ink-2">
                         {t("landing.statusActive")}
                       </span>
                     </div>
@@ -187,20 +187,20 @@ export default async function HeroSection() {
                       {bottomStats.map((stat) => (
                         <div
                           key={stat.labelKey}
-                          className="rounded-xl border border-white/8 bg-white/[0.03] p-4"
+                          className="rounded-xl border border-line bg-card p-4"
                         >
-                          <p className="text-[10px] uppercase tracking-[0.18em] text-white/38">
+                          <p className="text-[10px] uppercase tracking-[0.18em] text-ink-3">
                             {t(stat.labelKey)}
                           </p>
-                          <p className="mt-2 text-[22px] font-semibold leading-none text-white sm:text-[26px]">
+                          <p className="mt-2 text-[22px] font-semibold leading-none text-ink sm:text-[26px]">
                             {stat.value}
                           </p>
                         </div>
                       ))}
                     </div>
 
-                    <div className="mt-4 rounded-xl border border-white/8 bg-white/[0.03] px-4 py-3">
-                      <p className="text-sm leading-6 text-white/60">
+                    <div className="mt-4 rounded-xl border border-line bg-card px-4 py-3">
+                      <p className="text-sm leading-6 text-ink-2">
                         {t("landing.modelOutputsDescription")}
                       </p>
                     </div>
@@ -208,21 +208,21 @@ export default async function HeroSection() {
                 </div>
 
                 <div className="space-y-4">
-                  <div className="rounded-[22px] border border-white/8 bg-white/[0.03] p-4">
+                  <div className="rounded-xl border border-line bg-card-2 p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <p className="text-[10px] uppercase tracking-[0.18em] text-white/38 sm:text-[11px] sm:tracking-[0.22em]">
+                        <p className="text-[10px] uppercase tracking-[0.18em] text-ink-3 sm:text-[11px] sm:tracking-[0.22em]">
                           {t("landing.teamModuleLabel")}
                         </p>
-                        <p className="mt-2 text-xl font-semibold text-white">
+                        <p className="mt-2 text-xl font-semibold text-ink">
                           {t("landing.teamPerformanceLayer")}
                         </p>
-                        <p className="mt-2 max-w-[220px] text-sm leading-6 text-white/52">
+                        <p className="mt-2 max-w-[220px] text-sm leading-6 text-ink-3">
                           {t("landing.teamPerformanceDescription")}
                         </p>
                       </div>
 
-                      <span className="rounded-full border border-white/10 px-2.5 py-1 text-xs text-white/62">
+                      <span className="rounded-full border border-line px-2.5 py-1 text-xs text-ink-2">
                         {t("landing.statusReady")}
                       </span>
                     </div>
@@ -231,25 +231,25 @@ export default async function HeroSection() {
                       {barHeights.map((height, index) => (
                         <div
                           key={index}
-                          className="flex-1 rounded-t-xl bg-gradient-to-t from-[#0d8fff] to-[#63dcff]"
+                          className="flex-1 rounded-t-xl bg-accent"
                           style={{ height: `${height}px` }}
                         />
                       ))}
                     </div>
                   </div>
 
-                  <div className="rounded-[22px] border border-white/8 bg-white/[0.03] p-4">
+                  <div className="rounded-xl border border-line bg-card-2 p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <p className="text-[10px] uppercase tracking-[0.18em] text-white/38 sm:text-[11px] sm:tracking-[0.22em]">
+                        <p className="text-[10px] uppercase tracking-[0.18em] text-ink-3 sm:text-[11px] sm:tracking-[0.22em]">
                           {t("landing.participantSignalLabel")}
                         </p>
-                        <p className="mt-2 text-xl font-semibold text-white">
+                        <p className="mt-2 text-xl font-semibold text-ink">
                           {t("landing.participantAnalyticsTitle")}
                         </p>
                       </div>
 
-                      <span className="rounded-full border border-white/10 px-2.5 py-1 text-xs text-white/62">
+                      <span className="rounded-full border border-line px-2.5 py-1 text-xs text-ink-2">
                         {t("landing.statusStable")}
                       </span>
                     </div>
@@ -258,12 +258,12 @@ export default async function HeroSection() {
                       {participantRows.map((row) => (
                         <div
                           key={row.labelKey}
-                          className="flex items-center justify-between rounded-xl border border-white/8 bg-white/[0.03] px-3 py-3"
+                          className="flex items-center justify-between rounded-xl border border-line bg-card px-3 py-3"
                         >
-                          <span className="text-sm text-white/70">
+                          <span className="text-sm text-ink-2">
                             {t(row.labelKey)}
                           </span>
-                          <span className="text-sm font-semibold text-white">
+                          <span className="text-sm font-semibold text-ink">
                             {row.value}
                           </span>
                         </div>
@@ -271,20 +271,20 @@ export default async function HeroSection() {
                     </div>
 
                     <div className="mt-4 grid grid-cols-2 gap-3">
-                      <div className="rounded-xl border border-white/8 bg-white/[0.03] p-3">
-                        <span className="text-xs text-white/40">
+                      <div className="rounded-xl border border-line bg-card p-3">
+                        <span className="text-xs text-ink-3">
                           {t("landing.shotsLabel")}
                         </span>
-                        <p className="mt-2 text-lg font-semibold text-white">
+                        <p className="mt-2 text-lg font-semibold text-ink">
                           13.4
                         </p>
                       </div>
 
-                      <div className="rounded-xl border border-white/8 bg-white/[0.03] p-3">
-                        <span className="text-xs text-white/40">
+                      <div className="rounded-xl border border-line bg-card p-3">
+                        <span className="text-xs text-ink-3">
                           {t("landing.xgTrendLabel")}
                         </span>
-                        <p className="mt-2 text-lg font-semibold text-white">
+                        <p className="mt-2 text-lg font-semibold text-ink">
                           +0.38
                         </p>
                       </div>
@@ -295,7 +295,7 @@ export default async function HeroSection() {
             </div>
           </div>
 
-          <div className="pointer-events-none absolute inset-x-0 bottom-[-10px] h-20 bg-gradient-to-b from-transparent to-[#06111f]" />
+          <div className="pointer-events-none absolute inset-x-0 bottom-[-10px] h-20 bg-gradient-to-b from-transparent to-canvas" />
         </div>
       </div>
     </section>

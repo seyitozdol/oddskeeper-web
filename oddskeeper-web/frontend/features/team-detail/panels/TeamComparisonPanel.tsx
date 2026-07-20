@@ -116,10 +116,10 @@ function MetricRow({
   const bWins = metric.lowerBetter ? valB < valA : valB > valA;
 
   return (
-    <div className="grid grid-cols-[1fr_120px_1fr] items-center gap-3 py-2 border-b border-white/5 last:border-0">
+    <div className="grid grid-cols-[1fr_120px_1fr] items-center gap-3 py-2 border-b border-line last:border-0">
       {/* Sol — Takım A */}
       <div className="flex items-center gap-2">
-        <div className="flex-1 h-1.5 bg-white/10 rounded-full overflow-hidden">
+        <div className="flex-1 h-1.5 bg-veil rounded-full overflow-hidden">
           <div
             className="h-full rounded-full bg-blue-500"
             style={{ width: `${wA}%` }}
@@ -127,7 +127,7 @@ function MetricRow({
         </div>
         <span
           className={`text-sm font-medium min-w-[36px] text-right ${
-            aWins ? "text-white" : "text-white/50"
+            aWins ? "text-ink" : "text-ink-3"
           }`}
         >
           {fmt(valA, metric.format)}
@@ -136,17 +136,17 @@ function MetricRow({
 
       {/* Orta — metrik adı + lig ort */}
       <div className="text-center">
-        <div className="text-[11px] text-white/40 leading-tight">
+        <div className="text-[11px] text-ink-3 leading-tight">
           {t(metric.labelKey)}
         </div>
-        <div className="text-[10px] text-white/25 mt-0.5">
+        <div className="text-[10px] text-ink-3 mt-0.5">
           {t("teamDetail.comparisonLeagueAvgPrefix")} {fmt(avg, metric.format)}
         </div>
       </div>
 
       {/* Sağ — Takım B */}
       <div className="flex items-center gap-2 flex-row-reverse">
-        <div className="flex-1 h-1.5 bg-white/10 rounded-full overflow-hidden">
+        <div className="flex-1 h-1.5 bg-veil rounded-full overflow-hidden">
           <div
             className="h-full rounded-full bg-orange-500 ml-auto"
             style={{ width: `${wB}%`, marginLeft: "auto" }}
@@ -154,7 +154,7 @@ function MetricRow({
         </div>
         <span
           className={`text-sm font-medium min-w-[36px] text-left ${
-            bWins ? "text-white" : "text-white/50"
+            bWins ? "text-ink" : "text-ink-3"
           }`}
         >
           {fmt(valB, metric.format)}
@@ -214,8 +214,7 @@ export default function TeamComparisonPanel({
         <select
           value={opponentSlug}
           onChange={(e) => handleOpponentChange(e.target.value)}
-          className="text-sm bg-[#1a2030] border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none"
-          style={{ colorScheme: "dark" }}
+          className="text-sm bg-field border border-line rounded-lg px-3 py-2 text-ink focus:outline-none"
         >
           {availableTeams
             .filter((team) => team.slug !== currentTeamSlug)
@@ -233,8 +232,8 @@ export default function TeamComparisonPanel({
               onClick={() => handleSplitChange(s)}
               className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${
                 splitKey === s
-                  ? "bg-white/10 border-white/20 text-white"
-                  : "border-white/10 text-white/40 hover:text-white/70"
+                  ? "bg-card-2 border-line-strong text-ink"
+                  : "border-line text-ink-3 hover:text-ink-2"
               }`}
             >
               {s === "overall"
@@ -248,25 +247,25 @@ export default function TeamComparisonPanel({
       </div>
 
       {/* Header */}
-      <div className="grid grid-cols-[1fr_120px_1fr] items-center gap-3 pb-3 border-b border-white/10">
-        <div className="text-sm font-medium text-white">{team_a.team_name}</div>
-        <div className="text-center text-xs text-white/30">
+      <div className="grid grid-cols-[1fr_120px_1fr] items-center gap-3 pb-3 border-b border-line">
+        <div className="text-sm font-medium text-ink">{team_a.team_name}</div>
+        <div className="text-center text-xs text-ink-3">
           {data.season_label}
         </div>
-        <div className="text-sm font-medium text-white text-right">
+        <div className="text-sm font-medium text-ink text-right">
           {team_b.team_name}
         </div>
       </div>
 
       {/* Metrik grupları */}
       {loading ? (
-        <div className="text-sm text-white/30 py-8 text-center">
+        <div className="text-sm text-ink-3 py-8 text-center">
           {t("common.loading")}
         </div>
       ) : (
         METRIC_GROUPS.map((group) => (
           <div key={group.labelKey}>
-            <div className="text-[11px] font-medium text-white/30 uppercase tracking-wider mb-2">
+            <div className="text-[11px] font-medium text-ink-3 uppercase tracking-wider mb-2">
               {t(group.labelKey)}
             </div>
             <div>

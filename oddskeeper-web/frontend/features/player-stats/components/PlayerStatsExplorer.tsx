@@ -119,7 +119,7 @@ function getDisplayName(row: PlayerStatsListRow) {
 function PlayerAvatar({ row }: { row: PlayerStatsListRow }) {
   if (!row.photo_url) {
     return (
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.05] text-[11px] font-semibold text-white/45">
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-line bg-veil text-[11px] font-semibold text-ink-3">
         {getDisplayName(row).slice(0, 1).toUpperCase()}
       </span>
     );
@@ -131,7 +131,7 @@ function PlayerAvatar({ row }: { row: PlayerStatsListRow }) {
       alt={getDisplayName(row)}
       width={36}
       height={36}
-      className="h-9 w-9 shrink-0 rounded-full border border-white/10 bg-white/[0.05] object-cover"
+      className="h-9 w-9 shrink-0 rounded-full border border-line bg-veil object-cover"
     />
   );
 }
@@ -279,13 +279,13 @@ export default function PlayerStatsExplorer({
   }, [filteredRows, sortKey, sortDirection]);
 
   const headerCellClass =
-    "cursor-pointer select-none whitespace-nowrap px-4 py-2.5 font-medium transition hover:text-white/75";
+    "cursor-pointer select-none whitespace-nowrap px-3 py-2 font-medium transition hover:text-ink-2";
 
   return (
     <div className="mt-8 space-y-4">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
         <div className="relative flex-1 lg:max-w-md">
-          <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-white/35">
+          <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-ink-3">
             <SearchIcon />
           </span>
 
@@ -294,14 +294,14 @@ export default function PlayerStatsExplorer({
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             placeholder={t("statsHub.searchPlaceholder")}
-            className="w-full rounded-2xl border border-white/10 bg-white/[0.03] py-2.5 pl-11 pr-4 text-sm text-white placeholder:text-white/35 outline-none transition focus:border-[#4da2ff]/40 focus:bg-[#0e1d30]"
+            className="w-full rounded-2xl border border-line bg-veil py-2.5 pl-11 pr-4 text-sm text-ink placeholder:text-ink-3 outline-none transition focus:border-line-strong focus:bg-card-2"
           />
         </div>
 
         <select
           value={teamFilter}
           onChange={(event) => setTeamFilter(event.target.value)}
-          className="rounded-2xl border border-white/10 bg-[#0b1626] px-4 py-2.5 text-sm text-white/85 outline-none transition focus:border-[#4da2ff]/40"
+          className="rounded-2xl border border-line bg-field px-4 py-2.5 text-sm text-ink outline-none transition focus:border-line-strong"
         >
           <option value="all">{t("statsHub.allTeams")}</option>
           {teams.map((team) => (
@@ -314,7 +314,7 @@ export default function PlayerStatsExplorer({
         <select
           value={nationalityFilter}
           onChange={(event) => setNationalityFilter(event.target.value)}
-          className="rounded-2xl border border-white/10 bg-[#0b1626] px-4 py-2.5 text-sm text-white/85 outline-none transition focus:border-[#4da2ff]/40"
+          className="rounded-2xl border border-line bg-field px-4 py-2.5 text-sm text-ink outline-none transition focus:border-line-strong"
         >
           <option value="all">{t("statsHub.allNationalities")}</option>
           {nationalities.map((nationality) => (
@@ -332,8 +332,8 @@ export default function PlayerStatsExplorer({
               onClick={() => setPositionFilter(position.value)}
               className={`rounded-2xl border px-4 py-2.5 text-xs font-medium transition ${
                 positionFilter === position.value
-                  ? "border-[#4da2ff]/40 bg-[#10233b] text-white"
-                  : "border-white/10 bg-white/[0.03] text-white/60 hover:border-[#4da2ff]/25 hover:text-white"
+                  ? "border-line-strong bg-card-2 text-ink"
+                  : "border-line bg-veil text-ink-2 hover:border-line-strong hover:text-ink"
               }`}
             >
               {t(position.labelKey)}
@@ -345,8 +345,8 @@ export default function PlayerStatsExplorer({
             onClick={() => setHideDeparted((prev) => !prev)}
             className={`rounded-2xl border px-4 py-2.5 text-xs font-medium transition ${
               hideDeparted
-                ? "border-[#4da2ff]/40 bg-[#10233b] text-white"
-                : "border-white/10 bg-white/[0.03] text-white/60 hover:border-[#4da2ff]/25 hover:text-white"
+                ? "border-line-strong bg-card-2 text-ink"
+                : "border-line bg-veil text-ink-2 hover:border-line-strong hover:text-ink"
             }`}
           >
             {t("statsHub.hideDeparted")}
@@ -354,18 +354,18 @@ export default function PlayerStatsExplorer({
         </div>
       </div>
 
-      <div className="text-xs text-white/45">
+      <div className="text-xs text-ink-3">
         {sortedRows.length === 1
           ? t("statsHub.playerCountOne")
           : t("statsHub.playersCount", { count: sortedRows.length })}{" "}
         · Süper Lig 2025/2026
       </div>
 
-      <div className="rounded-[18px] border border-white/10">
+      <div className="rounded-lg border border-line">
         <div className="overflow-x-auto">
           <table className="min-w-full border-collapse">
             <thead>
-              <tr className="text-left text-[10px] uppercase tracking-[0.14em] text-white/38">
+              <tr className="text-left text-[10px] uppercase tracking-[0.14em] text-ink-3">
                 <th
                   className={headerCellClass}
                   onClick={() => handleSort("player_name")}
@@ -445,10 +445,10 @@ export default function PlayerStatsExplorer({
 
             <tbody>
               {sortedRows.length === 0 ? (
-                <tr className="border-t border-white/10">
+                <tr className="border-t border-line">
                   <td
                     colSpan={11}
-                    className="px-4 py-8 text-center text-sm text-white/55"
+                    className="px-4 py-8 text-center text-sm text-ink-2"
                   >
                     {t("statsHub.noPlayersMatch")}
                   </td>
@@ -457,22 +457,22 @@ export default function PlayerStatsExplorer({
                 sortedRows.map((row) => (
                   <tr
                     key={row.player_slug}
-                    className="border-t border-white/10 text-[13px] text-white/80 transition hover:bg-white/[0.03]"
+                    className="border-t border-line text-[13px] text-ink transition hover:bg-veil"
                   >
-                    <td className="px-4 py-2">
+                    <td className="px-3 py-1.5">
                       <div className="flex items-center gap-3">
                         <PlayerAvatar row={row} />
 
                         <div className="min-w-0">
                           <PlayerLink
                             playerSlug={row.player_slug}
-                            className="font-medium text-[#8dc8ff] transition hover:text-[#bfe0ff] hover:underline"
+                            className="font-medium text-accent-ink transition hover:text-accent hover:underline"
                             title={getDisplayName(row)}
                           >
                             {getDisplayName(row)}
                           </PlayerLink>
 
-                          <div className="flex items-center gap-1.5 text-[11px] text-white/40">
+                          <div className="flex items-center gap-1.5 text-[11px] text-ink-3">
                             {row.shirt_number != null ? (
                               <span>#{row.shirt_number}</span>
                             ) : null}
@@ -484,30 +484,30 @@ export default function PlayerStatsExplorer({
                         </div>
                       </div>
                     </td>
-                    <td className="whitespace-nowrap px-4 py-2">
+                    <td className="whitespace-nowrap px-3 py-1.5">
                       <TeamCell row={row} teamLogos={teamLogos} />
                     </td>
-                    <td className="px-4 py-2">{row.position_code}</td>
-                    <td className="px-4 py-2">{row.age ?? "—"}</td>
-                    <td className="whitespace-nowrap px-4 py-2">
+                    <td className="px-3 py-1.5">{row.position_code}</td>
+                    <td className="px-3 py-1.5">{row.age ?? "—"}</td>
+                    <td className="whitespace-nowrap px-3 py-1.5">
                       {formatMarketValue(row.market_value_eur)}
                     </td>
-                    <td className="px-4 py-2">
+                    <td className="px-3 py-1.5">
                       {row.has_stats ? row.appearances : "—"}
                     </td>
-                    <td className="px-4 py-2">
+                    <td className="px-3 py-1.5">
                       {row.has_stats ? row.starts : "—"}
                     </td>
-                    <td className="px-4 py-2 font-semibold text-white">
+                    <td className="px-3 py-1.5 font-semibold text-ink">
                       {row.has_stats ? row.goals : "—"}
                     </td>
-                    <td className="px-4 py-2">
+                    <td className="px-3 py-1.5">
                       {row.has_stats ? row.assists : "—"}
                     </td>
-                    <td className="px-4 py-2">
+                    <td className="px-3 py-1.5">
                       {row.has_stats ? row.total_minutes : "—"}
                     </td>
-                    <td className="px-4 py-2">
+                    <td className="px-3 py-1.5">
                       {row.has_stats && row.avg_minutes != null
                         ? Math.round(row.avg_minutes)
                         : "—"}
@@ -552,7 +552,7 @@ function TeamCell({
   const teamNode = teamHref ? (
     <Link
       href={teamHref}
-      className="text-white/75 transition hover:text-white hover:underline"
+      className="text-ink-2 transition hover:text-ink hover:underline"
     >
       {teamContent}
     </Link>
@@ -568,7 +568,7 @@ function TeamCell({
     <span className="inline-flex items-center gap-2">
       {teamNode}
       <span
-        className="rounded-full border border-white/12 bg-white/[0.04] px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-[0.06em] text-white/45"
+        className="rounded-full border border-line bg-veil px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-[0.06em] text-ink-3"
         title={t("common.notInCurrentSquads")}
       >
         {t("common.leftClub")}

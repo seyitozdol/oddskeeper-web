@@ -12,19 +12,19 @@ export default async function FootballPlayerStatsPage() {
 
   return (
     <section className="w-full">
-      <div className="rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(8,14,24,0.96),rgba(5,10,18,0.98))] p-8 shadow-[0_0_50px_rgba(34,104,189,0.08)]">
+      <div className="rounded-2xl border border-line bg-card p-8">
         <div className="max-w-3xl">
-          <p className="mb-3 text-sm font-medium uppercase tracking-[0.25em] text-[#7cbcff]">
+          <p className="mb-3 text-sm font-medium uppercase tracking-[0.25em] text-accent-ink">
             {t("statsHub.playerStatsKicker")}
           </p>
 
-          <h1 className="text-3xl font-semibold text-white lg:text-5xl">
+          <h1 className="text-3xl font-semibold text-ink lg:text-5xl">
             {t("statsHub.playerStatsTitle")}
           </h1>
         </div>
 
         {rows.length === 0 ? (
-          <div className="mt-8 rounded-3xl border border-white/10 bg-white/[0.03] p-6 text-sm text-white/70">
+          <div className="mt-8 rounded-3xl border border-line bg-veil p-6 text-sm text-ink-2">
             {t("statsHub.playersNotFound")}
           </div>
         ) : (

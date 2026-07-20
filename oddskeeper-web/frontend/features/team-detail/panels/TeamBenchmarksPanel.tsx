@@ -21,8 +21,8 @@ export default async function TeamBenchmarksPanel({ benchmarks = [] }: Props) {
 
   if (benchmarks.length === 0) {
     return (
-      <section className="rounded-2xl border border-white/10 bg-white/5 p-5">
-        <p className="text-sm text-white/70">
+      <section className="rounded-2xl border border-line bg-veil p-4">
+        <p className="text-sm text-ink-2">
           {t("teamDetail.benchmarksNoData")}
         </p>
       </section>
@@ -30,12 +30,12 @@ export default async function TeamBenchmarksPanel({ benchmarks = [] }: Props) {
   }
 
   return (
-    <section className="rounded-2xl border border-white/10 bg-white/5 p-5">
+    <section className="rounded-2xl border border-line bg-veil p-4">
       <div className="mb-4">
-        <h2 className="text-base font-semibold text-white">
+        <h2 className="text-base font-semibold text-ink">
           {t("teamDetail.benchmarksTitle")}
         </h2>
-        <p className="mt-1 text-sm text-white/60">
+        <p className="mt-1 text-sm text-ink-2">
           {t("teamDetail.benchmarksDescription")}
         </p>
       </div>
@@ -43,7 +43,7 @@ export default async function TeamBenchmarksPanel({ benchmarks = [] }: Props) {
       <div className="overflow-x-auto">
         <table className="min-w-full text-sm">
           <thead>
-            <tr className="border-b border-white/10 text-left text-white/60">
+            <tr className="border-b border-line text-left text-ink-2">
               <th className="px-3 py-2 font-medium">{t("teamDetail.colCategory")}</th>
               <th className="px-3 py-2 font-medium">{t("teamDetail.colMetric")}</th>
               <th className="px-3 py-2 font-medium">{t("teamDetail.colValue")}</th>
@@ -58,20 +58,20 @@ export default async function TeamBenchmarksPanel({ benchmarks = [] }: Props) {
             {benchmarks.map((row, index) => (
               <tr
                 key={`${row.metric_key}-${index}`}
-                className="border-b border-white/5 text-white/85 last:border-b-0"
+                className="border-b border-line text-ink last:border-b-0"
               >
-                <td className="px-3 py-2">{formatValue(row.category, t)}</td>
-                <td className="px-3 py-2">
+                <td className="px-3 py-1.5">{formatValue(row.category, t)}</td>
+                <td className="px-3 py-1.5">
                   {formatValue(row.metric_label ?? row.display_label, t)}
                 </td>
-                <td className="px-3 py-2">{formatValue(row.metric_value, t)}</td>
-                <td className="px-3 py-2">{formatValue(row.league_rank, t)}</td>
-                <td className="px-3 py-2">{formatValue(row.league_avg, t)}</td>
-                <td className="px-3 py-2">
+                <td className="px-3 py-1.5">{formatValue(row.metric_value, t)}</td>
+                <td className="px-3 py-1.5">{formatValue(row.league_rank, t)}</td>
+                <td className="px-3 py-1.5">{formatValue(row.league_avg, t)}</td>
+                <td className="px-3 py-1.5">
                   {formatValue(row.vs_league_avg_pct, t)}
                 </td>
-                <td className="px-3 py-2">{formatValue(row.rank_direction, t)}</td>
-                <td className="px-3 py-2">
+                <td className="px-3 py-1.5">{formatValue(row.rank_direction, t)}</td>
+                <td className="px-3 py-1.5">
                   {formatValue(row.above_league_avg_flag, t)}
                 </td>
               </tr>

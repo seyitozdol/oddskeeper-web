@@ -71,18 +71,18 @@ function formatTime(
 
 function getResultTone(resultCode: LeagueResultRow["result_code"]) {
   if (resultCode === "H") {
-    return "border-emerald-500/25 bg-emerald-500/10 text-emerald-300";
+    return "border-pos/25 bg-pos/10 text-pos";
   }
 
   if (resultCode === "A") {
-    return "border-rose-500/25 bg-rose-500/10 text-rose-300";
+    return "border-neg/25 bg-neg/10 text-neg";
   }
 
   if (resultCode === "D") {
-    return "border-amber-500/25 bg-amber-500/10 text-amber-300";
+    return "border-amber-500/25 bg-amber-400/15 text-amber-500";
   }
 
-  return "border-white/10 bg-white/[0.03] text-white/60";
+  return "border-line bg-veil text-ink-2";
 }
 
 function SnapshotCard({
@@ -98,18 +98,18 @@ function SnapshotCard({
 }) {
   const toneClass =
     accent === "positive"
-      ? "border-emerald-500/20 bg-[linear-gradient(180deg,rgba(16,185,129,0.08),rgba(255,255,255,0.02))]"
+      ? "border-pos/20 bg-pos/10"
       : accent === "accent"
-        ? "border-sky-500/20 bg-[linear-gradient(180deg,rgba(59,130,246,0.08),rgba(255,255,255,0.02))]"
+        ? "border-line-strong bg-accent-soft"
         : accent === "warning"
-          ? "border-amber-500/20 bg-[linear-gradient(180deg,rgba(245,158,11,0.08),rgba(255,255,255,0.02))]"
-          : "border-white/10 bg-white/[0.03]";
+          ? "border-amber-500/20 bg-amber-400/15"
+          : "border-line bg-veil";
 
   return (
     <div className={`rounded-xl border px-4 py-3 ${toneClass}`}>
-      <div className="text-[10px] uppercase tracking-[0.16em] text-white/35">{label}</div>
-      <div className="mt-1 text-[22px] font-semibold text-white">{value}</div>
-      {subvalue ? <div className="mt-1 text-[11px] text-white/55">{subvalue}</div> : null}
+      <div className="text-[10px] uppercase tracking-[0.16em] text-ink-3">{label}</div>
+      <div className="mt-1 text-[22px] font-semibold text-ink">{value}</div>
+      {subvalue ? <div className="mt-1 text-[11px] text-ink-2">{subvalue}</div> : null}
     </div>
   );
 }
@@ -127,9 +127,9 @@ function MiniSplitCard({
 }) {
   return (
     <div className={`rounded-xl border px-4 py-3 ${toneClass}`}>
-      <div className="text-[10px] uppercase tracking-[0.14em] text-white/55">{label}</div>
-      <div className="mt-1 text-xl font-semibold text-white">{value}</div>
-      {subvalue ? <div className="mt-1 text-[11px] text-white/50">{subvalue}</div> : null}
+      <div className="text-[10px] uppercase tracking-[0.14em] text-ink-2">{label}</div>
+      <div className="mt-1 text-xl font-semibold text-ink">{value}</div>
+      {subvalue ? <div className="mt-1 text-[11px] text-ink-3">{subvalue}</div> : null}
     </div>
   );
 }
@@ -142,8 +142,8 @@ function SectionCard({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-[16px] border border-white/10 bg-white/[0.03] px-4 py-4">
-      <div className="text-[11px] uppercase tracking-[0.18em] text-white/38">{title}</div>
+    <div className="rounded-lg border border-line bg-veil px-3 py-3">
+      <div className="text-[11px] uppercase tracking-[0.18em] text-ink-3">{title}</div>
       <div className="mt-3">{children}</div>
     </div>
   );
@@ -278,22 +278,22 @@ export async function LeagueOverviewPanel({
           <MiniSplitCard
             label={t("leagueDetail.homeWins")}
             value={formatPct(overview?.home_win_pct)}
-            toneClass="border-emerald-500/20 bg-emerald-500/10"
+            toneClass="border-pos/20 bg-pos/10"
           />
           <MiniSplitCard
             label={t("leagueDetail.draws")}
             value={formatPct(overview?.draw_pct)}
-            toneClass="border-amber-500/20 bg-amber-500/10"
+            toneClass="border-amber-500/20 bg-amber-400/15"
           />
           <MiniSplitCard
             label={t("leagueDetail.awayWins")}
             value={formatPct(overview?.away_win_pct)}
-            toneClass="border-sky-500/20 bg-sky-500/10"
+            toneClass="border-line-strong bg-accent-soft"
           />
           <MiniSplitCard
             label={t("leagueDetail.homeEdge")}
             value={formatPctPoint(homeEdge)}
-            toneClass="border-white/10 bg-white/[0.03]"
+            toneClass="border-line bg-veil"
           />
         </div>
       </SectionCard>
@@ -302,17 +302,17 @@ export async function LeagueOverviewPanel({
         <SectionCard title={t("leagueDetail.bestForm")}>
           <div className="space-y-2">
             {bestForm.length === 0 ? (
-              <div className="text-sm text-white/55">{t("leagueDetail.noTableData")}</div>
+              <div className="text-sm text-ink-2">{t("leagueDetail.noTableData")}</div>
             ) : (
               bestForm.map((row, index) => (
-                <div key={`form-${row.team_source_id}`} className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2">
+                <div key={`form-${row.team_source_id}`} className="flex items-center justify-between gap-3 rounded-xl border border-line bg-veil px-3 py-2">
                   <div className="min-w-0">
-                    <div className="text-[10px] uppercase tracking-[0.12em] text-white/35">
+                    <div className="text-[10px] uppercase tracking-[0.12em] text-ink-3">
                       {t("leagueDetail.formRank", { index: index + 1, rank: row.rank })}
                     </div>
-                    <div className="truncate text-sm font-medium text-white">
+                    <div className="truncate text-sm font-medium text-ink">
                       {row.team_slug ? (
-                        <TeamLink teamSlug={row.team_slug} className="transition hover:text-white hover:underline" title={row.team_name}>
+                        <TeamLink teamSlug={row.team_slug} className="transition hover:text-ink hover:underline" title={row.team_name}>
                           {row.team_name}
                         </TeamLink>
                       ) : (
@@ -321,10 +321,10 @@ export async function LeagueOverviewPanel({
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="text-sm font-semibold text-white">
+                    <div className="text-sm font-semibold text-ink">
                       {t("leagueDetail.ptsSuffix", { count: row.last5_points })}
                     </div>
-                    <div className="text-[11px] text-white/45">{row.form_last5 || "—"}</div>
+                    <div className="text-[11px] text-ink-3">{row.form_last5 || "—"}</div>
                   </div>
                 </div>
               ))
@@ -335,17 +335,17 @@ export async function LeagueOverviewPanel({
         <SectionCard title={t("leagueDetail.mostProductiveAttacks")}>
           <div className="space-y-2">
             {topAttack.length === 0 ? (
-              <div className="text-sm text-white/55">{t("leagueDetail.noAttackRanking")}</div>
+              <div className="text-sm text-ink-2">{t("leagueDetail.noAttackRanking")}</div>
             ) : (
               topAttack.map((row, index) => (
-                <div key={`attack-${row.team_source_id}`} className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2">
+                <div key={`attack-${row.team_source_id}`} className="flex items-center justify-between gap-3 rounded-xl border border-line bg-veil px-3 py-2">
                   <div className="min-w-0">
-                    <div className="text-[10px] uppercase tracking-[0.12em] text-white/35">
+                    <div className="text-[10px] uppercase tracking-[0.12em] text-ink-3">
                       {t("leagueDetail.attackRank", { index: index + 1, rank: row.rank })}
                     </div>
-                    <div className="truncate text-sm font-medium text-white">
+                    <div className="truncate text-sm font-medium text-ink">
                       {row.team_slug ? (
-                        <TeamLink teamSlug={row.team_slug} className="transition hover:text-white hover:underline" title={row.team_name}>
+                        <TeamLink teamSlug={row.team_slug} className="transition hover:text-ink hover:underline" title={row.team_name}>
                           {row.team_name}
                         </TeamLink>
                       ) : (
@@ -354,10 +354,10 @@ export async function LeagueOverviewPanel({
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="text-sm font-semibold text-white">
+                    <div className="text-sm font-semibold text-ink">
                       {t("leagueDetail.gfSuffix", { count: row.goals_for })}
                     </div>
-                    <div className="text-[11px] text-white/45">
+                    <div className="text-[11px] text-ink-3">
                       {t("leagueDetail.gfPerMatch", { value: perGame(row.goals_for, row.played) })}
                     </div>
                   </div>
@@ -370,17 +370,17 @@ export async function LeagueOverviewPanel({
         <SectionCard title={t("leagueDetail.bestDefensiveRecords")}>
           <div className="space-y-2">
             {bestDefence.length === 0 ? (
-              <div className="text-sm text-white/55">{t("leagueDetail.noDefenceRanking")}</div>
+              <div className="text-sm text-ink-2">{t("leagueDetail.noDefenceRanking")}</div>
             ) : (
               bestDefence.map((row, index) => (
-                <div key={`defence-${row.team_source_id}`} className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2">
+                <div key={`defence-${row.team_source_id}`} className="flex items-center justify-between gap-3 rounded-xl border border-line bg-veil px-3 py-2">
                   <div className="min-w-0">
-                    <div className="text-[10px] uppercase tracking-[0.12em] text-white/35">
+                    <div className="text-[10px] uppercase tracking-[0.12em] text-ink-3">
                       {t("leagueDetail.defenceRank", { index: index + 1, rank: row.rank })}
                     </div>
-                    <div className="truncate text-sm font-medium text-white">
+                    <div className="truncate text-sm font-medium text-ink">
                       {row.team_slug ? (
-                        <TeamLink teamSlug={row.team_slug} className="transition hover:text-white hover:underline" title={row.team_name}>
+                        <TeamLink teamSlug={row.team_slug} className="transition hover:text-ink hover:underline" title={row.team_name}>
                           {row.team_name}
                         </TeamLink>
                       ) : (
@@ -389,10 +389,10 @@ export async function LeagueOverviewPanel({
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="text-sm font-semibold text-white">
+                    <div className="text-sm font-semibold text-ink">
                       {t("leagueDetail.gaSuffix", { count: row.goals_against })}
                     </div>
-                    <div className="text-[11px] text-white/45">
+                    <div className="text-[11px] text-ink-3">
                       {t("leagueDetail.gaPerMatch", { value: perGame(row.goals_against, row.played) })}
                     </div>
                   </div>
@@ -407,26 +407,26 @@ export async function LeagueOverviewPanel({
         <SectionCard title={t("leagueDetail.latestResultsTitle")}>
           <div className="space-y-2">
             {latestResults.length === 0 ? (
-              <div className="text-sm text-white/55">{t("leagueDetail.noResultsAvailable")}</div>
+              <div className="text-sm text-ink-2">{t("leagueDetail.noResultsAvailable")}</div>
             ) : (
               latestResults.map((row) => (
-                <div key={`result-${row.source_match_id}`} className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2">
+                <div key={`result-${row.source_match_id}`} className="flex items-center justify-between gap-3 rounded-xl border border-line bg-veil px-3 py-2">
                   <div className="min-w-0 flex-1">
-                    <div className="text-[10px] uppercase tracking-[0.12em] text-white/35">{formatDate(row.match_datetime ?? row.match_date)}</div>
-                    <div className="mt-1 flex items-center gap-2 text-sm text-white">
+                    <div className="text-[10px] uppercase tracking-[0.12em] text-ink-3">{formatDate(row.match_datetime ?? row.match_date)}</div>
+                    <div className="mt-1 flex items-center gap-2 text-sm text-ink">
                       <span className="truncate">
                         {row.home_team_slug ? (
-                          <TeamLink teamSlug={row.home_team_slug} className="transition hover:text-white hover:underline" title={row.home_team_name ?? undefined}>
+                          <TeamLink teamSlug={row.home_team_slug} className="transition hover:text-ink hover:underline" title={row.home_team_name ?? undefined}>
                             {row.home_team_name ?? "—"}
                           </TeamLink>
                         ) : (
                           row.home_team_name ?? "—"
                         )}
                       </span>
-                      <span className="text-white/45">{t("leagueDetail.vsLabel")}</span>
+                      <span className="text-ink-3">{t("leagueDetail.vsLabel")}</span>
                       <span className="truncate">
                         {row.away_team_slug ? (
-                          <TeamLink teamSlug={row.away_team_slug} className="transition hover:text-white hover:underline" title={row.away_team_name ?? undefined}>
+                          <TeamLink teamSlug={row.away_team_slug} className="transition hover:text-ink hover:underline" title={row.away_team_name ?? undefined}>
                             {row.away_team_name ?? "—"}
                           </TeamLink>
                         ) : (
@@ -436,7 +436,7 @@ export async function LeagueOverviewPanel({
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <MatchLink sourceMatchId={row.source_match_id} className="text-sm font-semibold text-white transition hover:text-white hover:underline" title={t("leagueDetail.openMatchDetail")}>
+                    <MatchLink sourceMatchId={row.source_match_id} className="text-sm font-semibold text-ink transition hover:text-ink hover:underline" title={t("leagueDetail.openMatchDetail")}>
                       {row.home_score ?? "—"} - {row.away_score ?? "—"}
                     </MatchLink>
                     <span className={`inline-flex min-w-[56px] items-center justify-center rounded-md border px-2 py-[2px] text-[10px] font-semibold uppercase ${getResultTone(row.result_code)}`}>
@@ -452,31 +452,31 @@ export async function LeagueOverviewPanel({
         <SectionCard title={t("leagueDetail.nextFixturesTitle")}>
           <div className="space-y-2">
             {nextFixtures.length === 0 ? (
-              <div className="text-sm text-white/55">{t("leagueDetail.noOpenFixtures")}</div>
+              <div className="text-sm text-ink-2">{t("leagueDetail.noOpenFixtures")}</div>
             ) : (
               nextFixtures.map((row) => (
-                <div key={`fixture-${row.fixture_id}`} className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2">
+                <div key={`fixture-${row.fixture_id}`} className="flex items-center justify-between gap-3 rounded-xl border border-line bg-veil px-3 py-2">
                   <div className="min-w-0 flex-1">
-                    <div className="text-[10px] uppercase tracking-[0.12em] text-white/30">
+                    <div className="text-[10px] uppercase tracking-[0.12em] text-ink-3">
                       {row.round_number
                         ? t("leagueDetail.weekLabel", { number: row.round_number })
                         : "—"}{" "}
                       • {formatDate(row.fixture_datetime ?? row.fixture_date)}
                     </div>
-                    <div className="mt-1 flex items-center gap-2 text-sm text-white">
+                    <div className="mt-1 flex items-center gap-2 text-sm text-ink">
                       <span className="truncate">
                         {row.home_team_slug ? (
-                          <TeamLink teamSlug={row.home_team_slug} className="transition hover:text-white hover:underline" title={row.home_team_name ?? undefined}>
+                          <TeamLink teamSlug={row.home_team_slug} className="transition hover:text-ink hover:underline" title={row.home_team_name ?? undefined}>
                             {row.home_team_name ?? "—"}
                           </TeamLink>
                         ) : (
                           row.home_team_name ?? "—"
                         )}
                       </span>
-                      <span className="text-white/45">{t("leagueDetail.vsLabel")}</span>
+                      <span className="text-ink-3">{t("leagueDetail.vsLabel")}</span>
                       <span className="truncate">
                         {row.away_team_slug ? (
-                          <TeamLink teamSlug={row.away_team_slug} className="transition hover:text-white hover:underline" title={row.away_team_name ?? undefined}>
+                          <TeamLink teamSlug={row.away_team_slug} className="transition hover:text-ink hover:underline" title={row.away_team_name ?? undefined}>
                             {row.away_team_name ?? "—"}
                           </TeamLink>
                         ) : (
@@ -486,7 +486,7 @@ export async function LeagueOverviewPanel({
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="text-sm font-semibold text-white">
+                    <div className="text-sm font-semibold text-ink">
                       {formatTime(t, row.kickoff_time_known, row.kickoff_time_text)}
                     </div>
                   </div>

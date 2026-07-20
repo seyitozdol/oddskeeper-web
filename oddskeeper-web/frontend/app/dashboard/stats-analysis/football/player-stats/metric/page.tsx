@@ -252,7 +252,7 @@ export default async function PlayerMetricLeaderboardPage({
         {row.league_rank ?? "—"}
         {prevRank !== undefined ? (
           <span
-            className="ml-1 text-[11px] font-normal text-white/40"
+            className="ml-1 text-[11px] font-normal text-ink-3"
             title={t("common.prevSeasonRank", { rank: prevRank })}
           >
             ({prevRank})
@@ -265,8 +265,8 @@ export default async function PlayerMetricLeaderboardPage({
           href={rowPlayerHref}
           className={`transition hover:underline ${
             isSelected
-              ? "font-semibold text-white"
-              : "text-[#8dc8ff] hover:text-[#bfe0ff]"
+              ? "font-semibold text-ink"
+              : "text-accent-ink hover:text-accent"
           }`}
         >
           {rowName}
@@ -274,7 +274,7 @@ export default async function PlayerMetricLeaderboardPage({
       ) : (
         <span
           key="player"
-          className={isSelected ? "font-semibold text-white" : undefined}
+          className={isSelected ? "font-semibold text-ink" : undefined}
         >
           {rowName}
         </span>
@@ -292,7 +292,7 @@ export default async function PlayerMetricLeaderboardPage({
         {teamHref ? (
           <Link
             href={teamHref}
-            className="text-white/70 transition hover:text-white hover:underline"
+            className="text-ink-2 transition hover:text-ink hover:underline"
           >
             {row.team_name}
           </Link>
@@ -327,11 +327,11 @@ export default async function PlayerMetricLeaderboardPage({
               key="vsAvg"
               className={`font-medium ${
                 row.vs_league_avg_pct == null
-                  ? "text-white/55"
+                  ? "text-ink-2"
                   : (row.vs_league_avg_pct >= 0) ===
                     (row.is_higher_better !== false)
-                  ? "text-emerald-300"
-                  : "text-rose-300"
+                  ? "text-pos"
+                  : "text-neg"
               }`}
             >
               {formatMetricValue(row.vs_league_avg_pct, "pct_1")}
@@ -360,25 +360,25 @@ export default async function PlayerMetricLeaderboardPage({
 
   return (
     <section className="w-full space-y-3">
-      <div className="rounded-[18px] border border-white/10 bg-[linear-gradient(180deg,rgba(8,14,24,0.90),rgba(5,10,18,0.96))] p-5">
+      <div className="rounded-lg border border-line bg-card p-5">
         <Link
           href={backHref}
-          className="text-[12px] text-white/50 transition hover:text-white"
+          className="text-[12px] text-ink-3 transition hover:text-ink"
         >
           ← {playerSlug ? t("common.backToDetailedStats") : t("nav.statsAnalysis")}
         </Link>
 
         <div className="mt-3 flex flex-wrap items-end justify-between gap-3">
           <div>
-            <div className="text-[11px] uppercase tracking-[0.20em] text-white/40">
+            <div className="text-[11px] uppercase tracking-[0.20em] text-ink-3">
               {t("nav.playerRankings")}
               {leaderRow?.season_label ? ` · ${leaderRow.season_label}` : ""}
             </div>
-            <h1 className="mt-1 text-2xl font-semibold text-white">
+            <h1 className="mt-1 text-2xl font-semibold text-ink">
               {metricTitle}
             </h1>
             {displayName ? (
-              <div className="mt-1 text-sm text-white/55">{displayName}</div>
+              <div className="mt-1 text-sm text-ink-2">{displayName}</div>
             ) : null}
           </div>
 
@@ -392,12 +392,12 @@ export default async function PlayerMetricLeaderboardPage({
 
         <div className="mt-3 flex flex-wrap gap-2">
           {leaderRow ? (
-            <span className="inline-flex rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-1 text-[11px] font-medium text-white/70">
+            <span className="inline-flex rounded-lg border border-line bg-veil px-2.5 py-1 text-[11px] font-medium text-ink-2">
               {categoryLabel(t, leaderRow.category_key, leaderRow.category_label)}
             </span>
           ) : null}
           {leaderRow ? (
-            <span className="inline-flex rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-1 text-[11px] font-medium text-white/70">
+            <span className="inline-flex rounded-lg border border-line bg-veil px-2.5 py-1 text-[11px] font-medium text-ink-2">
               {leaderRow.is_higher_better === false
                 ? t("common.lowerIsBetter")
                 : t("common.higherIsBetter")}
@@ -406,7 +406,7 @@ export default async function PlayerMetricLeaderboardPage({
         </div>
 
         {meta ? (
-          <p className="mt-3 max-w-3xl text-[13px] leading-6 text-white/60">
+          <p className="mt-3 max-w-3xl text-[13px] leading-6 text-ink-2">
             {t(meta.shortDescriptionKey)} {t(meta.interpretationKey)}
           </p>
         ) : null}
@@ -480,22 +480,22 @@ export default async function PlayerMetricLeaderboardPage({
         </div>
       </div>
 
-      <div className="rounded-[18px] border border-white/10">
-        <div className="flex flex-wrap items-center gap-2 border-b border-white/10 px-4 py-3">
+      <div className="rounded-lg border border-line">
+        <div className="flex flex-wrap items-center gap-2 border-b border-line px-4 py-3">
           {viewOptions.map((option) => (
             <Link
               key={option.mode}
               href={viewHref(option.mode)}
               className={`rounded-lg border px-3 py-1.5 text-[12px] font-medium transition ${
                 requestedView === option.mode
-                  ? "border-[#4da2ff]/40 bg-[#10335d]/70 text-white"
-                  : "border-white/10 bg-white/[0.03] text-white/65 hover:bg-white/[0.06] hover:text-white"
+                  ? "border-line-strong bg-card-2 text-ink"
+                  : "border-line bg-veil text-ink-2 hover:bg-veil hover:text-ink"
               }`}
             >
               {option.label}
             </Link>
           ))}
-          <span className="ml-auto text-[11px] text-white/40">
+          <span className="ml-auto text-[11px] text-ink-3">
             {visibleRows.length} / {rankedRows.length}
           </span>
         </div>
@@ -524,20 +524,20 @@ function SummaryCard({
 }) {
   return (
     <div
-      className={`rounded-[14px] border p-3 ${
+      className={`rounded-lg border p-3 ${
         highlight
-          ? "border-[#4da2ff]/35 bg-[#10335d]/40"
-          : "border-white/10 bg-white/[0.03]"
+          ? "border-line-strong bg-card-2"
+          : "border-line bg-veil"
       }`}
     >
-      <div className="text-[10px] uppercase tracking-[0.14em] text-white/40">
+      <div className="text-[10px] uppercase tracking-[0.14em] text-ink-3">
         {label}
       </div>
-      <div className="mt-1 truncate text-lg font-semibold text-white">
+      <div className="mt-1 truncate text-lg font-semibold text-ink">
         {value}
       </div>
       {subvalue ? (
-        <div className="mt-0.5 text-[12px] text-white/55">{subvalue}</div>
+        <div className="mt-0.5 text-[12px] text-ink-2">{subvalue}</div>
       ) : null}
     </div>
   );

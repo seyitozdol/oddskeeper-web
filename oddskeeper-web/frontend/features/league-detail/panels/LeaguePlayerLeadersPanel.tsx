@@ -117,16 +117,16 @@ function getDeltaTone(
   isHigherBetter: boolean | null | undefined
 ) {
   if (value === null || value === undefined || Number.isNaN(value)) {
-    return "text-white/55";
+    return "text-ink-2";
   }
 
   if (value === 0) {
-    return "text-white/65";
+    return "text-ink-2";
   }
 
   const isPositive = value > 0;
   const isGood = isHigherBetter === false ? !isPositive : isPositive;
-  return isGood ? "text-emerald-300" : "text-rose-300";
+  return isGood ? "text-pos" : "text-neg";
 }
 
 function getDeltaText(
@@ -180,11 +180,11 @@ function getCategoryTone(category: string | null | undefined) {
   const key = (category ?? "").toLowerCase();
 
   if (key === "attacking" || key === "attack" || key === "shooting") {
-    return "border-[#4da2ff]/20 bg-[#4da2ff]/[0.05] text-[#8fc2ff]";
+    return "border-line-strong bg-accent-soft text-accent-ink";
   }
 
   if (key === "defending" || key === "defence" || key === "defense") {
-    return "border-emerald-500/20 bg-emerald-500/[0.05] text-emerald-300";
+    return "border-pos/20 bg-pos/5 text-pos";
   }
 
   if (key === "passing" || key === "build_up") {
@@ -192,7 +192,7 @@ function getCategoryTone(category: string | null | undefined) {
   }
 
   if (key === "discipline") {
-    return "border-rose-500/20 bg-rose-500/[0.05] text-rose-300";
+    return "border-neg/20 bg-neg/5 text-neg";
   }
 
   if (key === "goalkeeper") {
@@ -200,10 +200,10 @@ function getCategoryTone(category: string | null | undefined) {
   }
 
   if (key === "usage") {
-    return "border-white/10 bg-white/[0.03] text-white/70";
+    return "border-line bg-veil text-ink-2";
   }
 
-  return "border-white/10 bg-white/[0.03] text-white/70";
+  return "border-line bg-veil text-ink-2";
 }
 
 function getMetricDefinition(
@@ -286,13 +286,13 @@ function MetricSummaryCard({
   subvalue?: string;
 }) {
   return (
-    <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
-      <div className="text-[10px] uppercase tracking-[0.14em] text-white/35">
+    <div className="rounded-xl border border-line bg-veil px-4 py-3">
+      <div className="text-[10px] uppercase tracking-[0.14em] text-ink-3">
         {label}
       </div>
-      <div className="mt-1 text-[15px] font-semibold text-white">{value}</div>
+      <div className="mt-1 text-[15px] font-semibold text-ink">{value}</div>
       {subvalue ? (
-        <div className="mt-1 text-[11px] leading-4 text-white/58">{subvalue}</div>
+        <div className="mt-1 text-[11px] leading-4 text-ink-2">{subvalue}</div>
       ) : null}
     </div>
   );
@@ -600,7 +600,7 @@ export function LeaguePlayerLeadersPanel({
 
   if (empty) {
     return (
-      <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-4 text-sm text-white/65">
+      <div className="rounded-xl border border-line bg-veil px-3 py-3 text-sm text-ink-2">
         {t("leagueDetail.noPlayerLeaderboardData")}
       </div>
     );
@@ -626,10 +626,10 @@ export function LeaguePlayerLeadersPanel({
 
   return (
     <div className="space-y-3">
-      <div className="rounded-[16px] border border-white/10 bg-white/[0.03] px-4 py-4">
+      <div className="rounded-lg border border-line bg-veil px-3 py-3">
         <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
           <div className="max-w-[900px]">
-            <div className="text-[11px] uppercase tracking-[0.18em] text-white/35">
+            <div className="text-[11px] uppercase tracking-[0.18em] text-ink-3">
               {t("leagueDetail.playerLeadersTitle")}
             </div>
 
@@ -643,16 +643,16 @@ export function LeaguePlayerLeadersPanel({
                   t("leagueDetail.categoryGeneral")}
               </span>
 
-              <span className="inline-flex rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-1 text-[11px] font-medium text-white/70">
+              <span className="inline-flex rounded-lg border border-line bg-veil px-2.5 py-1 text-[11px] font-medium text-ink-2">
                 {metricDefinition.directionLabel}
               </span>
 
-              <span className="inline-flex rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-1 text-[11px] font-medium text-white/70">
+              <span className="inline-flex rounded-lg border border-line bg-veil px-2.5 py-1 text-[11px] font-medium text-ink-2">
                 {metricDefinition.basisLabel}
               </span>
             </div>
 
-            <div className="mt-2 text-[15px] font-semibold text-white">
+            <div className="mt-2 text-[15px] font-semibold text-ink">
               {metricDefinition.titleText}
             </div>
 
@@ -660,17 +660,17 @@ export function LeaguePlayerLeadersPanel({
 
           <div className="flex flex-col gap-2 xl:items-end">
             <div className="flex flex-wrap gap-2">
-              <div className="inline-flex rounded-lg border border-white/10 bg-white/[0.03] p-1">
+              <div className="inline-flex rounded-lg border border-line bg-veil p-1">
                 <button
                   type="button"
                   onClick={() => replaceParams({ basis: "per90" })}
                   disabled={!per90Allowed}
                   className={`rounded-md px-3 py-1.5 text-[12px] font-medium transition ${
                     visibleBasis === "per90"
-                      ? "border border-[#4da2ff]/40 bg-[#10335d]/70 text-white"
+                      ? "border border-line-strong bg-card-2 text-ink"
                       : per90Allowed
-                      ? "text-white/72 hover:bg-white/[0.04]"
-                      : "cursor-not-allowed text-white/25"
+                      ? "text-ink-2 hover:bg-veil"
+                      : "cursor-not-allowed text-ink-3"
                   }`}
                 >
                   {t("leagueDetail.basisPer90")}
@@ -681,8 +681,8 @@ export function LeaguePlayerLeadersPanel({
                   onClick={() => replaceParams({ basis: "per_match" })}
                   className={`rounded-md px-3 py-1.5 text-[12px] font-medium transition ${
                     visibleBasis === "per_match"
-                      ? "border border-[#4da2ff]/40 bg-[#10335d]/70 text-white"
-                      : "text-white/72 hover:bg-white/[0.04]"
+                      ? "border border-line-strong bg-card-2 text-ink"
+                      : "text-ink-2 hover:bg-veil"
                   }`}
                 >
                   {t("leagueDetail.buttonPerMatch")}
@@ -694,10 +694,10 @@ export function LeaguePlayerLeadersPanel({
                   disabled={!totalAllowed}
                   className={`rounded-md px-3 py-1.5 text-[12px] font-medium transition ${
                     visibleBasis === "total"
-                      ? "border border-[#4da2ff]/40 bg-[#10335d]/70 text-white"
+                      ? "border border-line-strong bg-card-2 text-ink"
                       : totalAllowed
-                      ? "text-white/72 hover:bg-white/[0.04]"
-                      : "cursor-not-allowed text-white/25"
+                      ? "text-ink-2 hover:bg-veil"
+                      : "cursor-not-allowed text-ink-3"
                   }`}
                 >
                   {t("leagueDetail.basisTotal")}
@@ -707,7 +707,7 @@ export function LeaguePlayerLeadersPanel({
               <select
                 value={currentMetricKey ?? ""}
                 onChange={(event) => handleMetricChange(event.target.value)}
-                className="min-w-[220px] rounded-lg border border-white/10 bg-[#0d1624] px-3 py-2 text-[13px] text-white outline-none transition focus:border-[#4da2ff]/40"
+                className="min-w-[220px] rounded-lg border border-line bg-field px-3 py-2 text-[13px] text-ink outline-none transition focus:border-line-strong"
               >
                 {Object.entries(
                   categoryScopedMetricOptions.reduce<
@@ -742,7 +742,7 @@ export function LeaguePlayerLeadersPanel({
                       event.target.value === "starter_core" ? null : event.target.value,
                   })
                 }
-                className="min-w-[160px] rounded-lg border border-white/10 bg-[#0d1624] px-3 py-2 text-[12px] text-white outline-none transition focus:border-[#4da2ff]/40"
+                className="min-w-[160px] rounded-lg border border-line bg-field px-3 py-2 text-[12px] text-ink outline-none transition focus:border-line-strong"
               >
                 <option value="starter_core">{t("leagueDetail.roleStarterCore")}</option>
                 <option value="all">{t("leagueDetail.roleAll")}</option>
@@ -757,7 +757,7 @@ export function LeaguePlayerLeadersPanel({
                     team: event.target.value === "all" ? null : event.target.value,
                   })
                 }
-                className="min-w-[180px] rounded-lg border border-white/10 bg-[#0d1624] px-3 py-2 text-[12px] text-white outline-none transition focus:border-[#4da2ff]/40"
+                className="min-w-[180px] rounded-lg border border-line bg-field px-3 py-2 text-[12px] text-ink outline-none transition focus:border-line-strong"
               >
                 <option value="all">{t("leagueDetail.allTeamsOption")}</option>
                 {availableTeams.map((team) => (
@@ -770,7 +770,7 @@ export function LeaguePlayerLeadersPanel({
               <select
                 value={String(currentMinApps)}
                 onChange={(event) => replaceParams({ minApps: event.target.value })}
-                className="min-w-[140px] rounded-lg border border-white/10 bg-[#0d1624] px-3 py-2 text-[12px] text-white outline-none transition focus:border-[#4da2ff]/40"
+                className="min-w-[140px] rounded-lg border border-line bg-field px-3 py-2 text-[12px] text-ink outline-none transition focus:border-line-strong"
               >
                 <option value="1">{t("leagueDetail.minAppsOption", { count: 1 })}</option>
                 <option value="3">{t("leagueDetail.minAppsOption", { count: 3 })}</option>
@@ -788,8 +788,8 @@ export function LeaguePlayerLeadersPanel({
             onClick={() => handleCategoryChange("all")}
             className={`rounded-lg border px-3 py-1.5 text-[12px] font-medium transition ${
               currentCategory === "all"
-                ? "border-[#4da2ff]/40 bg-[#10335d]/70 text-white"
-                : "border-white/10 bg-white/[0.03] text-white/72 hover:bg-white/[0.06]"
+                ? "border-line-strong bg-card-2 text-ink"
+                : "border-line bg-veil text-ink-2 hover:bg-veil"
             }`}
           >
             {t("common.all")}
@@ -802,8 +802,8 @@ export function LeaguePlayerLeadersPanel({
               onClick={() => handleCategoryChange(category.key)}
               className={`rounded-lg border px-3 py-1.5 text-[12px] font-medium transition ${
                 currentCategory === category.key
-                  ? "border-[#4da2ff]/40 bg-[#10335d]/70 text-white"
-                  : "border-white/10 bg-white/[0.03] text-white/72 hover:bg-white/[0.06]"
+                  ? "border-line-strong bg-card-2 text-ink"
+                  : "border-line bg-veil text-ink-2 hover:bg-veil"
               }`}
             >
               {category.label}
@@ -857,24 +857,24 @@ export function LeaguePlayerLeadersPanel({
         </div>
       </div>
 
-      <div className="overflow-x-auto rounded-[14px] border border-white/10">
+      <div className="overflow-x-auto rounded-lg border border-line">
         <table className="min-w-full border-collapse">
-          <thead className="sticky top-0 z-10 bg-[#0d1624]">
-            <tr className="text-left text-[10px] uppercase tracking-[0.14em] text-white/38">
-              <th className="px-4 py-2 font-medium cursor-pointer hover:text-white/70 select-none" onClick={() => handleColSort("rank")}>{t("leagueDetail.colRank")}<SortIcon col="rank" /></th>
-              <th className="px-4 py-2 font-medium cursor-pointer hover:text-white/70 select-none" onClick={() => handleColSort("player")}>{t("common.player")}<SortIcon col="player" /></th>
-              <th className="px-4 py-2 font-medium cursor-pointer hover:text-white/70 select-none" onClick={() => handleColSort("team")}>{t("common.team")}<SortIcon col="team" /></th>
-              <th className="px-4 py-2 font-medium cursor-pointer hover:text-white/70 select-none" onClick={() => handleColSort("role")}>{t("leagueDetail.colRole")}<SortIcon col="role" /></th>
-              <th className="px-4 py-2 font-medium cursor-pointer hover:text-white/70 select-none" onClick={() => handleColSort("value")}>
+          <thead className="sticky top-0 z-10 bg-field">
+            <tr className="text-left text-[10px] uppercase tracking-[0.14em] text-ink-3">
+              <th className="px-3 py-1.5 font-medium cursor-pointer hover:text-ink-2 select-none" onClick={() => handleColSort("rank")}>{t("leagueDetail.colRank")}<SortIcon col="rank" /></th>
+              <th className="px-3 py-1.5 font-medium cursor-pointer hover:text-ink-2 select-none" onClick={() => handleColSort("player")}>{t("common.player")}<SortIcon col="player" /></th>
+              <th className="px-3 py-1.5 font-medium cursor-pointer hover:text-ink-2 select-none" onClick={() => handleColSort("team")}>{t("common.team")}<SortIcon col="team" /></th>
+              <th className="px-3 py-1.5 font-medium cursor-pointer hover:text-ink-2 select-none" onClick={() => handleColSort("role")}>{t("leagueDetail.colRole")}<SortIcon col="role" /></th>
+              <th className="px-3 py-1.5 font-medium cursor-pointer hover:text-ink-2 select-none" onClick={() => handleColSort("value")}>
                 {visibleBasis === "per90"
                   ? t("leagueDetail.basisPer90")
                   : visibleBasis === "total"
                   ? t("leagueDetail.basisTotal")
                   : t("leagueDetail.buttonPerMatch")}<SortIcon col="value" />
               </th>
-              <th className="px-4 py-2 font-medium cursor-pointer hover:text-white/70 select-none" onClick={() => handleColSort("avg")}>{t("leagueDetail.colLeagueAvg")}<SortIcon col="avg" /></th>
-              <th className="px-4 py-2 font-medium cursor-pointer hover:text-white/70 select-none" onClick={() => handleColSort("vsavg")}>{t("leagueDetail.colVsAvgPct")}<SortIcon col="vsavg" /></th>
-              <th className="px-4 py-2 font-medium cursor-pointer hover:text-white/70 select-none" onClick={() => handleColSort("apps")}>{t("common.appearances")}<SortIcon col="apps" /></th>
+              <th className="px-3 py-1.5 font-medium cursor-pointer hover:text-ink-2 select-none" onClick={() => handleColSort("avg")}>{t("leagueDetail.colLeagueAvg")}<SortIcon col="avg" /></th>
+              <th className="px-3 py-1.5 font-medium cursor-pointer hover:text-ink-2 select-none" onClick={() => handleColSort("vsavg")}>{t("leagueDetail.colVsAvgPct")}<SortIcon col="vsavg" /></th>
+              <th className="px-3 py-1.5 font-medium cursor-pointer hover:text-ink-2 select-none" onClick={() => handleColSort("apps")}>{t("common.appearances")}<SortIcon col="apps" /></th>
             </tr>
           </thead>
 
@@ -882,27 +882,27 @@ export function LeaguePlayerLeadersPanel({
             {sortedRows.map((row, index) => (
               <tr
                 key={`${row.metric_key}-${row.player_source_id ?? "na"}-${row.team_slug ?? "na"}-${row.role_group ?? "na"}-${row.displayRank}-${visibleBasis}-${index}`}
-                className="border-t border-white/10 text-[13px] text-white/80 transition hover:bg-white/[0.02]"
+                className="border-t border-line text-[13px] text-ink transition hover:bg-veil"
               >
-                <td className="px-4 py-2 whitespace-nowrap font-semibold text-white">
+                <td className="px-3 py-1.5 whitespace-nowrap font-semibold text-ink">
                   {row.displayRank}
                 </td>
 
-                <td className="px-4 py-2 min-w-[220px] font-medium text-white">
+                <td className="px-3 py-1.5 min-w-[220px] font-medium text-ink">
                   <PlayerLink
                     playerSlug={row.player_slug}
-                    className="transition hover:text-white hover:underline"
+                    className="transition hover:text-ink hover:underline"
                     title={row.player_name ?? undefined}
                   >
                     {row.player_name ?? "—"}
                   </PlayerLink>
                 </td>
 
-                <td className="px-4 py-2 min-w-[180px] font-medium text-white">
+                <td className="px-3 py-1.5 min-w-[180px] font-medium text-ink">
                   {row.team_slug ? (
                     <TeamLink
                       teamSlug={row.team_slug}
-                      className="transition hover:text-white hover:underline"
+                      className="transition hover:text-ink hover:underline"
                       title={row.team_name ?? undefined}
                     >
                       {row.team_name ?? "—"}
@@ -912,18 +912,18 @@ export function LeaguePlayerLeadersPanel({
                   )}
                 </td>
 
-                <td className="px-4 py-2 whitespace-nowrap text-white/70">
+                <td className="px-3 py-1.5 whitespace-nowrap text-ink-2">
                   {row.role_group ?? row.position_code ?? "—"}
                 </td>
 
-                <td className="px-4 py-2 whitespace-nowrap font-medium text-white">
+                <td className="px-3 py-1.5 whitespace-nowrap font-medium text-ink">
                   {formatMetricValue(
                     row.displayValue,
                     getBasisValueFormat(row.value_format, visibleBasis, "value")
                   )}
                 </td>
 
-                <td className="px-4 py-2 whitespace-nowrap text-white/70">
+                <td className="px-3 py-1.5 whitespace-nowrap text-ink-2">
                   {formatMetricValue(
                     row.derivedLeagueAvg,
                     getBasisValueFormat(row.value_format, visibleBasis, "average")
@@ -931,7 +931,7 @@ export function LeaguePlayerLeadersPanel({
                 </td>
 
                 <td
-                  className={`px-4 py-2 whitespace-nowrap font-medium ${getDeltaTone(
+                  className={`px-3 py-1.5 whitespace-nowrap font-medium ${getDeltaTone(
                     row.derivedVsAvgPct,
                     row.is_higher_better
                   )}`}
@@ -939,7 +939,7 @@ export function LeaguePlayerLeadersPanel({
                   {getDeltaText(t, row.derivedVsAvgPct, row.is_higher_better)}
                 </td>
 
-                <td className="px-4 py-2 whitespace-nowrap text-white/70">
+                <td className="px-3 py-1.5 whitespace-nowrap text-ink-2">
                   {row.sample_matches ?? "—"}
                 </td>
               </tr>

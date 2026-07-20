@@ -4,18 +4,18 @@ type PlayerResultBadgeProps = {
 
 function getBadgeClass(resultCode: PlayerResultBadgeProps["resultCode"]) {
   if (resultCode === "W") {
-    return "border-emerald-500/25 bg-emerald-500/10 text-emerald-300";
+    return "border-pos/25 bg-pos/15 text-pos";
   }
 
   if (resultCode === "D") {
-    return "border-amber-500/25 bg-amber-500/10 text-amber-300";
+    return "border-amber-500/25 bg-amber-400/15 text-amber-500";
   }
 
   if (resultCode === "L") {
-    return "border-rose-500/25 bg-rose-500/10 text-rose-300";
+    return "border-neg/25 bg-neg/15 text-neg";
   }
 
-  return "border-white/10 bg-white/[0.03] text-white/60";
+  return "border-line bg-veil text-ink-2";
 }
 
 export function PlayerResultBadge({ resultCode }: PlayerResultBadgeProps) {

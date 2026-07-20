@@ -23,8 +23,8 @@ export default async function PlayerBenchmarksPanel({
 
   if (benchmarks.length === 0) {
     return (
-      <section className="rounded-2xl border border-white/10 bg-white/5 p-5">
-        <p className="text-sm text-white/70">
+      <section className="rounded-2xl border border-line bg-veil p-5">
+        <p className="text-sm text-ink-2">
           {t("playerDetail.benchmarksUnavailable")}
         </p>
       </section>
@@ -32,12 +32,12 @@ export default async function PlayerBenchmarksPanel({
   }
 
   return (
-    <section className="rounded-2xl border border-white/10 bg-white/5 p-5">
+    <section className="rounded-2xl border border-line bg-veil p-5">
       <div className="mb-4">
-        <h2 className="text-base font-semibold text-white">
+        <h2 className="text-base font-semibold text-ink">
           {t("playerDetail.benchmarksHeading")}
         </h2>
-        <p className="mt-1 text-sm text-white/60">
+        <p className="mt-1 text-sm text-ink-2">
           {t("playerDetail.benchmarksSubheading")}
         </p>
       </div>
@@ -45,7 +45,7 @@ export default async function PlayerBenchmarksPanel({
       <div className="overflow-x-auto">
         <table className="min-w-full text-sm">
           <thead>
-            <tr className="border-b border-white/10 text-left text-white/60">
+            <tr className="border-b border-line text-left text-ink-2">
               <th className="px-3 py-2 font-medium">
                 {t("playerDetail.categoryColumn")}
               </th>
@@ -70,7 +70,7 @@ export default async function PlayerBenchmarksPanel({
             {benchmarks.map((row, index) => (
               <tr
                 key={`${row.metric_key}-${index}`}
-                className="border-b border-white/5 text-white/85 last:border-b-0"
+                className="border-b border-line text-ink last:border-b-0"
               >
                 <td className="px-3 py-2">{formatValue(t, row.category)}</td>
                 <td className="px-3 py-2">

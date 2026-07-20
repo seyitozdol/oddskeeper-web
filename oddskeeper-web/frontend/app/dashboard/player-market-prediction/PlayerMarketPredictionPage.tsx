@@ -83,15 +83,15 @@ function StatusBadge({
         value={status}
         onChange={(e) => onChange(e.target.value as InferredStatus)}
         className={`cursor-pointer appearance-none rounded border px-2 py-0.5 text-[11px] font-semibold tracking-wide pr-5
-          ${STATUS_COLORS[status]} bg-[#0d1624] focus:outline-none [color-scheme:dark]`}
+          ${STATUS_COLORS[status]} bg-field focus:outline-none`}
       >
         {STATUS_OPTIONS.map((opt) => (
-          <option key={opt} value={opt} className="bg-[#0d1624] text-white">
+          <option key={opt} value={opt} className="bg-field text-ink">
             {statusLabel(t, opt)}
           </option>
         ))}
       </select>
-      <span className="pointer-events-none absolute right-1 top-1/2 -translate-y-1/2 text-white/40 text-[10px]">▾</span>
+      <span className="pointer-events-none absolute right-1 top-1/2 -translate-y-1/2 text-ink-3 text-[10px]">▾</span>
     </div>
   );
 }
@@ -118,7 +118,7 @@ function SortTh({
   const active = sortCol === col;
   return (
     <th
-      className={`px-2 py-2 cursor-pointer select-none hover:text-white/70 ${className}`}
+      className={`px-2 py-2 cursor-pointer select-none hover:text-ink-2 ${className}`}
       onClick={() => onSort(col)}
     >
       {label}
@@ -188,14 +188,14 @@ function TeamPlayerTable({
   return (
     <div className="flex-1 min-w-0">
       <div className="mb-2 flex items-center gap-2">
-        <span className="text-[11px] uppercase tracking-[0.14em] text-white/40">{t("common.team")}</span>
-        <span className="text-[15px] font-bold text-white">{teamName}</span>
+        <span className="text-[11px] uppercase tracking-[0.14em] text-ink-3">{t("common.team")}</span>
+        <span className="text-[15px] font-bold text-ink">{teamName}</span>
       </div>
 
-      <div className="overflow-x-auto rounded-[10px] border border-white/10">
+      <div className="overflow-x-auto rounded-lg border border-line">
         <table className="min-w-full border-collapse text-[12px]">
-          <thead className="bg-[#0d1624]">
-            <tr className="text-left text-[10px] uppercase tracking-[0.12em] text-white/38">
+          <thead className="bg-card-2">
+            <tr className="text-left text-[10px] uppercase tracking-[0.12em] text-ink-3">
               <th className="px-2 py-2 w-6"></th>
               <SortTh col="player" label={t("common.player")} sortCol={sortCol} sortDir={sortDir} onSort={handleSort} className="min-w-[120px]" />
               <SortTh col="pos" label={t("common.position")} sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
@@ -219,7 +219,7 @@ function TeamPlayerTable({
               return (
                 <tr
                   key={p.player_source_id}
-                  className={`border-t border-white/[0.06] transition hover:bg-white/[0.02]
+                  className={`border-t border-line transition hover:bg-veil
                     ${p.status === "Out" ? "opacity-40" : ""}`}
                 >
                   <td className="px-2 py-1.5">
@@ -231,11 +231,11 @@ function TeamPlayerTable({
                     />
                   </td>
 
-                  <td className="px-2 py-1.5 font-medium text-white whitespace-nowrap">
+                  <td className="px-2 py-1.5 font-medium text-ink whitespace-nowrap">
                     {p.player_name}
                   </td>
 
-                  <td className="px-2 py-1.5 text-white/50">{p.primary_position_code}</td>
+                  <td className="px-2 py-1.5 text-ink-3">{p.primary_position_code}</td>
 
                   <td className="px-2 py-1.5">
                     <StatusBadge
@@ -244,11 +244,11 @@ function TeamPlayerTable({
                     />
                   </td>
 
-                  <td className="px-2 py-1.5 text-right text-white/70 tabular-nums">
+                  <td className="px-2 py-1.5 text-right text-ink-2 tabular-nums">
                     {fmt(p.seasonAvg)}
                   </td>
 
-                  <td className="px-2 py-1.5 text-right text-white/70 tabular-nums">
+                  <td className="px-2 py-1.5 text-right text-ink-2 tabular-nums">
                     {p.last5Avg !== null && p.last5Avg >= 0 ? fmt(p.last5Avg) : "—"}
                   </td>
 
@@ -264,7 +264,7 @@ function TeamPlayerTable({
                       placeholder="0"
                       value={p.manualValue}
                       onChange={(e) => onManualChange(p.player_source_id, e.target.value)}
-                      className="w-16 rounded border border-white/10 bg-white/[0.04] px-1.5 py-0.5 text-right text-[11px] text-white placeholder-white/20 focus:border-teal-500/50 focus:outline-none"
+                      className="w-16 rounded border border-line bg-field px-1.5 py-0.5 text-right text-[11px] text-ink placeholder-ink-3 focus:border-teal-500/50 focus:outline-none"
                     />
                   </td>
 
@@ -278,15 +278,15 @@ function TeamPlayerTable({
                               type="checkbox"
                               className={`cursor-pointer ${STATUS_ACCENT[p.status]}`}
                             />
-                            <span className="text-white/40 text-[11px] w-14">{t("playerMarket.overLineLabel", { line: ol.line.toFixed(1) })}</span>
-                            <span className="rounded bg-white/[0.06] px-1.5 py-0.5 text-[12px] font-semibold text-teal-300">
+                            <span className="text-ink-3 text-[11px] w-14">{t("playerMarket.overLineLabel", { line: ol.line.toFixed(1) })}</span>
+                            <span className="rounded bg-veil px-1.5 py-0.5 text-[12px] font-semibold text-teal-300">
                               {fmtOdds(ol.overOdds)}
                             </span>
                           </div>
                         ))}
                       </div>
                     ) : (
-                      <span className="text-white/20">—</span>
+                      <span className="text-ink-3">—</span>
                     )}
                   </td>
                 </tr>
@@ -442,23 +442,23 @@ export default function PlayerMarketPredictionPage() {
   return (
     <div className="w-full space-y-4 px-1">
       {/* Header */}
-      <div className="rounded-[14px] border border-white/10 bg-[#0d1624] px-5 py-4">
-        <h1 className="text-[18px] font-bold text-white">{t("playerMarket.pageTitle")}</h1>
-        <p className="mt-0.5 text-[12px] text-white/40">
+      <div className="rounded-xl border border-line bg-card px-5 py-4">
+        <h1 className="text-[18px] font-bold text-ink">{t("playerMarket.pageTitle")}</h1>
+        <p className="mt-0.5 text-[12px] text-ink-3">
           {t("playerMarket.pageSubtitle")}
         </p>
       </div>
 
       {/* Controls */}
-      <div className="rounded-[14px] border border-white/10 bg-[#0d1624] px-5 py-4">
+      <div className="rounded-xl border border-line bg-card px-5 py-4">
         <div className="flex flex-wrap gap-4 items-end">
           {/* Fixture select */}
           <div className="flex flex-col gap-1 min-w-[260px]">
-            <label className="text-[10px] uppercase tracking-[0.12em] text-white/40">{t("playerMarket.fixtureLabel")}</label>
+            <label className="text-[10px] uppercase tracking-[0.12em] text-ink-3">{t("playerMarket.fixtureLabel")}</label>
             <select
               value={selectedFixtureId ?? ""}
               onChange={(e) => setSelectedFixtureId(e.target.value ? Number(e.target.value) : null)}
-              className="rounded-[8px] border border-white/10 bg-[#0d1624] px-3 py-2 text-[13px] text-white focus:border-teal-500/50 focus:outline-none [color-scheme:dark]"
+              className="rounded-lg border border-line bg-field px-3 py-2 text-[13px] text-ink focus:border-teal-500/50 focus:outline-none"
             >
               <option value="">{t("playerMarket.selectFixturePlaceholder")}</option>
               {fixtures.map((f) => (
@@ -471,11 +471,11 @@ export default function PlayerMarketPredictionPage() {
 
           {/* Market select */}
           <div className="flex flex-col gap-1 min-w-[180px]">
-            <label className="text-[10px] uppercase tracking-[0.12em] text-white/40">{t("playerMarket.marketLabel")}</label>
+            <label className="text-[10px] uppercase tracking-[0.12em] text-ink-3">{t("playerMarket.marketLabel")}</label>
             <select
               value={selectedMarketKey}
               onChange={(e) => setSelectedMarketKey(e.target.value)}
-              className="rounded-[8px] border border-white/10 bg-[#0d1624] px-3 py-2 text-[13px] text-white focus:border-teal-500/50 focus:outline-none [color-scheme:dark]"
+              className="rounded-lg border border-line bg-field px-3 py-2 text-[13px] text-ink focus:border-teal-500/50 focus:outline-none"
             >
               {MARKET_OPTIONS.map((m) => (
                 <option key={m.key} value={m.key}>
@@ -487,7 +487,7 @@ export default function PlayerMarketPredictionPage() {
 
           {/* Home Dist. Exp */}
           <div className="flex flex-col gap-1">
-            <label className="text-[10px] uppercase tracking-[0.12em] text-white/40">
+            <label className="text-[10px] uppercase tracking-[0.12em] text-ink-3">
               {t("playerMarket.homeExpLabel")}
             </label>
             <input
@@ -496,13 +496,13 @@ export default function PlayerMarketPredictionPage() {
               step="0.5"
               value={homeDistExp}
               onChange={(e) => setHomeDistExp(e.target.value)}
-              className="w-24 rounded-[8px] border border-white/10 bg-white/[0.04] px-3 py-2 text-[13px] text-white focus:border-teal-500/50 focus:outline-none"
+              className="w-24 rounded-lg border border-line bg-field px-3 py-2 text-[13px] text-ink focus:border-teal-500/50 focus:outline-none"
             />
           </div>
 
           {/* Away Dist. Exp */}
           <div className="flex flex-col gap-1">
-            <label className="text-[10px] uppercase tracking-[0.12em] text-white/40">
+            <label className="text-[10px] uppercase tracking-[0.12em] text-ink-3">
               {t("playerMarket.awayExpLabel")}
             </label>
             <input
@@ -511,13 +511,13 @@ export default function PlayerMarketPredictionPage() {
               step="0.5"
               value={awayDistExp}
               onChange={(e) => setAwayDistExp(e.target.value)}
-              className="w-24 rounded-[8px] border border-white/10 bg-white/[0.04] px-3 py-2 text-[13px] text-white focus:border-teal-500/50 focus:outline-none"
+              className="w-24 rounded-lg border border-line bg-field px-3 py-2 text-[13px] text-ink focus:border-teal-500/50 focus:outline-none"
             />
           </div>
 
           {/* Payback */}
           <div className="flex flex-col gap-1">
-            <label className="text-[10px] uppercase tracking-[0.12em] text-white/40">
+            <label className="text-[10px] uppercase tracking-[0.12em] text-ink-3">
               {t("playerMarket.paybackLabel")}
             </label>
             <input
@@ -527,7 +527,7 @@ export default function PlayerMarketPredictionPage() {
               step="1"
               value={paybackPct}
               onChange={(e) => setPaybackPct(e.target.value)}
-              className="w-24 rounded-[8px] border border-white/10 bg-white/[0.04] px-3 py-2 text-[13px] text-white focus:border-teal-500/50 focus:outline-none"
+              className="w-24 rounded-lg border border-line bg-field px-3 py-2 text-[13px] text-ink focus:border-teal-500/50 focus:outline-none"
             />
           </div>
         </div>
@@ -535,27 +535,27 @@ export default function PlayerMarketPredictionPage() {
 
       {/* Loading */}
       {loading && (
-        <div className="rounded-[14px] border border-white/10 bg-[#0d1624] px-5 py-8 text-center text-sm text-white/40">
+        <div className="rounded-xl border border-line bg-card px-5 py-8 text-center text-sm text-ink-3">
           {t("common.loading")}
         </div>
       )}
 
       {/* Player tables */}
       {!loading && selectedFixture && (homePlayers.length > 0 || awayPlayers.length > 0) && (
-        <div className="rounded-[14px] border border-white/10 bg-[#0d1624] px-5 py-4">
+        <div className="rounded-xl border border-line bg-card px-5 py-4">
           {/* Market info bar */}
           <div className="mb-4 flex items-center gap-3">
             <span className="rounded-full border border-teal-500/30 bg-teal-500/10 px-3 py-1 text-[12px] font-semibold text-teal-300">
               {selectedMarket.label}
             </span>
-            <span className="text-[12px] text-white/40">
-              {t("playerMarket.homeExpLabel")}: <span className="text-white/70 font-medium">{homeDistExpNum.toFixed(1)}</span>
+            <span className="text-[12px] text-ink-3">
+              {t("playerMarket.homeExpLabel")}: <span className="text-ink-2 font-medium">{homeDistExpNum.toFixed(1)}</span>
             </span>
-            <span className="text-[12px] text-white/40">
-              {t("playerMarket.awayExpLabel")}: <span className="text-white/70 font-medium">{awayDistExpNum.toFixed(1)}</span>
+            <span className="text-[12px] text-ink-3">
+              {t("playerMarket.awayExpLabel")}: <span className="text-ink-2 font-medium">{awayDistExpNum.toFixed(1)}</span>
             </span>
-            <span className="text-[12px] text-white/40">
-              {t("playerMarket.paybackLabel")}: <span className="text-white/70 font-medium">{paybackNum}%</span>
+            <span className="text-[12px] text-ink-3">
+              {t("playerMarket.paybackLabel")}: <span className="text-ink-2 font-medium">{paybackNum}%</span>
             </span>
           </div>
 
@@ -585,7 +585,7 @@ export default function PlayerMarketPredictionPage() {
 
       {/* Empty state */}
       {!loading && !selectedFixture && (
-        <div className="rounded-[14px] border border-white/10 bg-[#0d1624] px-5 py-10 text-center text-sm text-white/30">
+        <div className="rounded-xl border border-line bg-card px-5 py-10 text-center text-sm text-ink-3">
           {t("playerMarket.selectFixturePrompt")}
         </div>
       )}

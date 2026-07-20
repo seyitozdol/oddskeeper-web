@@ -46,10 +46,10 @@ function StatInline({
 }) {
   return (
     <div className="min-w-0">
-      <div className="text-[10px] uppercase tracking-[0.14em] text-white/35">
+      <div className="text-[10px] uppercase tracking-[0.14em] text-ink-3">
         {label}
       </div>
-      <div className="mt-1 text-base font-semibold text-white">
+      <div className="mt-1 text-base font-semibold text-ink">
         {value}
       </div>
     </div>
@@ -83,10 +83,10 @@ export async function PlayerDetailHeader({
   const logoPath = getTeamLogoPath(displayTeamSlug);
 
   return (
-    <div className="rounded-[24px] border border-white/10 bg-[linear-gradient(180deg,rgba(8,14,24,0.96),rgba(5,10,18,0.98))] p-4 shadow-[0_0_40px_rgba(34,104,189,0.06)]">
+    <div className="rounded-xl border border-line bg-card p-3">
       <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
         <div className="flex min-w-0 items-start gap-4">
-          <div className="flex h-[72px] w-[72px] shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] p-2">
+          <div className="flex h-[72px] w-[72px] shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-line bg-veil p-2">
             {currentInfo?.photo_url ? (
               <Image
                 src={currentInfo.photo_url}
@@ -104,20 +104,20 @@ export async function PlayerDetailHeader({
                 className="h-auto max-h-[52px] w-auto max-w-[52px] object-contain"
               />
             ) : (
-              <div className="text-xs text-white/35">—</div>
+              <div className="text-xs text-ink-3">—</div>
             )}
           </div>
 
           <div className="min-w-0">
-            <p className="text-[11px] uppercase tracking-[0.24em] text-[#7cbcff]">
+            <p className="text-[11px] uppercase tracking-[0.24em] text-accent-ink">
               {t("playerDetail.profileKicker")}
             </p>
 
-            <h1 className="mt-1 truncate text-3xl font-semibold text-white lg:text-5xl">
+            <h1 className="mt-1 truncate text-xl font-semibold text-ink lg:text-2xl">
               {displayPlayerName}
             </h1>
 
-            <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-white/60">
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-ink-2">
               <span className="inline-flex items-center gap-1.5">
                 {logoPath ? (
                   <Image
@@ -140,39 +140,39 @@ export async function PlayerDetailHeader({
 
             {currentInfo ? (
               <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
-                <span className="rounded-full border border-sky-400/30 bg-sky-400/10 px-2 py-0.5 text-[11px] font-medium uppercase tracking-[0.08em] text-sky-300">
+                <span className="rounded-full border border-line-strong bg-accent-soft px-2 py-0.5 text-[11px] font-medium uppercase tracking-[0.08em] text-accent-ink">
                   {t("playerDetail.currentBadge")}
                 </span>
-                <span className="text-white/80">
+                <span className="text-ink">
                   {currentInfo.current_team_name}
                 </span>
                 {currentInfo.shirt_number !== null ? (
                   <>
-                    <span className="text-white/40">•</span>
-                    <span className="text-white/80">
+                    <span className="text-ink-3">•</span>
+                    <span className="text-ink">
                       #{currentInfo.shirt_number}
                     </span>
                   </>
                 ) : null}
                 {currentInfo.position ? (
                   <>
-                    <span className="text-white/40">•</span>
-                    <span className="text-white/80">{currentInfo.position}</span>
+                    <span className="text-ink-3">•</span>
+                    <span className="text-ink">{currentInfo.position}</span>
                   </>
                 ) : null}
                 {currentInfo.age !== null ? (
                   <>
-                    <span className="text-white/40">•</span>
-                    <span className="text-white/80">
+                    <span className="text-ink-3">•</span>
+                    <span className="text-ink">
                       {t("playerDetail.ageValue", { age: currentInfo.age })}
                     </span>
                   </>
                 ) : null}
                 {marketValueEur !== null ? (
                   <>
-                    <span className="text-white/40">•</span>
+                    <span className="text-ink-3">•</span>
                     <span
-                      className="font-semibold text-emerald-300"
+                      className="font-semibold text-pos"
                       title={t("common.marketValue")}
                     >
                       {formatMarketValue(marketValueEur)}
@@ -182,10 +182,10 @@ export async function PlayerDetailHeader({
               </div>
             ) : (
               <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
-                <span className="rounded-full border border-white/12 bg-white/[0.04] px-2 py-0.5 text-[11px] font-medium uppercase tracking-[0.08em] text-white/45">
+                <span className="rounded-full border border-line bg-veil px-2 py-0.5 text-[11px] font-medium uppercase tracking-[0.08em] text-ink-3">
                   {t("common.notInCurrentSquads")}
                 </span>
-                <span className="text-white/50">
+                <span className="text-ink-3">
                   {t("playerDetail.statsFromPastSeasons", {
                     team: profile.team_name,
                   })}
@@ -197,7 +197,7 @@ export async function PlayerDetailHeader({
             (currentInfo.nationality ||
               currentInfo.height_cm ||
               currentInfo.birth_date) ? (
-              <div className="mt-1 flex flex-wrap items-center gap-2 text-[13px] text-white/50">
+              <div className="mt-1 flex flex-wrap items-center gap-2 text-[13px] text-ink-3">
                 {currentInfo.nationality ? (
                   <span className="inline-flex items-center gap-1.5">
                     {getCountryFlagUrl(currentInfo.nationality) ? (
@@ -216,7 +216,7 @@ export async function PlayerDetailHeader({
                 ) : null}
                 {currentInfo.height_cm ? (
                   <>
-                    <span className="text-white/30">•</span>
+                    <span className="text-ink-3">•</span>
                     <span>
                       {t("playerDetail.heightCm", {
                         value: currentInfo.height_cm,
@@ -226,7 +226,7 @@ export async function PlayerDetailHeader({
                 ) : null}
                 {currentInfo.weight_kg ? (
                   <>
-                    <span className="text-white/30">•</span>
+                    <span className="text-ink-3">•</span>
                     <span>
                       {t("playerDetail.weightKg", {
                         value: currentInfo.weight_kg,
@@ -236,7 +236,7 @@ export async function PlayerDetailHeader({
                 ) : null}
                 {currentInfo.birth_date ? (
                   <>
-                    <span className="text-white/30">•</span>
+                    <span className="text-ink-3">•</span>
                     <span>
                       {currentInfo.birth_date}
                       {currentInfo.birth_place
@@ -263,8 +263,8 @@ export async function PlayerDetailHeader({
                 href={href}
                 className={`rounded-xl border px-3 py-2 text-sm transition ${
                   isActive
-                    ? "border-[#4da2ff]/40 bg-[#10335d]/70 text-white"
-                    : "border-white/10 bg-white/[0.03] text-white/72 hover:bg-white/[0.06]"
+                    ? "border-line-strong bg-card-2 text-ink"
+                    : "border-line bg-veil text-ink-2 hover:bg-veil"
                 }`}
               >
                 {t(TAB_LABEL_KEYS[tab])}
@@ -274,14 +274,14 @@ export async function PlayerDetailHeader({
 
           <Link
             href={backToTeamHref}
-            className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-white/80 transition hover:bg-white/[0.06]"
+            className="rounded-xl border border-line bg-veil px-3 py-2 text-sm text-ink transition hover:bg-veil"
           >
             {t("playerDetail.backButton")}
           </Link>
         </div>
       </div>
 
-      <div className="mt-4 grid gap-x-5 gap-y-3 border-t border-white/10 pt-4 sm:grid-cols-3 xl:grid-cols-6">
+      <div className="mt-3 grid gap-x-5 gap-y-3 border-t border-line pt-3 sm:grid-cols-3 xl:grid-cols-6">
         <StatInline label={t("common.appearances")} value={profile.appearances} />
         <StatInline label={t("common.starts")} value={profile.starts} />
         <StatInline label={t("playerDetail.minutesLabel")} value={profile.total_minutes} />

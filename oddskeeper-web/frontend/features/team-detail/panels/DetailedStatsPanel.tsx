@@ -170,22 +170,22 @@ function formatMetricCell(
 
 function getRankTone(rank: number | null | undefined) {
   if (rank === null || rank === undefined) {
-    return "text-white/55";
+    return "text-ink-2";
   }
 
   if (rank <= 4) {
-    return "text-emerald-300";
+    return "text-pos";
   }
 
   if (rank >= 15) {
-    return "text-rose-300";
+    return "text-neg";
   }
 
   if (rank >= 11) {
-    return "text-amber-300";
+    return "text-amber-500";
   }
 
-  return "text-white/80";
+  return "text-ink";
 }
 
 function getDeltaTone(
@@ -193,17 +193,17 @@ function getDeltaTone(
   isHigherBetter: boolean | null | undefined
 ) {
   if (value === null || value === undefined || Number.isNaN(value)) {
-    return "text-white/55";
+    return "text-ink-2";
   }
 
   const isPositive = value > 0;
   const isGood = isHigherBetter ? isPositive : !isPositive;
 
   if (value === 0) {
-    return "text-white/65";
+    return "text-ink-2";
   }
 
-  return isGood ? "text-emerald-300" : "text-rose-300";
+  return isGood ? "text-pos" : "text-neg";
 }
 
 function formatDirectionBadge(
@@ -261,22 +261,22 @@ function isMeaningfulSummaryMetric(row: TeamDetailedMetricRow) {
 
 function getSummaryToneClasses(tone: SummaryTone) {
   if (tone === "positive") {
-    return "border-emerald-500/20 bg-[linear-gradient(180deg,rgba(16,185,129,0.08),rgba(255,255,255,0.02))] shadow-[0_0_0_1px_rgba(16,185,129,0.04)]";
+    return "border-pos/20 bg-card";
   }
 
   if (tone === "negative") {
-    return "border-rose-500/20 bg-[linear-gradient(180deg,rgba(244,63,94,0.08),rgba(255,255,255,0.02))] shadow-[0_0_0_1px_rgba(244,63,94,0.04)]";
+    return "border-neg/20 bg-card";
   }
 
   if (tone === "accent") {
-    return "border-sky-500/20 bg-[linear-gradient(180deg,rgba(59,130,246,0.08),rgba(255,255,255,0.02))] shadow-[0_0_0_1px_rgba(59,130,246,0.04)]";
+    return "border-accent/20 bg-card";
   }
 
   if (tone === "warning") {
-    return "border-amber-500/20 bg-[linear-gradient(180deg,rgba(245,158,11,0.08),rgba(255,255,255,0.02))] shadow-[0_0_0_1px_rgba(245,158,11,0.04)]";
+    return "border-amber-500/20 bg-card";
   }
 
-  return "border-white/10 bg-white/[0.025]";
+  return "border-line bg-veil";
 }
 
 function SummaryCard({
@@ -292,16 +292,16 @@ function SummaryCard({
 }) {
   return (
     <div
-      className={`rounded-xl border px-3 py-3 ${getSummaryToneClasses(tone)}`}
+      className={`rounded-lg border px-3 py-2.5 ${getSummaryToneClasses(tone)}`}
     >
-      <div className="text-[9px] uppercase tracking-[0.16em] text-white/38">
+      <div className="text-[9px] uppercase tracking-[0.16em] text-ink-3">
         {label}
       </div>
-      <div className="mt-1 text-[15px] font-semibold leading-5 text-white">
+      <div className="mt-1 text-[15px] font-semibold leading-5 text-ink">
         {value}
       </div>
       {subvalue ? (
-        <div className="mt-1 text-[11px] leading-4 text-white/56">
+        <div className="mt-1 text-[11px] leading-4 text-ink-2">
           {subvalue}
         </div>
       ) : null}
@@ -316,12 +316,12 @@ function InfoTooltip() {
     <div className="group relative">
       <button
         type="button"
-        className="flex h-5 w-5 items-center justify-center rounded-full border border-white/12 bg-white/[0.03] text-[11px] text-white/55 transition hover:border-white/20 hover:text-white"
+        className="flex h-5 w-5 items-center justify-center rounded-full border border-line bg-veil text-[11px] text-ink-2 transition hover:border-line-strong hover:text-ink"
       >
         i
       </button>
 
-      <div className="pointer-events-none absolute left-0 top-7 z-20 hidden w-[340px] rounded-xl border border-white/10 bg-[#0a1220] px-3 py-2 text-[11px] leading-5 text-white/72 shadow-[0_12px_30px_rgba(0,0,0,0.35)] group-hover:block">
+      <div className="pointer-events-none absolute left-0 top-7 z-20 hidden w-[340px] rounded-xl border border-line bg-card px-3 py-2 text-[11px] leading-5 text-ink-2 shadow-lg group-hover:block">
         {t("teamDetail.detailedStatsInfoTooltip")}
       </div>
     </div>
@@ -370,8 +370,8 @@ function SortableHeader({
     <button
       type="button"
       onClick={() => onSort(sortKey)}
-      className={`inline-flex items-center gap-1 transition hover:text-white ${
-        isActive ? "text-white" : "text-white/38"
+      className={`inline-flex items-center gap-1 transition hover:text-ink ${
+        isActive ? "text-ink" : "text-ink-3"
       }`}
       title={t("teamDetail.sortByTooltip", { label })}
     >
@@ -648,7 +648,7 @@ export default function DetailedStatsPanel({
 
   if (rows.length === 0) {
     return (
-      <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-4 text-sm text-white/65">
+      <div className="rounded-xl border border-line bg-veil px-4 py-3 text-sm text-ink-2">
         {t("teamDetail.noDetailedStatsData")}
       </div>
     );
@@ -660,11 +660,11 @@ export default function DetailedStatsPanel({
   return (
     <>
       <div className="space-y-3">
-        <div className="rounded-[16px] border border-white/10 bg-white/[0.03] px-4 py-3">
+        <div className="rounded-xl border border-line bg-veil px-4 py-3">
           <div className="flex flex-col gap-3">
             <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
               <div className="flex items-center gap-2">
-                <div className="text-[11px] font-medium uppercase tracking-[0.18em] text-white/38">
+                <div className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink-3">
                   {t("teamDetail.detailedStatsSectionTitle")}
                 </div>
                 <InfoTooltip />
@@ -676,8 +676,8 @@ export default function DetailedStatsPanel({
                   onClick={() => setActiveCategory("all")}
                   className={`rounded-lg border px-3 py-1.5 text-[12px] font-medium transition ${
                     activeCategory === "all"
-                      ? "border-[#4da2ff]/40 bg-[#10335d]/70 text-white"
-                      : "border-white/10 bg-white/[0.03] text-white/72 hover:bg-white/[0.06]"
+                      ? "border-line-strong bg-card-2 text-ink"
+                      : "border-line bg-veil text-ink-2 hover:bg-card-2"
                   }`}
                 >
                   {t("common.all")}
@@ -690,8 +690,8 @@ export default function DetailedStatsPanel({
                     onClick={() => setActiveCategory(category)}
                     className={`rounded-lg border px-3 py-1.5 text-[12px] font-medium transition ${
                       activeCategory === category
-                        ? "border-[#4da2ff]/40 bg-[#10335d]/70 text-white"
-                        : "border-white/10 bg-white/[0.03] text-white/72 hover:bg-white/[0.06]"
+                        ? "border-line-strong bg-card-2 text-ink"
+                        : "border-line bg-veil text-ink-2 hover:bg-card-2"
                     }`}
                   >
                     {t(CATEGORY_LABEL_KEYS[category])}
@@ -729,15 +729,15 @@ export default function DetailedStatsPanel({
           </div>
         </div>
 
-        <div className="overflow-x-auto rounded-[14px] border border-white/10">
+        <div className="overflow-x-auto rounded-xl border border-line">
           <table className="min-w-full border-collapse">
-            <thead className="sticky top-0 z-10 bg-[#0d1624]">
-              <tr className="text-left text-[10px] uppercase tracking-[0.14em] text-white/38">
-                <th className="px-4 py-2 font-medium">{t("teamDetail.colMetric")}</th>
+            <thead className="sticky top-0 z-10 bg-field">
+              <tr className="text-left text-[10px] uppercase tracking-[0.14em] text-ink-3">
+                <th className="px-3 py-2 font-medium">{t("teamDetail.colMetric")}</th>
                 {showCategoryColumn ? (
-                  <th className="px-4 py-2 font-medium">{t("teamDetail.colCategory")}</th>
+                  <th className="px-3 py-2 font-medium">{t("teamDetail.colCategory")}</th>
                 ) : null}
-                <th className="px-4 py-2 font-medium">
+                <th className="px-3 py-2 font-medium">
                   <SortableHeader
                     label={t("teamDetail.colTotal")}
                     sortKey="total_value"
@@ -745,7 +745,7 @@ export default function DetailedStatsPanel({
                     onSort={handleSort}
                   />
                 </th>
-                <th className="px-4 py-2 font-medium">
+                <th className="px-3 py-2 font-medium">
                   <SortableHeader
                     label={t("teamDetail.colPerMatch")}
                     sortKey="per_match_value"
@@ -753,7 +753,7 @@ export default function DetailedStatsPanel({
                     onSort={handleSort}
                   />
                 </th>
-                <th className="px-4 py-2 font-medium">
+                <th className="px-3 py-2 font-medium">
                   <SortableHeader
                     label={t("teamDetail.colHomePerMatch")}
                     sortKey="home_value"
@@ -761,7 +761,7 @@ export default function DetailedStatsPanel({
                     onSort={handleSort}
                   />
                 </th>
-                <th className="px-4 py-2 font-medium">
+                <th className="px-3 py-2 font-medium">
                   <SortableHeader
                     label={t("teamDetail.colAwayPerMatch")}
                     sortKey="away_value"
@@ -769,7 +769,7 @@ export default function DetailedStatsPanel({
                     onSort={handleSort}
                   />
                 </th>
-                <th className="px-4 py-2 font-medium">
+                <th className="px-3 py-2 font-medium">
                   <SortableHeader
                     label={t("teamDetail.colLeagueAvgPerMatch")}
                     sortKey="league_avg"
@@ -777,7 +777,7 @@ export default function DetailedStatsPanel({
                     onSort={handleSort}
                   />
                 </th>
-                <th className="px-4 py-2 font-medium">
+                <th className="px-3 py-2 font-medium">
                   <SortableHeader
                     label={t("teamDetail.colRank")}
                     sortKey="league_rank"
@@ -785,7 +785,7 @@ export default function DetailedStatsPanel({
                     onSort={handleSort}
                   />
                 </th>
-                <th className="px-4 py-2 font-medium">
+                <th className="px-3 py-2 font-medium">
                   <SortableHeader
                     label={t("teamDetail.colVsAvgPct")}
                     sortKey="vs_league_avg_pct"
@@ -793,7 +793,7 @@ export default function DetailedStatsPanel({
                     onSort={handleSort}
                   />
                 </th>
-                <th className="px-4 py-2 font-medium">{t("teamDetail.colDirection")}</th>
+                <th className="px-3 py-2 font-medium">{t("teamDetail.colDirection")}</th>
               </tr>
             </thead>
 
@@ -801,39 +801,39 @@ export default function DetailedStatsPanel({
               {filteredRows.map((row) => (
                 <tr
                   key={`${row.metric_key}-${row.team_slug}`}
-                  className="border-t border-white/10 text-[13px] text-white/80 transition hover:bg-white/[0.02]"
+                  className="border-t border-line text-[13px] text-ink-2 transition hover:bg-veil"
                 >
-                  <td className="px-4 py-2 font-medium whitespace-nowrap text-white">
+                  <td className="px-3 py-1.5 font-medium whitespace-nowrap text-ink">
                     {metricLabel(t, row.metric_key, row.metric_label)}
                   </td>
 
                   {showCategoryColumn ? (
-                    <td className="px-4 py-2 whitespace-nowrap text-white/58">
+                    <td className="px-3 py-1.5 whitespace-nowrap text-ink-2">
                       {categoryLabel(t, row.category_key, row.category_label)}
                     </td>
                   ) : null}
 
-                  <td className="px-4 py-2 whitespace-nowrap">
+                  <td className="px-3 py-1.5 whitespace-nowrap">
                     {formatMetricCell(row, row.total_value, "total")}
                   </td>
 
-                  <td className="px-4 py-2 whitespace-nowrap font-medium text-white">
+                  <td className="px-3 py-1.5 whitespace-nowrap font-medium text-ink">
                     {formatMetricCell(row, row.per_match_value, "per_match")}
                   </td>
 
-                  <td className="px-4 py-2 whitespace-nowrap">
+                  <td className="px-3 py-1.5 whitespace-nowrap">
                     {formatMetricCell(row, row.home_value, "home_per_match")}
                   </td>
 
-                  <td className="px-4 py-2 whitespace-nowrap">
+                  <td className="px-3 py-1.5 whitespace-nowrap">
                     {formatMetricCell(row, row.away_value, "away_per_match")}
                   </td>
 
-                  <td className="px-4 py-2 whitespace-nowrap text-white/70">
+                  <td className="px-3 py-1.5 whitespace-nowrap text-ink-2">
                     {formatMetricCell(row, row.league_avg, "league_avg_per_match")}
                   </td>
 
-                  <td className="px-4 py-2 whitespace-nowrap">
+                  <td className="px-3 py-1.5 whitespace-nowrap">
                     {row.league_rank !== null && row.league_rank !== undefined ? (
                       <Link
                         href={buildMetricHref(row)}
@@ -848,12 +848,12 @@ export default function DetailedStatsPanel({
                         </span>
                       </Link>
                     ) : (
-                      <span className="text-white/55">—</span>
+                      <span className="text-ink-2">—</span>
                     )}
                   </td>
 
                   <td
-                    className={`px-4 py-2 whitespace-nowrap font-medium ${getDeltaTone(
+                    className={`px-3 py-1.5 whitespace-nowrap font-medium ${getDeltaTone(
                       row.vs_league_avg_pct,
                       row.is_higher_better
                     )}`}
@@ -861,8 +861,8 @@ export default function DetailedStatsPanel({
                     {formatMetricValue(row.vs_league_avg_pct, "pct_1")}
                   </td>
 
-                  <td className="px-4 py-2 whitespace-nowrap">
-                    <span className="inline-flex rounded-md border border-white/10 bg-white/[0.03] px-2 py-1 text-[11px] text-white/65">
+                  <td className="px-3 py-1.5 whitespace-nowrap">
+                    <span className="inline-flex rounded-md border border-line bg-veil px-2 py-1 text-[11px] text-ink-2">
                       {formatDirectionBadge(
                         row.rank_direction,
                         row.is_higher_better,

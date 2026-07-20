@@ -48,9 +48,9 @@ function MarketButton_2({
         "inline-flex items-center gap-2 rounded-2xl border px-4 py-2 text-sm transition",
         enabled
           ? active
-            ? "border-white/20 bg-white text-black"
-            : "border-white/10 bg-white/5 text-white/80 hover:bg-white/10"
-          : "cursor-not-allowed border-white/10 bg-white/[0.03] text-white/35"
+            ? "border-line-strong bg-accent text-on-accent"
+            : "border-line bg-veil text-ink hover:bg-card-2"
+          : "cursor-not-allowed border-line bg-veil text-ink-3"
       )}
     >
       {!enabled && <Lock className="h-3.5 w-3.5" />}
@@ -77,7 +77,7 @@ function ConfidenceBadge_2({
       ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-200"
       : normalizedConfidence === "Medium"
         ? "border-amber-400/20 bg-amber-400/10 text-amber-200"
-        : "border-white/10 bg-white/5 text-white/65";
+        : "border-line bg-veil text-ink-2";
 
   return (
     <div
@@ -106,16 +106,16 @@ function MatchListItem_2({
       className={cn(
         "w-full rounded-2xl border p-4 text-left transition",
         isActive
-          ? "border-white/20 bg-white/10"
-          : "border-white/10 bg-white/[0.03] hover:bg-white/[0.06]"
+          ? "border-line-strong bg-accent-soft"
+          : "border-line bg-veil hover:bg-card-2"
       )}
     >
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
-          <div className="truncate text-sm font-medium text-white">
+          <div className="truncate text-sm font-medium text-ink">
             {match.homeTeam ?? "-"} vs {match.awayTeam ?? "-"}
           </div>
-          <div className="mt-1 text-xs text-white/45">
+          <div className="mt-1 text-xs text-ink-3">
             {match.kickoff ?? "-"}
           </div>
         </div>
@@ -131,45 +131,45 @@ function MatchListItem_2({
 function SelectedMatchCard_2({ match }: { match: PredictionMatch_2 }) {
   const { t } = useI18n();
   return (
-    <div className="rounded-[26px] border border-white/10 bg-white/[0.04] p-5 backdrop-blur-sm">
+    <div className="rounded-2xl border border-line bg-card p-5 backdrop-blur-sm">
       <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2 text-xs text-white/45">
+          <div className="flex flex-wrap items-center gap-2 text-xs text-ink-3">
             <span>{match.competition ?? "-"}</span>
             <span>•</span>
             <span>{match.kickoff ?? "-"}</span>
           </div>
 
-          <div className="mt-3 flex flex-wrap items-center gap-3 text-lg font-semibold text-white md:text-xl">
+          <div className="mt-3 flex flex-wrap items-center gap-3 text-lg font-semibold text-ink md:text-xl">
             <span>{match.homeTeam ?? "-"}</span>
-            <span className="text-white/25">vs</span>
+            <span className="text-ink-3">vs</span>
             <span>{match.awayTeam ?? "-"}</span>
           </div>
 
           <div className="mt-4 grid max-w-[520px] grid-cols-3 gap-3">
-            <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
-              <div className="text-[11px] uppercase tracking-[0.18em] text-white/35">
+            <div className="rounded-xl border border-line bg-card-2 px-4 py-3">
+              <div className="text-[11px] uppercase tracking-[0.18em] text-ink-3">
                 {t("common.home")}
               </div>
-              <div className="mt-1 text-xl font-semibold text-white">
+              <div className="mt-1 text-xl font-semibold text-ink">
                 {formatNumber_2(match.homeShots)}
               </div>
             </div>
 
-            <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
-              <div className="text-[11px] uppercase tracking-[0.18em] text-white/35">
+            <div className="rounded-xl border border-line bg-card-2 px-4 py-3">
+              <div className="text-[11px] uppercase tracking-[0.18em] text-ink-3">
                 {t("common.away")}
               </div>
-              <div className="mt-1 text-xl font-semibold text-white">
+              <div className="mt-1 text-xl font-semibold text-ink">
                 {formatNumber_2(match.awayShots)}
               </div>
             </div>
 
-            <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
-              <div className="text-[11px] uppercase tracking-[0.18em] text-white/35">
+            <div className="rounded-xl border border-line bg-card-2 px-4 py-3">
+              <div className="text-[11px] uppercase tracking-[0.18em] text-ink-3">
                 {t("deepPrediction.totalLabel")}
               </div>
-              <div className="mt-1 text-xl font-semibold text-white">
+              <div className="mt-1 text-xl font-semibold text-ink">
                 {formatNumber_2(match.totalShots)}
               </div>
             </div>
@@ -177,11 +177,11 @@ function SelectedMatchCard_2({ match }: { match: PredictionMatch_2 }) {
         </div>
 
         <div className="w-full lg:w-[240px]">
-          <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-            <div className="text-[11px] uppercase tracking-[0.18em] text-white/35">
+          <div className="rounded-xl border border-line bg-card-2 p-4">
+            <div className="text-[11px] uppercase tracking-[0.18em] text-ink-3">
               {t("deepPrediction.edgeLabel")}
             </div>
-            <div className="mt-2 text-2xl font-semibold text-white">
+            <div className="mt-2 text-2xl font-semibold text-ink">
               {match.edge ?? "-"}
             </div>
             <div className="mt-3">
@@ -266,18 +266,18 @@ export default function DeepPredictionML2Page({
     null;
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(91,141,239,0.18),_transparent_28%),linear-gradient(180deg,#060b14_0%,#09111f_35%,#060b14_100%)] text-white">
+    <div className="min-h-screen bg-canvas text-ink">
       <div className="mx-auto max-w-7xl px-4 py-8 md:px-6 lg:px-8">
         <div className="mb-6">
-          <div className="text-xs uppercase tracking-[0.22em] text-white/35">
+          <div className="text-xs uppercase tracking-[0.22em] text-ink-3">
             {t("deepPrediction.kicker")}
           </div>
-          <h1 className="mt-2 text-2xl font-semibold tracking-tight text-white md:text-3xl">
+          <h1 className="mt-2 text-2xl font-semibold tracking-tight text-ink md:text-3xl">
             {t("deepPrediction.title")}
           </h1>
         </div>
 
-        <div className="mb-6 flex flex-col gap-3 rounded-[24px] border border-white/10 bg-white/[0.04] p-4">
+        <div className="mb-6 flex flex-col gap-3 rounded-xl border border-line bg-card p-4">
           <div className="flex flex-wrap gap-2">
             {markets_2.map((market) => (
               <MarketButton_2
@@ -304,8 +304,8 @@ export default function DeepPredictionML2Page({
                   className={cn(
                     "rounded-2xl border px-4 py-2 text-sm transition",
                     selectedConfidence === item.value
-                      ? "border-white/20 bg-white text-black"
-                      : "border-white/10 bg-white/5 text-white/75 hover:bg-white/10"
+                      ? "border-line-strong bg-accent text-on-accent"
+                      : "border-line bg-veil text-ink-2 hover:bg-card-2"
                   )}
                 >
                   {item.label}
@@ -314,12 +314,12 @@ export default function DeepPredictionML2Page({
             </div>
 
             <div className="relative w-full lg:w-[320px]">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/35" />
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-3" />
               <input
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder={t("deepPrediction.searchPlaceholder")}
-                className="w-full rounded-2xl border border-white/10 bg-white/5 py-2.5 pl-10 pr-4 text-sm text-white outline-none placeholder:text-white/30"
+                className="w-full rounded-2xl border border-line bg-field py-2.5 pl-10 pr-4 text-sm text-ink outline-none placeholder:text-ink-3"
               />
             </div>
           </div>
@@ -329,10 +329,10 @@ export default function DeepPredictionML2Page({
           <select
             value={selectedMatchId}
             onChange={(e) => setSelectedMatchId(e.target.value)}
-            className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none"
+            className="w-full rounded-2xl border border-line bg-field px-4 py-3 text-sm text-ink outline-none"
           >
             {filteredMatches.map((match) => (
-              <option key={match.id} value={match.id} className="bg-slate-900">
+              <option key={match.id} value={match.id} className="bg-field">
                 {match.homeTeam} vs {match.awayTeam}
               </option>
             ))}
@@ -340,13 +340,13 @@ export default function DeepPredictionML2Page({
         </div>
 
         {filteredMatches.length === 0 ? (
-          <div className="rounded-[26px] border border-white/10 bg-white/[0.04] p-8 text-sm text-white/60">
+          <div className="rounded-2xl border border-line bg-card p-8 text-sm text-ink-2">
             {t("deepPrediction.noFixturesMatch")}
           </div>
         ) : (
           <div className="grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
             <div className="hidden lg:block">
-              <div className="sticky top-6 space-y-3 rounded-[26px] border border-white/10 bg-white/[0.04] p-4">
+              <div className="sticky top-6 space-y-3 rounded-2xl border border-line bg-card p-4">
                 {filteredMatches.map((match) => (
                   <MatchListItem_2
                     key={match.id}
@@ -362,7 +362,7 @@ export default function DeepPredictionML2Page({
               {selectedMatch ? (
                 <SelectedMatchCard_2 match={selectedMatch} />
               ) : (
-                <div className="rounded-[26px] border border-white/10 bg-white/[0.04] p-8 text-sm text-white/60">
+                <div className="rounded-2xl border border-line bg-card p-8 text-sm text-ink-2">
                   {t("deepPrediction.noSelectedFixture")}
                 </div>
               )}

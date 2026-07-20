@@ -29,32 +29,32 @@ function formatValue(value: ReactNode) {
 
 function getToneClasses(tone: Tone) {
   if (tone === "positive") {
-    return "border-emerald-500/20 bg-[linear-gradient(180deg,rgba(16,185,129,0.08),rgba(255,255,255,0.02))]";
+    return "border-pos/20 bg-card";
   }
 
   if (tone === "accent") {
-    return "border-sky-500/20 bg-[linear-gradient(180deg,rgba(59,130,246,0.08),rgba(255,255,255,0.02))]";
+    return "border-accent/20 bg-card";
   }
 
   if (tone === "warning") {
-    return "border-amber-500/20 bg-[linear-gradient(180deg,rgba(245,158,11,0.08),rgba(255,255,255,0.02))]";
+    return "border-amber-500/20 bg-card";
   }
 
-  return "border-white/10 bg-white/[0.025]";
+  return "border-line bg-veil";
 }
 
 function getRoleBadgeClasses(role: string | null | undefined) {
   const normalized = (role ?? "").toLowerCase();
 
   if (normalized === "starter") {
-    return "border-emerald-500/25 bg-emerald-500/10 text-emerald-300";
+    return "border-pos/25 bg-pos/15 text-pos";
   }
 
   if (normalized === "substitute") {
-    return "border-amber-500/25 bg-amber-500/10 text-amber-300";
+    return "border-amber-500/25 bg-amber-400/15 text-amber-500";
   }
 
-  return "border-white/10 bg-white/[0.03] text-white/60";
+  return "border-line bg-veil text-ink-2";
 }
 
 function normalizeRoleLabel(t: Translator, role: string | null | undefined) {
@@ -134,10 +134,10 @@ function MiniInfoTile({
 }) {
   return (
     <div className={`rounded-xl border px-3 py-2.5 ${getToneClasses(tone)}`}>
-      <div className="text-[9px] uppercase tracking-[0.16em] text-white/38">
+      <div className="text-[9px] uppercase tracking-[0.16em] text-ink-3">
         {label}
       </div>
-      <div className="mt-1 text-sm font-semibold text-white">{formatValue(value)}</div>
+      <div className="mt-1 text-sm font-semibold text-ink">{formatValue(value)}</div>
     </div>
   );
 }
@@ -155,14 +155,14 @@ function SnapshotCard({
 }) {
   return (
     <div className={`rounded-xl border px-3 py-3 ${getToneClasses(tone)}`}>
-      <div className="text-[9px] uppercase tracking-[0.16em] text-white/38">
+      <div className="text-[9px] uppercase tracking-[0.16em] text-ink-3">
         {label}
       </div>
-      <div className="mt-1 text-[15px] font-semibold leading-5 text-white">
+      <div className="mt-1 text-[15px] font-semibold leading-5 text-ink">
         {formatValue(value)}
       </div>
       {subvalue ? (
-        <div className="mt-1 text-[11px] leading-4 text-white/58">{subvalue}</div>
+        <div className="mt-1 text-[11px] leading-4 text-ink-2">{subvalue}</div>
       ) : null}
     </div>
   );
@@ -170,7 +170,7 @@ function SnapshotCard({
 
 function SectionLabel({ children }: { children: ReactNode }) {
   return (
-    <div className="text-[11px] uppercase tracking-[0.22em] text-white/38">
+    <div className="text-[11px] uppercase tracking-[0.22em] text-ink-3">
       {children}
     </div>
   );
@@ -192,7 +192,7 @@ function OpponentName({
   return (
     <TeamLink
       teamSlug={teamSlug}
-      className="font-medium text-white transition hover:text-white hover:underline"
+      className="font-medium text-ink transition hover:text-ink hover:underline"
       title={displayName}
     >
       {displayName}
@@ -463,7 +463,7 @@ export async function PlayerOverviewPanel({
 
   return (
     <div className="space-y-2.5">
-      <div className="rounded-[16px] border border-white/10 bg-white/[0.03] p-3">
+      <div className="rounded-lg border border-line bg-veil p-3">
         <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4">
           <SnapshotCard
             label={t("playerDetail.roleSnapshotLabel")}
@@ -492,7 +492,7 @@ export async function PlayerOverviewPanel({
         </div>
       </div>
 
-      <div className="rounded-[16px] border border-white/10 bg-white/[0.03] p-3">
+      <div className="rounded-lg border border-line bg-veil p-3">
         <div className="grid gap-3 xl:grid-cols-2">
           <div>
             <SectionLabel>{t("playerDetail.playerContextLabel")}</SectionLabel>
@@ -502,7 +502,7 @@ export async function PlayerOverviewPanel({
                 value={
                   <TeamLink
                     teamSlug={profile.team_slug}
-                    className="font-medium text-white transition hover:text-white hover:underline"
+                    className="font-medium text-ink transition hover:text-ink hover:underline"
                     title={profile.team_name}
                   >
                     {profile.team_name}
@@ -543,11 +543,11 @@ export async function PlayerOverviewPanel({
         </div>
       </div>
 
-      <div className="rounded-[16px] border border-white/10 bg-white/[0.03] p-3">
+      <div className="rounded-lg border border-line bg-veil p-3">
         <SectionLabel>{recentFormSectionLabel}</SectionLabel>
 
         {recentRows.length === 0 ? (
-          <div className="mt-2 text-sm text-white/55">
+          <div className="mt-2 text-sm text-ink-2">
             {t("playerDetail.noRecentFormData")}
           </div>
         ) : (
@@ -555,23 +555,23 @@ export async function PlayerOverviewPanel({
             {recentRows.map((row) => (
               <div
                 key={`${row.source_match_id}-${row.player_source_id}`}
-                className="rounded-xl border border-white/8 bg-white/[0.02] px-3 py-2.5"
+                className="rounded-xl border border-line bg-veil px-3 py-2.5"
               >
                 <div className="flex items-center justify-between gap-2">
                   <PlayerResultBadge resultCode={row.result_code} />
-                  <div className="text-[10px] text-white/45">
+                  <div className="text-[10px] text-ink-3">
                     {formatDate(row.match_datetime)}
                   </div>
                 </div>
 
-                <div className="mt-2 truncate text-sm font-medium text-white">
+                <div className="mt-2 truncate text-sm font-medium text-ink">
                   <OpponentName
                     teamSlug={row.opponent_team_slug}
                     name={row.opponent_name}
                   />
                 </div>
 
-                <div className="mt-2 flex items-center justify-between gap-2 text-[11px] text-white/60">
+                <div className="mt-2 flex items-center justify-between gap-2 text-[11px] text-ink-2">
                   <span>{row.score_display ?? "—"}</span>
                   <span>
                     {row.minutes_played ?? "—"} {t("common.minutes")}
@@ -586,7 +586,7 @@ export async function PlayerOverviewPanel({
                   >
                     {normalizeRoleLabel(t, row.lineup_status)}
                   </span>
-                  <span className="text-[10px] text-white/45">
+                  <span className="text-[10px] text-ink-3">
                     {t("playerDetail.xgColumn")} {formatDecimal(row.expected_goals, 3)}
                   </span>
                 </div>
@@ -596,7 +596,7 @@ export async function PlayerOverviewPanel({
         )}
       </div>
 
-      <div className="rounded-[16px] border border-white/10 bg-white/[0.03] p-3">
+      <div className="rounded-lg border border-line bg-veil p-3">
         <SectionLabel>{last5SectionLabel}</SectionLabel>
 
         <div className="mt-2 grid gap-2 sm:grid-cols-3 xl:grid-cols-8">
@@ -611,7 +611,7 @@ export async function PlayerOverviewPanel({
         </div>
       </div>
 
-      <div className="rounded-[16px] border border-white/10 bg-white/[0.03] p-3">
+      <div className="rounded-lg border border-line bg-veil p-3">
         <SectionLabel>
           {staleProfile
             ? t("playerDetail.lastRecordedMatchesLabel")
@@ -619,14 +619,14 @@ export async function PlayerOverviewPanel({
         </SectionLabel>
 
         {recentRows.length === 0 ? (
-          <div className="mt-2 text-sm text-white/55">
+          <div className="mt-2 text-sm text-ink-2">
             {t("playerDetail.noRecentMatchData")}
           </div>
         ) : (
-          <div className="mt-2 overflow-x-auto rounded-[14px] border border-white/10">
+          <div className="mt-2 overflow-x-auto rounded-lg border border-line">
             <table className="min-w-full border-collapse">
-              <thead className="bg-white/[0.03]">
-                <tr className="text-left text-[10px] uppercase tracking-[0.14em] text-white/38">
+              <thead className="bg-veil">
+                <tr className="text-left text-[10px] uppercase tracking-[0.14em] text-ink-3">
                   <th className="px-3 py-2 font-medium">{t("common.date")}</th>
                   <th className="px-3 py-2 font-medium">{t("common.opponent")}</th>
                   <th className="px-3 py-2 font-medium">{t("common.score")}</th>
@@ -643,13 +643,13 @@ export async function PlayerOverviewPanel({
                 {recentRows.map((row) => (
                   <tr
                     key={`${row.source_match_id}-${row.player_source_id}`}
-                    className="border-t border-white/10 text-[12px] text-white/80 transition hover:bg-white/[0.018]"
+                    className="border-t border-line text-[13px] text-ink transition hover:bg-veil"
                   >
                     <td className="px-3 py-2 whitespace-nowrap">
                       <MatchLink
                         sourceMatchId={row.source_match_id}
                         returnTo={overviewReturnTo}
-                        className="transition hover:text-white hover:underline"
+                        className="transition hover:text-ink hover:underline"
                         title={t("playerDetail.openMatchDetailTitle")}
                       >
                         {formatDate(row.match_datetime)}
@@ -667,7 +667,7 @@ export async function PlayerOverviewPanel({
                       <MatchLink
                         sourceMatchId={row.source_match_id}
                         returnTo={overviewReturnTo}
-                        className="transition hover:text-white hover:underline"
+                        className="transition hover:text-ink hover:underline"
                         title={t("playerDetail.openMatchDetailTitle")}
                       >
                         {row.score_display ?? "—"}

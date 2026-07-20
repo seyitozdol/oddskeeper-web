@@ -11,27 +11,27 @@ export default async function Footer() {
   ];
 
   return (
-    <footer className="border-t border-white/8 px-4 py-8 sm:px-6 lg:px-10">
+    <footer className="border-t border-line px-4 py-8 sm:px-6 lg:px-10">
       <div className="mx-auto flex max-w-[1420px] flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <a href="#" className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#13b0ff]/40 bg-white/5 shadow-[0_0_30px_rgba(19,176,255,0.12)]">
-              <span className="bg-gradient-to-r from-[#13b0ff] to-[#7de8ff] bg-clip-text text-sm font-semibold text-transparent">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-line-strong bg-veil">
+              <span className="text-sm font-semibold text-accent-ink">
                 OK
               </span>
             </div>
 
             <div className="flex flex-col">
-              <span className="text-sm font-semibold tracking-wide text-white">
+              <span className="text-sm font-semibold tracking-wide text-ink">
                 OddsKeeper
               </span>
-              <span className="text-[11px] uppercase tracking-[0.24em] text-white/45">
+              <span className="text-[11px] uppercase tracking-[0.24em] text-ink-3">
                 {t("landing.brandTagline")}
               </span>
             </div>
           </a>
 
-          <p className="mt-3 text-sm leading-6 text-white/45">
+          <p className="mt-3 text-sm leading-6 text-ink-3">
             {t("landing.footerTagline")}
           </p>
         </div>
@@ -41,7 +41,7 @@ export default async function Footer() {
             <a
               key={item.labelKey}
               href={item.href}
-              className="text-sm text-white/55 transition hover:text-white"
+              className="text-sm text-ink-2 transition hover:text-ink"
             >
               {t(item.labelKey)}
             </a>

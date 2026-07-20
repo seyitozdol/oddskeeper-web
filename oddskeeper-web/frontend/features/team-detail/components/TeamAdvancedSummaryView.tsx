@@ -29,22 +29,22 @@ function getToneClasses(
   tone: "positive" | "negative" | "neutral" | "accent" | "warning"
 ) {
   if (tone === "positive") {
-    return "border-emerald-500/20 bg-[linear-gradient(180deg,rgba(16,185,129,0.08),rgba(255,255,255,0.02))]";
+    return "border-pos/20 bg-card";
   }
 
   if (tone === "negative") {
-    return "border-rose-500/20 bg-[linear-gradient(180deg,rgba(244,63,94,0.08),rgba(255,255,255,0.02))]";
+    return "border-neg/20 bg-card";
   }
 
   if (tone === "accent") {
-    return "border-sky-500/20 bg-[linear-gradient(180deg,rgba(59,130,246,0.08),rgba(255,255,255,0.02))]";
+    return "border-accent/20 bg-card";
   }
 
   if (tone === "warning") {
-    return "border-amber-500/20 bg-[linear-gradient(180deg,rgba(245,158,11,0.08),rgba(255,255,255,0.02))]";
+    return "border-amber-500/20 bg-card";
   }
 
-  return "border-white/10 bg-white/[0.03]";
+  return "border-line bg-veil";
 }
 
 function IdentityCard({
@@ -57,14 +57,14 @@ function IdentityCard({
   reason: string;
 }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-4">
-      <div className="text-[10px] uppercase tracking-[0.16em] text-white/38">
+    <div className="rounded-2xl border border-line bg-veil px-4 py-3">
+      <div className="text-[10px] uppercase tracking-[0.16em] text-ink-3">
         {label}
       </div>
-      <div className="mt-2 text-[16px] font-semibold leading-5 text-white">
+      <div className="mt-2 text-[16px] font-semibold leading-5 text-ink">
         {title}
       </div>
-      <div className="mt-2 text-[12px] leading-5 text-white/60">{reason}</div>
+      <div className="mt-2 text-[12px] leading-5 text-ink-2">{reason}</div>
     </div>
   );
 }
@@ -87,23 +87,23 @@ function HighlightCard({
   const { t } = useI18n();
 
   return (
-    <div className={`rounded-2xl border px-4 py-4 ${getToneClasses(tone)}`}>
-      <div className="text-[10px] uppercase tracking-[0.16em] text-white/38">
+    <div className={`rounded-2xl border px-4 py-3 ${getToneClasses(tone)}`}>
+      <div className="text-[10px] uppercase tracking-[0.16em] text-ink-3">
         {eyebrow}
       </div>
-      <div className="mt-2 text-[16px] font-semibold leading-5 text-white">
+      <div className="mt-2 text-[16px] font-semibold leading-5 text-ink">
         {label}
       </div>
-      <div className="mt-2 text-[12px] leading-5 text-white/60">{reason}</div>
+      <div className="mt-2 text-[12px] leading-5 text-ink-2">{reason}</div>
 
-      <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-[12px] text-white/65">
+      <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-[12px] text-ink-2">
         <div>
           {t("teamDetail.colRank")}{" "}
-          <span className="font-medium text-white">{rank ?? "—"}</span>
+          <span className="font-medium text-ink">{rank ?? "—"}</span>
         </div>
         <div>
           {t("teamDetail.vsAvgLabel")}{" "}
-          <span className="font-medium text-white">{formatPct(vsAvg)}</span>
+          <span className="font-medium text-ink">{formatPct(vsAvg)}</span>
         </div>
       </div>
     </div>
@@ -122,17 +122,17 @@ function TierCard({
   reason: string;
 }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-4">
-      <div className="text-[10px] uppercase tracking-[0.16em] text-white/38">
+    <div className="rounded-2xl border border-line bg-veil px-4 py-3">
+      <div className="text-[10px] uppercase tracking-[0.16em] text-ink-3">
         {label}
       </div>
       <div className="mt-2 flex items-end justify-between gap-3">
-        <div className="text-[16px] font-semibold text-white">{tier}</div>
-        <div className="text-[24px] font-semibold leading-none text-white">
+        <div className="text-[16px] font-semibold text-ink">{tier}</div>
+        <div className="text-[24px] font-semibold leading-none text-ink">
           {score === null ? "—" : `${formatScore(score)}/100`}
         </div>
       </div>
-      <div className="mt-2 text-[12px] leading-5 text-white/58">{reason}</div>
+      <div className="mt-2 text-[12px] leading-5 text-ink-2">{reason}</div>
     </div>
   );
 }
@@ -145,11 +145,11 @@ function TakeawayCard({
   text: string;
 }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-4">
-      <div className="text-[10px] uppercase tracking-[0.16em] text-white/38">
+    <div className="rounded-2xl border border-line bg-veil px-4 py-3">
+      <div className="text-[10px] uppercase tracking-[0.16em] text-ink-3">
         {label}
       </div>
-      <div className="mt-2 text-[13px] leading-6 text-white/72">{text}</div>
+      <div className="mt-2 text-[13px] leading-6 text-ink-2">{text}</div>
     </div>
   );
 }
@@ -165,7 +165,7 @@ export default function TeamAdvancedSummaryView({
 
   if (!summary) {
     return (
-      <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-4 text-sm text-white/60">
+      <div className="rounded-2xl border border-line bg-veil px-4 py-3 text-sm text-ink-2">
         {t("teamDetail.noSummaryAvailable")}
       </div>
     );

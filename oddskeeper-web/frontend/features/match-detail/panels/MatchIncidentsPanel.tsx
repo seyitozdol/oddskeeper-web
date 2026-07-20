@@ -14,7 +14,7 @@ function getSideBadgeClass(side: string | null) {
     return "border-violet-500/25 bg-violet-500/10 text-violet-300";
   }
 
-  return "border-white/10 bg-white/[0.03] text-white/60";
+  return "border-line bg-veil text-ink-2";
 }
 
 export async function MatchIncidentsPanel({ rows }: MatchIncidentsPanelProps) {
@@ -22,17 +22,17 @@ export async function MatchIncidentsPanel({ rows }: MatchIncidentsPanelProps) {
 
   if (rows.length === 0) {
     return (
-      <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-4 text-sm text-white/65">
+      <div className="rounded-xl border border-line bg-veil px-3 py-3 text-sm text-ink-2">
         {t("matchDetail.noIncidents")}
       </div>
     );
   }
 
   return (
-    <div className="mx-auto max-w-6xl overflow-x-auto rounded-[14px] border border-white/10">
+    <div className="mx-auto max-w-6xl overflow-x-auto rounded-lg border border-line">
       <table className="min-w-full border-collapse">
-        <thead className="bg-white/[0.03]">
-          <tr className="text-left text-[9px] uppercase tracking-[0.14em] text-white/38">
+        <thead className="bg-veil">
+          <tr className="text-left text-[9px] uppercase tracking-[0.14em] text-ink-3">
             <th className="px-3 py-2 font-medium">{t("matchDetail.colMinute")}</th>
             <th className="px-3 py-2 font-medium">{t("matchDetail.colSide")}</th>
             <th className="px-3 py-2 font-medium">{t("matchDetail.colEvent")}</th>
@@ -46,7 +46,7 @@ export async function MatchIncidentsPanel({ rows }: MatchIncidentsPanelProps) {
           {rows.map((row, index) => (
             <tr
               key={`${row.source_match_id}-${row.minute_sort}-${row.event_type_code}-${index}`}
-              className="border-t border-white/10 text-[12px] text-white/80 transition hover:bg-white/[0.018]"
+              className="border-t border-line text-[12px] text-ink transition hover:bg-veil"
             >
               <td className="px-3 py-2 whitespace-nowrap">
                 {row.minute_text ?? "—"}
@@ -62,7 +62,7 @@ export async function MatchIncidentsPanel({ rows }: MatchIncidentsPanelProps) {
                 </span>
               </td>
 
-              <td className="px-3 py-2 whitespace-nowrap text-white">
+              <td className="px-3 py-2 whitespace-nowrap text-ink">
                 {row.event_title ?? row.event_type_code ?? "—"}
               </td>
 
@@ -74,7 +74,7 @@ export async function MatchIncidentsPanel({ rows }: MatchIncidentsPanelProps) {
                 {row.secondary_player_text ?? "—"}
               </td>
 
-              <td className="px-3 py-2 min-w-[220px] text-white/55">
+              <td className="px-3 py-2 min-w-[220px] text-ink-2">
                 {row.raw_text ?? "—"}
               </td>
             </tr>

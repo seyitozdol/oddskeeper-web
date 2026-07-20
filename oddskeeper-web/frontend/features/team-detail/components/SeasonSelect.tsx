@@ -44,7 +44,7 @@ export function SeasonSelect({
           `/dashboard/stats-analysis/football/team-stats/detail?${params.toString()}`
         );
       }}
-      className="rounded-lg border border-white/10 bg-[#0d1624] px-3 py-1.5 text-[12px] text-white outline-none transition focus:border-[#4da2ff]/40"
+      className="rounded-lg border border-line bg-field px-3 py-1.5 text-[12px] text-ink outline-none transition focus:border-line-strong"
     >
       {leadingOption ? (
         <option value={leadingOption.value}>{leadingOption.label}</option>

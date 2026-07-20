@@ -225,7 +225,7 @@ export default async function TeamDetailPage({
       {SEASON_TABS.includes(activeTab) && seasonLabels.length > 1 ? (
         <div className="mt-3 flex items-center justify-end gap-3">
           {fixturePastSeason ? (
-            <span className="text-[12px] text-white/45">
+            <span className="text-[12px] text-ink-3">
               {t("teamDetail.pastSeasonScheduleNote")}
             </span>
           ) : null}
@@ -251,7 +251,7 @@ export default async function TeamDetailPage({
         </div>
       ) : null}
 
-      <div className="mt-3 rounded-[18px] border border-white/10 bg-[linear-gradient(180deg,rgba(8,14,24,0.90),rgba(5,10,18,0.96))] p-3 shadow-[0_0_16px_rgba(34,104,189,0.03)]">
+      <div className="mt-3 rounded-xl border border-line bg-card p-3">
         {activeTab === "team-statistics" ? (
           <TeamStatisticsPanel
             teamProfile={teamProfile}

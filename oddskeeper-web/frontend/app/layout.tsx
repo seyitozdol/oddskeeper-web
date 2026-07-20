@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { cookies } from "next/headers";
 import { LanguageProvider } from "../lib/i18n/LanguageProvider";
 import { getLocale } from "../lib/i18n/server";
+import { DEFAULT_THEME, THEME_COOKIE, isTheme } from "../lib/theme";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -24,11 +26,14 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const locale = await getLocale();
+  const [locale, cookieStore] = await Promise.all([getLocale(), cookies()]);
+  const themeValue = cookieStore.get(THEME_COOKIE)?.value;
+  const theme = isTheme(themeValue) ? themeValue : DEFAULT_THEME;
 
   return (
     <html
       lang={locale}
+      data-theme={theme}
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">

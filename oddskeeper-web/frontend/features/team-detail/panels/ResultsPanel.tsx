@@ -25,7 +25,7 @@ function OpponentName({
   return (
     <TeamLink
       teamSlug={teamSlug}
-      className="font-medium text-white transition hover:text-white hover:underline"
+      className="font-medium text-ink transition hover:text-ink hover:underline"
       title={displayName}
     >
       {displayName}
@@ -38,24 +38,24 @@ export async function ResultsPanel({ rows = [] }: ResultsPanelProps) {
 
   if (rows.length === 0) {
     return (
-      <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-4 text-sm text-white/65">
+      <div className="rounded-xl border border-line bg-veil px-4 py-3 text-sm text-ink-2">
         {t("teamDetail.noResultData")}
       </div>
     );
   }
 
   return (
-    <div className="overflow-x-auto rounded-[14px] border border-white/10">
+    <div className="overflow-x-auto rounded-xl border border-line">
       <table className="min-w-full border-collapse">
-        <thead className="bg-white/[0.03]">
-          <tr className="text-left text-[10px] uppercase tracking-[0.14em] text-white/38">
-            <th className="px-4 py-2 font-medium">{t("common.date")}</th>
-            <th className="px-4 py-2 font-medium">{t("common.competition")}</th>
-            <th className="px-4 py-2 font-medium">{t("teamDetail.colHomeAway")}</th>
-            <th className="px-4 py-2 font-medium">{t("common.opponent")}</th>
-            <th className="px-4 py-2 font-medium">{t("common.score")}</th>
-            <th className="px-4 py-2 font-medium">{t("common.result")}</th>
-            <th className="px-4 py-2 font-medium">{t("teamDetail.colVenue")}</th>
+        <thead className="bg-veil">
+          <tr className="text-left text-[10px] uppercase tracking-[0.14em] text-ink-3">
+            <th className="px-3 py-2 font-medium">{t("common.date")}</th>
+            <th className="px-3 py-2 font-medium">{t("common.competition")}</th>
+            <th className="px-3 py-2 font-medium">{t("teamDetail.colHomeAway")}</th>
+            <th className="px-3 py-2 font-medium">{t("common.opponent")}</th>
+            <th className="px-3 py-2 font-medium">{t("common.score")}</th>
+            <th className="px-3 py-2 font-medium">{t("common.result")}</th>
+            <th className="px-3 py-2 font-medium">{t("teamDetail.colVenue")}</th>
           </tr>
         </thead>
 
@@ -68,38 +68,38 @@ export async function ResultsPanel({ rows = [] }: ResultsPanelProps) {
             return (
               <tr
                 key={`${row.source_match_id}-${row.team_slug}`}
-                className="border-t border-white/10 text-[13px] text-white/80 transition hover:bg-white/[0.018]"
+                className="border-t border-line text-[13px] text-ink-2 transition hover:bg-veil"
               >
-                <td className="px-4 py-2 whitespace-nowrap">
+                <td className="px-3 py-1.5 whitespace-nowrap">
                   {formatDate(row.match_datetime)}
                 </td>
 
-                <td className="px-4 py-2 whitespace-nowrap text-white/60">
+                <td className="px-3 py-1.5 whitespace-nowrap text-ink-2">
                   {row.competition ?? "—"}
                 </td>
 
-                <td className="px-4 py-2 whitespace-nowrap">
-                  <span className="rounded-md border border-white/10 bg-white/[0.03] px-2 py-[2px] text-[10px] font-medium text-white/72">
+                <td className="px-3 py-1.5 whitespace-nowrap">
+                  <span className="rounded-md border border-line bg-veil px-2 py-[2px] text-[10px] font-medium text-ink-2">
                     {row.is_home ? t("common.home") : t("common.away")}
                   </span>
                 </td>
 
-                <td className="px-4 py-2 min-w-[210px]">
+                <td className="px-3 py-1.5 min-w-[210px]">
                   <OpponentName
                     teamSlug={row.opponent_team_slug}
                     name={row.opponent_team_name ?? row.opponent_name}
                   />
                 </td>
 
-                <td className="px-4 py-2 whitespace-nowrap font-semibold text-white">
+                <td className="px-3 py-1.5 whitespace-nowrap font-semibold text-ink">
                   {row.score_display ?? "—"}
                 </td>
 
-                <td className="px-4 py-2 whitespace-nowrap">
+                <td className="px-3 py-1.5 whitespace-nowrap">
                   <ResultBadge resultCode={row.result_code} compact />
                 </td>
 
-                <td className="px-4 py-2 min-w-[210px] text-white/60">
+                <td className="px-3 py-1.5 min-w-[210px] text-ink-2">
                   {row.venue_label ?? row.venue ?? "—"}
                 </td>
               </tr>

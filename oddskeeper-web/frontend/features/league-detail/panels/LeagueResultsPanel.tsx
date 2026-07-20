@@ -57,18 +57,18 @@ function getMatchDetailHref(sourceMatchId?: string | null, returnTo?: string) {
 
 function getResultBadgeClass(resultCode: LeagueResultRow["result_code"]) {
   if (resultCode === "H") {
-    return "border-emerald-500/25 bg-emerald-500/10 text-emerald-300";
+    return "border-pos/25 bg-pos/10 text-pos";
   }
 
   if (resultCode === "A") {
-    return "border-rose-500/25 bg-rose-500/10 text-rose-300";
+    return "border-neg/25 bg-neg/10 text-neg";
   }
 
   if (resultCode === "D") {
-    return "border-amber-500/25 bg-amber-500/10 text-amber-300";
+    return "border-amber-500/25 bg-amber-400/15 text-amber-500";
   }
 
-  return "border-white/10 bg-white/[0.03] text-white/60";
+  return "border-line bg-veil text-ink-2";
 }
 
 function getResultLabel(t: Translator, resultCode: LeagueResultRow["result_code"]) {
@@ -94,7 +94,7 @@ function TeamNameLink({
   return (
     <TeamLink
       teamSlug={teamSlug}
-      className="font-medium text-white transition hover:text-white hover:underline"
+      className="font-medium text-ink transition hover:text-ink hover:underline"
       title={displayName}
     >
       {displayName}
@@ -111,13 +111,13 @@ export async function LeagueResultsPanel({ rows = [] }: LeagueResultsPanelProps)
     return (
       <div className="space-y-4">
         <div className="flex items-center gap-3">
-          <div className="text-[11px] font-medium uppercase tracking-[0.18em] text-white/38">
+          <div className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink-3">
             {t("leagueDetail.tabResults")}
           </div>
-          <div className="text-sm text-white/55">{t("leagueDetail.matchesCount", { count: 0 })}</div>
+          <div className="text-sm text-ink-2">{t("leagueDetail.matchesCount", { count: 0 })}</div>
         </div>
 
-        <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-4 text-sm text-white/65">
+        <div className="rounded-xl border border-line bg-veil px-3 py-3 text-sm text-ink-2">
           {t("leagueDetail.noResultsFound")}
         </div>
       </div>
@@ -127,22 +127,22 @@ export async function LeagueResultsPanel({ rows = [] }: LeagueResultsPanelProps)
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3">
-        <div className="text-[11px] font-medium uppercase tracking-[0.18em] text-white/38">
+        <div className="text-[11px] font-medium uppercase tracking-[0.18em] text-ink-3">
           {t("leagueDetail.tabResults")}
         </div>
-        <div className="text-sm text-white/55">{t("leagueDetail.matchesCount", { count: rows.length })}</div>
+        <div className="text-sm text-ink-2">{t("leagueDetail.matchesCount", { count: rows.length })}</div>
       </div>
 
-      <div className="overflow-x-auto rounded-[14px] border border-white/10">
+      <div className="overflow-x-auto rounded-lg border border-line">
         <table className="min-w-full border-collapse">
-          <thead className="bg-[#0d1624]">
-            <tr className="text-left text-[10px] uppercase tracking-[0.14em] text-white/38">
-              <th className="px-4 py-2 font-medium">{t("common.date")}</th>
-              <th className="px-4 py-2 font-medium">{t("common.home")}</th>
-              <th className="px-4 py-2 font-medium">{t("common.score")}</th>
-              <th className="px-4 py-2 font-medium">{t("common.away")}</th>
-              <th className="px-4 py-2 font-medium">{t("common.result")}</th>
-              <th className="px-4 py-2 font-medium">{t("leagueDetail.colVenue")}</th>
+          <thead className="bg-field">
+            <tr className="text-left text-[10px] uppercase tracking-[0.14em] text-ink-3">
+              <th className="px-3 py-2 font-medium">{t("common.date")}</th>
+              <th className="px-3 py-2 font-medium">{t("common.home")}</th>
+              <th className="px-3 py-2 font-medium">{t("common.score")}</th>
+              <th className="px-3 py-2 font-medium">{t("common.away")}</th>
+              <th className="px-3 py-2 font-medium">{t("common.result")}</th>
+              <th className="px-3 py-2 font-medium">{t("leagueDetail.colVenue")}</th>
             </tr>
           </thead>
 
@@ -156,14 +156,14 @@ export async function LeagueResultsPanel({ rows = [] }: LeagueResultsPanelProps)
               return (
                 <tr
                   key={row.source_match_id ?? `${row.match_datetime}-${row.home_team_name}-${row.away_team_name}`}
-                  className="border-t border-white/10 text-[13px] text-white/80 transition hover:bg-white/[0.018]"
+                  className="border-t border-line text-[13px] text-ink transition hover:bg-veil"
                 >
-                  <td className="px-4 py-2 whitespace-nowrap">
+                  <td className="px-3 py-1.5 whitespace-nowrap">
                     {matchHref ? (
                       <MatchLink
                         sourceMatchId={row.source_match_id}
                         returnTo={resultsReturnTo}
-                        className="transition hover:text-white hover:underline"
+                        className="transition hover:text-ink hover:underline"
                         title={t("leagueDetail.openMatchDetail")}
                       >
                         {formatDate(row.match_datetime ?? row.match_date)}
@@ -173,19 +173,19 @@ export async function LeagueResultsPanel({ rows = [] }: LeagueResultsPanelProps)
                     )}
                   </td>
 
-                  <td className="px-4 py-2 min-w-[220px] text-white">
+                  <td className="px-3 py-1.5 min-w-[220px] text-ink">
                     <TeamNameLink
                       teamSlug={row.home_team_slug}
                       teamName={row.home_team_name}
                     />
                   </td>
 
-                  <td className="px-4 py-2 whitespace-nowrap font-semibold text-white">
+                  <td className="px-3 py-1.5 whitespace-nowrap font-semibold text-ink">
                     {matchHref ? (
                       <MatchLink
                         sourceMatchId={row.source_match_id}
                         returnTo={resultsReturnTo}
-                        className="transition hover:text-white hover:underline"
+                        className="transition hover:text-ink hover:underline"
                         title={t("leagueDetail.openMatchDetail")}
                       >
                         {row.home_score ?? "—"} - {row.away_score ?? "—"}
@@ -197,14 +197,14 @@ export async function LeagueResultsPanel({ rows = [] }: LeagueResultsPanelProps)
                     )}
                   </td>
 
-                  <td className="px-4 py-2 min-w-[220px] text-white">
+                  <td className="px-3 py-1.5 min-w-[220px] text-ink">
                     <TeamNameLink
                       teamSlug={row.away_team_slug}
                       teamName={row.away_team_name}
                     />
                   </td>
 
-                  <td className="px-4 py-2 whitespace-nowrap">
+                  <td className="px-3 py-1.5 whitespace-nowrap">
                     <span
                       className={`inline-flex min-w-[56px] items-center justify-center rounded-md border px-2 py-[2px] text-[10px] font-semibold uppercase ${getResultBadgeClass(
                         row.result_code,
@@ -214,7 +214,7 @@ export async function LeagueResultsPanel({ rows = [] }: LeagueResultsPanelProps)
                     </span>
                   </td>
 
-                  <td className="px-4 py-2 whitespace-nowrap text-white/60">
+                  <td className="px-3 py-1.5 whitespace-nowrap text-ink-2">
                     {row.venue ?? "—"}
                   </td>
                 </tr>

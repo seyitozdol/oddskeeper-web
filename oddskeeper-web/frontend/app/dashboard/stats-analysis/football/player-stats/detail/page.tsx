@@ -92,8 +92,8 @@ export default async function FootballPlayerDetailPage({
 
     return (
       <section className="w-full">
-        <div className="rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(8,14,24,0.96),rgba(5,10,18,0.98))] p-8">
-          <div className="text-sm text-white/70">
+        <div className="rounded-2xl border border-line bg-card p-5">
+          <div className="text-sm text-ink-2">
             {t("playerDetail.noPlayerSelected")}
           </div>
         </div>
@@ -117,8 +117,8 @@ export default async function FootballPlayerDetailPage({
 
     return (
       <section className="w-full">
-        <div className="rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(8,14,24,0.96),rgba(5,10,18,0.98))] p-8">
-          <div className="text-sm text-white/70">
+        <div className="rounded-2xl border border-line bg-card p-5">
+          <div className="text-sm text-ink-2">
             {t("playerDetail.playerProfileNotFound")}
           </div>
         </div>

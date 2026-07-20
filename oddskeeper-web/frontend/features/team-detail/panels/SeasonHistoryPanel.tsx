@@ -14,7 +14,7 @@ export async function SeasonHistoryPanel({
 
   if (rows.length === 0) {
     return (
-      <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-4 text-sm text-white/65">
+      <div className="rounded-xl border border-line bg-veil px-4 py-3 text-sm text-ink-2">
         {t("teamDetail.noSeasonHistoryData")}
       </div>
     );
@@ -24,9 +24,9 @@ export async function SeasonHistoryPanel({
 
   return (
     <div className="space-y-3">
-      <div className="rounded-[14px] border border-white/10">
-        <div className="border-b border-white/10 bg-white/[0.03] px-3 py-2">
-          <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-white/42">
+      <div className="rounded-xl border border-line">
+        <div className="border-b border-line bg-veil px-3 py-2">
+          <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-ink-3">
             {t("teamDetail.seasonHistoryTitle")}
           </div>
         </div>
@@ -34,7 +34,7 @@ export async function SeasonHistoryPanel({
         <div className="overflow-x-auto">
           <table className="min-w-full border-collapse">
             <thead>
-              <tr className="text-left text-[10px] uppercase tracking-[0.14em] text-white/38">
+              <tr className="text-left text-[10px] uppercase tracking-[0.14em] text-ink-3">
                 <th className="px-3 py-2 font-medium">{t("teamDetail.colSeason")}</th>
                 <th className="px-3 py-2 font-medium">{t("teamDetail.colP")}</th>
                 <th className="px-3 py-2 font-medium">{t("teamDetail.colW")}</th>
@@ -58,36 +58,36 @@ export async function SeasonHistoryPanel({
                 return (
                   <tr
                     key={`${row.team_slug}-${row.season_label}`}
-                    className="border-t border-white/10 text-[13px] text-white/80"
+                    className="border-t border-line text-[13px] text-ink-2"
                   >
-                    <td className="px-3 py-2 font-medium text-white">
+                    <td className="px-3 py-1.5 font-medium text-ink">
                       {row.season_label ?? "—"}
                       {isCurrent ? (
-                        <span className="ml-2 rounded-full border border-sky-400/30 bg-sky-400/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.08em] text-sky-300">
+                        <span className="ml-2 rounded-full border border-accent/30 bg-accent-soft px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.08em] text-accent-ink">
                           {t("teamDetail.currentBadge")}
                         </span>
                       ) : null}
                     </td>
-                    <td className="px-3 py-2">{row.played}</td>
-                    <td className="px-3 py-2">{row.wins}</td>
-                    <td className="px-3 py-2">{row.draws}</td>
-                    <td className="px-3 py-2">{row.losses}</td>
-                    <td className="px-3 py-2">{row.goals_for}</td>
-                    <td className="px-3 py-2">{row.goals_against}</td>
-                    <td className="px-3 py-2">{row.goal_difference}</td>
-                    <td className="px-3 py-2 font-medium text-white">
+                    <td className="px-3 py-1.5">{row.played}</td>
+                    <td className="px-3 py-1.5">{row.wins}</td>
+                    <td className="px-3 py-1.5">{row.draws}</td>
+                    <td className="px-3 py-1.5">{row.losses}</td>
+                    <td className="px-3 py-1.5">{row.goals_for}</td>
+                    <td className="px-3 py-1.5">{row.goals_against}</td>
+                    <td className="px-3 py-1.5">{row.goal_difference}</td>
+                    <td className="px-3 py-1.5 font-medium text-ink">
                       {row.points}
                     </td>
-                    <td className="px-3 py-2">
+                    <td className="px-3 py-1.5">
                       {formatPercentage(row.win_rate_pct)}
                     </td>
-                    <td className="px-3 py-2">
+                    <td className="px-3 py-1.5">
                       {formatDecimal(row.points_per_game)}
                     </td>
-                    <td className="px-3 py-2">
+                    <td className="px-3 py-1.5">
                       {formatDecimal(row.goals_for_per_game)}
                     </td>
-                    <td className="px-3 py-2">
+                    <td className="px-3 py-1.5">
                       {formatDecimal(row.goals_against_per_game)}
                     </td>
                   </tr>
@@ -98,7 +98,7 @@ export async function SeasonHistoryPanel({
         </div>
       </div>
 
-      <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-[12px] text-white/45">
+      <div className="rounded-xl border border-line bg-veil px-4 py-3 text-[12px] text-ink-3">
         {t("teamDetail.seasonHistoryFootnote")}
       </div>
     </div>

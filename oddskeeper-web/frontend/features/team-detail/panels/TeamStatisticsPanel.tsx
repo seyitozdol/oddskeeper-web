@@ -63,7 +63,7 @@ export async function TeamStatisticsPanel({
           />
         </div>
 
-        <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-4 text-sm text-white/65">
+        <div className="rounded-xl border border-line bg-veil px-4 py-3 text-sm text-ink-2">
           {t("teamDetail.noTeamStatsData")}
         </div>
       </div>
@@ -101,11 +101,11 @@ export async function TeamStatisticsPanel({
         />
       </div>
 
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-white/48">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-ink-3">
         <span>{summary.competition ?? "—"}</span>
-        <span className="text-white/20">•</span>
+        <span className="text-ink-3">•</span>
         <span>{summary.season_label ?? "—"}</span>
-        <span className="text-white/20">•</span>
+        <span className="text-ink-3">•</span>
         <span>
           {t("teamDetail.updatedThrough", {
             date: formatDate(summary.latest_match_datetime),
@@ -142,8 +142,8 @@ export async function TeamStatisticsPanel({
         <SplitStatsTable rows={splits} />
 
         <div className="space-y-3">
-          <div className="rounded-[14px] border border-white/10 bg-white/[0.03] px-3 py-3">
-            <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-white/42">
+          <div className="rounded-xl border border-line bg-veil px-3 py-3">
+            <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-ink-3">
               {t("teamDetail.recentFormTitle")}
             </div>
 
