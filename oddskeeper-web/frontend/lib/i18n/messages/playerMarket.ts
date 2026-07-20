@@ -10,13 +10,16 @@ export const playerMarket = defineMessages({
     columnStatus: "Status",
     avgLabel: "Avg",
     last5AvgLabel: "Last 5 Avg",
+    lyAvgLabel: "LY Avg",
     distExpLabel: "Dist. Exp",
     manualLabel: "Manual",
     oddsColumnLabel: "Odds",
     overLineLabel: "Over {line}",
 
-    pageTitle: "Player Market Prediction",
-    pageSubtitle: "Select a fixture and market to calculate player-level odds.",
+    tabModel: "Model",
+    tabPlayerList: "Player List",
+    tabMarketList: "Market List",
+    comingSoon: "This section will be configured later.",
 
     fixtureLabel: "Fixture",
     selectFixturePlaceholder: "Select fixture",
@@ -24,6 +27,7 @@ export const playerMarket = defineMessages({
     homeExpLabel: "Home Exp.",
     awayExpLabel: "Away Exp.",
     paybackLabel: "Payback %",
+    addLabel: "Add",
 
     selectFixturePrompt: "Start by selecting a fixture.",
 
@@ -44,13 +48,16 @@ export const playerMarket = defineMessages({
     columnStatus: "Durum",
     avgLabel: "Ort.",
     last5AvgLabel: "Son 5 Ort.",
+    lyAvgLabel: "GS Ort.",
     distExpLabel: "Dağıtılan Bek.",
     manualLabel: "Manuel",
     oddsColumnLabel: "Oran",
     overLineLabel: "Üst {line}",
 
-    pageTitle: "Oyuncu Piyasası Tahmini",
-    pageSubtitle: "Oyuncu bazlı oranları hesaplamak için fikstür ve market seçin.",
+    tabModel: "Model",
+    tabPlayerList: "Oyuncu Listesi",
+    tabMarketList: "Market Listesi",
+    comingSoon: "Bu bölüm daha sonra düzenlenecek.",
 
     fixtureLabel: "Fikstür",
     selectFixturePlaceholder: "Fikstür seç",
@@ -58,6 +65,7 @@ export const playerMarket = defineMessages({
     homeExpLabel: "Ev Bek.",
     awayExpLabel: "Deplasman Bek.",
     paybackLabel: "Payback %",
+    addLabel: "Ekle",
 
     selectFixturePrompt: "Fikstür seçerek başlayın.",
 

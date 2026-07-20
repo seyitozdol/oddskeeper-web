@@ -212,6 +212,10 @@ export function calcOddsLines(exp: number, paybackPct: number): OddsLine[] {
     lines = [mid, mid + 1.0];
   }
 
+  // Secilen ciftin ustune iki line daha ekle (or. 0.5, 1.5 -> 2.5, 3.5)
+  const last = lines[lines.length - 1];
+  lines.push(last + 1.0, last + 2.0);
+
   // Deduplicate (guard)
   const unique = [...new Set(lines)];
 

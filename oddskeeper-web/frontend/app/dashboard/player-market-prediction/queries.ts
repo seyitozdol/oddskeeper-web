@@ -47,22 +47,43 @@ export type MarketOption = {
   label: string;
   metricKey: string; // key in player_metric_leaderboard_current
   logField: string;  // field in player_match_log_v1
+  includeGk: boolean; // false ise kaleciler listede gosterilmez
 };
 
 // ─── Market definitions ───────────────────────────────────────────────────────
 
 export const MARKET_OPTIONS: MarketOption[] = [
-  { key: "shots_on_target", label: "Shots on Target",   metricKey: "shots_on_target_total",  logField: "shots_on_target" },
-  { key: "attempts_ibox",   label: "Attempts In Box",   metricKey: "attempts_ibox_total",    logField: "shots_on_target" },
-  { key: "attempts_obox",   label: "Attempts Out Box",  metricKey: "attempts_obox_total",    logField: "shots_off_target" },
-  { key: "passes",          label: "Passes",            metricKey: "passes_total",           logField: "passes" },
-  { key: "accurate_passes", label: "Accurate Passes",   metricKey: "accurate_pass_total",    logField: "accurate_pass" },
-  { key: "tackles",         label: "Tackles",           metricKey: "tackles_total",          logField: "tackles" },
-  { key: "fouls",           label: "Fouls",             metricKey: "fouls_conceded_total",   logField: "fouls_conceded" },
-  { key: "yellow_cards",    label: "Yellow Cards",      metricKey: "cards_yellow_total",     logField: "cards_yellow" },
-  { key: "offsides",        label: "Offsides",          metricKey: "offsides_total",         logField: "offsides" },
-  { key: "saves",           label: "Saves",             metricKey: "saves_total_total",      logField: "saves_total" },
+  { key: "shots_on_target", label: "Shots on Target",   metricKey: "shots_on_target_total",  logField: "shots_on_target",  includeGk: false },
+  { key: "attempts_ibox",   label: "Attempts In Box",   metricKey: "attempts_ibox_total",    logField: "shots_on_target",  includeGk: false },
+  { key: "attempts_obox",   label: "Attempts Out Box",  metricKey: "attempts_obox_total",    logField: "shots_off_target", includeGk: false },
+  { key: "passes",          label: "Passes",            metricKey: "passes_total",           logField: "passes",           includeGk: true },
+  { key: "accurate_passes", label: "Accurate Passes",   metricKey: "accurate_pass_total",    logField: "accurate_pass",    includeGk: true },
+  { key: "tackles",         label: "Tackles",           metricKey: "tackles_total",          logField: "tackles",          includeGk: false },
+  { key: "fouls",           label: "Fouls",             metricKey: "fouls_conceded_total",   logField: "fouls_conceded",   includeGk: false },
+  { key: "yellow_cards",    label: "Yellow Cards",      metricKey: "cards_yellow_total",     logField: "cards_yellow",     includeGk: true },
+  { key: "offsides",        label: "Offsides",          metricKey: "offsides_total",         logField: "offsides",         includeGk: false },
+  { key: "saves",           label: "Saves",             metricKey: "saves_total_total",      logField: "saves_total",      includeGk: true },
 ];
+
+// ─── Latest season with metric data ──────────────────────────────────────────
+// Sayfa "Avg" icin bu sezonu, "LY Avg" icin bir oncekini kullanir; yeni sezon
+// verisi geldiginde otomatik olarak ona kayar.
+
+export async function fetchLatestMetricSeason(): Promise<string> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .schema("analytics")
+    .from("player_metric_leaderboard_current")
+    .select("season_label")
+    .order("season_label", { ascending: false })
+    .limit(1);
+
+  if (error) {
+    console.error("fetchLatestMetricSeason error:", error);
+    return "2025/2026";
+  }
+  return data?.[0]?.season_label ?? "2025/2026";
+}
 
 // ─── Fetch upcoming fixtures ──────────────────────────────────────────────────
 
@@ -113,7 +134,7 @@ export async function fetchTeamPlayers(sourceTeamId: string): Promise<PlayerRow[
     .schema("analytics")
     .from("team_current_squad_profile_v1")
     .select(
-      "player_key, player_name, player_slug, primary_position_code, position_group, appearances, starts, sub_appearances, starter_rate_pct, last_match_datetime"
+      "player_key, player_name, display_name, player_slug, primary_position_code, position_group, appearances, starts, sub_appearances, starter_rate_pct, last_match_datetime"
     )
     .eq("team_source_id", sourceTeamId)
     .order("appearances", { ascending: false });
@@ -125,7 +146,7 @@ export async function fetchTeamPlayers(sourceTeamId: string): Promise<PlayerRow[
 
   return (data ?? []).map((row) => ({
     player_source_id: row.player_key,
-    player_name: row.player_name,
+    player_name: row.display_name ?? row.player_name,
     player_slug: row.player_slug,
     primary_position_code: row.primary_position_code,
     position_group: row.position_group,

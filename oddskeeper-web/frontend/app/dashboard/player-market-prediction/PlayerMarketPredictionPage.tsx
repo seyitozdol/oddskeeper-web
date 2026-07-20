@@ -8,11 +8,13 @@ import {
   fetchPlayerRecentMatches,
   fetchPlayerMetricStats,
   fetchPlayerLast5Avg,
+  fetchLatestMetricSeason,
   MARKET_OPTIONS,
   type UpcomingFixture,
   type PlayerRow,
   type PlayerMetricStat,
 } from "./queries";
+import { previousSeasonLabel } from "@/lib/season";
 import {
   inferPlayerStatus,
   distributeExpectation,
@@ -44,8 +46,13 @@ type PlayerState = {
   status: InferredStatus;
   seasonAvg: number | null;
   last5Avg: number | null;
+  lyAvg: number | null;
   manualValue: string;
 };
+
+// Number input'larda tarayici spinner'lari tema renkleriyle uyusmuyor; gizle.
+const NO_SPINNER =
+  "appearance-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none";
 
 const STATUS_OPTIONS: InferredStatus[] = ["Pos. Starter", "Pos. Sub", "Out"];
 
@@ -106,7 +113,7 @@ const STATUS_ORDER: Record<InferredStatus, number> = { "Pos. Starter": 0, "Pos. 
 
 // ─── Player table for one team ────────────────────────────────────────────────
 
-type SortCol = "player" | "pos" | "status" | "avg" | "last5" | "distexp" | "manual";
+type SortCol = "player" | "pos" | "status" | "avg" | "last5" | "lyavg" | "distexp" | "manual";
 type SortDir = "asc" | "desc";
 
 function SortTh({
@@ -147,6 +154,9 @@ function TeamPlayerTable({
   const { t } = useI18n();
   const [sortCol, setSortCol] = useState<SortCol>("status");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
+  // Elle duzenlenen oranlar; anahtar "<player_key>:<line>". Fixture veya market
+  // degisince parent key prop'uyla bileseni sifirlar.
+  const [oddsEdit, setOddsEdit] = useState<Record<string, string>>({});
 
   function handleSort(col: SortCol) {
     if (sortCol === col) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
@@ -175,6 +185,7 @@ function TeamPlayerTable({
       else if (sortCol === "status") cmp = STATUS_ORDER[a.status] - STATUS_ORDER[b.status];
       else if (sortCol === "avg") cmp = (a.seasonAvg ?? -1) - (b.seasonAvg ?? -1);
       else if (sortCol === "last5") cmp = (a.last5Avg ?? -1) - (b.last5Avg ?? -1);
+      else if (sortCol === "lyavg") cmp = (a.lyAvg ?? -1) - (b.lyAvg ?? -1);
       else if (sortCol === "distexp") cmp = (expMap[a.player_source_id] ?? 0) - (expMap[b.player_source_id] ?? 0);
       else if (sortCol === "manual") {
         const ma = parseFloat(a.manualValue) || 0;
@@ -202,6 +213,7 @@ function TeamPlayerTable({
               <SortTh col="status" label={t("playerMarket.columnStatus")} sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
               <SortTh col="avg" label={t("playerMarket.avgLabel")} sortCol={sortCol} sortDir={sortDir} onSort={handleSort} className="text-right" />
               <SortTh col="last5" label={t("playerMarket.last5AvgLabel")} sortCol={sortCol} sortDir={sortDir} onSort={handleSort} className="text-right" />
+              <SortTh col="lyavg" label={t("playerMarket.lyAvgLabel")} sortCol={sortCol} sortDir={sortDir} onSort={handleSort} className="text-right" />
               <SortTh col="distexp" label={t("playerMarket.distExpLabel")} sortCol={sortCol} sortDir={sortDir} onSort={handleSort} className="text-right" />
               <SortTh col="manual" label={t("playerMarket.manualLabel")} sortCol={sortCol} sortDir={sortDir} onSort={handleSort} className="text-right w-20" />
               <th className="px-2 py-2 min-w-[160px]">{t("playerMarket.oddsColumnLabel")}</th>
@@ -252,6 +264,10 @@ function TeamPlayerTable({
                     {p.last5Avg !== null && p.last5Avg >= 0 ? fmt(p.last5Avg) : "—"}
                   </td>
 
+                  <td className="px-2 py-1.5 text-right text-ink-2 tabular-nums">
+                    {fmt(p.lyAvg)}
+                  </td>
+
                   <td className="px-2 py-1.5 text-right tabular-nums text-teal-400/80">
                     {p.status !== "Out" ? fmt(effExp) : "—"}
                   </td>
@@ -264,7 +280,7 @@ function TeamPlayerTable({
                       placeholder="0"
                       value={p.manualValue}
                       onChange={(e) => onManualChange(p.player_source_id, e.target.value)}
-                      className="w-16 rounded border border-line bg-field px-1.5 py-0.5 text-right text-[11px] text-ink placeholder-ink-3 focus:border-teal-500/50 focus:outline-none"
+                      className={`w-16 rounded border border-line bg-field px-1.5 py-0.5 text-right text-[11px] text-ink placeholder-ink-3 focus:border-teal-500/50 focus:outline-none ${NO_SPINNER}`}
                     />
                   </td>
 
@@ -272,18 +288,33 @@ function TeamPlayerTable({
                   <td className="px-2 py-1.5">
                     {oddsLines.length > 0 ? (
                       <div className="flex flex-col gap-0.5">
-                        {oddsLines.map((ol) => (
-                          <div key={`${p.player_source_id}-${ol.line}`} className="flex items-center gap-1.5">
-                            <input
-                              type="checkbox"
-                              className={`cursor-pointer ${STATUS_ACCENT[p.status]}`}
-                            />
-                            <span className="text-ink-3 text-[11px] w-14">{t("playerMarket.overLineLabel", { line: ol.line.toFixed(1) })}</span>
-                            <span className="rounded bg-veil px-1.5 py-0.5 text-[12px] font-semibold text-teal-300">
-                              {fmtOdds(ol.overOdds)}
-                            </span>
-                          </div>
-                        ))}
+                        {oddsLines.map((ol) => {
+                          const editKey = `${p.player_source_id}:${ol.line}`;
+                          const computed = fmtOdds(ol.overOdds);
+                          return (
+                            <div key={editKey} className="flex items-center gap-1.5">
+                              <input
+                                type="checkbox"
+                                className={`cursor-pointer ${STATUS_ACCENT[p.status]}`}
+                              />
+                              <span className="text-ink-3 text-[11px] w-14">{t("playerMarket.overLineLabel", { line: ol.line.toFixed(1) })}</span>
+                              {computed === "—" ? (
+                                <span className="text-ink-3">—</span>
+                              ) : (
+                                <input
+                                  type="number"
+                                  min="1"
+                                  step="0.01"
+                                  value={oddsEdit[editKey] ?? computed}
+                                  onChange={(e) =>
+                                    setOddsEdit((prev) => ({ ...prev, [editKey]: e.target.value }))
+                                  }
+                                  className={`w-14 rounded bg-veil px-1.5 py-0.5 text-right text-[12px] font-semibold text-teal-300 border border-transparent focus:border-teal-500/50 focus:outline-none ${NO_SPINNER}`}
+                                />
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     ) : (
                       <span className="text-ink-3">—</span>
@@ -315,10 +346,14 @@ export default function PlayerMarketPredictionPage() {
   const [homePlayers, setHomePlayers] = useState<PlayerState[]>([]);
   const [awayPlayers, setAwayPlayers] = useState<PlayerState[]>([]);
   const [loading, setLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState<"model" | "players" | "markets">("model");
+  // Avg bu sezondan, LY Avg bir onceki sezondan okunur.
+  const [currentSeason, setCurrentSeason] = useState<string | null>(null);
 
-  // ── On mount: load fixtures ──
+  // ── On mount: load fixtures + latest metric season ──
   useEffect(() => {
     fetchUpcomingFixtures().then(setFixtures);
+    fetchLatestMetricSeason().then(setCurrentSeason);
   }, []);
 
   const selectedFixture = fixtures.find((f) => f.fixture_id === selectedFixtureId) ?? null;
@@ -326,10 +361,13 @@ export default function PlayerMarketPredictionPage() {
 
   // ── Load players when fixture changes ──
   useEffect(() => {
-    if (!selectedFixture) return;
+    if (!selectedFixture || !currentSeason) return;
     setLoading(true);
     setHomePlayers([]);
     setAwayPlayers([]);
+
+    const season = currentSeason;
+    const prevSeason = previousSeasonLabel(season);
 
     async function load() {
       const [homeRaw, awayRaw] = await Promise.all([
@@ -339,10 +377,13 @@ export default function PlayerMarketPredictionPage() {
 
       const allIds = [...homeRaw, ...awayRaw].map((p) => p.player_source_id);
 
-      const [recentMatches, metricStats, last5AvgMap] = await Promise.all([
-        fetchPlayerRecentMatches(allIds),
-        fetchPlayerMetricStats(allIds, selectedMarket.metricKey),
-        fetchPlayerLast5Avg(allIds, selectedMarket.logField),
+      const [recentMatches, metricStats, last5AvgMap, lyStats] = await Promise.all([
+        fetchPlayerRecentMatches(allIds, season),
+        fetchPlayerMetricStats(allIds, selectedMarket.metricKey, season),
+        fetchPlayerLast5Avg(allIds, selectedMarket.logField, season),
+        prevSeason
+          ? fetchPlayerMetricStats(allIds, selectedMarket.metricKey, prevSeason)
+          : Promise.resolve({} as Record<string, PlayerMetricStat>),
       ]);
 
       function buildStates(rawPlayers: PlayerRow[]): PlayerState[] {
@@ -362,6 +403,7 @@ export default function PlayerMarketPredictionPage() {
             status,
             seasonAvg: stat?.per_match_value ?? null,
             last5Avg: last5AvgMap[p.player_source_id] ?? null,
+            lyAvg: lyStats[p.player_source_id]?.per_match_value ?? null,
             manualValue: "",
           };
         });
@@ -391,24 +433,30 @@ export default function PlayerMarketPredictionPage() {
 
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedFixtureId]);
+  }, [selectedFixtureId, currentSeason]);
 
   // ── Refresh metric stats when market changes (keep players) ──
   useEffect(() => {
-    if (!selectedFixture || (homePlayers.length === 0 && awayPlayers.length === 0)) return;
+    if (!selectedFixture || !currentSeason || (homePlayers.length === 0 && awayPlayers.length === 0)) return;
 
     const allIds = [...homePlayers, ...awayPlayers].map((p) => p.player_source_id);
     if (allIds.length === 0) return;
 
+    const prevSeason = previousSeasonLabel(currentSeason);
+
     Promise.all([
-      fetchPlayerMetricStats(allIds, selectedMarket.metricKey),
-      fetchPlayerLast5Avg(allIds, selectedMarket.logField),
-    ]).then(([metricStats, last5AvgMap]) => {
+      fetchPlayerMetricStats(allIds, selectedMarket.metricKey, currentSeason),
+      fetchPlayerLast5Avg(allIds, selectedMarket.logField, currentSeason),
+      prevSeason
+        ? fetchPlayerMetricStats(allIds, selectedMarket.metricKey, prevSeason)
+        : Promise.resolve({} as Record<string, PlayerMetricStat>),
+    ]).then(([metricStats, last5AvgMap, lyStats]) => {
       const update = (prev: PlayerState[]) =>
         prev.map((p) => ({
           ...p,
           seasonAvg: metricStats[p.player_source_id]?.per_match_value ?? null,
           last5Avg: last5AvgMap[p.player_source_id] ?? null,
+          lyAvg: lyStats[p.player_source_id]?.per_match_value ?? null,
           manualValue: "",
         }));
       setHomePlayers(update);
@@ -437,18 +485,48 @@ export default function PlayerMarketPredictionPage() {
   const awayDistExpNum = parseFloat(awayDistExp) || 0;
   const paybackNum = parseFloat(paybackPct) || 93;
 
+  // Kaleci iceren marketler disinda GK satirlari gizlenir; dagitim da
+  // gorunen oyunculara gore hesaplanir.
+  const gkVisible = (ps: PlayerState[]) =>
+    selectedMarket.includeGk ? ps : ps.filter((p) => p.primary_position_code !== "GK");
+  const visibleHome = gkVisible(homePlayers);
+  const visibleAway = gkVisible(awayPlayers);
+
+  const TABS = [
+    { id: "model" as const, label: t("playerMarket.tabModel") },
+    { id: "players" as const, label: t("playerMarket.tabPlayerList") },
+    { id: "markets" as const, label: t("playerMarket.tabMarketList") },
+  ];
+
   // ─────────────────────────────────────────────────────────────────────────────
 
   return (
     <div className="w-full space-y-4 px-1">
-      {/* Header */}
-      <div className="rounded-xl border border-line bg-card px-5 py-4">
-        <h1 className="text-[18px] font-bold text-ink">{t("playerMarket.pageTitle")}</h1>
-        <p className="mt-0.5 text-[12px] text-ink-3">
-          {t("playerMarket.pageSubtitle")}
-        </p>
+      {/* Tabs */}
+      <div className="flex items-center gap-1 rounded-xl border border-line bg-card px-2 py-1.5">
+        {TABS.map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            onClick={() => setActiveTab(tab.id)}
+            className={`rounded-lg px-4 py-1.5 text-[13px] transition
+              ${activeTab === tab.id
+                ? "bg-veil font-semibold text-ink"
+                : "text-ink-3 hover:text-ink-2"}`}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
 
+      {activeTab !== "model" && (
+        <div className="rounded-xl border border-line bg-card px-5 py-10 text-center text-sm text-ink-3">
+          {t("playerMarket.comingSoon")}
+        </div>
+      )}
+
+      {activeTab === "model" && (
+      <>
       {/* Controls */}
       <div className="rounded-xl border border-line bg-card px-5 py-4">
         <div className="flex flex-wrap gap-4 items-end">
@@ -530,6 +608,14 @@ export default function PlayerMarketPredictionPage() {
               className="w-24 rounded-lg border border-line bg-field px-3 py-2 text-[13px] text-ink focus:border-teal-500/50 focus:outline-none"
             />
           </div>
+
+          {/* Ekle: gorevi sonra tanimlanacak */}
+          <button
+            type="button"
+            className="rounded-lg border border-teal-500/30 bg-teal-500/10 px-4 py-2 text-[13px] font-semibold text-teal-300 transition hover:bg-teal-500/20"
+          >
+            {t("playerMarket.addLabel")}
+          </button>
         </div>
       </div>
 
@@ -541,7 +627,7 @@ export default function PlayerMarketPredictionPage() {
       )}
 
       {/* Player tables */}
-      {!loading && selectedFixture && (homePlayers.length > 0 || awayPlayers.length > 0) && (
+      {!loading && selectedFixture && (visibleHome.length > 0 || visibleAway.length > 0) && (
         <div className="rounded-xl border border-line bg-card px-5 py-4">
           {/* Market info bar */}
           <div className="mb-4 flex items-center gap-3">
@@ -562,8 +648,9 @@ export default function PlayerMarketPredictionPage() {
           {/* Two-column layout */}
           <div className="flex gap-6 flex-wrap xl:flex-nowrap">
             <TeamPlayerTable
+              key={`${selectedFixtureId}:${selectedMarketKey}:home`}
               teamName={selectedFixture.home_team_name}
-              players={homePlayers}
+              players={visibleHome}
               distExp={homeDistExpNum}
               paybackPct={paybackNum}
               onStatusChange={makeStatusHandler(setHomePlayers)}
@@ -571,8 +658,9 @@ export default function PlayerMarketPredictionPage() {
               onCheckedChange={makeCheckedHandler(setHomePlayers)}
             />
             <TeamPlayerTable
+              key={`${selectedFixtureId}:${selectedMarketKey}:away`}
               teamName={selectedFixture.away_team_name}
-              players={awayPlayers}
+              players={visibleAway}
               distExp={awayDistExpNum}
               paybackPct={paybackNum}
               onStatusChange={makeStatusHandler(setAwayPlayers)}
@@ -588,6 +676,8 @@ export default function PlayerMarketPredictionPage() {
         <div className="rounded-xl border border-line bg-card px-5 py-10 text-center text-sm text-ink-3">
           {t("playerMarket.selectFixturePrompt")}
         </div>
+      )}
+      </>
       )}
     </div>
   );
