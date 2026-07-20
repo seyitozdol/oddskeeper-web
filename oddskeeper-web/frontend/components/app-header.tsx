@@ -135,6 +135,8 @@ export default function AppHeader({ userEmail }: AppHeaderProps) {
                   playerHref="/dashboard/stats-analysis/football/player-stats"
                   teamHref="/dashboard/stats-analysis/football/team-stats"
                   leagueHref={FOOTBALL_LEAGUE_DETAIL_HREF}
+                  playerRankingsHref="/dashboard/stats-analysis/football/player-stats/metric"
+                  teamRankingsHref="/dashboard/stats-analysis/football/team-stats/metric"
                 />
 
                 <StatsMenuItem
@@ -273,6 +275,20 @@ export default function AppHeader({ userEmail }: AppHeaderProps) {
           </Link>
 
           <Link
+            href="/dashboard/stats-analysis/football/player-stats/metric"
+            className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2 text-xs font-medium text-white/72"
+          >
+            {t("nav.playerRankings")}
+          </Link>
+
+          <Link
+            href="/dashboard/stats-analysis/football/team-stats/metric"
+            className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2 text-xs font-medium text-white/72"
+          >
+            {t("nav.teamRankings")}
+          </Link>
+
+          <Link
             href="/dashboard/stats-analysis?sport=basketball&view=player"
             className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2 text-xs font-medium text-white/72"
           >
@@ -298,6 +314,8 @@ type StatsMenuItemProps = {
   playerHref: string;
   teamHref: string;
   leagueHref?: string;
+  playerRankingsHref?: string;
+  teamRankingsHref?: string;
 };
 
 function StatsMenuItem({
@@ -307,6 +325,8 @@ function StatsMenuItem({
   playerHref,
   teamHref,
   leagueHref,
+  playerRankingsHref,
+  teamRankingsHref,
 }: StatsMenuItemProps) {
   const { t } = useI18n();
 
@@ -404,6 +424,58 @@ function StatsMenuItem({
                 </div>
                 <div className="mt-1 text-sm text-white/45">
                   {t("nav.leagueDetailsSubtitle")}
+                </div>
+              </div>
+            </Link>
+          ) : null}
+
+          {playerRankingsHref ? (
+            <Link
+              href={playerRankingsHref}
+              className="flex items-start gap-3 rounded-[16px] px-4 py-4 transition hover:bg-white/[0.04]"
+            >
+              <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03]">
+                <Image
+                  src="/icons/player.svg"
+                  alt={t("nav.playerRankings")}
+                  width={20}
+                  height={20}
+                  className="opacity-85"
+                />
+              </div>
+
+              <div>
+                <div className="text-[15px] font-semibold text-white">
+                  {t("nav.playerRankings")}
+                </div>
+                <div className="mt-1 text-sm text-white/45">
+                  {t("nav.playerRankingsSubtitle")}
+                </div>
+              </div>
+            </Link>
+          ) : null}
+
+          {teamRankingsHref ? (
+            <Link
+              href={teamRankingsHref}
+              className="flex items-start gap-3 rounded-[16px] px-4 py-4 transition hover:bg-white/[0.04]"
+            >
+              <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03]">
+                <Image
+                  src="/icons/team.svg"
+                  alt={t("nav.teamRankings")}
+                  width={20}
+                  height={20}
+                  className="opacity-85"
+                />
+              </div>
+
+              <div>
+                <div className="text-[15px] font-semibold text-white">
+                  {t("nav.teamRankings")}
+                </div>
+                <div className="mt-1 text-sm text-white/45">
+                  {t("nav.teamRankingsSubtitle")}
                 </div>
               </div>
             </Link>

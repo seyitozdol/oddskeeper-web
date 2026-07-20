@@ -58,6 +58,10 @@ export const common = defineMessages({
     higherIsBetter: "Higher is better",
     lowerIsBetter: "Lower is better",
     notQualified: "Below qualification threshold",
+    viewTop10: "Top 10",
+    viewBottom10: "Bottom 10",
+    viewAround: "Around selection",
+    prevSeasonRank: "Last season: #{rank}",
   },
   tr: {
     loading: "Yükleniyor...",
@@ -116,5 +120,9 @@ export const common = defineMessages({
     higherIsBetter: "Yüksek olan iyi",
     lowerIsBetter: "Düşük olan iyi",
     notQualified: "Yeterlilik eşiğinin altında",
+    viewTop10: "İlk 10",
+    viewBottom10: "Son 10",
+    viewAround: "Seçilenin çevresi",
+    prevSeasonRank: "Geçen sezon: #{rank}",
   },
 });

@@ -1,18 +1,14 @@
 import PlayerStatsExplorer from "@/features/player-stats/components/PlayerStatsExplorer";
 import { getPlayerStatsList } from "@/features/player-stats/server/getPlayerStatsList";
-import { getFootballTeams } from "@/lib/football-teams";
+import { getAllFootballTeamLogos } from "@/lib/football-teams";
 import { getT } from "@/lib/i18n/server";
 
 export default async function FootballPlayerStatsPage() {
-  const [rows, teams, t] = await Promise.all([
+  const [rows, teamLogos, t] = await Promise.all([
     getPlayerStatsList(),
-    getFootballTeams(),
+    getAllFootballTeamLogos(),
     getT(),
   ]);
-
-  const teamLogos = Object.fromEntries(
-    teams.map((team) => [team.slug, team.logoPath])
-  );
 
   return (
     <section className="w-full">

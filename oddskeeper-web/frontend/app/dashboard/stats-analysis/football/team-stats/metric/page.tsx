@@ -1,15 +1,19 @@
 import Image from "next/image";
 import Link from "next/link";
-import { notFound } from "next/navigation";
 import { TEAM_METRIC_META } from "@/features/team-detail/metricMeta";
 import { getTeamDetailedMetrics } from "@/features/team-detail/server/getTeamDetailedMetrics";
 import { getTeamMetricLeaderboard } from "@/features/team-detail/server/getTeamMetricLeaderboard";
 import { getTeamStatisticsSummary } from "@/features/team-detail/server/getTeamStatisticsSummary";
-import { getFootballTeams } from "@/lib/football-teams";
+import {
+  getAllFootballTeamLogos,
+  getAnyFootballTeamBySlug,
+  getFootballTeams,
+} from "@/lib/football-teams";
 import { getT } from "@/lib/i18n/server";
 import { categoryLabel, metricLabel } from "@/lib/i18n/metricLabel";
 import { formatMetricValue, formatRateValue } from "@/lib/metric-format";
 import { getTeamDetailHref } from "@/lib/routes";
+import { previousSeasonLabel } from "@/lib/season";
 
 type PageProps = {
   searchParams?: Promise<{
@@ -25,22 +29,30 @@ export default async function TeamMetricLeaderboardPage({
   searchParams,
 }: PageProps) {
   const resolved = (await searchParams) ?? {};
-  const teamSlug = resolved.team;
+  // team parametresi opsiyonel: verilmezse sayfa genel sıralama görünümüne düşer.
+  const teamSlug = resolved.team ?? null;
 
-  if (!teamSlug) {
-    notFound();
-  }
-
-  const [t, teams, summary] = await Promise.all([
+  const [t, teams, logoBySlug, localTeam] = await Promise.all([
     getT(),
     getFootballTeams(),
-    getTeamStatisticsSummary(teamSlug),
+    getAllFootballTeamLogos(),
+    resolved.team ? getAnyFootballTeamBySlug(resolved.team) : null,
   ]);
+
+  // Sezon/lig varsayılanları: seçili takım yoksa herhangi bir güncel takımın
+  // özeti güncel sezonu verir.
+  const summarySlug = teamSlug ?? teams[0]?.slug;
+  const summary = summarySlug
+    ? await getTeamStatisticsSummary(summarySlug)
+    : null;
 
   const seasonLabel = resolved.season ?? summary?.season_label ?? undefined;
   const competition = summary?.competition ?? undefined;
+  const prevSeason = previousSeasonLabel(seasonLabel);
 
-  const detailedRows = await getTeamDetailedMetrics(teamSlug, {
+  // Metrik seçenek kataloğu: seçili takım yoksa da tam liste gerekir; her
+  // takımda 29 metriğin tamamı bulunduğundan katalog kaynak takımı yeterli.
+  const detailedRows = await getTeamDetailedMetrics(summarySlug ?? "", {
     seasonLabel,
   });
 
@@ -51,17 +63,36 @@ export default async function TeamMetricLeaderboardPage({
     detailedRows[0]?.metric_key ??
     null;
 
-  const leaderboard = metricKey
-    ? await getTeamMetricLeaderboard({ metricKey, seasonLabel, competition })
-    : [];
+  const [leaderboard, prevLeaderboard] = await Promise.all([
+    metricKey
+      ? getTeamMetricLeaderboard({ metricKey, seasonLabel, competition })
+      : Promise.resolve([]),
+    metricKey && prevSeason
+      ? getTeamMetricLeaderboard({
+          metricKey,
+          seasonLabel: prevSeason,
+          competition,
+        })
+      : Promise.resolve([]),
+  ]);
 
-  const logoBySlug = Object.fromEntries(
-    teams.map((team) => [team.slug, team.logoPath])
+  // Geçmiş sezon kıyası yalnızca o sezonda gerçek veri varsa gösterilir;
+  // kapsam dışı metriklerde herkes 0 değerle 1. sırada görünür (anlamsız).
+  const prevHasData =
+    prevLeaderboard.some((row) => (row.per_match_value ?? 0) !== 0) &&
+    new Set(prevLeaderboard.map((row) => row.league_rank)).size > 1;
+
+  const prevRankBySlug = new Map(
+    prevHasData
+      ? prevLeaderboard
+          .filter((row) => row.team_slug && row.league_rank !== null)
+          .map((row) => [row.team_slug as string, row.league_rank as number])
+      : []
   );
-  const localTeam = teams.find((team) => team.slug === teamSlug) ?? null;
 
-  const selectedRow =
-    leaderboard.find((row) => row.team_slug === teamSlug) ?? null;
+  const selectedRow = teamSlug
+    ? leaderboard.find((row) => row.team_slug === teamSlug) ?? null
+    : null;
   const leaderRow = leaderboard[0] ?? null;
   const meta = metricKey ? TEAM_METRIC_META[metricKey] : undefined;
   const metricTitle = metricLabel(
@@ -75,40 +106,46 @@ export default async function TeamMetricLeaderboardPage({
       ? Math.abs(leaderRow.per_match_value - selectedRow.per_match_value)
       : null;
 
-  const backHref = (() => {
-    const params = new URLSearchParams();
-    params.set("team", teamSlug);
-    params.set("tab", "detailed-stats");
-    if (resolved.season) params.set("season", resolved.season);
-    return `/dashboard/stats-analysis/football/team-stats/detail?${params.toString()}`;
-  })();
+  const backHref = teamSlug
+    ? (() => {
+        const params = new URLSearchParams();
+        params.set("team", teamSlug);
+        params.set("tab", "detailed-stats");
+        if (resolved.season) params.set("season", resolved.season);
+        return `/dashboard/stats-analysis/football/team-stats/detail?${params.toString()}`;
+      })()
+    : "/dashboard/stats-analysis";
 
   const metricHref = (key: string) => {
     const params = new URLSearchParams();
-    params.set("team", teamSlug);
+    if (teamSlug) params.set("team", teamSlug);
     params.set("metric", key);
     if (resolved.season) params.set("season", resolved.season);
     return `/dashboard/stats-analysis/football/team-stats/metric?${params.toString()}`;
   };
 
-  // Metrik seçenekleri kategoriye göre gruplu
   const optionsByCategory = new Map<
     string,
-    { key: string; label: string; categoryKey: string }[]
+    { key: string; label: string }[]
   >();
   for (const row of detailedRows) {
     const catLabel = categoryLabel(t, row.category_key, row.category_label);
     if (!optionsByCategory.has(catLabel)) {
       optionsByCategory.set(catLabel, []);
     }
-    optionsByCategory
-      .get(catLabel)!
-      .push({
-        key: row.metric_key,
-        label: metricLabel(t, row.metric_key, row.metric_label),
-        categoryKey: row.category_key,
-      });
+    optionsByCategory.get(catLabel)!.push({
+      key: row.metric_key,
+      label: metricLabel(t, row.metric_key, row.metric_label),
+    });
   }
+
+  // Anlamsız (tamamen boş) kolonları gizle: ör. yüzde metriklerinde Toplam.
+  const hasAny = (pick: (r: (typeof leaderboard)[number]) => number | null) =>
+    leaderboard.some((row) => pick(row) !== null && pick(row) !== undefined);
+  const showTotal = hasAny((r) => r.total_value);
+  const showHome = hasAny((r) => r.home_value);
+  const showAway = hasAny((r) => r.away_value);
+  const showVsAvg = hasAny((r) => r.vs_league_avg_pct);
 
   return (
     <section className="w-full space-y-3">
@@ -117,7 +154,7 @@ export default async function TeamMetricLeaderboardPage({
           href={backHref}
           className="text-[12px] text-white/50 transition hover:text-white"
         >
-          ← {t("common.backToDetailedStats")}
+          ← {teamSlug ? t("common.backToDetailedStats") : t("nav.statsAnalysis")}
         </Link>
 
         <div className="mt-3 flex flex-wrap items-center gap-3">
@@ -133,7 +170,7 @@ export default async function TeamMetricLeaderboardPage({
 
           <div>
             <div className="text-[11px] uppercase tracking-[0.20em] text-white/40">
-              {t("common.leagueRanking")}
+              {t("nav.teamRankings")}
               {seasonLabel ? ` · ${seasonLabel}` : ""}
             </div>
             <h1 className="mt-1 text-2xl font-semibold text-white">
@@ -143,18 +180,14 @@ export default async function TeamMetricLeaderboardPage({
         </div>
 
         <div className="mt-3 flex flex-wrap gap-2">
-          {selectedRow ? (
+          {leaderRow ? (
             <span className="inline-flex rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-1 text-[11px] font-medium text-white/70">
-              {categoryLabel(
-                t,
-                selectedRow.category_key,
-                selectedRow.category_label
-              )}
+              {categoryLabel(t, leaderRow.category_key, leaderRow.category_label)}
             </span>
           ) : null}
-          {selectedRow ? (
+          {leaderRow ? (
             <span className="inline-flex rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-1 text-[11px] font-medium text-white/70">
-              {selectedRow.is_higher_better === false
+              {leaderRow.is_higher_better === false
                 ? t("common.lowerIsBetter")
                 : t("common.higherIsBetter")}
             </span>
@@ -189,28 +222,42 @@ export default async function TeamMetricLeaderboardPage({
             }
             subvalue={t("common.perMatchLabel")}
           />
-          <SummaryCard
-            label={`${localTeam?.name ?? teamSlug} · ${t("common.rank")}`}
-            value={selectedRow?.league_rank != null ? `#${selectedRow.league_rank}` : "—"}
-            subvalue={
-              selectedRow
-                ? formatRateValue(
-                    selectedRow.per_match_value,
-                    selectedRow.value_format
-                  )
-                : undefined
-            }
-            highlight
-          />
-          <SummaryCard
-            label={t("common.gapToLeader")}
-            value={
-              gapToLeader !== null
-                ? formatRateValue(gapToLeader, selectedRow?.value_format)
-                : "—"
-            }
-            subvalue={t("common.perMatchLabel")}
-          />
+          {selectedRow ? (
+            <SummaryCard
+              label={`${localTeam?.name ?? teamSlug} · ${t("common.rank")}`}
+              value={
+                selectedRow.league_rank != null
+                  ? `#${selectedRow.league_rank}`
+                  : "—"
+              }
+              subvalue={[
+                formatRateValue(
+                  selectedRow.per_match_value,
+                  selectedRow.value_format
+                ),
+                selectedRow.team_slug &&
+                prevRankBySlug.has(selectedRow.team_slug)
+                  ? t("common.prevSeasonRank", {
+                      rank: prevRankBySlug.get(selectedRow.team_slug)!,
+                    })
+                  : null,
+              ]
+                .filter(Boolean)
+                .join(" · ")}
+              highlight
+            />
+          ) : null}
+          {selectedRow ? (
+            <SummaryCard
+              label={t("common.gapToLeader")}
+              value={
+                gapToLeader !== null
+                  ? formatRateValue(gapToLeader, selectedRow.value_format)
+                  : "—"
+              }
+              subvalue={t("common.perMatchLabel")}
+            />
+          ) : null}
         </div>
       </div>
 
@@ -246,38 +293,57 @@ export default async function TeamMetricLeaderboardPage({
               <tr className="text-left text-[10px] uppercase tracking-[0.14em] text-white/38">
                 <th className="px-4 py-2.5 font-medium">{t("common.rank")}</th>
                 <th className="px-4 py-2.5 font-medium">{t("common.team")}</th>
-                <th className="px-4 py-2.5 font-medium">
-                  {t("common.totalLabel")}
-                </th>
+                {showTotal ? (
+                  <th className="px-4 py-2.5 font-medium">
+                    {t("common.totalLabel")}
+                  </th>
+                ) : null}
                 <th className="px-4 py-2.5 font-medium">
                   {t("common.perMatchLabel")}
                 </th>
-                <th className="px-4 py-2.5 font-medium">{t("common.home")}</th>
-                <th className="px-4 py-2.5 font-medium">{t("common.away")}</th>
-                <th className="px-4 py-2.5 font-medium">
-                  {t("common.vsAvgLabel")}
-                </th>
+                {showHome ? (
+                  <th className="px-4 py-2.5 font-medium">{t("common.home")}</th>
+                ) : null}
+                {showAway ? (
+                  <th className="px-4 py-2.5 font-medium">{t("common.away")}</th>
+                ) : null}
+                {showVsAvg ? (
+                  <th className="px-4 py-2.5 font-medium">
+                    {t("common.vsAvgLabel")}
+                  </th>
+                ) : null}
               </tr>
             </thead>
             <tbody>
-              {leaderboard.map((row) => {
-                const isSelected = row.team_slug === teamSlug;
+              {leaderboard.map((row, index) => {
+                const isSelected = teamSlug !== null && row.team_slug === teamSlug;
                 const teamHref = getTeamDetailHref(row.team_slug);
                 const logoPath = row.team_slug
                   ? logoBySlug[row.team_slug]
                   : undefined;
+                const prevRank = row.team_slug
+                  ? prevRankBySlug.get(row.team_slug)
+                  : undefined;
 
                 return (
                   <tr
-                    key={`${row.team_slug}-${row.league_rank}`}
+                    key={`${row.team_slug}-${index}`}
                     className={`border-t text-[13px] transition ${
                       isSelected
                         ? "border-[#4da2ff]/30 bg-[#10335d]/40 text-white"
                         : "border-white/10 text-white/80 hover:bg-white/[0.03]"
                     }`}
                   >
-                    <td className="px-4 py-2 font-semibold">
+                    <td className="whitespace-nowrap px-4 py-2 font-semibold">
                       {row.league_rank ?? "—"}
+                      {prevRank !== undefined ? (
+                        <span
+                          className="ml-1 text-[11px] font-normal text-white/40"
+                          title={t("common.prevSeasonRank", { rank: prevRank })}
+                        >
+                          ({prevRank})
+                        </span>
+                      ) : null}
                     </td>
                     <td className="whitespace-nowrap px-4 py-2">
                       <span className="inline-flex items-center gap-2">
@@ -306,30 +372,38 @@ export default async function TeamMetricLeaderboardPage({
                         )}
                       </span>
                     </td>
-                    <td className="px-4 py-2">
-                      {formatMetricValue(row.total_value, row.value_format)}
-                    </td>
+                    {showTotal ? (
+                      <td className="px-4 py-2">
+                        {formatMetricValue(row.total_value, row.value_format)}
+                      </td>
+                    ) : null}
                     <td className="px-4 py-2 font-medium">
                       {formatRateValue(row.per_match_value, row.value_format)}
                     </td>
-                    <td className="px-4 py-2">
-                      {formatRateValue(row.home_value, row.value_format)}
-                    </td>
-                    <td className="px-4 py-2">
-                      {formatRateValue(row.away_value, row.value_format)}
-                    </td>
-                    <td
-                      className={`px-4 py-2 font-medium ${
-                        row.vs_league_avg_pct == null
-                          ? "text-white/55"
-                          : (row.vs_league_avg_pct >= 0) ===
-                            (row.is_higher_better !== false)
-                          ? "text-emerald-300"
-                          : "text-rose-300"
-                      }`}
-                    >
-                      {formatMetricValue(row.vs_league_avg_pct, "pct_1")}
-                    </td>
+                    {showHome ? (
+                      <td className="px-4 py-2">
+                        {formatRateValue(row.home_value, row.value_format)}
+                      </td>
+                    ) : null}
+                    {showAway ? (
+                      <td className="px-4 py-2">
+                        {formatRateValue(row.away_value, row.value_format)}
+                      </td>
+                    ) : null}
+                    {showVsAvg ? (
+                      <td
+                        className={`px-4 py-2 font-medium ${
+                          row.vs_league_avg_pct == null
+                            ? "text-white/55"
+                            : (row.vs_league_avg_pct >= 0) ===
+                              (row.is_higher_better !== false)
+                            ? "text-emerald-300"
+                            : "text-rose-300"
+                        }`}
+                      >
+                        {formatMetricValue(row.vs_league_avg_pct, "pct_1")}
+                      </td>
+                    ) : null}
                   </tr>
                 );
               })}

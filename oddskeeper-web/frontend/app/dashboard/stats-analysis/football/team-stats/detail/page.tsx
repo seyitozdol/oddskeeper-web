@@ -26,7 +26,7 @@ import type {
   TeamAdvancedFormSnapshot,
   ValidTab,
 } from "../../../../../../features/team-detail/types";
-import { getFootballTeamBySlug } from "../../../../../../lib/football-teams";
+import { getAnyFootballTeamBySlug } from "../../../../../../lib/football-teams";
 
 type TeamDetailPageProps = {
   searchParams: Promise<{
@@ -82,7 +82,7 @@ export default async function TeamDetailPage({
     notFound();
   }
 
-  const localTeam = await getFootballTeamBySlug(teamSlug);
+  const localTeam = await getAnyFootballTeamBySlug(teamSlug);
 
   if (!localTeam) {
     notFound();
