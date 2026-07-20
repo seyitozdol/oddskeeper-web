@@ -306,7 +306,7 @@ export default function PlayerMarketPredictionPage() {
   // ── Inputs ──
   const [fixtures, setFixtures] = useState<UpcomingFixture[]>([]);
   const [selectedFixtureId, setSelectedFixtureId] = useState<number | null>(null);
-  const [selectedMarketKey, setSelectedMarketKey] = useState<string>("shots");
+  const [selectedMarketKey, setSelectedMarketKey] = useState<string>("shots_on_target");
   const [homeDistExp, setHomeDistExp] = useState<string>("23");
   const [awayDistExp, setAwayDistExp] = useState<string>("23");
   const [paybackPct, setPaybackPct] = useState<string>("93");

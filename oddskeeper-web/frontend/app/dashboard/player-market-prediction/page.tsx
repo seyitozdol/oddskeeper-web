@@ -27,7 +27,13 @@ export default async function Page() {
   const user = await getUser();
   const userEmail = user?.email ?? null;
 
-  if (!hasPlayerMarketAccess(userEmail)) {
+  // Lokal geliştirme bypass'ı: dashboard/layout.tsx'teki kuralla aynı;
+  // NODE_ENV "production" olduğu için canlıda hiçbir koşulda devreye girmez.
+  const devAuthBypass =
+    process.env.NODE_ENV === "development" &&
+    process.env.DEV_AUTH_BYPASS === "1";
+
+  if (!devAuthBypass && !hasPlayerMarketAccess(userEmail)) {
     return <PlayerMarketAccessDenied userEmail={userEmail} />;
   }
 

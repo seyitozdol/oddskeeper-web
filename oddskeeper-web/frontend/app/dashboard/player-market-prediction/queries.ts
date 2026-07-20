@@ -99,48 +99,42 @@ export async function fetchUpcomingFixtures(): Promise<UpcomingFixture[]> {
   }));
 }
 
-// ─── Fetch team players (active only, current season) ────────────────────────
+// ─── Fetch team players (current squad + latest season stats) ────────────────
+// Kaynak: analytics.team_current_squad_profile_v1. Guncel kadro apifootball
+// team_squad_current'tan gelir (fixture'daki takim id'leriyle ayni uzay),
+// istatistikler player_mapping uzerinden Opta profiline baglanir.
+// player_source_id = Opta id (eslesme varsa) yoksa 'af-<id>'; eslesmeyen
+// oyuncular (yeni transferler, yukselen takimlar) istatistiksiz gelir.
 
-export async function fetchTeamPlayers(
-  sourceTeamId: string,
-  seasonLabel = "2025/2026"
-): Promise<PlayerRow[]> {
+export async function fetchTeamPlayers(sourceTeamId: string): Promise<PlayerRow[]> {
   const supabase = createClient();
 
-  // Get active player_source_ids from dim_player
-  const { data: dimData, error: dimError } = await supabase
-    .schema("analytics")
-    .from("dim_player")
-    .select("source_player_id")
-    .eq("current_source_team_id", sourceTeamId)
-    .eq("is_active", true);
-
-  if (dimError) {
-    console.error("fetchTeamPlayers dim_player error:", dimError);
-    return [];
-  }
-
-  const activeIds = (dimData ?? []).map((r) => r.source_player_id).filter(Boolean);
-  if (activeIds.length === 0) return [];
-
-  // Get profile data from player_profile_v1
   const { data, error } = await supabase
     .schema("analytics")
-    .from("player_profile_v1")
+    .from("team_current_squad_profile_v1")
     .select(
-      "player_source_id, player_name, player_slug, primary_position_code, position_group, appearances, starts, sub_appearances, starter_rate_pct, last_match_datetime"
+      "player_key, player_name, player_slug, primary_position_code, position_group, appearances, starts, sub_appearances, starter_rate_pct, last_match_datetime"
     )
     .eq("team_source_id", sourceTeamId)
-    .eq("season_label", seasonLabel)
-    .in("player_source_id", activeIds)
     .order("appearances", { ascending: false });
 
   if (error) {
-    console.error("fetchTeamPlayers profile error:", error);
+    console.error("fetchTeamPlayers error:", error);
     return [];
   }
 
-  return data ?? [];
+  return (data ?? []).map((row) => ({
+    player_source_id: row.player_key,
+    player_name: row.player_name,
+    player_slug: row.player_slug,
+    primary_position_code: row.primary_position_code,
+    position_group: row.position_group,
+    appearances: row.appearances ?? 0,
+    starts: row.starts ?? 0,
+    sub_appearances: row.sub_appearances ?? 0,
+    starter_rate_pct: row.starter_rate_pct ?? null,
+    last_match_datetime: row.last_match_datetime ?? null,
+  }));
 }
 
 // ─── Fetch last N matches per player for status inference ────────────────────
