@@ -45,15 +45,19 @@ export type PlayerMetricStat = {
 export type MarketOption = {
   key: string;
   label: string;
-  metricKey: string; // key in player_metric_leaderboard_current
-  logField: string;  // field in player_match_log_v1
+  metricKey: string; // key in player_metric_leaderboard_current ("" = istatistik yok)
+  logField: string;  // field in player_match_log_v1 ("" = istatistik yok)
   includeGk: boolean; // false ise kaleciler listede gosterilmez
 };
 
 // ─── Market definitions ───────────────────────────────────────────────────────
+// metricKey/logField bos olan marketlerin verisi yok; secilince Ort. kolonlari
+// bos gelir, manuel beklentiyle calisilir. "shots_derived" ozel alan:
+// on target + off target + blocked toplami (tek kolon yok).
 
 export const MARKET_OPTIONS: MarketOption[] = [
   { key: "shots_on_target", label: "Shots on Target",   metricKey: "shots_on_target_total",  logField: "shots_on_target",  includeGk: false },
+  { key: "total_shots",     label: "Total Shots",       metricKey: "shots_total",            logField: "shots_derived",    includeGk: false },
   { key: "attempts_ibox",   label: "Attempts In Box",   metricKey: "attempts_ibox_total",    logField: "shots_on_target",  includeGk: false },
   { key: "attempts_obox",   label: "Attempts Out Box",  metricKey: "attempts_obox_total",    logField: "shots_off_target", includeGk: false },
   { key: "passes",          label: "Passes",            metricKey: "passes_total",           logField: "passes",           includeGk: true },
@@ -61,8 +65,16 @@ export const MARKET_OPTIONS: MarketOption[] = [
   { key: "tackles",         label: "Tackles",           metricKey: "tackles_total",          logField: "tackles",          includeGk: false },
   { key: "fouls",           label: "Fouls",             metricKey: "fouls_conceded_total",   logField: "fouls_conceded",   includeGk: false },
   { key: "yellow_cards",    label: "Yellow Cards",      metricKey: "cards_yellow_total",     logField: "cards_yellow",     includeGk: true },
+  { key: "red_card",        label: "Red Card",          metricKey: "cards_red_total",        logField: "cards_red",        includeGk: true },
   { key: "offsides",        label: "Offsides",          metricKey: "offsides_total",         logField: "offsides",         includeGk: false },
   { key: "saves",           label: "Saves",             metricKey: "saves_total_total",      logField: "saves_total",      includeGk: true },
+  { key: "score",           label: "Score",             metricKey: "goals_total",            logField: "goals",            includeGk: false },
+  { key: "assist",          label: "Assist",            metricKey: "assists_total",          logField: "assists",          includeGk: false },
+  { key: "freekick_goal",   label: "Freekick Goal",     metricKey: "",                       logField: "",                 includeGk: false },
+  { key: "header_goal",     label: "Header Goal",       metricKey: "",                       logField: "",                 includeGk: false },
+  { key: "outsidebox_goal", label: "OutsideBox Goal",   metricKey: "",                       logField: "",                 includeGk: false },
+  { key: "brace",           label: "Brace",             metricKey: "",                       logField: "",                 includeGk: false },
+  { key: "hat_trick",       label: "Hat Trick",         metricKey: "",                       logField: "",                 includeGk: false },
 ];
 
 // ─── Latest season with metric data ──────────────────────────────────────────
@@ -252,14 +264,14 @@ export async function fetchPlayerLast5Avg(
   logField: string,
   seasonLabel = "2025/2026"
 ): Promise<Record<string, number | null>> {
-  if (playerSourceIds.length === 0) return {};
+  if (playerSourceIds.length === 0 || !logField) return {};
   const supabase = createClient();
 
   const { data, error } = await supabase
     .schema("analytics")
     .from("player_match_log_v1")
     .select(
-      "player_source_id, match_datetime, shots_on_target, shots_off_target, shots_blocked, passes, accurate_pass, tackles, fouls_conceded, cards_yellow, offsides, saves_total, expected_goals"
+      "player_source_id, match_datetime, shots_on_target, shots_off_target, shots_blocked, passes, accurate_pass, tackles, fouls_conceded, cards_yellow, cards_red, offsides, saves_total, goals, assists, expected_goals"
     )
     .eq("season_label", seasonLabel)
     .in("player_source_id", playerSourceIds)
@@ -278,8 +290,17 @@ export async function fetchPlayerLast5Avg(
     if (!id) continue;
     if (!grouped[id]) grouped[id] = [];
     if (grouped[id].length < 5) {
-      const val = (row as Record<string, unknown>)[logField];
-      const num = val !== null && val !== undefined ? Number(val) : null;
+      const r = row as Record<string, unknown>;
+      let num: number | null;
+      if (logField === "shots_derived") {
+        num =
+          Number(r.shots_on_target ?? 0) +
+          Number(r.shots_off_target ?? 0) +
+          Number(r.shots_blocked ?? 0);
+      } else {
+        const val = r[logField];
+        num = val !== null && val !== undefined ? Number(val) : null;
+      }
       if (num !== null && !isNaN(num)) grouped[id].push(num);
     }
   }
@@ -303,7 +324,7 @@ export async function fetchPlayerMetricStats(
   metricKey: string,
   seasonLabel = "2025/2026"
 ): Promise<Record<string, PlayerMetricStat>> {
-  if (playerSourceIds.length === 0) return {};
+  if (playerSourceIds.length === 0 || !metricKey) return {};
   const supabase = createClient();
 
   const { data, error } = await supabase
@@ -328,4 +349,104 @@ export async function fetchPlayerMetricStats(
     };
   }
   return result;
+}
+
+// ─── Fixture ID inputs (analytics.pm_fixture_inputs) ─────────────────────────
+// Fixture ID sekmesindeki mac basina girilen deger; Model'deki Ekle akisi
+// ileride bu kayitlari kullanacak.
+
+export async function fetchFixtureInputs(): Promise<Record<number, string>> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .schema("analytics")
+    .from("pm_fixture_inputs")
+    .select("fixture_id, input_value");
+
+  if (error) {
+    console.error("fetchFixtureInputs error:", error);
+    return {};
+  }
+
+  const result: Record<number, string> = {};
+  for (const row of data ?? []) {
+    if (row.input_value) result[row.fixture_id] = row.input_value;
+  }
+  return result;
+}
+
+export async function saveFixtureInputs(
+  entries: Record<number, string>
+): Promise<boolean> {
+  const rows = Object.entries(entries).map(([fixtureId, value]) => ({
+    fixture_id: Number(fixtureId),
+    input_value: value.trim() || null,
+    updated_at: new Date().toISOString(),
+  }));
+  if (rows.length === 0) return true;
+
+  const supabase = createClient();
+  const { error } = await supabase
+    .schema("analytics")
+    .from("pm_fixture_inputs")
+    .upsert(rows, { onConflict: "fixture_id" });
+
+  if (error) {
+    console.error("saveFixtureInputs error:", error);
+    return false;
+  }
+  return true;
+}
+
+// ─── Market store (analytics.pm_markets) ─────────────────────────────────────
+// Yeni butonuyla eklenen ozel marketler (is_custom=true) + yerlesik marketlerin
+// Market Template ID kayitlari (is_custom=false).
+
+export type StoredMarket = {
+  market_key: string;
+  label: string;
+  template_id: string | null;
+  is_custom: boolean;
+  sort_order: number;
+};
+
+export async function fetchStoredMarkets(): Promise<StoredMarket[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .schema("analytics")
+    .from("pm_markets")
+    .select("market_key, label, template_id, is_custom, sort_order")
+    .order("sort_order", { ascending: true })
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    console.error("fetchStoredMarkets error:", error);
+    return [];
+  }
+  return data ?? [];
+}
+
+export async function upsertStoredMarket(
+  market: Omit<StoredMarket, "sort_order"> & { sort_order?: number }
+): Promise<boolean> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .schema("analytics")
+    .from("pm_markets")
+    .upsert(
+      {
+        market_key: market.market_key,
+        label: market.label,
+        template_id: market.template_id,
+        is_custom: market.is_custom,
+        sort_order: market.sort_order ?? 0,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "market_key" }
+    );
+
+  if (error) {
+    console.error("upsertStoredMarket error:", error);
+    return false;
+  }
+  return true;
 }

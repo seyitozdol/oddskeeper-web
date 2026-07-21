@@ -9,13 +9,16 @@ import {
   fetchPlayerMetricStats,
   fetchPlayerLast5Avg,
   fetchLatestMetricSeason,
+  fetchStoredMarkets,
   MARKET_OPTIONS,
   type UpcomingFixture,
   type PlayerRow,
   type PlayerMetricStat,
+  type MarketOption,
+  type StoredMarket,
 } from "./queries";
 import { previousSeasonLabel } from "@/lib/season";
-import { PlayerListTab, MarketListTab } from "./list-tabs";
+import { PlayerListTab, MarketListTab, FixtureIdTab } from "./list-tabs";
 import {
   inferPlayerStatus,
   distributeExpectation,
@@ -139,6 +142,7 @@ function TeamPlayerTable({
   teamName,
   players,
   distExp,
+  distributeEnabled,
   paybackPct,
   onStatusChange,
   onManualChange,
@@ -147,6 +151,7 @@ function TeamPlayerTable({
   teamName: string;
   players: PlayerState[];
   distExp: number;
+  distributeEnabled: boolean;
   paybackPct: number;
   onStatusChange: (id: string, s: InferredStatus) => void;
   onManualChange: (id: string, v: string) => void;
@@ -164,18 +169,21 @@ function TeamPlayerTable({
     else { setSortCol(col); setSortDir("asc"); }
   }
 
+  // Beklenti Dagit kapaliyken dagitim yapilmaz; sadece manuel degerler kalir.
   const expMap = useMemo(
     () =>
-      distributeExpectation(
-        players.map((p) => ({
-          player_source_id: p.player_source_id,
-          status: p.status,
-          seasonAvg: p.seasonAvg,
-          manualValue: p.manualValue,
-        })),
-        distExp
-      ),
-    [players, distExp]
+      distributeEnabled
+        ? distributeExpectation(
+            players.map((p) => ({
+              player_source_id: p.player_source_id,
+              status: p.status,
+              seasonAvg: p.seasonAvg,
+              manualValue: p.manualValue,
+            })),
+            distExp
+          )
+        : {},
+    [players, distExp, distributeEnabled]
   );
 
   const sortedPlayers = useMemo(() => {
@@ -273,7 +281,7 @@ function TeamPlayerTable({
                   </td>
 
                   <td className="px-2 py-1.5 text-right tabular-nums text-teal-400/80">
-                    {p.status !== "Out" ? fmt(effExp) : "—"}
+                    {distributeEnabled && p.status !== "Out" ? fmt(effExp) : "—"}
                   </td>
 
                   <td className="px-2 py-1.5">
@@ -355,23 +363,47 @@ export default function PlayerMarketPredictionPage({
   const [homeDistExp, setHomeDistExp] = useState<string>("23");
   const [awayDistExp, setAwayDistExp] = useState<string>("23");
   const [paybackPct, setPaybackPct] = useState<string>("93");
+  // Beklenti Dagit: kapaliyken dagitilan beklenti bos kalir, oranlar manuelle calisir.
+  const [distributeEnabled, setDistributeEnabled] = useState(true);
 
   // ── Data ──
   const [homePlayers, setHomePlayers] = useState<PlayerState[]>([]);
   const [awayPlayers, setAwayPlayers] = useState<PlayerState[]>([]);
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<"model" | "players" | "markets" | "input">("model");
+  const [activeTab, setActiveTab] = useState<"model" | "players" | "markets" | "fixtures" | "input">("model");
   // Avg bu sezondan, LY Avg bir onceki sezondan okunur.
   const [currentSeason, setCurrentSeason] = useState<string | null>(null);
+  // pm_markets kayitlari: ozel marketler + template id'ler.
+  const [storedMarkets, setStoredMarkets] = useState<StoredMarket[]>([]);
 
-  // ── On mount: load fixtures + latest metric season ──
+  // ── On mount: load fixtures + latest metric season + stored markets ──
   useEffect(() => {
     fetchUpcomingFixtures().then(setFixtures);
     fetchLatestMetricSeason().then(setCurrentSeason);
+    fetchStoredMarkets().then(setStoredMarkets);
   }, []);
 
+  const refreshStoredMarkets = () => fetchStoredMarkets().then(setStoredMarkets);
+
+  // Yerlesik marketler + Yeni ile eklenen ozel marketler (istatistiksiz, en altta).
+  const allMarkets: MarketOption[] = useMemo(
+    () => [
+      ...MARKET_OPTIONS,
+      ...storedMarkets
+        .filter((m) => m.is_custom)
+        .map((m) => ({
+          key: m.market_key,
+          label: m.label,
+          metricKey: "",
+          logField: "",
+          includeGk: false,
+        })),
+    ],
+    [storedMarkets]
+  );
+
   const selectedFixture = fixtures.find((f) => f.fixture_id === selectedFixtureId) ?? null;
-  const selectedMarket = MARKET_OPTIONS.find((m) => m.key === selectedMarketKey) ?? MARKET_OPTIONS[0];
+  const selectedMarket = allMarkets.find((m) => m.key === selectedMarketKey) ?? MARKET_OPTIONS[0];
 
   // ── Load players when fixture changes ──
   useEffect(() => {
@@ -510,6 +542,7 @@ export default function PlayerMarketPredictionPage({
     { id: "model" as const, label: t("playerMarket.tabModel") },
     { id: "players" as const, label: t("playerMarket.tabPlayerList") },
     { id: "markets" as const, label: t("playerMarket.tabMarketList") },
+    { id: "fixtures" as const, label: t("playerMarket.tabFixtureIds") },
     { id: "input" as const, label: t("playerMarket.tabInput") },
   ];
 
@@ -535,7 +568,10 @@ export default function PlayerMarketPredictionPage({
       </div>
 
       {activeTab === "players" && <PlayerListTab teamLogos={teamLogos} />}
-      {activeTab === "markets" && <MarketListTab />}
+      {activeTab === "markets" && (
+        <MarketListTab storedMarkets={storedMarkets} onChanged={refreshStoredMarkets} />
+      )}
+      {activeTab === "fixtures" && <FixtureIdTab fixtures={fixtures} />}
       {activeTab === "input" && (
         <div className="rounded-xl border border-line bg-card px-5 py-10 text-center text-sm text-ink-3">
           {t("playerMarket.comingSoon")}
@@ -572,13 +608,24 @@ export default function PlayerMarketPredictionPage({
               onChange={(e) => setSelectedMarketKey(e.target.value)}
               className="rounded-lg border border-line bg-field px-3 py-2 text-[13px] text-ink focus:border-teal-500/50 focus:outline-none"
             >
-              {MARKET_OPTIONS.map((m) => (
+              {allMarkets.map((m) => (
                 <option key={m.key} value={m.key}>
                   {m.label}
                 </option>
               ))}
             </select>
           </div>
+
+          {/* Beklenti Dagit tick */}
+          <label className="flex cursor-pointer items-center gap-2 pb-2.5">
+            <input
+              type="checkbox"
+              checked={distributeEnabled}
+              onChange={(e) => setDistributeEnabled(e.target.checked)}
+              className="cursor-pointer accent-teal-400"
+            />
+            <span className="text-[12px] text-ink-2">{t("playerMarket.distributeExpToggle")}</span>
+          </label>
 
           {/* Home Dist. Exp */}
           <div className="flex flex-col gap-1">
@@ -669,6 +716,7 @@ export default function PlayerMarketPredictionPage({
               teamName={selectedFixture.home_team_name}
               players={visibleHome}
               distExp={homeDistExpNum}
+              distributeEnabled={distributeEnabled}
               paybackPct={paybackNum}
               onStatusChange={makeStatusHandler(setHomePlayers)}
               onManualChange={makeManualHandler(setHomePlayers)}
@@ -679,6 +727,7 @@ export default function PlayerMarketPredictionPage({
               teamName={selectedFixture.away_team_name}
               players={visibleAway}
               distExp={awayDistExpNum}
+              distributeEnabled={distributeEnabled}
               paybackPct={paybackNum}
               onStatusChange={makeStatusHandler(setAwayPlayers)}
               onManualChange={makeManualHandler(setAwayPlayers)}
