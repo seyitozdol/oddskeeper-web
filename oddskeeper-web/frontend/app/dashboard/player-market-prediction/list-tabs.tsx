@@ -425,20 +425,44 @@ export function MarketListTab({
 // ─── Input tab ────────────────────────────────────────────────────────────────
 // Model'de Ekle'ye basilinca uretilen satirlar, secili marketin turune gore
 // Static Input veya Dynamic Input segmentine duser. Yazdir tek sheet'li
-// ("input") xlsx uretir, dosya adi fixture adidir. Temizle tabloyu bosaltir.
-// Kolon basliklari sabittir, degistirilmez.
+// ("input") xlsx uretir, dosya adi fixture adidir. Temizle tabloyu bosaltir,
+// satir sonundaki x tek satiri siler. Kolon basliklari sabittir.
+// Static: secim basina bir satir. Dynamic: Ekle basina TEK satir; secimler
+// sagda Selection_1, Selection_2 ... diye uc kolonluk bloklar halinde uzar.
 
-export type InputRow = {
+export type StaticInputRow = {
+  fixtureKey: number; // ic fixture_id (mukerrer kontrolu icin)
   fixtureLabel: string;
   fixtureId: string; // Fixture ID sekmesinde girilen deger
   marketTemplate: string;
+  marketLabel: string;
   participant: string; // Oyuncu Listesi'ndeki ID
+  playerSlug: string;
+  playerName: string;
   sortOrder: number; // 1 = ev, 2 = deplasman
   line: string; // "0.5" (nokta formati)
   price: string; // "1.55" (nokta formati)
 };
 
-const INPUT_HEADERS = [
+export type DynamicSelection = {
+  price: string;
+  participantId: string; // Selection_x_SubParticipantId
+  sortOrder: number; // Selection_x_ParticipantSortOrder
+  playerSlug: string;
+  playerName: string;
+  line: string;
+};
+
+export type DynamicInputRow = {
+  fixtureKey: number;
+  fixtureLabel: string;
+  fixtureId: string;
+  marketTemplate: string;
+  marketLabel: string;
+  selections: DynamicSelection[]; // ev once, sonra deplasman; line kucukten buyuge
+};
+
+const STATIC_HEADERS = [
   "Fixture ID",
   "Market Template",
   "Market Participant",
@@ -449,33 +473,74 @@ const INPUT_HEADERS = [
   "Selection_1_Price",
 ];
 
-function inputRowCells(r: InputRow): (string | number)[] {
+function staticRowCells(r: StaticInputRow): (string | number)[] {
   return [r.fixtureId, r.marketTemplate, r.participant, r.sortOrder, r.line, "", "Over", r.price];
+}
+
+function dynamicHeaders(maxSelections: number): string[] {
+  const headers = ["Fixture ID", "Market Template", "Market Status"];
+  for (let i = 1; i <= maxSelections; i++) {
+    headers.push(
+      `Selection_${i}_Price`,
+      `Selection_${i}_SubParticipantId`,
+      `Selection_${i}_ParticipantSortOrder`
+    );
+  }
+  return headers;
+}
+
+function dynamicRowCells(r: DynamicInputRow, maxSelections: number): (string | number)[] {
+  const cells: (string | number)[] = [r.fixtureId, r.marketTemplate, ""];
+  for (let i = 0; i < maxSelections; i++) {
+    const s = r.selections[i];
+    if (s) cells.push(s.price, s.participantId, s.sortOrder);
+    else cells.push("", "", "");
+  }
+  return cells;
+}
+
+function sanitizeFileLabel(label: string): string {
+  return label.replace(/[\\/:*?"<>|]+/g, "-").trim() || "input";
 }
 
 export function InputTab({
   staticRows,
   dynamicRows,
   onClear,
+  onDeleteRow,
 }: {
-  staticRows: InputRow[];
-  dynamicRows: InputRow[];
+  staticRows: StaticInputRow[];
+  dynamicRows: DynamicInputRow[];
   onClear: (type: MarketType) => void;
+  onDeleteRow: (type: MarketType, index: number) => void;
 }) {
   const { t } = useI18n();
   const [segment, setSegment] = useState<MarketType>("dynamic");
-  const rows = segment === "dynamic" ? dynamicRows : staticRows;
+
+  const rowCount = segment === "dynamic" ? dynamicRows.length : staticRows.length;
+  const maxSelections = Math.max(1, ...dynamicRows.map((r) => r.selections.length));
 
   async function handleExport() {
-    if (rows.length === 0) return;
+    if (rowCount === 0) return;
     const XLSX = await import("xlsx");
-    const ws = XLSX.utils.aoa_to_sheet([INPUT_HEADERS, ...rows.map(inputRowCells)]);
+    const aoa =
+      segment === "dynamic"
+        ? [dynamicHeaders(maxSelections), ...dynamicRows.map((r) => dynamicRowCells(r, maxSelections))]
+        : [STATIC_HEADERS, ...staticRows.map(staticRowCells)];
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "input");
-    const label =
-      rows[rows.length - 1].fixtureLabel.replace(/[\\/:*?"<>|]+/g, "-").trim() || "input";
-    XLSX.writeFile(wb, `${label}.xlsx`);
+    const lastLabel =
+      segment === "dynamic"
+        ? dynamicRows[dynamicRows.length - 1].fixtureLabel
+        : staticRows[staticRows.length - 1].fixtureLabel;
+    XLSX.writeFile(wb, `${sanitizeFileLabel(lastLabel)}.xlsx`);
   }
+
+  const thClass = "px-2 py-2 whitespace-nowrap";
+  const tdClass = "px-2 py-1.5 text-ink-2 whitespace-nowrap tabular-nums";
+  const deleteBtnClass =
+    "rounded px-1.5 py-0.5 text-[13px] font-semibold text-red-400/70 transition hover:bg-red-500/10 hover:text-red-400";
 
   return (
     <div className="rounded-xl border border-line bg-card px-5 py-4">
@@ -499,7 +564,7 @@ export function InputTab({
           <button
             type="button"
             onClick={handleExport}
-            disabled={rows.length === 0}
+            disabled={rowCount === 0}
             className="rounded-lg border border-teal-500/30 bg-teal-500/10 px-4 py-1.5 text-[13px] font-semibold text-teal-300 transition hover:bg-teal-500/20 disabled:opacity-50"
           >
             {t("playerMarket.printLabel")}
@@ -507,7 +572,7 @@ export function InputTab({
           <button
             type="button"
             onClick={() => onClear(segment)}
-            disabled={rows.length === 0}
+            disabled={rowCount === 0}
             className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-1.5 text-[13px] font-semibold text-red-400 transition hover:bg-red-500/20 disabled:opacity-50"
           >
             {t("playerMarket.clearLabel")}
@@ -515,26 +580,81 @@ export function InputTab({
         </div>
       </div>
 
-      {rows.length === 0 ? (
+      {rowCount === 0 ? (
         <div className="py-8 text-center text-sm text-ink-3">{t("playerMarket.noRowsLabel")}</div>
+      ) : segment === "static" ? (
+        <div className="overflow-x-auto rounded-lg border border-line">
+          <table className="min-w-full border-collapse text-[12px]">
+            <thead className="bg-card-2">
+              <tr className="text-left text-[10px] uppercase tracking-[0.12em] text-ink-3">
+                {STATIC_HEADERS.map((h) => (
+                  <th key={h} className={thClass}>{h}</th>
+                ))}
+                <th className="px-2 py-2 w-8"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {staticRows.map((r, i) => (
+                <tr key={i} className="border-t border-line transition hover:bg-veil">
+                  <td className={tdClass} title={r.fixtureLabel}>{r.fixtureId}</td>
+                  <td className={tdClass} title={r.marketLabel}>{r.marketTemplate}</td>
+                  <td className={tdClass} title={r.playerName}>{r.participant}</td>
+                  <td className={tdClass}>{r.sortOrder}</td>
+                  <td className={tdClass}>{r.line}</td>
+                  <td className={tdClass}></td>
+                  <td className={tdClass}>Over</td>
+                  <td className={tdClass}>{r.price}</td>
+                  <td className="px-2 py-1.5 text-center">
+                    <button
+                      type="button"
+                      onClick={() => onDeleteRow("static", i)}
+                      title={t("playerMarket.deleteLabel")}
+                      className={deleteBtnClass}
+                    >
+                      ×
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       ) : (
         <div className="overflow-x-auto rounded-lg border border-line">
           <table className="min-w-full border-collapse text-[12px]">
             <thead className="bg-card-2">
               <tr className="text-left text-[10px] uppercase tracking-[0.12em] text-ink-3">
-                {INPUT_HEADERS.map((h) => (
-                  <th key={h} className="px-2 py-2 whitespace-nowrap">{h}</th>
+                {dynamicHeaders(maxSelections).map((h) => (
+                  <th key={h} className={thClass}>{h}</th>
                 ))}
+                <th className="px-2 py-2 w-8"></th>
               </tr>
             </thead>
             <tbody>
-              {rows.map((r, i) => (
+              {dynamicRows.map((r, i) => (
                 <tr key={i} className="border-t border-line transition hover:bg-veil">
-                  {inputRowCells(r).map((cell, j) => (
-                    <td key={j} className="px-2 py-1.5 text-ink-2 whitespace-nowrap tabular-nums">
-                      {cell === "" ? "" : cell}
-                    </td>
-                  ))}
+                  <td className={tdClass} title={r.fixtureLabel}>{r.fixtureId}</td>
+                  <td className={tdClass} title={r.marketLabel}>{r.marketTemplate}</td>
+                  <td className={tdClass}></td>
+                  {Array.from({ length: maxSelections }, (_, si) => {
+                    const s = r.selections[si];
+                    const tip = s ? `${s.playerName} ${s.line}` : undefined;
+                    return s ? (
+                      <FragmentCells key={si} tip={tip} cells={[s.price, s.participantId, s.sortOrder]} tdClass={tdClass} />
+                    ) : (
+                      <FragmentCells key={si} cells={["", "", ""]} tdClass={tdClass} />
+                    );
+                  })}
+                  <td className="px-2 py-1.5 text-center">
+                    <button
+                      type="button"
+                      onClick={() => onDeleteRow("dynamic", i)}
+                      title={t("playerMarket.deleteLabel")}
+                      className={deleteBtnClass}
+                    >
+                      ×
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -542,6 +662,26 @@ export function InputTab({
         </div>
       )}
     </div>
+  );
+}
+
+function FragmentCells({
+  cells,
+  tdClass,
+  tip,
+}: {
+  cells: (string | number)[];
+  tdClass: string;
+  tip?: string;
+}) {
+  return (
+    <>
+      {cells.map((c, i) => (
+        <td key={i} className={tdClass} title={tip}>
+          {c}
+        </td>
+      ))}
+    </>
   );
 }
 

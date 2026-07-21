@@ -27,7 +27,9 @@ import {
   MarketListTab,
   FixtureIdTab,
   InputTab,
-  type InputRow,
+  type StaticInputRow,
+  type DynamicInputRow,
+  type DynamicSelection,
 } from "./list-tabs";
 import {
   inferPlayerStatus,
@@ -140,11 +142,11 @@ function SortTh({
   const active = sortCol === col;
   return (
     <th
-      className={`px-2 py-2 cursor-pointer select-none hover:text-ink-2 ${className}`}
+      className={`px-1 py-1.5 cursor-pointer select-none hover:text-ink-2 ${className}`}
       onClick={() => onSort(col)}
     >
       {label}
-      <span className="ml-1 opacity-50">{active ? (sortDir === "asc" ? "↑" : "↓") : "↕"}</span>
+      <span className="ml-0.5 opacity-50">{active ? (sortDir === "asc" ? "↑" : "↓") : "↕"}</span>
     </th>
   );
 }
@@ -232,11 +234,11 @@ function TeamPlayerTable({
       </div>
 
       <div className="overflow-x-auto rounded-lg border border-line">
-        <table className="min-w-full border-collapse text-[12px]">
+        <table className="min-w-full border-collapse text-[11px]">
           <thead className="bg-card-2">
-            <tr className="text-left text-[10px] uppercase tracking-[0.12em] text-ink-3">
-              <th className="px-2 py-2 w-6"></th>
-              <SortTh col="player" label={t("common.player")} sortCol={sortCol} sortDir={sortDir} onSort={handleSort} className="min-w-[110px]" />
+            <tr className="text-left text-[9px] uppercase tracking-[0.08em] text-ink-3">
+              <th className="px-1 py-1.5 w-5"></th>
+              <SortTh col="player" label={t("common.player")} sortCol={sortCol} sortDir={sortDir} onSort={handleSort} className="min-w-[90px]" />
               <SortTh col="pos" label={t("common.position")} sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
               <SortTh col="apps" label={t("playerMarket.appearancesLabel")} sortCol={sortCol} sortDir={sortDir} onSort={handleSort} className="text-right" />
               <SortTh col="status" label={t("playerMarket.columnStatus")} sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
@@ -244,8 +246,8 @@ function TeamPlayerTable({
               <SortTh col="last5" label={t("playerMarket.last5AvgLabel")} sortCol={sortCol} sortDir={sortDir} onSort={handleSort} className="text-right" />
               <SortTh col="lyavg" label={t("playerMarket.lyAvgLabel")} sortCol={sortCol} sortDir={sortDir} onSort={handleSort} className="text-right" />
               <SortTh col="distexp" label={t("playerMarket.distExpLabel")} sortCol={sortCol} sortDir={sortDir} onSort={handleSort} className="text-right" />
-              <SortTh col="manual" label={t("playerMarket.manualLabel")} sortCol={sortCol} sortDir={sortDir} onSort={handleSort} className="text-right w-14" />
-              <th className="px-1.5 py-2 min-w-[168px]">{t("playerMarket.oddsOverHeader")}</th>
+              <SortTh col="manual" label={t("playerMarket.manualLabel")} sortCol={sortCol} sortDir={sortDir} onSort={handleSort} className="text-right w-12" />
+              <th className="px-1 py-1.5 min-w-[148px]">{t("playerMarket.oddsOverHeader")}</th>
             </tr>
           </thead>
           <tbody>
@@ -263,7 +265,7 @@ function TeamPlayerTable({
                   className={`border-t border-line transition hover:bg-veil
                     ${p.status === "Out" ? "opacity-40" : ""}`}
                 >
-                  <td className="px-2 py-1.5">
+                  <td className="px-1 py-1">
                     <input
                       type="checkbox"
                       checked={p.checked}
@@ -273,43 +275,43 @@ function TeamPlayerTable({
                   </td>
 
                   <td
-                    className="px-2 py-1.5 font-medium text-ink whitespace-nowrap overflow-hidden text-ellipsis max-w-[175px]"
+                    className="px-1 py-1 font-medium text-ink whitespace-nowrap overflow-hidden text-ellipsis max-w-[140px]"
                     title={p.player_name}
                   >
                     {p.player_name}
                   </td>
 
-                  <td className="px-2 py-1.5 text-ink-3">{p.primary_position_code}</td>
+                  <td className="px-1 py-1 text-ink-3">{p.primary_position_code}</td>
 
                   {/* Bu sezon mac sayisi (parantezde gecen sezon) */}
-                  <td className="px-2 py-1.5 text-right text-ink-2 tabular-nums whitespace-nowrap">
+                  <td className="px-1 py-1 text-right text-ink-2 tabular-nums whitespace-nowrap">
                     {p.appearances} <span className="text-ink-3">({p.lyAppearances ?? "—"})</span>
                   </td>
 
-                  <td className="px-2 py-1.5">
+                  <td className="px-1 py-1">
                     <StatusBadge
                       status={p.status}
                       onChange={(s) => onStatusChange(p.player_source_id, s)}
                     />
                   </td>
 
-                  <td className="px-2 py-1.5 text-right text-ink-2 tabular-nums">
+                  <td className="px-1 py-1 text-right text-ink-2 tabular-nums">
                     {fmt(p.seasonAvg)}
                   </td>
 
-                  <td className="px-2 py-1.5 text-right text-ink-2 tabular-nums">
+                  <td className="px-1 py-1 text-right text-ink-2 tabular-nums">
                     {p.last5Avg !== null && p.last5Avg >= 0 ? fmt(p.last5Avg) : "—"}
                   </td>
 
-                  <td className="px-2 py-1.5 text-right text-ink-2 tabular-nums">
+                  <td className="px-1 py-1 text-right text-ink-2 tabular-nums">
                     {fmt(p.lyAvg)}
                   </td>
 
-                  <td className="px-2 py-1.5 text-right tabular-nums text-teal-400/80">
+                  <td className="px-1 py-1 text-right tabular-nums text-teal-400/80">
                     {distributeEnabled && p.status !== "Out" ? fmt(effExp) : "—"}
                   </td>
 
-                  <td className="px-2 py-1.5">
+                  <td className="px-1 py-1">
                     <input
                       type="number"
                       min="0"
@@ -317,14 +319,14 @@ function TeamPlayerTable({
                       placeholder="0"
                       value={p.manualValue}
                       onChange={(e) => onManualChange(p.player_source_id, e.target.value)}
-                      className={`w-12 rounded border border-line bg-field px-1 py-0.5 text-right text-[11px] text-ink placeholder-ink-3 focus:border-teal-500/50 focus:outline-none ${NO_SPINNER}`}
+                      className={`w-11 rounded border border-line bg-field px-1 py-0.5 text-right text-[11px] text-ink placeholder-ink-3 focus:border-teal-500/50 focus:outline-none ${NO_SPINNER}`}
                     />
                   </td>
 
                   {/* Odds - over only, 2x2 kompakt grid, satir basina tik + line + oran */}
-                  <td className="px-1.5 py-1">
+                  <td className="px-1 py-1">
                     {oddsLines.length > 0 ? (
-                      <div className="grid grid-cols-2 gap-x-2 gap-y-0.5">
+                      <div className="grid grid-cols-2 gap-x-1.5 gap-y-0.5">
                         {oddsLines.map((ol) => {
                           const editKey = `${p.player_source_id}:${ol.line}`;
                           const computed = fmtOdds(ol.overOdds);
@@ -340,7 +342,7 @@ function TeamPlayerTable({
                                 onChange={(e) => onLineTick(editKey, e.target.checked)}
                                 className={`cursor-pointer ${STATUS_ACCENT[p.status]}`}
                               />
-                              <span className="text-ink-3 text-[10px] w-6 text-right tabular-nums">
+                              <span className="text-ink-3 text-[10px] w-5 text-right tabular-nums">
                                 {ol.line.toFixed(1)}
                               </span>
                               {computed === "—" ? (
@@ -404,10 +406,11 @@ export default function PlayerMarketPredictionPage({
   const [lineTicks, setLineTicks] = useState<Record<string, boolean>>({});
   const [oddsEdit, setOddsEdit] = useState<Record<string, string>>({});
   // Ekle ile uretilen input satirlari (Input sekmesindeki iki segment).
-  const [staticRows, setStaticRows] = useState<InputRow[]>([]);
-  const [dynamicRows, setDynamicRows] = useState<InputRow[]>([]);
+  const [staticRows, setStaticRows] = useState<StaticInputRow[]>([]);
+  const [dynamicRows, setDynamicRows] = useState<DynamicInputRow[]>([]);
   const [adding, setAdding] = useState(false);
   const [addedCount, setAddedCount] = useState<number | null>(null);
+  const [dupWarning, setDupWarning] = useState<string | null>(null);
 
   // ── On mount: load fixtures + latest metric season + stored markets ──
   useEffect(() => {
@@ -583,22 +586,28 @@ export default function PlayerMarketPredictionPage({
 
   // ── Ekle: tikli oyuncu + tikli line'lardan input satirlari uretir ──
   // Satirlar secili marketin turune gore Input sekmesindeki segmente duser.
-  // Oyuncu tikli ama hicbir line'i tikli degilse yazilmaz; line'lar kucukten
-  // buyuge eklenir. Ev oyuncusu sort order 1, deplasman 2.
+  // Static: secim basina bir satir. Dynamic: TEK satir, secimler sagda
+  // Selection_1..N seklinde uzar. Oyuncu tikli ama hicbir line'i tikli
+  // degilse yazilmaz; line'lar kucukten buyuge, ev (1) once deplasman (2).
+  // Ayni mac + oyuncu + line hedef tabloda zaten varsa uyari verilir ve
+  // hicbir sey eklenmez; once tablodaki satir silinmeli.
   async function handleAdd() {
     if (!selectedFixture || adding) return;
     setAdding(true);
+    setDupWarning(null);
+    setAddedCount(null);
 
     const [fixtureInputs, playerIds] = await Promise.all([
       fetchFixtureInputs(),
       fetchPlayerIds(),
     ]);
-    const fixtureIdValue = fixtureInputs[selectedFixture.fixture_id] ?? "";
+    const fixtureKey = selectedFixture.fixture_id;
+    const fixtureIdValue = fixtureInputs[fixtureKey] ?? "";
     const stored = storedMarkets.find((m) => m.market_key === selectedMarketKey);
     const marketTemplate = stored?.template_id ?? "";
     const marketType: MarketType = stored?.market_type ?? "static";
 
-    const rows: InputRow[] = [];
+    const selections: DynamicSelection[] = [];
 
     function build(players: PlayerState[], distExp: number, sortOrder: number) {
       const expMap = distributeEnabled
@@ -628,14 +637,13 @@ export default function PlayerMarketPredictionPage({
           const price =
             oddsEdit[`${p.player_source_id}:${ol.line}`] ?? fmtOdds(ol.overOdds);
           if (price === "—" || !price.trim()) continue;
-          rows.push({
-            fixtureLabel: selectedFixture!.label,
-            fixtureId: fixtureIdValue,
-            marketTemplate,
-            participant: playerIds[p.player_slug] ?? "",
-            sortOrder,
-            line: ol.line.toFixed(1),
+          selections.push({
             price: price.trim(),
+            participantId: playerIds[p.player_slug] ?? "",
+            sortOrder,
+            playerSlug: p.player_slug,
+            playerName: p.player_name,
+            line: ol.line.toFixed(1),
           });
         }
       }
@@ -644,10 +652,65 @@ export default function PlayerMarketPredictionPage({
     build(visibleHome, homeDistExpNum, 1);
     build(visibleAway, awayDistExpNum, 2);
 
-    if (marketType === "dynamic") setDynamicRows((prev) => [...prev, ...rows]);
-    else setStaticRows((prev) => [...prev, ...rows]);
+    // Mukerrer kontrolu: ayni mac + oyuncu + line hedef tabloda var mi?
+    const existingKeys = new Set(
+      marketType === "dynamic"
+        ? dynamicRows.flatMap((r) =>
+            r.selections.map((s) => `${r.fixtureKey}:${s.playerSlug}:${s.line}`)
+          )
+        : staticRows.map((r) => `${r.fixtureKey}:${r.playerSlug}:${r.line}`)
+    );
+    const dups = selections.filter((s) =>
+      existingKeys.has(`${fixtureKey}:${s.playerSlug}:${s.line}`)
+    );
+    if (dups.length > 0) {
+      const info = dups
+        .slice(0, 3)
+        .map((s) => `${s.playerName} ${s.line}`)
+        .join(", ");
+      setDupWarning(
+        t("playerMarket.duplicateWarning", {
+          info: dups.length > 3 ? `${info} +${dups.length - 3}` : info,
+        })
+      );
+      setAdding(false);
+      return;
+    }
+
+    if (selections.length > 0) {
+      if (marketType === "dynamic") {
+        setDynamicRows((prev) => [
+          ...prev,
+          {
+            fixtureKey,
+            fixtureLabel: selectedFixture!.label,
+            fixtureId: fixtureIdValue,
+            marketTemplate,
+            marketLabel: selectedMarket.label,
+            selections,
+          },
+        ]);
+      } else {
+        setStaticRows((prev) => [
+          ...prev,
+          ...selections.map((s) => ({
+            fixtureKey,
+            fixtureLabel: selectedFixture!.label,
+            fixtureId: fixtureIdValue,
+            marketTemplate,
+            marketLabel: selectedMarket.label,
+            participant: s.participantId,
+            playerSlug: s.playerSlug,
+            playerName: s.playerName,
+            sortOrder: s.sortOrder,
+            line: s.line,
+            price: s.price,
+          })),
+        ]);
+      }
+    }
     setAdding(false);
-    setAddedCount(rows.length);
+    setAddedCount(selections.length);
   }
 
   const TABS = [
@@ -691,6 +754,11 @@ export default function PlayerMarketPredictionPage({
           onClear={(type) =>
             type === "dynamic" ? setDynamicRows([]) : setStaticRows([])
           }
+          onDeleteRow={(type, index) => {
+            if (type === "dynamic")
+              setDynamicRows((prev) => prev.filter((_, i) => i !== index));
+            else setStaticRows((prev) => prev.filter((_, i) => i !== index));
+          }}
         />
       )}
 
@@ -798,10 +866,13 @@ export default function PlayerMarketPredictionPage({
           >
             {t("playerMarket.addLabel")}
           </button>
-          {addedCount !== null && (
+          {addedCount !== null && !dupWarning && (
             <span className="pb-2.5 text-[12px] text-teal-400">
               {t("playerMarket.addedLabel", { count: String(addedCount) })}
             </span>
+          )}
+          {dupWarning && (
+            <span className="pb-2.5 text-[12px] text-red-400">{dupWarning}</span>
           )}
         </div>
       </div>
@@ -833,7 +904,7 @@ export default function PlayerMarketPredictionPage({
           </div>
 
           {/* Two-column layout */}
-          <div className="flex gap-6 flex-wrap xl:flex-nowrap">
+          <div className="flex gap-3 flex-wrap xl:flex-nowrap">
             <TeamPlayerTable
               key={`${selectedFixtureId}:${selectedMarketKey}:home`}
               teamName={selectedFixture.home_team_name}

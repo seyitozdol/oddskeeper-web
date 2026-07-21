@@ -3,8 +3,8 @@ import { defineMessages } from "../defineMessages";
 // Bu namespace ceviri gecisi sirasinda doldurulur.
 export const playerMarket = defineMessages({
   en: {
-    statusPosStarter: "Pos. Starter",
-    statusPosSub: "Pos. Sub",
+    statusPosStarter: "Starter",
+    statusPosSub: "Sub",
     statusOut: "Out",
 
     columnStatus: "Status",
@@ -32,6 +32,7 @@ export const playerMarket = defineMessages({
     printLabel: "Print",
     clearLabel: "Clear",
     addedLabel: "Added ({count})",
+    duplicateWarning: "Already added: {info}. Remove the row from the Input table first.",
     noRowsLabel: "No rows yet. Use Add in the Model tab.",
     oddsOverHeader: "Odds (Over)",
     distributeExpToggle: "Distribute Exp.",
@@ -62,9 +63,9 @@ export const playerMarket = defineMessages({
     sendAccessRequestLabel: "Send Access Request",
   },
   tr: {
-    statusPosStarter: "Muhtemel İlk 11",
-    statusPosSub: "Muhtemel Yedek",
-    statusOut: "Oynamıyor",
+    statusPosStarter: "İlk 11",
+    statusPosSub: "Yedek",
+    statusOut: "Kadro Dışı",
 
     columnStatus: "Durum",
     avgLabel: "Ort.",
@@ -91,6 +92,7 @@ export const playerMarket = defineMessages({
     printLabel: "Yazdır",
     clearLabel: "Temizle",
     addedLabel: "Eklendi ({count})",
+    duplicateWarning: "Zaten ekli: {info}. Önce Input tablosundaki satırı silin.",
     noRowsLabel: "Henüz satır yok. Model sekmesinden Ekle ile gönderin.",
     oddsOverHeader: "Oran (Üst)",
     distributeExpToggle: "Beklenti Dağıt",
