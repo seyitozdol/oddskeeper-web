@@ -30,7 +30,9 @@ export const playerMarket = defineMessages({
     saveLabel: "Save",
     savedLabel: "Saved",
     newLabel: "New",
+    deleteLabel: "Delete",
     newMarketPlaceholder: "Market name",
+    appearancesLabel: "MP",
 
     fixtureLabel: "Fixture",
     selectFixturePlaceholder: "Select fixture",
@@ -79,7 +81,9 @@ export const playerMarket = defineMessages({
     saveLabel: "Kaydet",
     savedLabel: "Kaydedildi",
     newLabel: "Yeni",
+    deleteLabel: "Sil",
     newMarketPlaceholder: "Market adı",
+    appearancesLabel: "Maç",
 
     fixtureLabel: "Fikstür",
     selectFixturePlaceholder: "Fikstür seç",

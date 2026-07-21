@@ -108,6 +108,25 @@ export type DirectoryPlayer = {
   position: string | null;
 };
 
+// Bilindik isim kurali: apifootball kadro ismi bilindik isimdir ("Talisca",
+// "Ederson"); "L. Torreira" gibi kisaltmali ise bas harf, bio first_name
+// icindeki bas harfe uyan kelimeyle acilir ("Lucas Torreira", "K. Akturkoglu"
+// + "Muhammed Kerem" -> "Kerem Akturkoglu"); uyan kelime yoksa ilk kelime.
+// Resmi uzun isimler kullanilmaz.
+function knownDisplayName(
+  playerName: string | null,
+  firstName: string | null
+): string {
+  if (!playerName) return "";
+  const m = playerName.match(/^(\p{Lu})\.\s*(.+)$/u);
+  if (m) {
+    const words = (firstName ?? "").split(" ").filter(Boolean);
+    const first = words.find((w) => w.startsWith(m[1])) ?? words[0];
+    if (first) return `${first} ${m[2]}`;
+  }
+  return playerName;
+}
+
 export async function fetchAllCurrentPlayers(): Promise<DirectoryPlayer[]> {
   const supabase = createClient();
 
@@ -135,7 +154,7 @@ export async function fetchAllCurrentPlayers(): Promise<DirectoryPlayer[]> {
     result.push({
       player_slug: row.player_slug,
       full_name:
-        [row.first_name, row.last_name].filter(Boolean).join(" ") ||
+        knownDisplayName(row.player_name, row.first_name) ||
         row.full_name ||
         row.player_name,
       team_slug: row.current_team_slug ?? null,
@@ -351,6 +370,81 @@ export async function fetchPlayerMetricStats(
   return result;
 }
 
+// ─── Season appearances (Model: mac sayisi kolonu) ───────────────────────────
+// Ayni oyuncu sezon icinde iki takimda oynadiysa maclari toplanir.
+
+export async function fetchPlayerSeasonAppearances(
+  playerSourceIds: string[],
+  seasonLabel: string
+): Promise<Record<string, number>> {
+  if (playerSourceIds.length === 0 || !seasonLabel) return {};
+  const supabase = createClient();
+
+  const { data, error } = await supabase
+    .schema("analytics")
+    .from("player_profile_v1")
+    .select("player_source_id, appearances")
+    .eq("season_label", seasonLabel)
+    .in("player_source_id", playerSourceIds);
+
+  if (error) {
+    console.error("fetchPlayerSeasonAppearances error:", error);
+    return {};
+  }
+
+  const result: Record<string, number> = {};
+  for (const row of data ?? []) {
+    result[row.player_source_id] =
+      (result[row.player_source_id] ?? 0) + (row.appearances ?? 0);
+  }
+  return result;
+}
+
+// ─── Player IDs (analytics.pm_player_ids) ────────────────────────────────────
+// Oyuncu Listesi sekmesindeki ozel ID'ler; Kaydet ile upsert edilir.
+
+export async function fetchPlayerIds(): Promise<Record<string, string>> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .schema("analytics")
+    .from("pm_player_ids")
+    .select("player_slug, external_id");
+
+  if (error) {
+    console.error("fetchPlayerIds error:", error);
+    return {};
+  }
+
+  const result: Record<string, string> = {};
+  for (const row of data ?? []) {
+    if (row.external_id) result[row.player_slug] = row.external_id;
+  }
+  return result;
+}
+
+export async function savePlayerIds(
+  entries: Record<string, string>
+): Promise<boolean> {
+  const rows = Object.entries(entries).map(([slug, value]) => ({
+    player_slug: slug,
+    external_id: value.trim() || null,
+    updated_at: new Date().toISOString(),
+  }));
+  if (rows.length === 0) return true;
+
+  const supabase = createClient();
+  const { error } = await supabase
+    .schema("analytics")
+    .from("pm_player_ids")
+    .upsert(rows, { onConflict: "player_slug" });
+
+  if (error) {
+    console.error("savePlayerIds error:", error);
+    return false;
+  }
+  return true;
+}
+
 // ─── Fixture ID inputs (analytics.pm_fixture_inputs) ─────────────────────────
 // Fixture ID sekmesindeki mac basina girilen deger; Model'deki Ekle akisi
 // ileride bu kayitlari kullanacak.
@@ -446,6 +540,21 @@ export async function upsertStoredMarket(
 
   if (error) {
     console.error("upsertStoredMarket error:", error);
+    return false;
+  }
+  return true;
+}
+
+export async function deleteStoredMarket(marketKey: string): Promise<boolean> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .schema("analytics")
+    .from("pm_markets")
+    .delete()
+    .eq("market_key", marketKey);
+
+  if (error) {
+    console.error("deleteStoredMarket error:", error);
     return false;
   }
   return true;

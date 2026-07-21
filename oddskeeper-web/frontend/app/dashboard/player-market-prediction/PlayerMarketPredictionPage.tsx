@@ -10,6 +10,7 @@ import {
   fetchPlayerLast5Avg,
   fetchLatestMetricSeason,
   fetchStoredMarkets,
+  fetchPlayerSeasonAppearances,
   MARKET_OPTIONS,
   type UpcomingFixture,
   type PlayerRow,
@@ -45,6 +46,7 @@ type PlayerState = {
   player_slug: string;
   primary_position_code: string;
   appearances: number;
+  lyAppearances: number | null;
   last_match_datetime: string | null;
   checked: boolean;
   status: InferredStatus;
@@ -117,7 +119,7 @@ const STATUS_ORDER: Record<InferredStatus, number> = { "Pos. Starter": 0, "Pos. 
 
 // ─── Player table for one team ────────────────────────────────────────────────
 
-type SortCol = "player" | "pos" | "status" | "avg" | "last5" | "lyavg" | "distexp" | "manual";
+type SortCol = "player" | "pos" | "apps" | "status" | "avg" | "last5" | "lyavg" | "distexp" | "manual";
 type SortDir = "asc" | "desc";
 
 function SortTh({
@@ -191,6 +193,7 @@ function TeamPlayerTable({
       let cmp = 0;
       if (sortCol === "player") cmp = a.player_name.localeCompare(b.player_name);
       else if (sortCol === "pos") cmp = a.primary_position_code.localeCompare(b.primary_position_code);
+      else if (sortCol === "apps") cmp = a.appearances - b.appearances;
       else if (sortCol === "status") cmp = STATUS_ORDER[a.status] - STATUS_ORDER[b.status];
       else if (sortCol === "avg") cmp = (a.seasonAvg ?? -1) - (b.seasonAvg ?? -1);
       else if (sortCol === "last5") cmp = (a.last5Avg ?? -1) - (b.last5Avg ?? -1);
@@ -219,6 +222,7 @@ function TeamPlayerTable({
               <th className="px-2 py-2 w-6"></th>
               <SortTh col="player" label={t("common.player")} sortCol={sortCol} sortDir={sortDir} onSort={handleSort} className="min-w-[110px]" />
               <SortTh col="pos" label={t("common.position")} sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
+              <SortTh col="apps" label={t("playerMarket.appearancesLabel")} sortCol={sortCol} sortDir={sortDir} onSort={handleSort} className="text-right" />
               <SortTh col="status" label={t("playerMarket.columnStatus")} sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
               <SortTh col="avg" label={t("playerMarket.avgLabel")} sortCol={sortCol} sortDir={sortDir} onSort={handleSort} className="text-right" />
               <SortTh col="last5" label={t("playerMarket.last5AvgLabel")} sortCol={sortCol} sortDir={sortDir} onSort={handleSort} className="text-right" />
@@ -253,13 +257,18 @@ function TeamPlayerTable({
                   </td>
 
                   <td
-                    className="px-2 py-1.5 font-medium text-ink whitespace-nowrap overflow-hidden text-ellipsis max-w-[150px]"
+                    className="px-2 py-1.5 font-medium text-ink whitespace-nowrap overflow-hidden text-ellipsis max-w-[175px]"
                     title={p.player_name}
                   >
                     {p.player_name}
                   </td>
 
                   <td className="px-2 py-1.5 text-ink-3">{p.primary_position_code}</td>
+
+                  {/* Bu sezon mac sayisi (parantezde gecen sezon) */}
+                  <td className="px-2 py-1.5 text-right text-ink-2 tabular-nums whitespace-nowrap">
+                    {p.appearances} <span className="text-ink-3">({p.lyAppearances ?? "—"})</span>
+                  </td>
 
                   <td className="px-2 py-1.5">
                     <StatusBadge
@@ -423,13 +432,16 @@ export default function PlayerMarketPredictionPage({
 
       const allIds = [...homeRaw, ...awayRaw].map((p) => p.player_source_id);
 
-      const [recentMatches, metricStats, last5AvgMap, lyStats] = await Promise.all([
+      const [recentMatches, metricStats, last5AvgMap, lyStats, lyApps] = await Promise.all([
         fetchPlayerRecentMatches(allIds, season),
         fetchPlayerMetricStats(allIds, selectedMarket.metricKey, season),
         fetchPlayerLast5Avg(allIds, selectedMarket.logField, season),
         prevSeason
           ? fetchPlayerMetricStats(allIds, selectedMarket.metricKey, prevSeason)
           : Promise.resolve({} as Record<string, PlayerMetricStat>),
+        prevSeason
+          ? fetchPlayerSeasonAppearances(allIds, prevSeason)
+          : Promise.resolve({} as Record<string, number>),
       ]);
 
       function buildStates(rawPlayers: PlayerRow[]): PlayerState[] {
@@ -444,6 +456,7 @@ export default function PlayerMarketPredictionPage({
             player_slug: p.player_slug,
             primary_position_code: p.primary_position_code,
             appearances: p.appearances,
+            lyAppearances: lyApps[p.player_source_id] ?? null,
             last_match_datetime: p.last_match_datetime ?? null,
             checked: false,
             status,

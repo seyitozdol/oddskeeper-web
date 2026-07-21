@@ -7,7 +7,10 @@ import {
   fetchAllCurrentPlayers,
   fetchFixtureInputs,
   saveFixtureInputs,
+  fetchPlayerIds,
+  savePlayerIds,
   upsertStoredMarket,
+  deleteStoredMarket,
   MARKET_OPTIONS,
   type DirectoryPlayer,
   type StoredMarket,
@@ -44,13 +47,25 @@ export function PlayerListTab({
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
   const [ids, setIds] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState(false);
+  const [savedAt, setSavedAt] = useState<number | null>(null);
 
   useEffect(() => {
-    fetchAllCurrentPlayers().then((p) => {
-      setPlayers(p);
-      setLoading(false);
-    });
+    Promise.all([fetchAllCurrentPlayers(), fetchPlayerIds()]).then(
+      ([p, storedIds]) => {
+        setPlayers(p);
+        setIds(storedIds);
+        setLoading(false);
+      }
+    );
   }, []);
+
+  async function handleSave() {
+    setSaving(true);
+    const ok = await savePlayerIds(ids);
+    setSaving(false);
+    if (ok) setSavedAt(Date.now());
+  }
 
   const filtered = useMemo(() => {
     const q = norm(query.trim());
@@ -75,6 +90,17 @@ export function PlayerListTab({
         <span className="text-[12px] text-ink-3">
           {filtered.length} / {players.length}
         </span>
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={saving || loading}
+          className="ml-auto rounded-lg border border-teal-500/30 bg-teal-500/10 px-4 py-1.5 text-[13px] font-semibold text-teal-300 transition hover:bg-teal-500/20 disabled:opacity-50"
+        >
+          {saving ? t("playerMarket.sendingLabel") : t("playerMarket.saveLabel")}
+        </button>
+        {savedAt !== null && !saving && (
+          <span className="text-[12px] text-teal-400">{t("playerMarket.savedLabel")}</span>
+        )}
       </div>
 
       {loading ? (
@@ -176,9 +202,11 @@ export function MarketListTab({
     [storedMarkets]
   );
 
-  // Template ID taslaklari; kayitli degerle baslar, blur'da upsert edilir.
+  // Template ID taslaklari; kayitli degerle baslar, Kaydet ile toplu upsert edilir.
   const [templateIds, setTemplateIds] = useState<Record<string, string>>({});
   const [draftName, setDraftName] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [savedAt, setSavedAt] = useState<number | null>(null);
   const draftInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
@@ -189,18 +217,40 @@ export function MarketListTab({
     return templateIds[key] ?? storedByKey.get(key)?.template_id ?? "";
   }
 
-  async function saveTemplateId(key: string, label: string, isCustom: boolean) {
-    const value = (templateIds[key] ?? "").trim();
-    const stored = storedByKey.get(key);
-    if (templateIds[key] === undefined) return; // dokunulmadi
-    if ((stored?.template_id ?? "") === value) return; // degismedi
-    await upsertStoredMarket({
-      market_key: key,
-      label,
-      template_id: value || null,
-      is_custom: isCustom,
-    });
-    onChanged();
+  async function handleSaveAll() {
+    setSaving(true);
+    let ok = true;
+    for (const row of rows) {
+      const draft = templateIds[row.key];
+      if (draft === undefined) continue; // dokunulmadi
+      const value = draft.trim();
+      if ((storedByKey.get(row.key)?.template_id ?? "") === value) continue;
+      const res = await upsertStoredMarket({
+        market_key: row.key,
+        label: row.label,
+        template_id: value || null,
+        is_custom: row.isCustom,
+        sort_order: storedByKey.get(row.key)?.sort_order,
+      });
+      ok = ok && res;
+    }
+    setSaving(false);
+    if (ok) {
+      setSavedAt(Date.now());
+      onChanged();
+    }
+  }
+
+  async function handleDelete(key: string) {
+    const ok = await deleteStoredMarket(key);
+    if (ok) {
+      setTemplateIds((prev) => {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
+      onChanged();
+    }
   }
 
   async function saveDraftMarket() {
@@ -244,6 +294,7 @@ export function MarketListTab({
             <tr className="text-left text-[10px] uppercase tracking-[0.12em] text-ink-3">
               <th className="px-2 py-2">{t("playerMarket.marketLabel")}</th>
               <th className="px-2 py-2 w-40">{t("playerMarket.marketTemplateIdLabel")}</th>
+              <th className="px-2 py-2 w-8"></th>
             </tr>
           </thead>
           <tbody>
@@ -257,9 +308,20 @@ export function MarketListTab({
                     onChange={(e) =>
                       setTemplateIds((prev) => ({ ...prev, [m.key]: e.target.value }))
                     }
-                    onBlur={() => saveTemplateId(m.key, m.label, m.isCustom)}
                     className="w-36 rounded border border-line bg-field px-1.5 py-0.5 text-[11px] text-ink focus:border-teal-500/50 focus:outline-none"
                   />
+                </td>
+                <td className="px-2 py-1.5 text-center">
+                  {m.isCustom && (
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(m.key)}
+                      title={t("playerMarket.deleteLabel")}
+                      className="rounded px-1.5 py-0.5 text-[13px] font-semibold text-red-400/70 transition hover:bg-red-500/10 hover:text-red-400"
+                    >
+                      ×
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}
@@ -283,6 +345,7 @@ export function MarketListTab({
                   />
                 </td>
                 <td className="px-2 py-1.5 text-ink-3 text-[11px]"></td>
+                <td className="px-2 py-1.5"></td>
               </tr>
             )}
           </tbody>
@@ -290,13 +353,26 @@ export function MarketListTab({
       </div>
 
       {/* Yeni: en alta ekler, kaydeder; Model'deki market listesine de girer */}
-      <button
-        type="button"
-        onClick={() => setDraftName("")}
-        className="mt-3 rounded-lg border border-teal-500/30 bg-teal-500/10 px-4 py-1.5 text-[13px] font-semibold text-teal-300 transition hover:bg-teal-500/20"
-      >
-        {t("playerMarket.newLabel")}
-      </button>
+      <div className="mt-3 flex items-center gap-3">
+        <button
+          type="button"
+          onClick={() => setDraftName("")}
+          className="rounded-lg border border-teal-500/30 bg-teal-500/10 px-4 py-1.5 text-[13px] font-semibold text-teal-300 transition hover:bg-teal-500/20"
+        >
+          {t("playerMarket.newLabel")}
+        </button>
+        <button
+          type="button"
+          onClick={handleSaveAll}
+          disabled={saving}
+          className="rounded-lg border border-teal-500/30 bg-teal-500/10 px-4 py-1.5 text-[13px] font-semibold text-teal-300 transition hover:bg-teal-500/20 disabled:opacity-50"
+        >
+          {saving ? t("playerMarket.sendingLabel") : t("playerMarket.saveLabel")}
+        </button>
+        {savedAt !== null && !saving && (
+          <span className="text-[12px] text-teal-400">{t("playerMarket.savedLabel")}</span>
+        )}
+      </div>
     </div>
   );
 }
