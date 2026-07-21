@@ -11,15 +11,24 @@ import {
   fetchLatestMetricSeason,
   fetchStoredMarkets,
   fetchPlayerSeasonAppearances,
+  fetchFixtureInputs,
+  fetchPlayerIds,
   MARKET_OPTIONS,
   type UpcomingFixture,
   type PlayerRow,
   type PlayerMetricStat,
   type MarketOption,
   type StoredMarket,
+  type MarketType,
 } from "./queries";
 import { previousSeasonLabel } from "@/lib/season";
-import { PlayerListTab, MarketListTab, FixtureIdTab } from "./list-tabs";
+import {
+  PlayerListTab,
+  MarketListTab,
+  FixtureIdTab,
+  InputTab,
+  type InputRow,
+} from "./list-tabs";
 import {
   inferPlayerStatus,
   distributeExpectation,
@@ -146,6 +155,10 @@ function TeamPlayerTable({
   distExp,
   distributeEnabled,
   paybackPct,
+  lineTicks,
+  oddsEdit,
+  onLineTick,
+  onOddsEdit,
   onStatusChange,
   onManualChange,
   onCheckedChange,
@@ -155,6 +168,12 @@ function TeamPlayerTable({
   distExp: number;
   distributeEnabled: boolean;
   paybackPct: number;
+  // Line tikleri ve elle duzenlenen oranlar parent'ta tutulur (Ekle akisi okur);
+  // anahtar "<player_key>:<line>". Fixture/market degisince parent sifirlar.
+  lineTicks: Record<string, boolean>;
+  oddsEdit: Record<string, string>;
+  onLineTick: (key: string, v: boolean) => void;
+  onOddsEdit: (key: string, v: string) => void;
   onStatusChange: (id: string, s: InferredStatus) => void;
   onManualChange: (id: string, v: string) => void;
   onCheckedChange: (id: string, v: boolean) => void;
@@ -162,9 +181,6 @@ function TeamPlayerTable({
   const { t } = useI18n();
   const [sortCol, setSortCol] = useState<SortCol>("status");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
-  // Elle duzenlenen oranlar; anahtar "<player_key>:<line>". Fixture veya market
-  // degisince parent key prop'uyla bileseni sifirlar.
-  const [oddsEdit, setOddsEdit] = useState<Record<string, string>>({});
 
   function handleSort(col: SortCol) {
     if (sortCol === col) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
@@ -320,6 +336,8 @@ function TeamPlayerTable({
                             >
                               <input
                                 type="checkbox"
+                                checked={!!lineTicks[editKey]}
+                                onChange={(e) => onLineTick(editKey, e.target.checked)}
                                 className={`cursor-pointer ${STATUS_ACCENT[p.status]}`}
                               />
                               <span className="text-ink-3 text-[10px] w-6 text-right tabular-nums">
@@ -333,9 +351,7 @@ function TeamPlayerTable({
                                   min="1"
                                   step="0.01"
                                   value={oddsEdit[editKey] ?? computed}
-                                  onChange={(e) =>
-                                    setOddsEdit((prev) => ({ ...prev, [editKey]: e.target.value }))
-                                  }
+                                  onChange={(e) => onOddsEdit(editKey, e.target.value)}
                                   className={`w-12 rounded bg-veil px-1 py-0.5 text-right text-[11px] font-semibold text-teal-300 border border-transparent focus:border-teal-500/50 focus:outline-none ${NO_SPINNER}`}
                                 />
                               )}
@@ -382,8 +398,16 @@ export default function PlayerMarketPredictionPage({
   const [activeTab, setActiveTab] = useState<"model" | "players" | "markets" | "fixtures" | "input">("model");
   // Avg bu sezondan, LY Avg bir onceki sezondan okunur.
   const [currentSeason, setCurrentSeason] = useState<string | null>(null);
-  // pm_markets kayitlari: ozel marketler + template id'ler.
+  // pm_markets kayitlari: ozel marketler + template id'ler + turler.
   const [storedMarkets, setStoredMarkets] = useState<StoredMarket[]>([]);
+  // Line tikleri ve elle duzenlenen oranlar; anahtar "<player_key>:<line>".
+  const [lineTicks, setLineTicks] = useState<Record<string, boolean>>({});
+  const [oddsEdit, setOddsEdit] = useState<Record<string, string>>({});
+  // Ekle ile uretilen input satirlari (Input sekmesindeki iki segment).
+  const [staticRows, setStaticRows] = useState<InputRow[]>([]);
+  const [dynamicRows, setDynamicRows] = useState<InputRow[]>([]);
+  const [adding, setAdding] = useState(false);
+  const [addedCount, setAddedCount] = useState<number | null>(null);
 
   // ── On mount: load fixtures + latest metric season + stored markets ──
   useEffect(() => {
@@ -420,6 +444,9 @@ export default function PlayerMarketPredictionPage({
     setLoading(true);
     setHomePlayers([]);
     setAwayPlayers([]);
+    setLineTicks({});
+    setOddsEdit({});
+    setAddedCount(null);
 
     const season = currentSeason;
     const prevSeason = previousSeasonLabel(season);
@@ -520,6 +547,9 @@ export default function PlayerMarketPredictionPage({
         }));
       setHomePlayers(update);
       setAwayPlayers(update);
+      setLineTicks({});
+      setOddsEdit({});
+      setAddedCount(null);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedMarketKey]);
@@ -550,6 +580,75 @@ export default function PlayerMarketPredictionPage({
     selectedMarket.includeGk ? ps : ps.filter((p) => p.primary_position_code !== "GK");
   const visibleHome = gkVisible(homePlayers);
   const visibleAway = gkVisible(awayPlayers);
+
+  // ── Ekle: tikli oyuncu + tikli line'lardan input satirlari uretir ──
+  // Satirlar secili marketin turune gore Input sekmesindeki segmente duser.
+  // Oyuncu tikli ama hicbir line'i tikli degilse yazilmaz; line'lar kucukten
+  // buyuge eklenir. Ev oyuncusu sort order 1, deplasman 2.
+  async function handleAdd() {
+    if (!selectedFixture || adding) return;
+    setAdding(true);
+
+    const [fixtureInputs, playerIds] = await Promise.all([
+      fetchFixtureInputs(),
+      fetchPlayerIds(),
+    ]);
+    const fixtureIdValue = fixtureInputs[selectedFixture.fixture_id] ?? "";
+    const stored = storedMarkets.find((m) => m.market_key === selectedMarketKey);
+    const marketTemplate = stored?.template_id ?? "";
+    const marketType: MarketType = stored?.market_type ?? "static";
+
+    const rows: InputRow[] = [];
+
+    function build(players: PlayerState[], distExp: number, sortOrder: number) {
+      const expMap = distributeEnabled
+        ? distributeExpectation(
+            players.map((p) => ({
+              player_source_id: p.player_source_id,
+              status: p.status,
+              seasonAvg: p.seasonAvg,
+              manualValue: p.manualValue,
+            })),
+            distExp
+          )
+        : {};
+
+      for (const p of players) {
+        if (!p.checked || p.status === "Out") continue;
+        const manNum = parseFloat(p.manualValue);
+        const finalExp =
+          !isNaN(manNum) && manNum > 0 ? manNum : (expMap[p.player_source_id] ?? 0);
+        if (finalExp <= 0) continue;
+        const ticked = calcOddsLines(finalExp, paybackNum)
+          .filter((ol) => lineTicks[`${p.player_source_id}:${ol.line}`])
+          .sort((a, b) => a.line - b.line);
+        if (ticked.length === 0) continue;
+
+        for (const ol of ticked) {
+          const price =
+            oddsEdit[`${p.player_source_id}:${ol.line}`] ?? fmtOdds(ol.overOdds);
+          if (price === "—" || !price.trim()) continue;
+          rows.push({
+            fixtureLabel: selectedFixture!.label,
+            fixtureId: fixtureIdValue,
+            marketTemplate,
+            participant: playerIds[p.player_slug] ?? "",
+            sortOrder,
+            line: ol.line.toFixed(1),
+            price: price.trim(),
+          });
+        }
+      }
+    }
+
+    build(visibleHome, homeDistExpNum, 1);
+    build(visibleAway, awayDistExpNum, 2);
+
+    if (marketType === "dynamic") setDynamicRows((prev) => [...prev, ...rows]);
+    else setStaticRows((prev) => [...prev, ...rows]);
+    setAdding(false);
+    setAddedCount(rows.length);
+  }
 
   const TABS = [
     { id: "model" as const, label: t("playerMarket.tabModel") },
@@ -586,9 +685,13 @@ export default function PlayerMarketPredictionPage({
       )}
       {activeTab === "fixtures" && <FixtureIdTab fixtures={fixtures} />}
       {activeTab === "input" && (
-        <div className="rounded-xl border border-line bg-card px-5 py-10 text-center text-sm text-ink-3">
-          {t("playerMarket.comingSoon")}
-        </div>
+        <InputTab
+          staticRows={staticRows}
+          dynamicRows={dynamicRows}
+          onClear={(type) =>
+            type === "dynamic" ? setDynamicRows([]) : setStaticRows([])
+          }
+        />
       )}
 
       {activeTab === "model" && (
@@ -686,13 +789,20 @@ export default function PlayerMarketPredictionPage({
             />
           </div>
 
-          {/* Ekle: gorevi sonra tanimlanacak */}
+          {/* Ekle: tikli oyuncu/line'lardan input satirlari uretir */}
           <button
             type="button"
-            className="rounded-lg border border-teal-500/30 bg-teal-500/10 px-4 py-2 text-[13px] font-semibold text-teal-300 transition hover:bg-teal-500/20"
+            onClick={handleAdd}
+            disabled={adding || !selectedFixture}
+            className="rounded-lg border border-teal-500/30 bg-teal-500/10 px-4 py-2 text-[13px] font-semibold text-teal-300 transition hover:bg-teal-500/20 disabled:opacity-50"
           >
             {t("playerMarket.addLabel")}
           </button>
+          {addedCount !== null && (
+            <span className="pb-2.5 text-[12px] text-teal-400">
+              {t("playerMarket.addedLabel", { count: String(addedCount) })}
+            </span>
+          )}
         </div>
       </div>
 
@@ -731,6 +841,10 @@ export default function PlayerMarketPredictionPage({
               distExp={homeDistExpNum}
               distributeEnabled={distributeEnabled}
               paybackPct={paybackNum}
+              lineTicks={lineTicks}
+              oddsEdit={oddsEdit}
+              onLineTick={(key, v) => setLineTicks((prev) => ({ ...prev, [key]: v }))}
+              onOddsEdit={(key, v) => setOddsEdit((prev) => ({ ...prev, [key]: v }))}
               onStatusChange={makeStatusHandler(setHomePlayers)}
               onManualChange={makeManualHandler(setHomePlayers)}
               onCheckedChange={makeCheckedHandler(setHomePlayers)}
@@ -742,6 +856,10 @@ export default function PlayerMarketPredictionPage({
               distExp={awayDistExpNum}
               distributeEnabled={distributeEnabled}
               paybackPct={paybackNum}
+              lineTicks={lineTicks}
+              oddsEdit={oddsEdit}
+              onLineTick={(key, v) => setLineTicks((prev) => ({ ...prev, [key]: v }))}
+              onOddsEdit={(key, v) => setOddsEdit((prev) => ({ ...prev, [key]: v }))}
               onStatusChange={makeStatusHandler(setAwayPlayers)}
               onManualChange={makeManualHandler(setAwayPlayers)}
               onCheckedChange={makeCheckedHandler(setAwayPlayers)}

@@ -14,6 +14,7 @@ import {
   MARKET_OPTIONS,
   type DirectoryPlayer,
   type StoredMarket,
+  type MarketType,
   type UpcomingFixture,
 } from "./queries";
 
@@ -202,9 +203,11 @@ export function MarketListTab({
     [storedMarkets]
   );
 
-  // Template ID taslaklari; kayitli degerle baslar, Kaydet ile toplu upsert edilir.
+  // Template ID ve tur taslaklari; kayitli degerle baslar, Kaydet ile toplu upsert edilir.
   const [templateIds, setTemplateIds] = useState<Record<string, string>>({});
+  const [types, setTypes] = useState<Record<string, MarketType>>({});
   const [draftName, setDraftName] = useState<string | null>(null);
+  const [draftType, setDraftType] = useState<MarketType>("static");
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const draftInputRef = useRef<HTMLInputElement | null>(null);
@@ -217,20 +220,29 @@ export function MarketListTab({
     return templateIds[key] ?? storedByKey.get(key)?.template_id ?? "";
   }
 
+  function typeValue(key: string): MarketType {
+    return types[key] ?? storedByKey.get(key)?.market_type ?? "static";
+  }
+
   async function handleSaveAll() {
     setSaving(true);
     let ok = true;
     for (const row of rows) {
-      const draft = templateIds[row.key];
-      if (draft === undefined) continue; // dokunulmadi
-      const value = draft.trim();
-      if ((storedByKey.get(row.key)?.template_id ?? "") === value) continue;
+      const stored = storedByKey.get(row.key);
+      const tplTouched = templateIds[row.key] !== undefined;
+      const typeTouched = types[row.key] !== undefined;
+      if (!tplTouched && !typeTouched) continue; // dokunulmadi
+      const value = (templateIds[row.key] ?? stored?.template_id ?? "").trim();
+      const type = typeValue(row.key);
+      if ((stored?.template_id ?? "") === value && (stored?.market_type ?? "static") === type)
+        continue; // degismedi
       const res = await upsertStoredMarket({
         market_key: row.key,
         label: row.label,
         template_id: value || null,
         is_custom: row.isCustom,
-        sort_order: storedByKey.get(row.key)?.sort_order,
+        sort_order: stored?.sort_order,
+        market_type: type,
       });
       ok = ok && res;
     }
@@ -274,9 +286,11 @@ export function MarketListTab({
       template_id: null,
       is_custom: true,
       sort_order: maxSort + 1,
+      market_type: draftType,
     });
     if (ok) {
       setDraftName(null);
+      setDraftType("static");
       onChanged();
     }
   }
@@ -294,6 +308,7 @@ export function MarketListTab({
             <tr className="text-left text-[10px] uppercase tracking-[0.12em] text-ink-3">
               <th className="px-2 py-2">{t("playerMarket.marketLabel")}</th>
               <th className="px-2 py-2 w-40">{t("playerMarket.marketTemplateIdLabel")}</th>
+              <th className="px-2 py-2 w-28">{t("playerMarket.marketTypeLabel")}</th>
               <th className="px-2 py-2 w-8"></th>
             </tr>
           </thead>
@@ -311,6 +326,18 @@ export function MarketListTab({
                     className="w-36 rounded border border-line bg-field px-1.5 py-0.5 text-[11px] text-ink focus:border-teal-500/50 focus:outline-none"
                   />
                 </td>
+                <td className="px-2 py-1.5">
+                  <select
+                    value={typeValue(m.key)}
+                    onChange={(e) =>
+                      setTypes((prev) => ({ ...prev, [m.key]: e.target.value as MarketType }))
+                    }
+                    className="rounded border border-line bg-field px-1.5 py-0.5 text-[11px] text-ink focus:border-teal-500/50 focus:outline-none"
+                  >
+                    <option value="static">{t("playerMarket.staticLabel")}</option>
+                    <option value="dynamic">{t("playerMarket.dynamicLabel")}</option>
+                  </select>
+                </td>
                 <td className="px-2 py-1.5 text-center">
                   {m.isCustom && (
                     <button
@@ -326,7 +353,7 @@ export function MarketListTab({
               </tr>
             ))}
 
-            {/* Yeni market taslak satiri */}
+            {/* Yeni market taslak satiri: isim + tur; Enter veya onay ile kaydeder */}
             {draftName !== null && (
               <tr className="border-t border-line">
                 <td className="px-2 py-1.5">
@@ -336,16 +363,34 @@ export function MarketListTab({
                     value={draftName}
                     placeholder={t("playerMarket.newMarketPlaceholder")}
                     onChange={(e) => setDraftName(e.target.value)}
-                    onBlur={saveDraftMarket}
                     onKeyDown={(e) => {
-                      if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                      if (e.key === "Enter") saveDraftMarket();
                       if (e.key === "Escape") setDraftName(null);
                     }}
                     className="w-40 rounded border border-teal-500/40 bg-field px-1.5 py-0.5 text-[12px] text-ink placeholder-ink-3 focus:border-teal-500/70 focus:outline-none"
                   />
                 </td>
                 <td className="px-2 py-1.5 text-ink-3 text-[11px]"></td>
-                <td className="px-2 py-1.5"></td>
+                <td className="px-2 py-1.5">
+                  <select
+                    value={draftType}
+                    onChange={(e) => setDraftType(e.target.value as MarketType)}
+                    className="rounded border border-line bg-field px-1.5 py-0.5 text-[11px] text-ink focus:border-teal-500/50 focus:outline-none"
+                  >
+                    <option value="static">{t("playerMarket.staticLabel")}</option>
+                    <option value="dynamic">{t("playerMarket.dynamicLabel")}</option>
+                  </select>
+                </td>
+                <td className="px-2 py-1.5 text-center">
+                  <button
+                    type="button"
+                    onClick={saveDraftMarket}
+                    title={t("playerMarket.saveLabel")}
+                    className="rounded px-1.5 py-0.5 text-[13px] font-semibold text-teal-300 transition hover:bg-teal-500/10"
+                  >
+                    ✓
+                  </button>
+                </td>
               </tr>
             )}
           </tbody>
@@ -373,6 +418,129 @@ export function MarketListTab({
           <span className="text-[12px] text-teal-400">{t("playerMarket.savedLabel")}</span>
         )}
       </div>
+    </div>
+  );
+}
+
+// ─── Input tab ────────────────────────────────────────────────────────────────
+// Model'de Ekle'ye basilinca uretilen satirlar, secili marketin turune gore
+// Static Input veya Dynamic Input segmentine duser. Yazdir tek sheet'li
+// ("input") xlsx uretir, dosya adi fixture adidir. Temizle tabloyu bosaltir.
+// Kolon basliklari sabittir, degistirilmez.
+
+export type InputRow = {
+  fixtureLabel: string;
+  fixtureId: string; // Fixture ID sekmesinde girilen deger
+  marketTemplate: string;
+  participant: string; // Oyuncu Listesi'ndeki ID
+  sortOrder: number; // 1 = ev, 2 = deplasman
+  line: string; // "0.5" (nokta formati)
+  price: string; // "1.55" (nokta formati)
+};
+
+const INPUT_HEADERS = [
+  "Fixture ID",
+  "Market Template",
+  "Market Participant",
+  "Market Participant Sort Order",
+  "Line",
+  "Market Status",
+  "Selection_1_Name",
+  "Selection_1_Price",
+];
+
+function inputRowCells(r: InputRow): (string | number)[] {
+  return [r.fixtureId, r.marketTemplate, r.participant, r.sortOrder, r.line, "", "Over", r.price];
+}
+
+export function InputTab({
+  staticRows,
+  dynamicRows,
+  onClear,
+}: {
+  staticRows: InputRow[];
+  dynamicRows: InputRow[];
+  onClear: (type: MarketType) => void;
+}) {
+  const { t } = useI18n();
+  const [segment, setSegment] = useState<MarketType>("dynamic");
+  const rows = segment === "dynamic" ? dynamicRows : staticRows;
+
+  async function handleExport() {
+    if (rows.length === 0) return;
+    const XLSX = await import("xlsx");
+    const ws = XLSX.utils.aoa_to_sheet([INPUT_HEADERS, ...rows.map(inputRowCells)]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "input");
+    const label =
+      rows[rows.length - 1].fixtureLabel.replace(/[\\/:*?"<>|]+/g, "-").trim() || "input";
+    XLSX.writeFile(wb, `${label}.xlsx`);
+  }
+
+  return (
+    <div className="rounded-xl border border-line bg-card px-5 py-4">
+      {/* Segment secimi */}
+      <div className="mb-3 flex items-center gap-1">
+        {(["dynamic", "static"] as MarketType[]).map((s) => (
+          <button
+            key={s}
+            type="button"
+            onClick={() => setSegment(s)}
+            className={`rounded-lg px-4 py-1.5 text-[13px] transition
+              ${segment === s ? "bg-veil font-semibold text-ink" : "text-ink-3 hover:text-ink-2"}`}
+          >
+            {s === "dynamic"
+              ? t("playerMarket.dynamicInputLabel")
+              : t("playerMarket.staticInputLabel")}
+          </button>
+        ))}
+
+        <div className="ml-auto flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleExport}
+            disabled={rows.length === 0}
+            className="rounded-lg border border-teal-500/30 bg-teal-500/10 px-4 py-1.5 text-[13px] font-semibold text-teal-300 transition hover:bg-teal-500/20 disabled:opacity-50"
+          >
+            {t("playerMarket.printLabel")}
+          </button>
+          <button
+            type="button"
+            onClick={() => onClear(segment)}
+            disabled={rows.length === 0}
+            className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-1.5 text-[13px] font-semibold text-red-400 transition hover:bg-red-500/20 disabled:opacity-50"
+          >
+            {t("playerMarket.clearLabel")}
+          </button>
+        </div>
+      </div>
+
+      {rows.length === 0 ? (
+        <div className="py-8 text-center text-sm text-ink-3">{t("playerMarket.noRowsLabel")}</div>
+      ) : (
+        <div className="overflow-x-auto rounded-lg border border-line">
+          <table className="min-w-full border-collapse text-[12px]">
+            <thead className="bg-card-2">
+              <tr className="text-left text-[10px] uppercase tracking-[0.12em] text-ink-3">
+                {INPUT_HEADERS.map((h) => (
+                  <th key={h} className="px-2 py-2 whitespace-nowrap">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r, i) => (
+                <tr key={i} className="border-t border-line transition hover:bg-veil">
+                  {inputRowCells(r).map((cell, j) => (
+                    <td key={j} className="px-2 py-1.5 text-ink-2 whitespace-nowrap tabular-nums">
+                      {cell === "" ? "" : cell}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }

@@ -495,12 +495,15 @@ export async function saveFixtureInputs(
 // Yeni butonuyla eklenen ozel marketler (is_custom=true) + yerlesik marketlerin
 // Market Template ID kayitlari (is_custom=false).
 
+export type MarketType = "static" | "dynamic";
+
 export type StoredMarket = {
   market_key: string;
   label: string;
   template_id: string | null;
   is_custom: boolean;
   sort_order: number;
+  market_type: MarketType;
 };
 
 export async function fetchStoredMarkets(): Promise<StoredMarket[]> {
@@ -508,7 +511,7 @@ export async function fetchStoredMarkets(): Promise<StoredMarket[]> {
   const { data, error } = await supabase
     .schema("analytics")
     .from("pm_markets")
-    .select("market_key, label, template_id, is_custom, sort_order")
+    .select("market_key, label, template_id, is_custom, sort_order, market_type")
     .order("sort_order", { ascending: true })
     .order("created_at", { ascending: true });
 
@@ -533,6 +536,7 @@ export async function upsertStoredMarket(
         template_id: market.template_id,
         is_custom: market.is_custom,
         sort_order: market.sort_order ?? 0,
+        market_type: market.market_type,
         updated_at: new Date().toISOString(),
       },
       { onConflict: "market_key" }
