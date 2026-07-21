@@ -136,13 +136,15 @@ export function probToOdds(prob: number, paybackPct: number): number {
 
 /**
  * Find mid line: the X.5 line where |over% - under%| is minimised.
- * Search range: 0.5 to 15.5
+ * Arama araligi beklentiye gore genisler; sabit 30.5 tavani buyuk
+ * beklentili marketlerde (pas, isabetli pas) yanlis line uretiyordu.
  */
 export function findMidLine(lambda: number): number {
   let bestLine = 0.5;
   let bestDiff = Infinity;
 
-  for (let i = 0; i <= 30; i++) {
+  const maxI = Math.max(30, Math.ceil(lambda) + 10);
+  for (let i = 0; i <= maxI; i++) {
     const line = i + 0.5;
     const ov = overProb(lambda, line);
     const un = 1 - ov;

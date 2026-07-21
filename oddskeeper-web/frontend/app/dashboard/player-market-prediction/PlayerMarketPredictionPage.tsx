@@ -157,6 +157,7 @@ function TeamPlayerTable({
   distExp,
   distributeEnabled,
   paybackPct,
+  dynamicMode,
   lineTicks,
   oddsEdit,
   onLineTick,
@@ -170,6 +171,9 @@ function TeamPlayerTable({
   distExp: number;
   distributeEnabled: boolean;
   paybackPct: number;
+  // Dynamic markette line'lar yerine oyuncu basina tek deger girilir
+  // (anahtar "<player_key>:dyn"); Ekle bu degeri fiyat olarak yazar.
+  dynamicMode: boolean;
   // Line tikleri ve elle duzenlenen oranlar parent'ta tutulur (Ekle akisi okur);
   // anahtar "<player_key>:<line>". Fixture/market degisince parent sifirlar.
   lineTicks: Record<string, boolean>;
@@ -255,9 +259,10 @@ function TeamPlayerTable({
               const effExp = expMap[p.player_source_id] ?? 0;
               const manNum = parseFloat(p.manualValue);
               const finalExp = !isNaN(manNum) && manNum > 0 ? manNum : effExp;
-              const oddsLines = p.status !== "Out" && finalExp > 0
+              const oddsLines = !dynamicMode && p.status !== "Out" && finalExp > 0
                 ? calcOddsLines(finalExp, paybackPct)
                 : [];
+              const dynKey = `${p.player_source_id}:dyn`;
 
               return (
                 <tr
@@ -323,9 +328,32 @@ function TeamPlayerTable({
                     />
                   </td>
 
-                  {/* Odds - over only, 2x2 kompakt grid, satir basina tik + line + oran */}
+                  {/* Odds - over only, 2x2 kompakt grid, satir basina tik + line + oran.
+                      Dynamic markette line yok: tek tik + tek deger. */}
                   <td className="px-1 py-1">
-                    {oddsLines.length > 0 ? (
+                    {dynamicMode ? (
+                      p.status !== "Out" ? (
+                        <div className="flex items-center gap-1.5">
+                          <input
+                            type="checkbox"
+                            checked={!!lineTicks[dynKey]}
+                            onChange={(e) => onLineTick(dynKey, e.target.checked)}
+                            className={`cursor-pointer ${STATUS_ACCENT[p.status]}`}
+                          />
+                          <input
+                            type="number"
+                            min="1"
+                            step="0.01"
+                            placeholder="0"
+                            value={oddsEdit[dynKey] ?? ""}
+                            onChange={(e) => onOddsEdit(dynKey, e.target.value)}
+                            className={`w-14 rounded bg-veil px-1 py-0.5 text-right text-[11px] font-semibold text-teal-300 border border-transparent focus:border-teal-500/50 focus:outline-none ${NO_SPINNER}`}
+                          />
+                        </div>
+                      ) : (
+                        <span className="text-ink-3">—</span>
+                      )
+                    ) : oddsLines.length > 0 ? (
                       <div className="grid grid-cols-2 gap-x-1.5 gap-y-0.5">
                         {oddsLines.map((ol) => {
                           const editKey = `${p.player_source_id}:${ol.line}`;
@@ -440,6 +468,10 @@ export default function PlayerMarketPredictionPage({
 
   const selectedFixture = fixtures.find((f) => f.fixture_id === selectedFixtureId) ?? null;
   const selectedMarket = allMarkets.find((m) => m.key === selectedMarketKey) ?? MARKET_OPTIONS[0];
+  // Market Listesi'ndeki behavior; dynamic ise Model'de line yerine tek deger girilir.
+  const selectedMarketType: MarketType =
+    storedMarkets.find((m) => m.market_key === selectedMarketKey)?.market_type ?? "static";
+  const dynamicMode = selectedMarketType === "dynamic";
 
   // ── Load players when fixture changes ──
   useEffect(() => {
@@ -540,9 +572,11 @@ export default function PlayerMarketPredictionPage({
         ? fetchPlayerMetricStats(allIds, selectedMarket.metricKey, prevSeason)
         : Promise.resolve({} as Record<string, PlayerMetricStat>),
     ]).then(([metricStats, last5AvgMap, lyStats]) => {
+      // Market degisince oyuncu tikleri de otomatik kalkar.
       const update = (prev: PlayerState[]) =>
         prev.map((p) => ({
           ...p,
+          checked: false,
           seasonAvg: metricStats[p.player_source_id]?.per_match_value ?? null,
           last5Avg: last5AvgMap[p.player_source_id] ?? null,
           lyAvg: lyStats[p.player_source_id]?.per_match_value ?? null,
@@ -609,6 +643,24 @@ export default function PlayerMarketPredictionPage({
 
     const selections: DynamicSelection[] = [];
 
+    // Dynamic markette line yok: oyuncu basina tek girilen deger yazilir.
+    function buildDynamic(players: PlayerState[], sortOrder: number) {
+      for (const p of players) {
+        if (!p.checked || p.status === "Out") continue;
+        if (!lineTicks[`${p.player_source_id}:dyn`]) continue;
+        const price = (oddsEdit[`${p.player_source_id}:dyn`] ?? "").trim();
+        if (!price || !(parseFloat(price) > 0)) continue;
+        selections.push({
+          price,
+          participantId: playerIds[p.player_slug] ?? "",
+          sortOrder,
+          playerSlug: p.player_slug,
+          playerName: p.player_name,
+          line: "",
+        });
+      }
+    }
+
     function build(players: PlayerState[], distExp: number, sortOrder: number) {
       const expMap = distributeEnabled
         ? distributeExpectation(
@@ -649,8 +701,13 @@ export default function PlayerMarketPredictionPage({
       }
     }
 
-    build(visibleHome, homeDistExpNum, 1);
-    build(visibleAway, awayDistExpNum, 2);
+    if (marketType === "dynamic") {
+      buildDynamic(visibleHome, 1);
+      buildDynamic(visibleAway, 2);
+    } else {
+      build(visibleHome, homeDistExpNum, 1);
+      build(visibleAway, awayDistExpNum, 2);
+    }
 
     // Mukerrer kontrolu: ayni mac + oyuncu + line hedef tabloda var mi?
     const existingKeys = new Set(
@@ -666,7 +723,7 @@ export default function PlayerMarketPredictionPage({
     if (dups.length > 0) {
       const info = dups
         .slice(0, 3)
-        .map((s) => `${s.playerName} ${s.line}`)
+        .map((s) => `${s.playerName} ${s.line}`.trim())
         .join(", ");
       setDupWarning(
         t("playerMarket.duplicateWarning", {
@@ -912,6 +969,7 @@ export default function PlayerMarketPredictionPage({
               distExp={homeDistExpNum}
               distributeEnabled={distributeEnabled}
               paybackPct={paybackNum}
+              dynamicMode={dynamicMode}
               lineTicks={lineTicks}
               oddsEdit={oddsEdit}
               onLineTick={(key, v) => setLineTicks((prev) => ({ ...prev, [key]: v }))}
@@ -927,6 +985,7 @@ export default function PlayerMarketPredictionPage({
               distExp={awayDistExpNum}
               distributeEnabled={distributeEnabled}
               paybackPct={paybackNum}
+              dynamicMode={dynamicMode}
               lineTicks={lineTicks}
               oddsEdit={oddsEdit}
               onLineTick={(key, v) => setLineTicks((prev) => ({ ...prev, [key]: v }))}

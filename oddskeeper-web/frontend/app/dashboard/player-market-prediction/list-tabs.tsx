@@ -638,7 +638,7 @@ export function InputTab({
                   <td className={tdClass}></td>
                   {Array.from({ length: maxSelections }, (_, si) => {
                     const s = r.selections[si];
-                    const tip = s ? `${s.playerName} ${s.line}` : undefined;
+                    const tip = s ? `${s.playerName} ${s.line}`.trim() : undefined;
                     return s ? (
                       <FragmentCells key={si} tip={tip} cells={[s.price, s.participantId, s.sortOrder]} tdClass={tdClass} />
                     ) : (
