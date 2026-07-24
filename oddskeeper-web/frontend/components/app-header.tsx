@@ -8,11 +8,15 @@ import { createClient } from "../lib/supabase/client";
 import { useI18n } from "../lib/i18n/LanguageProvider";
 import { LOCALES, type Locale } from "../lib/i18n/config";
 import type { Theme } from "../lib/theme";
+import { isNavKeyAllowed, type NavKey } from "../lib/nav-permissions";
 import ThemeSelect from "./ThemeSelect";
 
 type AppHeaderProps = {
   userEmail?: string | null;
   theme?: Theme;
+  // null = kisitlama yok; dizi = sadece listelenen basliklar gorunur
+  allowedNavKeys?: string[] | null;
+  isAdmin?: boolean;
 };
 
 const FOOTBALL_LEAGUE_DETAIL_HREF =
@@ -26,6 +30,8 @@ const LOCALE_LABEL_KEYS: Record<Locale, string> = {
 export default function AppHeader({
   userEmail,
   theme = "night",
+  allowedNavKeys = null,
+  isAdmin = false,
 }: AppHeaderProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -35,6 +41,9 @@ export default function AppHeader({
 
   const initials = userEmail ? userEmail.slice(0, 1).toUpperCase() : "U";
   const isStatsActive = pathname.startsWith("/dashboard/stats-analysis");
+  const isAdminActive = pathname.startsWith("/dashboard/admin");
+
+  const can = (key: NavKey) => isNavKeyAllowed(key, allowedNavKeys);
 
   async function handleSignOut() {
     try {
@@ -73,40 +82,51 @@ export default function AppHeader({
           </Link>
 
           <nav className="hidden items-center gap-1 md:flex">
-            <Link
-              href="/dashboard/smart-prediction"
-              className={navLinkClass(pathname === "/dashboard/smart-prediction")}
-            >
-              {t("nav.smartPrediction")}
-            </Link>
+            {can("smart-prediction") ? (
+              <Link
+                href="/dashboard/smart-prediction"
+                className={navLinkClass(
+                  pathname === "/dashboard/smart-prediction"
+                )}
+              >
+                {t("nav.smartPrediction")}
+              </Link>
+            ) : null}
 
-            <Link
-              href="/dashboard/deep-prediction-ml2"
-              className={navLinkClass(
-                pathname === "/dashboard/deep-prediction-ml2"
-              )}
-            >
-              {t("nav.deepPredictionMl")}
-            </Link>
+            {can("deep-prediction-ml") ? (
+              <Link
+                href="/dashboard/deep-prediction-ml2"
+                className={navLinkClass(
+                  pathname === "/dashboard/deep-prediction-ml2"
+                )}
+              >
+                {t("nav.deepPredictionMl")}
+              </Link>
+            ) : null}
 
-            <Link
-              href="/dashboard/match-predictions"
-              className={navLinkClass(
-                pathname === "/dashboard/match-predictions"
-              )}
-            >
-              {t("nav.matchPredictions")}
-            </Link>
+            {can("match-predictions") ? (
+              <Link
+                href="/dashboard/match-predictions"
+                className={navLinkClass(
+                  pathname === "/dashboard/match-predictions"
+                )}
+              >
+                {t("nav.matchPredictions")}
+              </Link>
+            ) : null}
 
-            <Link
-              href="/dashboard/player-market-prediction"
-              className={navLinkClass(
-                pathname === "/dashboard/player-market-prediction"
-              )}
-            >
-              {t("nav.playerMarket")}
-            </Link>
+            {can("player-market") ? (
+              <Link
+                href="/dashboard/player-market-prediction"
+                className={navLinkClass(
+                  pathname === "/dashboard/player-market-prediction"
+                )}
+              >
+                {t("nav.playerMarket")}
+              </Link>
+            ) : null}
 
+            {can("stats-analysis") ? (
             <div className="group relative">
               <Link
                 href="/dashboard/stats-analysis"
@@ -141,6 +161,16 @@ export default function AppHeader({
                 </div>
               </div>
             </div>
+            ) : null}
+
+            {isAdmin ? (
+              <Link
+                href="/dashboard/admin/users"
+                className={navLinkClass(isAdminActive)}
+              >
+                {t("nav.admin")}
+              </Link>
+            ) : null}
           </nav>
         </div>
 
@@ -213,60 +243,82 @@ export default function AppHeader({
 
       <div className="px-4 pb-2 md:hidden">
         <div className="flex flex-wrap gap-1.5">
-          <Link
-            href="/dashboard/smart-prediction"
-            className={navLinkClass(pathname === "/dashboard/smart-prediction")}
-          >
-            {t("nav.smartPrediction")}
-          </Link>
+          {can("smart-prediction") ? (
+            <Link
+              href="/dashboard/smart-prediction"
+              className={navLinkClass(
+                pathname === "/dashboard/smart-prediction"
+              )}
+            >
+              {t("nav.smartPrediction")}
+            </Link>
+          ) : null}
 
-          <Link
-            href="/dashboard/deep-prediction-ml2"
-            className={navLinkClass(
-              pathname === "/dashboard/deep-prediction-ml2"
-            )}
-          >
-            {t("nav.deepPredictionMl")}
-          </Link>
+          {can("deep-prediction-ml") ? (
+            <Link
+              href="/dashboard/deep-prediction-ml2"
+              className={navLinkClass(
+                pathname === "/dashboard/deep-prediction-ml2"
+              )}
+            >
+              {t("nav.deepPredictionMl")}
+            </Link>
+          ) : null}
 
-          <Link
-            href="/dashboard/stats-analysis"
-            className={navLinkClass(isStatsActive)}
-          >
-            {t("nav.statsAnalysis")}
-          </Link>
+          {can("stats-analysis") ? (
+            <>
+              <Link
+                href="/dashboard/stats-analysis"
+                className={navLinkClass(isStatsActive)}
+              >
+                {t("nav.statsAnalysis")}
+              </Link>
 
-          <Link
-            href="/dashboard/stats-analysis/football/player-stats"
-            className={navLinkClass(false)}
-          >
-            {t("nav.footballPlayerStats")}
-          </Link>
+              <Link
+                href="/dashboard/stats-analysis/football/player-stats"
+                className={navLinkClass(false)}
+              >
+                {t("nav.footballPlayerStats")}
+              </Link>
 
-          <Link
-            href="/dashboard/stats-analysis/football/team-stats"
-            className={navLinkClass(false)}
-          >
-            {t("nav.footballTeamStats")}
-          </Link>
+              <Link
+                href="/dashboard/stats-analysis/football/team-stats"
+                className={navLinkClass(false)}
+              >
+                {t("nav.footballTeamStats")}
+              </Link>
 
-          <Link href={FOOTBALL_LEAGUE_DETAIL_HREF} className={navLinkClass(false)}>
-            {t("nav.footballLeagueDetails")}
-          </Link>
+              <Link
+                href={FOOTBALL_LEAGUE_DETAIL_HREF}
+                className={navLinkClass(false)}
+              >
+                {t("nav.footballLeagueDetails")}
+              </Link>
 
-          <Link
-            href="/dashboard/stats-analysis/football/player-stats/metric"
-            className={navLinkClass(false)}
-          >
-            {t("nav.playerRankings")}
-          </Link>
+              <Link
+                href="/dashboard/stats-analysis/football/player-stats/metric"
+                className={navLinkClass(false)}
+              >
+                {t("nav.playerRankings")}
+              </Link>
 
-          <Link
-            href="/dashboard/stats-analysis/football/team-stats/metric"
-            className={navLinkClass(false)}
-          >
-            {t("nav.teamRankings")}
-          </Link>
+              <Link
+                href="/dashboard/stats-analysis/football/team-stats/metric"
+                className={navLinkClass(false)}
+              >
+                {t("nav.teamRankings")}
+              </Link>
+            </>
+          ) : null}
+
+          {isAdmin ? (
+            <Link
+              href="/dashboard/admin/users"
+              className={navLinkClass(isAdminActive)}
+            >
+              {t("nav.admin")}
+            </Link>
+          ) : null}
         </div>
       </div>
     </header>

@@ -1,4 +1,5 @@
 import type { Locale } from "../config";
+import { adminUsers } from "./adminUsers";
 import { auth } from "./auth";
 import { common } from "./common";
 import { dashboardHome } from "./dashboardHome";
@@ -19,6 +20,7 @@ const MESSAGES: Record<
   string,
   { en: Record<string, string>; tr: Record<string, string> }
 > = {
+  adminUsers,
   auth,
   common,
   dashboardHome,
