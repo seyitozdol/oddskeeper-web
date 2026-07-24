@@ -24,8 +24,13 @@ create policy user_nav_permissions_select_own
   to authenticated
   using (auth.uid() = user_id);
 
+-- Derinlemesine savunma: yazma yetkisini rol duzeyinde de kapat. RLS zaten
+-- politikasiz INSERT/UPDATE/DELETE'i reddediyor ama Supabase public semasina
+-- authenticated icin varsayilan ALL grant veriyor; ileride yanlislikla bir
+-- yazma politikasi eklenirse eskalasyon kapisi acilmasin diye grant'i cekiyoruz.
+-- Yazma yalnizca service_role (admin API) uzerinden yapilir.
+revoke all on public.user_nav_permissions from anon, authenticated;
 grant select on public.user_nav_permissions to authenticated;
-revoke all on public.user_nav_permissions from anon;
 
 -- Baslangic admin kullanicilari
 insert into public.user_nav_permissions (user_id, email, is_admin)

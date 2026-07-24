@@ -13,7 +13,7 @@ export const landing = defineMessages({
     signIn: "Sign In",
 
     heroTitle:
-      "Sports data intelligence for betting, trading, and enterprise workflows",
+      "Sports data intelligence for trading and enterprise workflows",
     heroDescription:
       "Structured football data, analytical layers, and scalable infrastructure designed for trading teams, data providers, and enterprise-grade decision workflows.",
     explorePlatform: "Explore Platform",
@@ -146,7 +146,7 @@ export const landing = defineMessages({
     signIn: "Giriş Yap",
 
     heroTitle:
-      "Bahis, trading ve kurumsal iş akışları için spor verisi zekası",
+      "Trading ve kurumsal iş akışları için spor verisi zekası",
     heroDescription:
       "Trading ekipleri, veri sağlayıcıları ve kurumsal karar süreçleri için tasarlanmış yapılandırılmış futbol verisi, analiz katmanları ve ölçeklenebilir altyapı.",
     explorePlatform: "Platformu Keşfet",
