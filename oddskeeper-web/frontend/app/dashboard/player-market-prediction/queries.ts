@@ -45,7 +45,10 @@ export type PlayerMetricStat = {
 export type MarketOption = {
   key: string;
   label: string;
-  metricKey: string; // key in player_metric_leaderboard_current ("" = istatistik yok)
+  // key in player_metric_leaderboard_current; "" = istatistik yok;
+  // "log:<kolon>" = sezon ortalamasi player_log_season_avg_v1'den (leaderboard'da
+  // karsiligi olmayan metrikler icin, or. shots_off_target)
+  metricKey: string;
   logField: string;  // field in player_match_log_v1 ("" = istatistik yok)
   includeGk: boolean; // false ise kaleciler listede gosterilmez
 };
@@ -57,9 +60,13 @@ export type MarketOption = {
 
 export const MARKET_OPTIONS: MarketOption[] = [
   { key: "shots_on_target", label: "Shots on Target",   metricKey: "shots_on_target_total",  logField: "shots_on_target",  includeGk: false },
+  { key: "shots_off_target", label: "Shots Off Target", metricKey: "log:shots_off_target",   logField: "shots_off_target", includeGk: false },
+  { key: "blocked_shots",   label: "Blocked Shots",     metricKey: "log:shots_blocked",      logField: "shots_blocked",    includeGk: false },
   { key: "total_shots",     label: "Total Shots",       metricKey: "shots_total",            logField: "shots_derived",    includeGk: false },
   { key: "attempts_ibox",   label: "Attempts In Box",   metricKey: "attempts_ibox_total",    logField: "shots_on_target",  includeGk: false },
   { key: "attempts_obox",   label: "Attempts Out Box",  metricKey: "attempts_obox_total",    logField: "shots_off_target", includeGk: false },
+  { key: "xg",              label: "xG",                metricKey: "expected_goals_total",   logField: "expected_goals",   includeGk: false },
+  { key: "fouls_suffered",  label: "Fouls Suffered",    metricKey: "fouls_won_total",        logField: "fouls_won",        includeGk: false },
   { key: "passes",          label: "Passes",            metricKey: "passes_total",           logField: "passes",           includeGk: true },
   { key: "accurate_passes", label: "Accurate Passes",   metricKey: "accurate_pass_total",    logField: "accurate_pass",    includeGk: true },
   { key: "tackles",         label: "Tackles",           metricKey: "tackles_total",          logField: "tackles",          includeGk: false },
@@ -290,7 +297,7 @@ export async function fetchPlayerLast5Avg(
     .schema("analytics")
     .from("player_match_log_v1")
     .select(
-      "player_source_id, match_datetime, shots_on_target, shots_off_target, shots_blocked, passes, accurate_pass, tackles, fouls_conceded, cards_yellow, cards_red, offsides, saves_total, goals, assists, expected_goals"
+      "player_source_id, match_datetime, shots_on_target, shots_off_target, shots_blocked, passes, accurate_pass, tackles, fouls_conceded, fouls_won, cards_yellow, cards_red, offsides, saves_total, goals, assists, expected_goals"
     )
     .eq("season_label", seasonLabel)
     .in("player_source_id", playerSourceIds)
@@ -337,6 +344,8 @@ export async function fetchPlayerLast5Avg(
 }
 
 // ─── Fetch player metric stats (season avg + last5) ──────────────────────────
+// metricKey "log:<kolon>" ise sezon ortalamasi leaderboard yerine
+// player_log_season_avg_v1'den okunur (leaderboard'da olmayan metrikler).
 
 export async function fetchPlayerMetricStats(
   playerSourceIds: string[],
@@ -345,6 +354,33 @@ export async function fetchPlayerMetricStats(
 ): Promise<Record<string, PlayerMetricStat>> {
   if (playerSourceIds.length === 0 || !metricKey) return {};
   const supabase = createClient();
+
+  if (metricKey.startsWith("log:")) {
+    const field = metricKey.slice(4);
+    const { data, error } = await supabase
+      .schema("analytics")
+      .from("player_log_season_avg_v1")
+      .select(`player_source_id, ${field}`)
+      .eq("season_label", seasonLabel)
+      .in("player_source_id", playerSourceIds);
+
+    if (error) {
+      console.error("fetchPlayerMetricStats (log avg) error:", error);
+      return {};
+    }
+
+    const logResult: Record<string, PlayerMetricStat> = {};
+    for (const row of (data ?? []) as unknown as Record<string, unknown>[]) {
+      const id = String(row.player_source_id);
+      const val = row[field];
+      logResult[id] = {
+        player_source_id: id,
+        per_match_value: val !== null && val !== undefined ? Number(val) : null,
+        last5_value: null,
+      };
+    }
+    return logResult;
+  }
 
   const { data, error } = await supabase
     .schema("analytics")
