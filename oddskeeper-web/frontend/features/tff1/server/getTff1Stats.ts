@@ -10,7 +10,7 @@ export async function getTff1PlayerSeasonStats(): Promise<Tff1PlayerRow[]> {
   for (let from = 0; ; from += PAGE_SIZE) {
     const { data, error } = await supabase
       .schema("analytics")
-      .from("tff1_player_season_stats_v1")
+      .from("tff1_player_season_stats_mat")
       .select("*")
       .order("minutes", { ascending: false })
       .order("player_id", { ascending: true })
@@ -34,7 +34,7 @@ export async function getTff1TeamSeasonStats(): Promise<Tff1TeamRow[]> {
 
   const { data, error } = await supabase
     .schema("analytics")
-    .from("tff1_team_season_stats_v1")
+    .from("tff1_team_season_stats_mat")
     .select("*")
     .order("points", { ascending: false })
     .limit(200)

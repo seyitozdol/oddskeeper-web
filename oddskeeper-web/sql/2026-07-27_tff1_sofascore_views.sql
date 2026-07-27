@@ -3,6 +3,9 @@
 -- Play-off maclari haric (competition='Trendyol 1. Lig'); play-off satirlari competition='Trendyol 1. Lig Play-off'.
 -- Uygulandi: 2026-07-27
 
+-- Not: xg/xgot/xa/kart kolonlari FlashScore'dan gelir (ref.flashscore_player_map ile
+-- sofascore oyuncu id'sine baglanir); FlashScore oyuncu verisi 2025/26'dan itibaren var,
+-- onceki sezonlarda bu kolonlar NULL.
 create or replace view analytics.tff1_player_season_stats_v1 as
 with base as (
   select
@@ -61,7 +64,27 @@ with base as (
     on m.source = d.source and m.source_match_id = d.source_match_id
   where d.source = 'sofascore'
     and m.competition = 'Trendyol 1. Lig'
-)
+),
+fs_agg as (
+  select
+    m.season_label,
+    fmap.sofascore_player_id                                        as player_id,
+    round(sum((d.raw_stats->>'EXPECTED_GOALS')::numeric), 2)        as xg,
+    round(sum((d.raw_stats->>'EXPECTED_GOALS_ON_TARGET')::numeric), 2) as xgot,
+    round(sum((d.raw_stats->>'EXPECTED_ASSISTS')::numeric), 2)      as xa,
+    sum(coalesce((d.raw_stats->>'CARDS_YELLOW')::int, 0))           as yellow_cards,
+    -- CARDS_RED ikinci saridan atilmalari da icerir (dogrulandi), ekstra toplama yok
+    sum(coalesce((d.raw_stats->>'CARDS_RED')::int, 0))              as red_cards
+  from football.match_player_stats_details d
+  join football.matches m
+    on m.source = d.source and m.source_match_id = d.source_match_id
+  join ref.flashscore_player_map fmap
+    on fmap.flashscore_player_id = d.source_player_id
+  where d.source = 'flashscore'
+    and m.competition = 'Trendyol 1. Lig'
+  group by 1, 2
+),
+agg as (
 select
   season_label,
   source_player_id                                              as player_id,
@@ -117,7 +140,18 @@ select
   sum(sprints)                                                  as sprints,
   max(top_speed)                                                as top_speed
 from base
-group by season_label, source_player_id;
+group by season_label, source_player_id
+)
+select
+  agg.*,
+  fs.xg,
+  fs.xgot,
+  fs.xa,
+  fs.yellow_cards,
+  fs.red_cards
+from agg
+left join fs_agg fs
+  on fs.season_label = agg.season_label and fs.player_id = agg.player_id;
 
 create or replace view analytics.tff1_team_season_stats_v1 as
 with team_matches as (
@@ -195,3 +229,19 @@ left join player_agg p
 
 grant select on analytics.tff1_player_season_stats_v1 to anon, authenticated, service_role;
 grant select on analytics.tff1_team_season_stats_v1 to anon, authenticated, service_role;
+
+-- Frontend logic view'lari degil MAT'lari okur: logic view'lar her istekte 31k+ jsonb satiri
+-- tarayip API rolunun statement timeout'una takiliyordu. Veri statik (sezonlar bitti);
+-- yeni veri yuklenince loader scriptleri REFRESH MATERIALIZED VIEW calistirir.
+drop materialized view if exists analytics.tff1_player_season_stats_mat;
+create materialized view analytics.tff1_player_season_stats_mat as
+  select * from analytics.tff1_player_season_stats_v1;
+create unique index uq_tff1_player_season_mat on analytics.tff1_player_season_stats_mat (season_label, player_id);
+
+drop materialized view if exists analytics.tff1_team_season_stats_mat;
+create materialized view analytics.tff1_team_season_stats_mat as
+  select * from analytics.tff1_team_season_stats_v1;
+create unique index uq_tff1_team_season_mat on analytics.tff1_team_season_stats_mat (season_label, team_id);
+
+grant select on analytics.tff1_player_season_stats_mat to anon, authenticated, service_role;
+grant select on analytics.tff1_team_season_stats_mat to anon, authenticated, service_role;

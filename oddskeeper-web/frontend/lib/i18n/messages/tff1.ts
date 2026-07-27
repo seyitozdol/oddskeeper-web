@@ -66,6 +66,13 @@ export const tff1 = defineMessages({
     colPenaltiesSaved: "Pen. Saved",
     colErrorsToGoal: "Errors (Goal)",
     colErrorsToShot: "Errors (Shot)",
+    colXg: "xG",
+    colXgot: "xGOT",
+    colXa: "xA",
+    colYellowCards: "Yellow",
+    colRedCards: "Red",
+    fsNote:
+      "xG, xGOT, xA and cards come from FlashScore and are available from the 2025/26 season onwards.",
 
     colPlayed: "P",
     colWins: "W",
@@ -144,6 +151,13 @@ export const tff1 = defineMessages({
     colPenaltiesSaved: "Penaltı Kurtarışı",
     colErrorsToGoal: "Hata (Gol)",
     colErrorsToShot: "Hata (Şut)",
+    colXg: "xG",
+    colXgot: "xGOT",
+    colXa: "xA",
+    colYellowCards: "Sarı",
+    colRedCards: "Kırmızı",
+    fsNote:
+      "xG, xGOT, xA ve kart verileri FlashScore kaynaklıdır; 2025/26 sezonundan itibaren mevcuttur.",
 
     colPlayed: "O",
     colWins: "G",

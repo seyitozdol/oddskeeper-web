@@ -178,6 +178,21 @@ def main():
     p_rows = list(dedup.values())
     upsert("match_player_stats_details", p_rows, "source,source_match_id,source_player_id")
     print(f"[players] {len(p_rows)} satir upsert edildi", flush=True)
+    refresh_mats()
+
+
+def refresh_mats():
+    """tff1 mat'larini tazele (frontend mat okur)."""
+    try:
+        import psycopg2
+        conn = psycopg2.connect((ENV.get("DATABASE_URL") or "").strip().strip('"'))
+        conn.autocommit = True
+        cur = conn.cursor()
+        cur.execute("refresh materialized view analytics.tff1_player_season_stats_mat")
+        cur.execute("refresh materialized view analytics.tff1_team_season_stats_mat")
+        print("[mat] tff1 materialized view'lar tazelendi", flush=True)
+    except Exception as e:  # noqa
+        print(f"UYARI: mat refresh basarisiz: {e}", flush=True)
 
 
 if __name__ == "__main__":

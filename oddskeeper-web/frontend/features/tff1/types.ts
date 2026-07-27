@@ -54,6 +54,12 @@ export type Tff1PlayerRow = {
   km_covered: number | null;
   sprints: number | null;
   top_speed: number | null;
+  // FlashScore kaynakli (2025/26'dan itibaren; eski sezonlarda null)
+  xg: number | null;
+  xgot: number | null;
+  xa: number | null;
+  yellow_cards: number | null;
+  red_cards: number | null;
 };
 
 export type Tff1TeamRow = {

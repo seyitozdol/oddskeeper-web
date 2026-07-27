@@ -34,11 +34,17 @@ const PLAYER_GROUP_COLUMNS: Record<MetricGroup, ColumnDef<Tff1PlayerRow>[]> = {
     { key: "minutes", labelKey: "tff1.colMinutes" },
     { key: "goals", labelKey: "tff1.colGoals" },
     { key: "assists", labelKey: "tff1.colAssists" },
+    { key: "xg", labelKey: "tff1.colXg", format: "dec2" },
+    { key: "yellow_cards", labelKey: "tff1.colYellowCards" },
+    { key: "red_cards", labelKey: "tff1.colRedCards" },
     { key: "rating_avg", labelKey: "tff1.colRating", format: "dec2" },
   ],
   attack: [
     { key: "goals", labelKey: "tff1.colGoals" },
+    { key: "xg", labelKey: "tff1.colXg", format: "dec2" },
+    { key: "xgot", labelKey: "tff1.colXgot", format: "dec2" },
     { key: "assists", labelKey: "tff1.colAssists" },
+    { key: "xa", labelKey: "tff1.colXa", format: "dec2" },
     { key: "shots", labelKey: "tff1.colShots" },
     { key: "shots_on_target", labelKey: "tff1.colShotsOnTarget" },
     { key: "big_chances_missed", labelKey: "tff1.colBigChancesMissed" },
@@ -483,7 +489,9 @@ export default function Tff1Explorer({ players, teams }: Tff1ExplorerProps) {
         ) : null}
       </div>
 
-      <p className="mt-3 text-[12px] text-ink-3">{t("tff1.playoffNote")}</p>
+      <p className="mt-3 text-[12px] text-ink-3">
+        {t("tff1.playoffNote")} {t("tff1.fsNote")}
+      </p>
     </div>
   );
 }
