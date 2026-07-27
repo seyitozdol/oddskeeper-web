@@ -185,7 +185,7 @@ function TeamPlayerTable({
   onStatusChange: (id: string, s: InferredStatus) => void;
   onManualChange: (id: string, v: string) => void;
   onCheckedChange: (id: string, v: boolean) => void;
-  onPlayerClick: (slug: string, name: string) => void;
+  onPlayerClick: (slug: string, name: string, sourceId: string) => void;
 }) {
   const { t } = useI18n();
   const [sortCol, setSortCol] = useState<SortCol>("status");
@@ -288,7 +288,9 @@ function TeamPlayerTable({
                   >
                     <button
                       type="button"
-                      onClick={() => onPlayerClick(p.player_slug, p.player_name)}
+                      onClick={() =>
+                        onPlayerClick(p.player_slug, p.player_name, p.player_source_id)
+                      }
                       className="block w-full truncate text-left font-medium text-ink underline-offset-2 transition hover:text-teal-300 hover:underline"
                     >
                       {p.player_name}
@@ -452,6 +454,7 @@ export default function PlayerMarketPredictionPage({
   const [selectedPlayer, setSelectedPlayer] = useState<{
     slug: string;
     name: string;
+    sourceId: string;
   } | null>(null);
 
   // ── On mount: load fixtures + latest metric season + stored markets ──
@@ -1010,7 +1013,7 @@ export default function PlayerMarketPredictionPage({
               onStatusChange={makeStatusHandler(setHomePlayers)}
               onManualChange={makeManualHandler(setHomePlayers)}
               onCheckedChange={makeCheckedHandler(setHomePlayers)}
-              onPlayerClick={(slug, name) => setSelectedPlayer({ slug, name })}
+              onPlayerClick={(slug, name, sourceId) => setSelectedPlayer({ slug, name, sourceId })}
             />
             <TeamPlayerTable
               key={`${selectedFixtureId}:${selectedMarketKey}:away`}
@@ -1027,7 +1030,7 @@ export default function PlayerMarketPredictionPage({
               onStatusChange={makeStatusHandler(setAwayPlayers)}
               onManualChange={makeManualHandler(setAwayPlayers)}
               onCheckedChange={makeCheckedHandler(setAwayPlayers)}
-              onPlayerClick={(slug, name) => setSelectedPlayer({ slug, name })}
+              onPlayerClick={(slug, name, sourceId) => setSelectedPlayer({ slug, name, sourceId })}
             />
           </div>
         </div>
@@ -1047,7 +1050,10 @@ export default function PlayerMarketPredictionPage({
           key={selectedPlayer.slug}
           playerSlug={selectedPlayer.slug}
           playerName={selectedPlayer.name}
+          playerSourceId={selectedPlayer.sourceId}
           seasonLabel={currentSeason}
+          marketLabel={selectedMarket.label}
+          metricKey={selectedMarket.metricKey}
           teamLogos={teamLogos}
           onClose={() => setSelectedPlayer(null)}
         />
