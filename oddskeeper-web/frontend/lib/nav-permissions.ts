@@ -10,6 +10,7 @@ export const NAV_KEYS = [
   "match-predictions",
   "player-market",
   "stats-analysis",
+  "tff-1-lig",
 ] as const;
 
 export type NavKey = (typeof NAV_KEYS)[number];
@@ -52,6 +53,12 @@ export const NAV_PERMISSION_ITEMS: NavPermissionItem[] = [
     labelKey: "nav.statsAnalysis",
     href: "/dashboard/stats-analysis",
     pathPrefixes: ["/dashboard/stats-analysis"],
+  },
+  {
+    key: "tff-1-lig",
+    labelKey: "nav.tff1Lig",
+    href: "/dashboard/tff-1-lig",
+    pathPrefixes: ["/dashboard/tff-1-lig"],
   },
 ];
 

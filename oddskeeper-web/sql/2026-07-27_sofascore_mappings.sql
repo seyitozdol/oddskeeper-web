@@ -1,0 +1,22 @@
+-- SofaScore kimlik eslemeleri (2026-07-27)
+-- Uygulayan script: pipeline/src/football/build_sofascore_mappings.py
+--
+-- 1) ref.player_mapping'e sofascore oyuncu id kolonu:
+alter table ref.player_mapping add column if not exists sofascore_player_id text;
+-- Doldurma: SofaScore oyunculari (lineup JSON'larindaki isim + dogum tarihi)
+-- football.player_bio (source='apifootball') uzerinden mevcut mapping satirlarina
+-- baglandi; 2026-07-27 kosusunda 33 satir dolduruldu (1225 sofascore oyuncusundan;
+-- kalanlar guncel Super Lig kadrolarinda olmayan 1. Lig oyunculari, eslenecek
+-- karsi-kaynak kaydi yok).
+--
+-- 2) ref.team_mapping'e sofascore takim satirlari (insert, on conflict do nothing):
+-- 27 TFF 1. Lig takimi (2024/25 + 2025/26). Mevcut sluglara baglananlar (isim eslesmesi):
+--   erzurumspor, corum, amed, kocaelispor, genclerbirligi, karagumruk, mke-ankaragucu.
+-- Yeni acilan sluglar (sofascore slug'u; alias: vanspor-fk, serikspor):
+--   istanbulspor, sivasspor, sakaryaspor, hatayspor, adana-demirspor, sariyer,
+--   keciorengucu, boluspor, pendikspor, vanspor-fk, bandirmaspor, umraniyespor,
+--   bodrum, manisa-fk, esenler-erokspor, serikspor, igdir-fk, yeni-malatyaspor,
+--   adanaspor, sanliurfaspor.
+-- Sofascore takim id'leri sayisal; mevcut apifootball id'leriyle cakisma yok
+-- (kontrol edildi). team_mapping'de source kolonu olmadigi icin kaynak, id
+-- bicimi + kullanim baglamindan ayirt edilir (apifootball ile ayni uzay).

@@ -41,6 +41,7 @@ export default function AppHeader({
 
   const initials = userEmail ? userEmail.slice(0, 1).toUpperCase() : "U";
   const isStatsActive = pathname.startsWith("/dashboard/stats-analysis");
+  const isTff1Active = pathname.startsWith("/dashboard/tff-1-lig");
   const isAdminActive = pathname.startsWith("/dashboard/admin");
 
   const can = (key: NavKey) => isNavKeyAllowed(key, allowedNavKeys);
@@ -161,6 +162,15 @@ export default function AppHeader({
                 </div>
               </div>
             </div>
+            ) : null}
+
+            {can("tff-1-lig") ? (
+              <Link
+                href="/dashboard/tff-1-lig"
+                className={navLinkClass(isTff1Active)}
+              >
+                {t("nav.tff1Lig")}
+              </Link>
             ) : null}
 
             {isAdmin ? (
@@ -309,6 +319,15 @@ export default function AppHeader({
                 {t("nav.teamRankings")}
               </Link>
             </>
+          ) : null}
+
+          {can("tff-1-lig") ? (
+            <Link
+              href="/dashboard/tff-1-lig"
+              className={navLinkClass(isTff1Active)}
+            >
+              {t("nav.tff1Lig")}
+            </Link>
           ) : null}
 
           {isAdmin ? (

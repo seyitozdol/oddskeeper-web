@@ -15,6 +15,7 @@ import { playerMarket } from "./playerMarket";
 import { smartPrediction } from "./smartPrediction";
 import { statsHub } from "./statsHub";
 import { teamDetail } from "./teamDetail";
+import { tff1 } from "./tff1";
 
 const MESSAGES: Record<
   string,
@@ -36,6 +37,7 @@ const MESSAGES: Record<
   smartPrediction,
   statsHub,
   teamDetail,
+  tff1,
 };
 
 export type TranslateParams = Record<string, string | number>;
