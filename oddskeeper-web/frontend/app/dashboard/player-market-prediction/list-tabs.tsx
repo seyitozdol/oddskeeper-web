@@ -243,6 +243,7 @@ export function MarketListTab({
         is_custom: row.isCustom,
         sort_order: stored?.sort_order,
         market_type: type,
+        in_model: stored?.in_model ?? true,
       });
       ok = ok && res;
     }
@@ -251,6 +252,31 @@ export function MarketListTab({
       setSavedAt(Date.now());
       onChanged();
     }
+  }
+
+  // Model tiki: marketi Model ekranindaki dropdown'a ekler/cikarir. Aninda
+  // upsert edilir; kayitli template/tur/sort korunur. Kayitli satiri olmayan
+  // yerlesik market ilk tikte satir olusturur (varsayilan dahil oldugundan
+  // ilk islem cikarmadir).
+  async function toggleInModel(
+    row: { key: string; label: string; isCustom: boolean },
+    next: boolean
+  ) {
+    const stored = storedByKey.get(row.key);
+    const ok = await upsertStoredMarket({
+      market_key: row.key,
+      label: row.label,
+      template_id: (templateIds[row.key] ?? stored?.template_id ?? "").trim() || null,
+      is_custom: row.isCustom,
+      sort_order: stored?.sort_order,
+      market_type: typeValue(row.key),
+      in_model: next,
+    });
+    if (ok) onChanged();
+  }
+
+  function inModelValue(key: string): boolean {
+    return storedByKey.get(key)?.in_model !== false;
   }
 
   async function handleDelete(key: string) {
@@ -306,6 +332,7 @@ export function MarketListTab({
         <table className="min-w-full border-collapse text-[12px]">
           <thead className="bg-card-2">
             <tr className="text-left text-[10px] uppercase tracking-[0.12em] text-ink-3">
+              <th className="px-2 py-2 w-14 text-center">{t("playerMarket.modelColumnLabel")}</th>
               <th className="px-2 py-2">{t("playerMarket.marketLabel")}</th>
               <th className="px-2 py-2 w-40">{t("playerMarket.marketTemplateIdLabel")}</th>
               <th className="px-2 py-2 w-28">{t("playerMarket.marketTypeLabel")}</th>
@@ -315,6 +342,15 @@ export function MarketListTab({
           <tbody>
             {rows.map((m) => (
               <tr key={m.key} className="border-t border-line transition hover:bg-veil">
+                <td className="px-2 py-1.5 text-center">
+                  <input
+                    type="checkbox"
+                    checked={inModelValue(m.key)}
+                    onChange={(e) => toggleInModel(m, e.target.checked)}
+                    title={t("playerMarket.includeInModelTooltip")}
+                    className="cursor-pointer accent-teal-400"
+                  />
+                </td>
                 <td className="px-2 py-1.5 font-medium text-ink whitespace-nowrap">{m.label}</td>
                 <td className="px-2 py-1.5">
                   <input
@@ -356,6 +392,7 @@ export function MarketListTab({
             {/* Yeni market taslak satiri: isim + tur; Enter veya onay ile kaydeder */}
             {draftName !== null && (
               <tr className="border-t border-line">
+                <td className="px-2 py-1.5"></td>
                 <td className="px-2 py-1.5">
                   <input
                     ref={draftInputRef}

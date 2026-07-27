@@ -540,6 +540,9 @@ export type StoredMarket = {
   is_custom: boolean;
   sort_order: number;
   market_type: MarketType;
+  // Market Listesi'ndeki tik: false ise Model ekranindaki market dropdown'da
+  // gizlenir. Kayitli satiri olmayan yerlesik marketler varsayilan olarak dahil.
+  in_model: boolean;
 };
 
 export async function fetchStoredMarkets(): Promise<StoredMarket[]> {
@@ -547,7 +550,7 @@ export async function fetchStoredMarkets(): Promise<StoredMarket[]> {
   const { data, error } = await supabase
     .schema("analytics")
     .from("pm_markets")
-    .select("market_key, label, template_id, is_custom, sort_order, market_type")
+    .select("market_key, label, template_id, is_custom, sort_order, market_type, in_model")
     .order("sort_order", { ascending: true })
     .order("created_at", { ascending: true });
 
@@ -559,7 +562,10 @@ export async function fetchStoredMarkets(): Promise<StoredMarket[]> {
 }
 
 export async function upsertStoredMarket(
-  market: Omit<StoredMarket, "sort_order"> & { sort_order?: number }
+  market: Omit<StoredMarket, "sort_order" | "in_model"> & {
+    sort_order?: number;
+    in_model?: boolean;
+  }
 ): Promise<boolean> {
   const supabase = createClient();
   const { error } = await supabase
@@ -573,6 +579,7 @@ export async function upsertStoredMarket(
         is_custom: market.is_custom,
         sort_order: market.sort_order ?? 0,
         market_type: market.market_type,
+        in_model: market.in_model ?? true,
         updated_at: new Date().toISOString(),
       },
       { onConflict: "market_key" }

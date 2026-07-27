@@ -1,0 +1,339 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { createClient } from "@/lib/supabase/client";
+import { useI18n } from "@/lib/i18n/LanguageProvider";
+import { getCountryFlagUrl } from "@/lib/country-flags";
+import { getPlayerDetailHref } from "@/lib/routes";
+
+// Model ekranindaki oyuncu adina tiklaninca sagdan acilan profil paneli.
+// Acilis sekli eski metrik leaderboard drawer'iyla ayni (sabit overlay +
+// sagdan slide-over); icerik guncel oyuncu bilgisi + secili sezon ozeti.
+
+type ProfileInfo = {
+  displayName: string;
+  teamName: string | null;
+  teamSlug: string | null;
+  position: string | null;
+  nationality: string | null;
+  age: number | null;
+  shirtNumber: number | null;
+  photoUrl: string | null;
+};
+
+type SeasonSummary = {
+  appearances: number | null;
+  starts: number | null;
+  totalMinutes: number | null;
+  goals: number | null;
+  assists: number | null;
+  starterRatePct: number | string | null;
+  seasonLabel: string | null;
+};
+
+const POSITION_SHORT: Record<string, string> = {
+  Goalkeeper: "GK",
+  Defender: "DF",
+  Midfielder: "MF",
+  Attacker: "FW",
+};
+
+function fmtMarketValue(eur: number | null): string | null {
+  if (eur === null || !isFinite(eur) || eur <= 0) return null;
+  if (eur >= 1_000_000) return `€${(eur / 1_000_000).toFixed(1)}M`;
+  if (eur >= 1_000) return `€${Math.round(eur / 1_000)}K`;
+  return `€${eur}`;
+}
+
+function num(v: number | null): string {
+  return v === null || v === undefined ? "—" : String(v);
+}
+
+function pct(v: number | string | null): string {
+  if (v === null || v === undefined) return "—";
+  const n = typeof v === "string" ? parseFloat(v) : v;
+  return isNaN(n) ? "—" : `${Math.round(n)}%`;
+}
+
+export default function PlayerProfileDrawer({
+  playerSlug,
+  playerName,
+  seasonLabel,
+  teamLogos,
+  onClose,
+}: {
+  playerSlug: string;
+  playerName: string;
+  seasonLabel: string | null;
+  teamLogos: Record<string, string>;
+  onClose: () => void;
+}) {
+  const { t } = useI18n();
+  const [info, setInfo] = useState<ProfileInfo | null>(null);
+  const [summary, setSummary] = useState<SeasonSummary | null>(null);
+  const [marketValue, setMarketValue] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  // Escape ile kapat.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  useEffect(() => {
+    // Parent bilesenden key={playerSlug} ile remount edildigi icin baslangic
+    // state'i (loading=true, null) her acilista tazedir; effect yalnizca
+    // await sonrasi state yazar (senkron reset yok).
+    let cancelled = false;
+
+    async function load() {
+      const supabase = createClient();
+
+      const [infoRes, profileRes, mvRes] = await Promise.all([
+        supabase
+          .schema("analytics")
+          .from("player_current_info_v1")
+          .select(
+            "player_name, full_name, first_name, current_team_name, current_team_slug, position, nationality, age, shirt_number, photo_url"
+          )
+          .eq("player_slug", playerSlug)
+          .limit(1),
+        seasonLabel
+          ? supabase
+              .schema("analytics")
+              .from("player_profile_v1")
+              .select(
+                "appearances, starts, total_minutes, goals, assists, starter_rate_pct, season_label, team_name"
+              )
+              .eq("player_slug", playerSlug)
+              .eq("season_label", seasonLabel)
+              .limit(1)
+          : Promise.resolve({ data: [], error: null }),
+        supabase
+          .schema("analytics")
+          .from("player_market_value_v1")
+          .select("market_value_eur")
+          .eq("player_slug", playerSlug)
+          .limit(1),
+      ]);
+
+      if (cancelled) return;
+
+      const ci = (infoRes.data?.[0] ?? null) as Record<string, unknown> | null;
+      if (ci) {
+        setInfo({
+          displayName:
+            playerName ||
+            (ci.full_name as string) ||
+            (ci.player_name as string) ||
+            playerSlug,
+          teamName: (ci.current_team_name as string) ?? null,
+          teamSlug: (ci.current_team_slug as string) ?? null,
+          position: (ci.position as string) ?? null,
+          nationality: (ci.nationality as string) ?? null,
+          age: (ci.age as number) ?? null,
+          shirtNumber: (ci.shirt_number as number) ?? null,
+          photoUrl: (ci.photo_url as string) ?? null,
+        });
+      } else {
+        setInfo({
+          displayName: playerName || playerSlug,
+          teamName: null,
+          teamSlug: null,
+          position: null,
+          nationality: null,
+          age: null,
+          shirtNumber: null,
+          photoUrl: null,
+        });
+      }
+
+      const pr = (profileRes.data?.[0] ?? null) as Record<string, unknown> | null;
+      if (pr) {
+        setSummary({
+          appearances: (pr.appearances as number) ?? null,
+          starts: (pr.starts as number) ?? null,
+          totalMinutes: (pr.total_minutes as number) ?? null,
+          goals: (pr.goals as number) ?? null,
+          assists: (pr.assists as number) ?? null,
+          starterRatePct: (pr.starter_rate_pct as number | string) ?? null,
+          seasonLabel: (pr.season_label as string) ?? seasonLabel,
+        });
+      }
+
+      const mv = (mvRes.data?.[0] ?? null) as Record<string, unknown> | null;
+      setMarketValue((mv?.market_value_eur as number) ?? null);
+
+      setLoading(false);
+    }
+
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [playerSlug, playerName, seasonLabel]);
+
+  const flag = info?.nationality ? getCountryFlagUrl(info.nationality) : null;
+  const teamLogo = info?.teamSlug ? teamLogos[info.teamSlug] : undefined;
+  const positionShort = info?.position
+    ? POSITION_SHORT[info.position] ?? info.position
+    : null;
+  const mvLabel = fmtMarketValue(marketValue);
+  const detailHref = getPlayerDetailHref(playerSlug);
+
+  return (
+    <div className="fixed inset-0 z-[90]">
+      {/* Overlay */}
+      <button
+        type="button"
+        aria-label="close"
+        onClick={onClose}
+        className="absolute inset-0 bg-black/50 backdrop-blur-[2px]"
+      />
+
+      {/* Panel */}
+      <div className="absolute right-0 top-0 h-full w-full max-w-[420px] overflow-y-auto border-l border-line bg-card shadow-[-20px_0_60px_rgba(0,0,0,0.35)]">
+        {/* Header */}
+        <div className="sticky top-0 flex items-start justify-between gap-3 border-b border-line bg-card px-5 py-4">
+          <div className="flex items-center gap-3 min-w-0">
+            {info?.photoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={info.photoUrl}
+                alt=""
+                className="h-12 w-12 shrink-0 rounded-full border border-line object-cover"
+              />
+            ) : (
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-line bg-veil text-[15px] font-semibold text-ink-2">
+                {(info?.displayName ?? playerName ?? "?").slice(0, 1).toUpperCase()}
+              </div>
+            )}
+            <div className="min-w-0">
+              <div className="truncate text-[15px] font-bold text-ink">
+                {info?.displayName ?? playerName}
+              </div>
+              <div className="mt-0.5 flex items-center gap-1.5 text-[12px] text-ink-2">
+                {teamLogo && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={teamLogo} alt="" className="h-4 w-4 object-contain" />
+                )}
+                <span className="truncate">{info?.teamName ?? "—"}</span>
+              </div>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="shrink-0 rounded-lg border border-line bg-veil px-2.5 py-1 text-[13px] text-ink-2 transition hover:border-line-strong hover:text-ink"
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="px-5 py-4">
+          {loading ? (
+            <div className="py-10 text-center text-sm text-ink-3">
+              {t("common.loading")}
+            </div>
+          ) : (
+            <>
+              {/* Meta chips */}
+              <div className="flex flex-wrap gap-2">
+                {positionShort && (
+                  <span className="rounded-md border border-line bg-veil px-2 py-1 text-[12px] text-ink-2">
+                    {t("common.position")}: <span className="font-medium text-ink">{positionShort}</span>
+                  </span>
+                )}
+                {info?.age != null && (
+                  <span className="rounded-md border border-line bg-veil px-2 py-1 text-[12px] text-ink-2">
+                    {t("playerMarket.profileAge")}: <span className="font-medium text-ink">{info.age}</span>
+                  </span>
+                )}
+                {info?.shirtNumber != null && (
+                  <span className="rounded-md border border-line bg-veil px-2 py-1 text-[12px] text-ink-2">
+                    #<span className="font-medium text-ink">{info.shirtNumber}</span>
+                  </span>
+                )}
+                {info?.nationality && (
+                  <span className="inline-flex items-center gap-1.5 rounded-md border border-line bg-veil px-2 py-1 text-[12px] text-ink-2">
+                    {flag && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={flag} alt="" className="h-3 w-[18px] rounded-[2px] object-cover" />
+                    )}
+                    <span className="font-medium text-ink">{info.nationality}</span>
+                  </span>
+                )}
+              </div>
+
+              {/* Market value */}
+              {mvLabel && (
+                <div className="mt-3 rounded-lg border border-line bg-veil px-3 py-2">
+                  <div className="text-[10px] uppercase tracking-[0.12em] text-ink-3">
+                    {t("playerMarket.profileMarketValue")}
+                  </div>
+                  <div className="text-[16px] font-bold text-ink">{mvLabel}</div>
+                </div>
+              )}
+
+              {/* Season summary */}
+              <div className="mt-4">
+                <div className="mb-2 flex items-center gap-2">
+                  <span className="text-[11px] uppercase tracking-[0.12em] text-ink-3">
+                    {t("playerMarket.profileSeasonSummary")}
+                  </span>
+                  {(summary?.seasonLabel ?? seasonLabel) && (
+                    <span className="rounded border border-line px-1.5 py-0.5 text-[10px] text-ink-3">
+                      {summary?.seasonLabel ?? seasonLabel}
+                    </span>
+                  )}
+                </div>
+
+                {summary ? (
+                  <div className="grid grid-cols-3 gap-2">
+                    <Stat label={t("playerMarket.profileAppearances")} value={num(summary.appearances)} />
+                    <Stat label={t("playerMarket.profileStarts")} value={num(summary.starts)} />
+                    <Stat label={t("playerMarket.profileStarterRate")} value={pct(summary.starterRatePct)} />
+                    <Stat label={t("playerMarket.profileMinutes")} value={num(summary.totalMinutes)} />
+                    <Stat label={t("playerMarket.profileGoals")} value={num(summary.goals)} />
+                    <Stat label={t("playerMarket.profileAssists")} value={num(summary.assists)} />
+                  </div>
+                ) : (
+                  <div className="rounded-lg border border-line bg-veil px-3 py-4 text-center text-[12px] text-ink-3">
+                    {t("playerMarket.noProfileData")}
+                  </div>
+                )}
+              </div>
+
+              {/* Full profile link */}
+              {detailHref && (
+                <Link
+                  href={detailHref}
+                  target="_blank"
+                  className="mt-4 flex items-center justify-center rounded-lg border border-teal-500/30 bg-teal-500/10 px-4 py-2 text-[13px] font-semibold text-teal-300 transition hover:bg-teal-500/20"
+                >
+                  {t("playerMarket.openFullProfile")}
+                </Link>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border border-line bg-veil px-2 py-2 text-center">
+      <div className="text-[15px] font-bold text-ink tabular-nums">{value}</div>
+      <div className="mt-0.5 text-[10px] uppercase tracking-[0.08em] text-ink-3">
+        {label}
+      </div>
+    </div>
+  );
+}

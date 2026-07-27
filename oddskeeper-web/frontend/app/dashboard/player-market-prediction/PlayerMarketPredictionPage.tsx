@@ -37,6 +37,7 @@ import {
   calcOddsLines,
   type InferredStatus,
 } from "./compute";
+import PlayerProfileDrawer from "./player-profile-drawer";
 import type { Translator } from "@/lib/i18n/messages";
 
 const STATUS_LABEL_KEYS: Record<InferredStatus, string> = {
@@ -165,6 +166,7 @@ function TeamPlayerTable({
   onStatusChange,
   onManualChange,
   onCheckedChange,
+  onPlayerClick,
 }: {
   teamName: string;
   players: PlayerState[];
@@ -183,6 +185,7 @@ function TeamPlayerTable({
   onStatusChange: (id: string, s: InferredStatus) => void;
   onManualChange: (id: string, v: string) => void;
   onCheckedChange: (id: string, v: boolean) => void;
+  onPlayerClick: (slug: string, name: string) => void;
 }) {
   const { t } = useI18n();
   const [sortCol, setSortCol] = useState<SortCol>("status");
@@ -280,10 +283,16 @@ function TeamPlayerTable({
                   </td>
 
                   <td
-                    className="px-1 py-1 font-medium text-ink whitespace-nowrap overflow-hidden text-ellipsis max-w-[140px]"
+                    className="px-1 py-1 max-w-[140px]"
                     title={p.player_name}
                   >
-                    {p.player_name}
+                    <button
+                      type="button"
+                      onClick={() => onPlayerClick(p.player_slug, p.player_name)}
+                      className="block w-full truncate text-left font-medium text-ink underline-offset-2 transition hover:text-teal-300 hover:underline"
+                    >
+                      {p.player_name}
+                    </button>
                   </td>
 
                   <td className="px-1 py-1 text-ink-3">{p.primary_position_code}</td>
@@ -439,6 +448,11 @@ export default function PlayerMarketPredictionPage({
   const [adding, setAdding] = useState(false);
   const [addedCount, setAddedCount] = useState<number | null>(null);
   const [dupWarning, setDupWarning] = useState<string | null>(null);
+  // Oyuncu adina tiklaninca sagda acilan profil paneli.
+  const [selectedPlayer, setSelectedPlayer] = useState<{
+    slug: string;
+    name: string;
+  } | null>(null);
 
   // ── On mount: load fixtures + latest metric season + stored markets ──
   useEffect(() => {
@@ -449,22 +463,41 @@ export default function PlayerMarketPredictionPage({
 
   const refreshStoredMarkets = () => fetchStoredMarkets().then(setStoredMarkets);
 
-  // Yerlesik marketler + Yeni ile eklenen ozel marketler (istatistiksiz, en altta).
-  const allMarkets: MarketOption[] = useMemo(
-    () => [
-      ...MARKET_OPTIONS,
-      ...storedMarkets
-        .filter((m) => m.is_custom)
-        .map((m) => ({
-          key: m.market_key,
-          label: m.label,
-          metricKey: "",
-          logField: "",
-          includeGk: false,
-        })),
-    ],
+  // Market Listesi'nde Model tiki kaldirilan marketler dropdown'da gizlenir.
+  const excludedMarketKeys = useMemo(
+    () =>
+      new Set(
+        storedMarkets.filter((m) => m.in_model === false).map((m) => m.market_key)
+      ),
     [storedMarkets]
   );
+
+  // Yerlesik marketler + Yeni ile eklenen ozel marketler (istatistiksiz, en altta),
+  // Model tiki kaldirilanlar cikarilarak.
+  const allMarkets: MarketOption[] = useMemo(
+    () =>
+      [
+        ...MARKET_OPTIONS,
+        ...storedMarkets
+          .filter((m) => m.is_custom)
+          .map((m) => ({
+            key: m.market_key,
+            label: m.label,
+            metricKey: "",
+            logField: "",
+            includeGk: false,
+          })),
+      ].filter((m) => !excludedMarketKeys.has(m.key)),
+    [storedMarkets, excludedMarketKeys]
+  );
+
+  // Secili market Model listesinden cikarilirsa ilk uygun markete gec.
+  useEffect(() => {
+    if (allMarkets.length === 0) return;
+    if (!allMarkets.some((m) => m.key === selectedMarketKey)) {
+      setSelectedMarketKey(allMarkets[0].key);
+    }
+  }, [allMarkets, selectedMarketKey]);
 
   const selectedFixture = fixtures.find((f) => f.fixture_id === selectedFixtureId) ?? null;
   const selectedMarket = allMarkets.find((m) => m.key === selectedMarketKey) ?? MARKET_OPTIONS[0];
@@ -977,6 +1010,7 @@ export default function PlayerMarketPredictionPage({
               onStatusChange={makeStatusHandler(setHomePlayers)}
               onManualChange={makeManualHandler(setHomePlayers)}
               onCheckedChange={makeCheckedHandler(setHomePlayers)}
+              onPlayerClick={(slug, name) => setSelectedPlayer({ slug, name })}
             />
             <TeamPlayerTable
               key={`${selectedFixtureId}:${selectedMarketKey}:away`}
@@ -993,6 +1027,7 @@ export default function PlayerMarketPredictionPage({
               onStatusChange={makeStatusHandler(setAwayPlayers)}
               onManualChange={makeManualHandler(setAwayPlayers)}
               onCheckedChange={makeCheckedHandler(setAwayPlayers)}
+              onPlayerClick={(slug, name) => setSelectedPlayer({ slug, name })}
             />
           </div>
         </div>
@@ -1005,6 +1040,17 @@ export default function PlayerMarketPredictionPage({
         </div>
       )}
       </>
+      )}
+
+      {selectedPlayer && (
+        <PlayerProfileDrawer
+          key={selectedPlayer.slug}
+          playerSlug={selectedPlayer.slug}
+          playerName={selectedPlayer.name}
+          seasonLabel={currentSeason}
+          teamLogos={teamLogos}
+          onClose={() => setSelectedPlayer(null)}
+        />
       )}
     </div>
   );
