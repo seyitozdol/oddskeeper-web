@@ -222,7 +222,7 @@ export default function PlayerProfileDrawer({
           const field = metricKey.slice(4);
           const { data: logRows } = await supabase
             .schema("analytics")
-            .from("player_log_season_avg_v1")
+            .from("player_log_by_season_v1")
             .select(`season_label, matches, ${field}`)
             .eq("player_source_id", playerSourceId);
           for (const row of (logRows ?? []) as unknown as Record<
@@ -243,7 +243,7 @@ export default function PlayerProfileDrawer({
         } else {
           const { data: mrows } = await supabase
             .schema("analytics")
-            .from("player_metric_leaderboard_current")
+            .from("player_metric_by_season_v1")
             .select(
               "season_label, per_match_value, last5_value, total_value, league_rank, sample_matches"
             )

@@ -65,7 +65,7 @@ export const playerMarket = defineMessages({
     metricPercentile: "Percentile",
     metricMatches: "Matches",
     metricNoData: "No metric data for this player yet.",
-    metricOnlyCurrentNote: "Only the current season is loaded; past seasons will appear once backfilled.",
+    metricOnlyCurrentNote: "No past-season data available for this metric.",
 
     fixtureLabel: "Fixture",
     selectFixturePlaceholder: "Select fixture",
@@ -149,7 +149,7 @@ export const playerMarket = defineMessages({
     metricPercentile: "Yüzdelik",
     metricMatches: "Maç",
     metricNoData: "Bu oyuncu için metrik verisi yok.",
-    metricOnlyCurrentNote: "Şimdilik yalnızca güncel sezon yüklü; geçmiş sezonlar veri geldikçe görünecek.",
+    metricOnlyCurrentNote: "Bu metrik için geçmiş sezon verisi yok.",
 
     fixtureLabel: "Fikstür",
     selectFixturePlaceholder: "Fikstür seç",
