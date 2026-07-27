@@ -194,9 +194,30 @@ export default function PlayerProfileDrawer({
       setMarketValue((mv?.market_value_eur as number) ?? null);
 
       // Secili marketin metrigi icin sezon bazinda degerler (gecmis sezon
-      // kiyasi). Metrik view'lari player_source_id ile anahtarlanir.
+      // kiyasi). Metrik view'lari player_source_id + TAKIM gren'inde oldugundan
+      // sezon icinde 2 takimda oynayan oyuncuda ayni sezon birden cok satir
+      // gelir; sezon bazinda birlestiririz (toplam/mac topla, mac basi = maca
+      // agirlikli ort, sira en iyi/en cok macli stint'ten).
       if (metricKey && playerSourceId) {
-        const seasons: MetricSeason[] = [];
+        type Acc = {
+          total: number;
+          matches: number;
+          pmNum: number;
+          pmDen: number;
+          last5: number | null;
+          last5Matches: number;
+          rank: number | null;
+        };
+        const bySeason = new Map<string, Acc>();
+        const ensure = (s: string): Acc => {
+          let e = bySeason.get(s);
+          if (!e) {
+            e = { total: 0, matches: 0, pmNum: 0, pmDen: 0, last5: null, last5Matches: -1, rank: null };
+            bySeason.set(s, e);
+          }
+          return e;
+        };
+
         if (metricKey.startsWith("log:")) {
           const field = metricKey.slice(4);
           const { data: logRows } = await supabase
@@ -208,38 +229,56 @@ export default function PlayerProfileDrawer({
             string,
             unknown
           >[]) {
-            const val = row[field];
-            seasons.push({
-              seasonLabel: String(row.season_label),
-              perMatch: val != null ? Number(val) : null,
-              last5: null,
-              total: null,
-              rank: null,
-              percentile: null,
-              matches: (row.matches as number) ?? null,
-            });
+            const e = ensure(String(row.season_label));
+            const m = Number(row.matches ?? 0);
+            const val = row[field] != null ? Number(row[field]) : null;
+            e.matches += m;
+            // log view'da alan maç-başı ortalamadır; toplam ~ ort * maç.
+            if (val != null) {
+              e.pmNum += val * m;
+              e.pmDen += m;
+              e.total += val * m;
+            }
           }
         } else {
           const { data: mrows } = await supabase
             .schema("analytics")
             .from("player_metric_leaderboard_current")
             .select(
-              "season_label, per_match_value, last5_value, total_value, league_rank, league_percentile, sample_matches"
+              "season_label, per_match_value, last5_value, total_value, league_rank, sample_matches"
             )
             .eq("player_source_id", playerSourceId)
             .eq("metric_key", metricKey);
           for (const row of (mrows ?? []) as Record<string, unknown>[]) {
-            seasons.push({
-              seasonLabel: String(row.season_label),
-              perMatch: (row.per_match_value as number) ?? null,
-              last5: (row.last5_value as number) ?? null,
-              total: (row.total_value as number) ?? null,
-              rank: (row.league_rank as number) ?? null,
-              percentile: (row.league_percentile as number) ?? null,
-              matches: (row.sample_matches as number) ?? null,
-            });
+            const e = ensure(String(row.season_label));
+            const m = Number(row.sample_matches ?? 0);
+            e.total += Number(row.total_value ?? 0);
+            e.matches += m;
+            const pm = row.per_match_value != null ? Number(row.per_match_value) : null;
+            if (pm != null) {
+              e.pmNum += pm * m;
+              e.pmDen += m;
+            }
+            if (m > e.last5Matches) {
+              e.last5Matches = m;
+              e.last5 = row.last5_value != null ? Number(row.last5_value) : null;
+            }
+            const rk = row.league_rank != null ? Number(row.league_rank) : null;
+            if (rk != null && (e.rank == null || rk < e.rank)) e.rank = rk;
           }
         }
+
+        const seasons: MetricSeason[] = [...bySeason.entries()].map(
+          ([seasonLabel, e]) => ({
+            seasonLabel,
+            matches: e.matches || null,
+            total: e.total ? e.total : null,
+            perMatch: e.pmDen > 0 ? e.pmNum / e.pmDen : null,
+            last5: e.last5,
+            rank: e.rank,
+            percentile: null,
+          })
+        );
         // En yeni sezon once.
         seasons.sort((a, b) => b.seasonLabel.localeCompare(a.seasonLabel));
         if (!cancelled) setMetricSeasons(seasons);
@@ -261,11 +300,6 @@ export default function PlayerProfileDrawer({
     : null;
   const mvLabel = fmtMarketValue(marketValue);
   const detailHref = getPlayerDetailHref(playerSlug);
-  // Bar genisligi icin sezonlar arasi en yuksek per-match deger.
-  const metricMax = Math.max(
-    0.0001,
-    ...metricSeasons.map((s) => s.perMatch ?? 0)
-  );
 
   return (
     <div className="fixed inset-0 z-[90]">
@@ -404,68 +438,79 @@ export default function PlayerProfileDrawer({
                     </div>
                   ) : (
                     <>
-                      {/* Guncel sezon metrik tile'lari */}
-                      <div className="mb-3 grid grid-cols-3 gap-2">
-                        <Stat
-                          label={t("playerMarket.metricSeasonAvg")}
-                          value={fmtNum(metricSeasons[0].perMatch)}
-                        />
-                        {metricSeasons[0].last5 != null && (
-                          <Stat
-                            label={t("playerMarket.metricLast5")}
-                            value={fmtNum(metricSeasons[0].last5)}
-                          />
-                        )}
-                        {metricSeasons[0].total != null && (
-                          <Stat
-                            label={t("playerMarket.metricTotal")}
-                            value={fmtNum(metricSeasons[0].total)}
-                          />
-                        )}
-                        {metricSeasons[0].rank != null && (
-                          <Stat
-                            label={t("playerMarket.metricRank")}
-                            value={`#${metricSeasons[0].rank}`}
-                          />
-                        )}
-                        {metricSeasons[0].percentile != null && (
-                          <Stat
-                            label={t("playerMarket.metricPercentile")}
-                            value={pct(metricSeasons[0].percentile)}
-                          />
-                        )}
+                      {/* WhoScored tarzi sezon tablosu: sezon basina maç / toplam
+                          / maç başı ortalama (en yeni sezon ustte, vurgulu) */}
+                      <div className="overflow-hidden rounded-lg border border-line">
+                        <table className="w-full border-collapse text-[12px]">
+                          <thead className="bg-card-2 text-[10px] uppercase tracking-[0.08em] text-ink-3">
+                            <tr>
+                              <th className="px-2 py-1.5 text-left font-medium">
+                                {t("playerMarket.metricSeasonCol")}
+                              </th>
+                              <th className="px-2 py-1.5 text-right font-medium">
+                                {t("playerMarket.metricMatches")}
+                              </th>
+                              <th className="px-2 py-1.5 text-right font-medium">
+                                {t("playerMarket.metricTotal")}
+                              </th>
+                              <th className="px-2 py-1.5 text-right font-medium">
+                                {t("playerMarket.avgLabel")}
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {metricSeasons.map((s, i) => (
+                              <tr
+                                key={s.seasonLabel}
+                                className={`border-t border-line ${
+                                  i === 0 ? "bg-veil/50" : ""
+                                }`}
+                              >
+                                <td
+                                  className={`px-2 py-1.5 tabular-nums ${
+                                    i === 0
+                                      ? "font-semibold text-ink"
+                                      : "text-ink-2"
+                                  }`}
+                                >
+                                  {s.seasonLabel}
+                                </td>
+                                <td className="px-2 py-1.5 text-right tabular-nums text-ink-2">
+                                  {num(s.matches)}
+                                </td>
+                                <td className="px-2 py-1.5 text-right tabular-nums text-ink-2">
+                                  {fmtNum(s.total)}
+                                </td>
+                                <td className="px-2 py-1.5 text-right font-medium tabular-nums text-ink">
+                                  {fmtNum(s.perMatch)}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
                       </div>
 
-                      {/* Sezon bazinda karsilastirma barlari (en yeni ustte) */}
-                      <div className="space-y-1.5">
-                        {metricSeasons.map((s, i) => (
-                          <div key={s.seasonLabel} className="flex items-center gap-2">
-                            <span
-                              className={`w-16 shrink-0 text-[11px] tabular-nums ${
-                                i === 0 ? "font-semibold text-ink" : "text-ink-3"
-                              }`}
-                            >
-                              {s.seasonLabel}
+                      {(metricSeasons[0].rank != null ||
+                        metricSeasons[0].last5 != null) && (
+                        <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-ink-3">
+                          {metricSeasons[0].rank != null && (
+                            <span>
+                              {t("playerMarket.metricRank")}:{" "}
+                              <span className="font-medium text-ink-2">
+                                #{metricSeasons[0].rank}
+                              </span>
                             </span>
-                            <div className="relative h-4 flex-1 overflow-hidden rounded bg-veil">
-                              <div
-                                className={`h-full rounded ${
-                                  i === 0 ? "bg-teal-500/70" : "bg-teal-500/30"
-                                }`}
-                                style={{
-                                  width: `${Math.max(
-                                    3,
-                                    ((s.perMatch ?? 0) / metricMax) * 100
-                                  )}%`,
-                                }}
-                              />
-                            </div>
-                            <span className="w-10 shrink-0 text-right text-[11px] font-medium tabular-nums text-ink">
-                              {fmtNum(s.perMatch)}
+                          )}
+                          {metricSeasons[0].last5 != null && (
+                            <span>
+                              {t("playerMarket.metricLast5")}:{" "}
+                              <span className="font-medium text-ink-2">
+                                {fmtNum(metricSeasons[0].last5)}
+                              </span>
                             </span>
-                          </div>
-                        ))}
-                      </div>
+                          )}
+                        </div>
+                      )}
 
                       {metricSeasons.length === 1 && (
                         <div className="mt-2 text-[11px] leading-snug text-ink-3">
