@@ -1,28 +1,26 @@
 import Tff1Explorer from "@/features/tff1/components/Tff1Explorer";
 import {
-  getTff1Matches,
   getTff1MarketValues,
-  getTff1PlayerInfo,
   getTff1PlayerSeasonStats,
+  getTff1TeamLogos,
   getTff1TeamSeasonStats,
 } from "@/features/tff1/server/getTff1Stats";
-import type { Tff1MarketValue, Tff1PlayerInfo } from "@/features/tff1/types";
+import type { Tff1MarketValue } from "@/features/tff1/types";
 import { getT } from "@/lib/i18n/server";
 
 export default async function Tff1LigPage() {
-  const [players, teams, matches, infoRows, mvRows, t] = await Promise.all([
+  const [players, teams, mvRows, logoRows, t] = await Promise.all([
     getTff1PlayerSeasonStats(),
     getTff1TeamSeasonStats(),
-    getTff1Matches(),
-    getTff1PlayerInfo(),
     getTff1MarketValues(),
+    getTff1TeamLogos(),
     getT(),
   ]);
 
-  const info: Record<string, Tff1PlayerInfo> = {};
-  for (const row of infoRows) info[row.player_id] = row;
   const marketValues: Record<string, Tff1MarketValue> = {};
   for (const row of mvRows) marketValues[row.player_id] = row;
+  const teamLogos: Record<string, string> = {};
+  for (const row of logoRows) if (row.logo_url) teamLogos[row.team_id] = row.logo_url;
 
   return (
     <section className="w-full">
@@ -47,9 +45,8 @@ export default async function Tff1LigPage() {
           <Tff1Explorer
             players={players}
             teams={teams}
-            matches={matches}
-            info={info}
             marketValues={marketValues}
+            teamLogos={teamLogos}
           />
         )}
       </div>

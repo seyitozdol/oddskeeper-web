@@ -97,6 +97,11 @@ export const tff1 = defineMessages({
     drawerSquad: "Squad ({count} players)",
     drawerResults: "Results ({count} matches)",
     drawerRole: "Role",
+    valueModeTotal: "Total",
+    valueModePerMatch: "Per match",
+    backToLeague: "TFF 1. Lig",
+    metricCol: "Metric",
+    colTouches: "Touches",
 
     colPlayed: "P",
     colWins: "W",
@@ -206,6 +211,11 @@ export const tff1 = defineMessages({
     drawerSquad: "Kadro ({count} oyuncu)",
     drawerResults: "Sonuçlar ({count} maç)",
     drawerRole: "Rol",
+    valueModeTotal: "Toplam",
+    valueModePerMatch: "Maç başına",
+    backToLeague: "TFF 1. Lig",
+    metricCol: "Metrik",
+    colTouches: "Dokunuş",
 
     colPlayed: "O",
     colWins: "G",

@@ -81,6 +81,12 @@ export type Tff1PlayerInfo = {
   birth_date: string | null;
   height_cm: number | null;
   country: string | null;
+  photo_url: string | null;
+};
+
+export type Tff1TeamLogo = {
+  team_id: string;
+  logo_url: string | null;
 };
 
 export type Tff1MarketValue = {
