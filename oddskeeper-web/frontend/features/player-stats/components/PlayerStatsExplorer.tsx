@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import PlayerLink from "@/components/links/PlayerLink";
 import { useI18n } from "@/lib/i18n/LanguageProvider";
 import { getTeamDetailHref } from "@/lib/routes";
@@ -10,10 +10,11 @@ import {
   canonicalNationality,
   getCountryFlagUrl,
 } from "@/lib/country-flags";
-import type { PlayerStatsListRow } from "../types";
+import type { PlayerStatsListRow, TslAdvancedRow } from "../types";
 
 type PlayerStatsExplorerProps = {
   rows: PlayerStatsListRow[];
+  advancedRows?: TslAdvancedRow[];
   teamLogos?: Record<string, string>;
 };
 
@@ -62,6 +63,142 @@ const POSITION_ORDER: Record<string, number> = {
   MF: 3,
   FW: 4,
 };
+
+type MetricGroup = "general" | "attack" | "passing" | "defense" | "physical";
+
+// adv_xg: 25/26'da mevcut satırdaki FlashScore xG; advanced mat'ta xg yok,
+// 24/25 seçiliyken "—" gösterilir.
+type AdvancedMetricKey =
+  | "adv_xg"
+  | "xgot"
+  | "xa"
+  | "key_passes"
+  | "big_chances_created"
+  | "big_chances_missed"
+  | "dribbles_won"
+  | "dribbles_attempted"
+  | "long_balls"
+  | "accurate_long_balls"
+  | "duels_won"
+  | "duels_lost"
+  | "aerials_won"
+  | "aerials_lost"
+  | "clearances"
+  | "ball_recoveries"
+  | "errors_leading_to_shot"
+  | "errors_leading_to_goal"
+  | "appearances"
+  | "minutes"
+  | "km_covered"
+  | "sprints"
+  | "top_speed"
+  | "carry_distance_m"
+  | "progressive_carry_distance_m";
+
+type AdvancedSortKey =
+  | "player_name"
+  | "team_name"
+  | "position_code"
+  | AdvancedMetricKey;
+
+type AdvancedFormat = "int" | "dec1" | "dec2" | "speed";
+
+type AdvancedColumn = {
+  key: AdvancedMetricKey;
+  labelKey: string;
+  format: AdvancedFormat;
+};
+
+const METRIC_GROUPS: { value: MetricGroup; labelKey: string }[] = [
+  { value: "general", labelKey: "statsHub.metricGroupGeneral" },
+  { value: "attack", labelKey: "statsHub.metricGroupAttack" },
+  { value: "passing", labelKey: "statsHub.metricGroupPassing" },
+  { value: "defense", labelKey: "statsHub.metricGroupDefense" },
+  { value: "physical", labelKey: "statsHub.metricGroupPhysical" },
+];
+
+const ADVANCED_COLUMNS: Record<
+  Exclude<MetricGroup, "general">,
+  AdvancedColumn[]
+> = {
+  attack: [
+    { key: "adv_xg", labelKey: "statsHub.xg", format: "dec2" },
+    { key: "xgot", labelKey: "statsHub.xgot", format: "dec2" },
+    { key: "xa", labelKey: "statsHub.xa", format: "dec2" },
+    { key: "key_passes", labelKey: "statsHub.keyPasses", format: "int" },
+    {
+      key: "big_chances_created",
+      labelKey: "statsHub.bigChancesCreated",
+      format: "int",
+    },
+    {
+      key: "big_chances_missed",
+      labelKey: "statsHub.bigChancesMissed",
+      format: "int",
+    },
+    { key: "dribbles_won", labelKey: "statsHub.dribblesWon", format: "int" },
+    {
+      key: "dribbles_attempted",
+      labelKey: "statsHub.dribblesAttempted",
+      format: "int",
+    },
+  ],
+  passing: [
+    { key: "long_balls", labelKey: "statsHub.longBalls", format: "int" },
+    {
+      key: "accurate_long_balls",
+      labelKey: "statsHub.accurateLongBalls",
+      format: "int",
+    },
+    { key: "key_passes", labelKey: "statsHub.keyPasses", format: "int" },
+    {
+      key: "big_chances_created",
+      labelKey: "statsHub.bigChancesCreated",
+      format: "int",
+    },
+  ],
+  defense: [
+    { key: "duels_won", labelKey: "statsHub.duelsWon", format: "int" },
+    { key: "duels_lost", labelKey: "statsHub.duelsLost", format: "int" },
+    { key: "aerials_won", labelKey: "statsHub.aerialsWon", format: "int" },
+    { key: "aerials_lost", labelKey: "statsHub.aerialsLost", format: "int" },
+    { key: "clearances", labelKey: "statsHub.clearances", format: "int" },
+    {
+      key: "ball_recoveries",
+      labelKey: "statsHub.ballRecoveries",
+      format: "int",
+    },
+    {
+      key: "errors_leading_to_shot",
+      labelKey: "statsHub.errorsLeadingToShot",
+      format: "int",
+    },
+    {
+      key: "errors_leading_to_goal",
+      labelKey: "statsHub.errorsLeadingToGoal",
+      format: "int",
+    },
+  ],
+  physical: [
+    { key: "appearances", labelKey: "common.appearances", format: "int" },
+    { key: "minutes", labelKey: "common.minutes", format: "int" },
+    { key: "km_covered", labelKey: "statsHub.kmCovered", format: "dec1" },
+    { key: "sprints", labelKey: "statsHub.sprints", format: "int" },
+    { key: "top_speed", labelKey: "statsHub.topSpeed", format: "speed" },
+    {
+      key: "carry_distance_m",
+      labelKey: "statsHub.carryDistance",
+      format: "int",
+    },
+    {
+      key: "progressive_carry_distance_m",
+      labelKey: "statsHub.progressiveCarryDistance",
+      format: "int",
+    },
+  ],
+};
+
+const SEASON_OPTIONS = ["2025/2026", "2024/2025"];
 
 const POSITION_FILTERS = [
   { value: "ALL", labelKey: "statsHub.allPositions" },
@@ -118,6 +255,29 @@ function formatDecimal(value: number | null): string {
   return value === null ? "—" : value.toFixed(2);
 }
 
+function formatAdvancedValue(
+  value: number | null,
+  format: AdvancedFormat
+): string {
+  if (value === null) {
+    return "—";
+  }
+
+  if (format === "dec2") {
+    return value.toFixed(2);
+  }
+
+  if (format === "dec1") {
+    return value.toFixed(1);
+  }
+
+  if (format === "speed") {
+    return `${value.toFixed(1)} km/s`;
+  }
+
+  return String(Math.round(value));
+}
+
 function formatMarketValue(value: number | null): string {
   if (value === null) {
     return "—";
@@ -157,6 +317,7 @@ function PlayerAvatar({ row }: { row: PlayerStatsListRow }) {
 
 export default function PlayerStatsExplorer({
   rows,
+  advancedRows = [],
   teamLogos = {},
 }: PlayerStatsExplorerProps) {
   const { t } = useI18n();
@@ -167,6 +328,37 @@ export default function PlayerStatsExplorer({
   const [hideDeparted, setHideDeparted] = useState(false);
   const [sortKey, setSortKey] = useState<SortKey>("goals");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
+  const [metricGroup, setMetricGroup] = useState<MetricGroup>("general");
+  const [season, setSeason] = useState(SEASON_OPTIONS[0]);
+  const [advSortKey, setAdvSortKey] = useState<AdvancedSortKey>("player_name");
+  const [advSortDirection, setAdvSortDirection] =
+    useState<SortDirection>("asc");
+
+  const advancedByKey = useMemo(() => {
+    const map = new Map<string, TslAdvancedRow>();
+
+    for (const row of advancedRows) {
+      map.set(`${row.season_label}|${row.opta_player_id}`, row);
+    }
+
+    return map;
+  }, [advancedRows]);
+
+  const getAdvancedValue = useCallback(
+    (row: PlayerStatsListRow, key: AdvancedMetricKey): number | null => {
+      if (key === "adv_xg") {
+        // xG advanced mat'ta yok; 25/26'da FlashScore satır alanı kullanılır.
+        return season === "2025/2026" ? row.xg : null;
+      }
+
+      const adv = row.opta_player_id
+        ? advancedByKey.get(`${season}|${row.opta_player_id}`)
+        : undefined;
+
+      return adv?.[key] ?? null;
+    },
+    [advancedByKey, season]
+  );
 
   const teams = useMemo(() => {
     const bySlug = new Map<string, string>();
@@ -203,6 +395,34 @@ export default function PlayerStatsExplorer({
 
     setSortKey(key);
     setSortDirection(DEFAULT_DIRECTIONS[key]);
+  }
+
+  function handleMetricGroupChange(group: MetricGroup) {
+    setMetricGroup(group);
+
+    if (group !== "general") {
+      setAdvSortKey(ADVANCED_COLUMNS[group][0].key);
+      setAdvSortDirection("desc");
+    }
+  }
+
+  function handleAdvSort(key: AdvancedSortKey) {
+    if (advSortKey === key) {
+      setAdvSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
+      return;
+    }
+
+    setAdvSortKey(key);
+    setAdvSortDirection(
+      key === "player_name" || key === "team_name" || key === "position_code"
+        ? "asc"
+        : "desc"
+    );
+  }
+
+  function getAdvSortIndicator(key: AdvancedSortKey) {
+    if (advSortKey !== key) return "";
+    return advSortDirection === "asc" ? " ↑" : " ↓";
   }
 
   const filteredRows = useMemo(() => {
@@ -297,8 +517,70 @@ export default function PlayerStatsExplorer({
     return cloned;
   }, [filteredRows, sortKey, sortDirection]);
 
+  const advSortedRows = useMemo(() => {
+    if (metricGroup === "general") {
+      return filteredRows;
+    }
+
+    const cloned = [...filteredRows];
+
+    cloned.sort((a, b) => {
+      if (advSortKey === "player_name") {
+        return compareText(
+          getDisplayName(a),
+          getDisplayName(b),
+          advSortDirection
+        );
+      }
+
+      if (advSortKey === "team_name") {
+        const byTeam = compareText(
+          a.team_name ?? "",
+          b.team_name ?? "",
+          advSortDirection
+        );
+        if (byTeam !== 0) return byTeam;
+        return compareText(a.player_name, b.player_name, "asc");
+      }
+
+      if (advSortKey === "position_code") {
+        const aOrder = POSITION_ORDER[a.position_code] ?? 999;
+        const bOrder = POSITION_ORDER[b.position_code] ?? 999;
+
+        const byPosition = compareNumber(aOrder, bOrder, advSortDirection);
+        if (byPosition !== 0) return byPosition;
+
+        return compareText(a.player_name, b.player_name, "asc");
+      }
+
+      const aValue = getAdvancedValue(a, advSortKey);
+      const bValue = getAdvancedValue(b, advSortKey);
+
+      // Null değerler her iki yönde de en altta kalsın.
+      if (aValue === null && bValue === null) {
+        return compareText(a.player_name, b.player_name, "asc");
+      }
+      if (aValue === null) return 1;
+      if (bValue === null) return -1;
+
+      const byMetric = compareNumber(aValue, bValue, advSortDirection);
+      if (byMetric !== 0) return byMetric;
+
+      return compareText(a.player_name, b.player_name, "asc");
+    });
+
+    return cloned;
+  }, [filteredRows, metricGroup, advSortKey, advSortDirection, getAdvancedValue]);
+
   const headerCellClass =
     "cursor-pointer select-none whitespace-nowrap px-3 py-2 font-medium transition hover:text-ink-2";
+
+  const chipClass = (active: boolean) =>
+    `rounded-md border px-2.5 py-1 text-[12px] transition ${
+      active
+        ? "border-line-strong bg-card-2 text-ink"
+        : "border-line bg-veil text-ink-2 hover:border-line-strong hover:text-ink"
+    }`;
 
   return (
     <div className="mt-8 space-y-4">
@@ -373,13 +655,44 @@ export default function PlayerStatsExplorer({
         </div>
       </div>
 
+      <div className="flex flex-wrap items-center gap-1.5">
+        {METRIC_GROUPS.map((group) => (
+          <button
+            key={group.value}
+            type="button"
+            onClick={() => handleMetricGroupChange(group.value)}
+            className={chipClass(metricGroup === group.value)}
+          >
+            {t(group.labelKey)}
+          </button>
+        ))}
+
+        {metricGroup !== "general" ? (
+          <label className="ml-2 flex items-center gap-2 text-[12px] text-ink-3">
+            {t("statsHub.season")}
+            <select
+              value={season}
+              onChange={(event) => setSeason(event.target.value)}
+              className="rounded-md border border-line bg-field px-2.5 py-1 text-[12px] text-ink outline-none transition focus:border-line-strong"
+            >
+              {SEASON_OPTIONS.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
+      </div>
+
       <div className="text-xs text-ink-3">
         {sortedRows.length === 1
           ? t("statsHub.playerCountOne")
           : t("statsHub.playersCount", { count: sortedRows.length })}{" "}
-        · Süper Lig 2025/2026
+        · Süper Lig {metricGroup === "general" ? "2025/2026" : season}
       </div>
 
+      {metricGroup === "general" ? (
       <div className="rounded-lg border border-line">
         <div className="overflow-x-auto">
           <table className="min-w-full border-collapse">
@@ -572,8 +885,111 @@ export default function PlayerStatsExplorer({
           </table>
         </div>
       </div>
+      ) : (
+      <div className="rounded-lg border border-line">
+        <div className="overflow-x-auto">
+          <table className="min-w-full border-collapse">
+            <thead>
+              <tr className="text-left text-[10px] uppercase tracking-[0.14em] text-ink-3">
+                <th
+                  className={headerCellClass}
+                  onClick={() => handleAdvSort("player_name")}
+                >
+                  {t("common.player")}
+                  {getAdvSortIndicator("player_name")}
+                </th>
+                <th
+                  className={headerCellClass}
+                  onClick={() => handleAdvSort("team_name")}
+                >
+                  {t("common.team")}
+                  {getAdvSortIndicator("team_name")}
+                </th>
+                <th
+                  className={headerCellClass}
+                  onClick={() => handleAdvSort("position_code")}
+                >
+                  {t("common.position")}
+                  {getAdvSortIndicator("position_code")}
+                </th>
+                {ADVANCED_COLUMNS[metricGroup].map((column) => (
+                  <th
+                    key={column.key}
+                    className={headerCellClass}
+                    onClick={() => handleAdvSort(column.key)}
+                  >
+                    {t(column.labelKey)}
+                    {getAdvSortIndicator(column.key)}
+                  </th>
+                ))}
+              </tr>
+            </thead>
 
-      <p className="text-[12px] text-ink-3">{t("statsHub.flashscoreNote")}</p>
+            <tbody>
+              {advSortedRows.length === 0 ? (
+                <tr className="border-t border-line">
+                  <td
+                    colSpan={3 + ADVANCED_COLUMNS[metricGroup].length}
+                    className="px-4 py-8 text-center text-sm text-ink-2"
+                  >
+                    {t("statsHub.noPlayersMatch")}
+                  </td>
+                </tr>
+              ) : (
+                advSortedRows.map((row) => (
+                  <tr
+                    key={row.player_slug}
+                    className="border-t border-line text-[13px] text-ink transition hover:bg-veil"
+                  >
+                    <td className="px-3 py-1.5">
+                      <div className="flex items-center gap-3">
+                        <PlayerAvatar row={row} />
+
+                        <div className="min-w-0">
+                          <PlayerLink
+                            playerSlug={row.player_slug}
+                            className="font-medium text-accent-ink transition hover:text-accent hover:underline"
+                            title={getDisplayName(row)}
+                          >
+                            {getDisplayName(row)}
+                          </PlayerLink>
+
+                          <div className="flex items-center gap-1.5 text-[11px] text-ink-3">
+                            {row.shirt_number != null ? (
+                              <span>#{row.shirt_number}</span>
+                            ) : null}
+                            <NationalityBadge nationality={row.nationality} />
+                            {row.shirt_number == null && !row.nationality ? (
+                              <span>—</span>
+                            ) : null}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-1.5">
+                      <TeamCell row={row} teamLogos={teamLogos} />
+                    </td>
+                    <td className="px-3 py-1.5">{row.position_code}</td>
+                    {ADVANCED_COLUMNS[metricGroup].map((column) => (
+                      <td key={column.key} className="px-3 py-1.5">
+                        {formatAdvancedValue(
+                          getAdvancedValue(row, column.key),
+                          column.format
+                        )}
+                      </td>
+                    ))}
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      )}
+
+      <p className="text-[12px] text-ink-3">
+        {t("statsHub.flashscoreNote")} {t("statsHub.advancedNote")}
+      </p>
     </div>
   );
 }

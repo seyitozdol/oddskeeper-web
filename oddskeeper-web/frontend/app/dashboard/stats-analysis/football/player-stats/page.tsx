@@ -1,11 +1,13 @@
 import PlayerStatsExplorer from "@/features/player-stats/components/PlayerStatsExplorer";
 import { getPlayerStatsList } from "@/features/player-stats/server/getPlayerStatsList";
+import { getTslAdvancedStats } from "@/features/player-stats/server/getTslAdvancedStats";
 import { getAllFootballTeamLogos } from "@/lib/football-teams";
 import { getT } from "@/lib/i18n/server";
 
 export default async function FootballPlayerStatsPage() {
-  const [rows, teamLogos, t] = await Promise.all([
+  const [rows, advancedRows, teamLogos, t] = await Promise.all([
     getPlayerStatsList(),
+    getTslAdvancedStats(),
     getAllFootballTeamLogos(),
     getT(),
   ]);
@@ -28,7 +30,11 @@ export default async function FootballPlayerStatsPage() {
             {t("statsHub.playersNotFound")}
           </div>
         ) : (
-          <PlayerStatsExplorer rows={rows} teamLogos={teamLogos} />
+          <PlayerStatsExplorer
+            rows={rows}
+            advancedRows={advancedRows}
+            teamLogos={teamLogos}
+          />
         )}
       </div>
     </section>

@@ -183,6 +183,7 @@ export async function getPlayerStatsList(): Promise<PlayerStatsListRow[]> {
 
     merged.set(info.player_slug, {
       player_slug: info.player_slug,
+      opta_player_id: info.opta_player_id,
       player_name: info.player_name,
       full_name: fullName,
       team_slug: info.current_team_slug,
@@ -218,6 +219,7 @@ export async function getPlayerStatsList(): Promise<PlayerStatsListRow[]> {
 
     merged.set(profile.player_slug, {
       player_slug: profile.player_slug,
+      opta_player_id: null,
       player_name: profile.player_name,
       full_name: null,
       team_slug: profile.team_slug,

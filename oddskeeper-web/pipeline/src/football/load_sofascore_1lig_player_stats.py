@@ -11,7 +11,8 @@ Doldurulan tablolar (source='sofascore'):
   - football.match_player_stats_details (on_conflict: source,source_match_id,source_player_id)
 
 Calistirma:
-  .venv\\Scripts\\python.exe src\\football\\load_sofascore_1lig_player_stats.py <sofa_klasoru> <season_label ör. 2024/2025>
+  .venv\\Scripts\\python.exe src\\football\\load_sofascore_1lig_player_stats.py <sofa_klasoru> <season_label> [lig adi]
+  (lig adi varsayilan 'Trendyol 1. Lig'; Super Lig icin 'Süper Lig' verilir)
 """
 import json
 import sys
@@ -136,10 +137,12 @@ def player_rows(ev: dict, lineup: dict) -> list:
 
 
 def main():
-    global SEASON_LABEL
+    global SEASON_LABEL, COMPETITION
     sofa_dir = Path(sys.argv[1]) if len(sys.argv) > 1 else None
     if len(sys.argv) > 2:
         SEASON_LABEL = sys.argv[2]
+    if len(sys.argv) > 3:
+        COMPETITION = sys.argv[3]
     if not sofa_dir or not sofa_dir.is_dir():
         raise SystemExit("Kullanim: load_sofascore_1lig_player_stats.py <sofa_json_klasoru> [season_label]")
     if not (SUPABASE_URL and SUPABASE_KEY):

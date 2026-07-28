@@ -1,5 +1,6 @@
 export type PlayerStatsListRow = {
   player_slug: string;
+  opta_player_id: string | null;
   player_name: string;
   full_name: string | null;
   team_slug: string | null;
@@ -24,4 +25,33 @@ export type PlayerStatsListRow = {
   xa: number | null;
   yellowCards: number | null;
   redCards: number | null;
+};
+
+export type TslAdvancedRow = {
+  season_label: string;
+  opta_player_id: string;
+  appearances: number | null;
+  minutes: number | null;
+  xgot: number | null;
+  xa: number | null;
+  key_passes: number | null;
+  long_balls: number | null;
+  accurate_long_balls: number | null;
+  duels_won: number | null;
+  duels_lost: number | null;
+  aerials_won: number | null;
+  aerials_lost: number | null;
+  dribbles_won: number | null;
+  dribbles_attempted: number | null;
+  clearances: number | null;
+  ball_recoveries: number | null;
+  big_chances_created: number | null;
+  big_chances_missed: number | null;
+  errors_leading_to_shot: number | null;
+  errors_leading_to_goal: number | null;
+  km_covered: number | null;
+  sprints: number | null;
+  top_speed: number | null;
+  carry_distance_m: number | null;
+  progressive_carry_distance_m: number | null;
 };
