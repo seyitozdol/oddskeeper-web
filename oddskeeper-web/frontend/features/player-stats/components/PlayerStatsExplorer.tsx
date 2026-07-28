@@ -28,7 +28,12 @@ type SortKey =
   | "goals"
   | "assists"
   | "total_minutes"
-  | "avg_minutes";
+  | "avg_minutes"
+  | "xg"
+  | "xgot"
+  | "xa"
+  | "yellowCards"
+  | "redCards";
 
 type SortDirection = "asc" | "desc";
 
@@ -44,6 +49,11 @@ const DEFAULT_DIRECTIONS: Record<SortKey, SortDirection> = {
   assists: "desc",
   total_minutes: "desc",
   avg_minutes: "desc",
+  xg: "desc",
+  xgot: "desc",
+  xa: "desc",
+  yellowCards: "desc",
+  redCards: "desc",
 };
 
 const POSITION_ORDER: Record<string, number> = {
@@ -96,7 +106,16 @@ function getMetricValue(row: PlayerStatsListRow, key: SortKey): number {
   if (key === "assists") return row.assists;
   if (key === "total_minutes") return row.total_minutes;
   if (key === "avg_minutes") return row.avg_minutes ?? -1;
+  if (key === "xg") return row.xg ?? -1;
+  if (key === "xgot") return row.xgot ?? -1;
+  if (key === "xa") return row.xa ?? -1;
+  if (key === "yellowCards") return row.yellowCards ?? -1;
+  if (key === "redCards") return row.redCards ?? -1;
   return 0;
+}
+
+function formatDecimal(value: number | null): string {
+  return value === null ? "—" : value.toFixed(2);
 }
 
 function formatMarketValue(value: number | null): string {
@@ -440,6 +459,35 @@ export default function PlayerStatsExplorer({
                   {t("common.avgMinutes")}
                   {getSortIndicator(sortKey, sortDirection, "avg_minutes")}
                 </th>
+                <th className={headerCellClass} onClick={() => handleSort("xg")}>
+                  {t("statsHub.xg")}
+                  {getSortIndicator(sortKey, sortDirection, "xg")}
+                </th>
+                <th
+                  className={headerCellClass}
+                  onClick={() => handleSort("xgot")}
+                >
+                  {t("statsHub.xgot")}
+                  {getSortIndicator(sortKey, sortDirection, "xgot")}
+                </th>
+                <th className={headerCellClass} onClick={() => handleSort("xa")}>
+                  {t("statsHub.xa")}
+                  {getSortIndicator(sortKey, sortDirection, "xa")}
+                </th>
+                <th
+                  className={headerCellClass}
+                  onClick={() => handleSort("yellowCards")}
+                >
+                  {t("statsHub.yellowCards")}
+                  {getSortIndicator(sortKey, sortDirection, "yellowCards")}
+                </th>
+                <th
+                  className={headerCellClass}
+                  onClick={() => handleSort("redCards")}
+                >
+                  {t("statsHub.redCards")}
+                  {getSortIndicator(sortKey, sortDirection, "redCards")}
+                </th>
               </tr>
             </thead>
 
@@ -447,7 +495,7 @@ export default function PlayerStatsExplorer({
               {sortedRows.length === 0 ? (
                 <tr className="border-t border-line">
                   <td
-                    colSpan={11}
+                    colSpan={16}
                     className="px-4 py-8 text-center text-sm text-ink-2"
                   >
                     {t("statsHub.noPlayersMatch")}
@@ -512,6 +560,11 @@ export default function PlayerStatsExplorer({
                         ? Math.round(row.avg_minutes)
                         : "—"}
                     </td>
+                    <td className="px-3 py-1.5">{formatDecimal(row.xg)}</td>
+                    <td className="px-3 py-1.5">{formatDecimal(row.xgot)}</td>
+                    <td className="px-3 py-1.5">{formatDecimal(row.xa)}</td>
+                    <td className="px-3 py-1.5">{row.yellowCards ?? "—"}</td>
+                    <td className="px-3 py-1.5">{row.redCards ?? "—"}</td>
                   </tr>
                 ))
               )}
@@ -519,6 +572,8 @@ export default function PlayerStatsExplorer({
           </table>
         </div>
       </div>
+
+      <p className="text-[12px] text-ink-3">{t("statsHub.flashscoreNote")}</p>
     </div>
   );
 }

@@ -60,6 +60,33 @@ export type Tff1PlayerRow = {
   xa: number | null;
   yellow_cards: number | null;
   red_cards: number | null;
+  fs_position: string | null;
+};
+
+export type Tff1MatchRow = {
+  season_label: string;
+  match_id: string;
+  competition: string;
+  match_datetime: string | null;
+  home_team_id: string | null;
+  home_team_name: string | null;
+  away_team_id: string | null;
+  away_team_name: string | null;
+  home_score: number | null;
+  away_score: number | null;
+};
+
+export type Tff1PlayerInfo = {
+  player_id: string;
+  birth_date: string | null;
+  height_cm: number | null;
+  country: string | null;
+};
+
+export type Tff1MarketValue = {
+  player_id: string;
+  market_value_eur: number | null;
+  tm_club: string | null;
 };
 
 export type Tff1TeamRow = {

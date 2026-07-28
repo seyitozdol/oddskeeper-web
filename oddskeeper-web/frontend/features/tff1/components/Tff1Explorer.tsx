@@ -2,11 +2,23 @@
 
 import { useMemo, useState } from "react";
 import { useI18n } from "../../../lib/i18n/LanguageProvider";
-import type { Tff1PlayerRow, Tff1TeamRow } from "../types";
+import { formatMarketValue, positionLabel } from "../lib";
+import Tff1PlayerDrawer from "./Tff1PlayerDrawer";
+import Tff1TeamDrawer from "./Tff1TeamDrawer";
+import type {
+  Tff1MarketValue,
+  Tff1MatchRow,
+  Tff1PlayerInfo,
+  Tff1PlayerRow,
+  Tff1TeamRow,
+} from "../types";
 
 type Tff1ExplorerProps = {
   players: Tff1PlayerRow[];
   teams: Tff1TeamRow[];
+  matches: Tff1MatchRow[];
+  info: Record<string, Tff1PlayerInfo>;
+  marketValues: Record<string, Tff1MarketValue>;
 };
 
 type ViewMode = "players" | "teams";
@@ -19,7 +31,7 @@ type MetricGroup =
   | "physical"
   | "keeper";
 
-type NumFormat = "int" | "dec1" | "dec2" | "pct";
+type NumFormat = "int" | "dec1" | "dec2" | "pct" | "mv";
 
 type ColumnDef<Row> = {
   key: keyof Row & string;
@@ -27,7 +39,9 @@ type ColumnDef<Row> = {
   format?: NumFormat;
 };
 
-const PLAYER_GROUP_COLUMNS: Record<MetricGroup, ColumnDef<Tff1PlayerRow>[]> = {
+type PlayerRowX = Tff1PlayerRow & { market_value_eur: number | null };
+
+const PLAYER_GROUP_COLUMNS: Record<MetricGroup, ColumnDef<PlayerRowX>[]> = {
   general: [
     { key: "appearances", labelKey: "tff1.colAppearances" },
     { key: "starts", labelKey: "tff1.colStarts" },
@@ -38,6 +52,7 @@ const PLAYER_GROUP_COLUMNS: Record<MetricGroup, ColumnDef<Tff1PlayerRow>[]> = {
     { key: "yellow_cards", labelKey: "tff1.colYellowCards" },
     { key: "red_cards", labelKey: "tff1.colRedCards" },
     { key: "rating_avg", labelKey: "tff1.colRating", format: "dec2" },
+    { key: "market_value_eur", labelKey: "tff1.colMarketValue", format: "mv" },
   ],
   attack: [
     { key: "goals", labelKey: "tff1.colGoals" },
@@ -166,6 +181,8 @@ function formatValue(
       return num.toFixed(2);
     case "pct":
       return `${num.toFixed(1)}%`;
+    case "mv":
+      return formatMarketValue(num);
     default:
       return String(Math.round(num));
   }
@@ -174,8 +191,23 @@ function formatValue(
 const headerCellClass =
   "cursor-pointer select-none whitespace-nowrap px-3 py-2 font-medium transition hover:text-ink-2";
 
-export default function Tff1Explorer({ players, teams }: Tff1ExplorerProps) {
-  const { t } = useI18n();
+export default function Tff1Explorer({
+  players,
+  teams,
+  matches,
+  info,
+  marketValues,
+}: Tff1ExplorerProps) {
+  const { t, locale } = useI18n();
+
+  const enrichedPlayers = useMemo<PlayerRowX[]>(
+    () =>
+      players.map((p) => ({
+        ...p,
+        market_value_eur: marketValues[p.player_id]?.market_value_eur ?? null,
+      })),
+    [players, marketValues]
+  );
 
   const seasons = useMemo(() => {
     const set = new Set<string>();
@@ -190,6 +222,8 @@ export default function Tff1Explorer({ players, teams }: Tff1ExplorerProps) {
   const [group, setGroup] = useState<MetricGroup>("general");
   const [sortKey, setSortKey] = useState<string>(GROUP_DEFAULT_SORT.general);
   const [sortAsc, setSortAsc] = useState(false);
+  const [openPlayerId, setOpenPlayerId] = useState<string | null>(null);
+  const [openTeamId, setOpenTeamId] = useState<string | null>(null);
 
   function handleGroupChange(next: MetricGroup) {
     setGroup(next);
@@ -241,7 +275,7 @@ export default function Tff1Explorer({ players, teams }: Tff1ExplorerProps) {
 
   const visiblePlayers = useMemo(() => {
     const needle = normalizeSearchText(search.trim());
-    let rows = players.filter((row) => row.season_label === season);
+    let rows = enrichedPlayers.filter((row) => row.season_label === season);
     if (group === "keeper") {
       rows = rows.filter((row) => row.position_code === "G");
     }
@@ -256,7 +290,7 @@ export default function Tff1Explorer({ players, teams }: Tff1ExplorerProps) {
       compare(a as Record<string, unknown>, b as Record<string, unknown>)
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [players, season, search, group, sortKey, sortAsc]);
+  }, [enrichedPlayers, season, search, group, sortKey, sortAsc]);
 
   const visibleTeams = useMemo(() => {
     const needle = normalizeSearchText(search.trim());
@@ -404,16 +438,28 @@ export default function Tff1Explorer({ players, teams }: Tff1ExplorerProps) {
                           : undefined
                       }
                     >
-                      {row.player_name ?? "—"}
+                      <button
+                        type="button"
+                        onClick={() => setOpenPlayerId(row.player_id)}
+                        className="text-left transition hover:text-accent-ink hover:underline"
+                      >
+                        {row.player_name ?? "—"}
+                      </button>
                       {row.teams && row.teams.includes(",") ? (
                         <span className="ml-1 text-ink-3">*</span>
                       ) : null}
                     </td>
                     <td className="whitespace-nowrap px-3 py-2 text-ink-2">
-                      {row.team_name ?? "—"}
+                      <button
+                        type="button"
+                        onClick={() => row.team_id && setOpenTeamId(row.team_id)}
+                        className="text-left transition hover:text-accent-ink hover:underline"
+                      >
+                        {row.team_name ?? "—"}
+                      </button>
                     </td>
-                    <td className="px-3 py-2 text-ink-2">
-                      {row.position_code ?? "—"}
+                    <td className="whitespace-nowrap px-3 py-2 text-ink-2">
+                      {positionLabel(row, locale)}
                     </td>
                     {playerColumns.map((col) => (
                       <td
@@ -458,7 +504,8 @@ export default function Tff1Explorer({ players, teams }: Tff1ExplorerProps) {
                 {visibleTeams.map((row, index) => (
                   <tr
                     key={`${row.season_label}-${row.team_id}`}
-                    className="border-t border-line text-[13px] text-ink transition hover:bg-veil"
+                    className="cursor-pointer border-t border-line text-[13px] text-ink transition hover:bg-veil"
+                    onClick={() => setOpenTeamId(row.team_id)}
                   >
                     <td className="px-3 py-2 text-ink-3">{index + 1}</td>
                     <td className="whitespace-nowrap px-3 py-2 font-medium">
@@ -490,8 +537,54 @@ export default function Tff1Explorer({ players, teams }: Tff1ExplorerProps) {
       </div>
 
       <p className="mt-3 text-[12px] text-ink-3">
-        {t("tff1.playoffNote")} {t("tff1.fsNote")}
+        {t("tff1.playoffNote")} {t("tff1.fsNote")} {t("tff1.tmNote")}
       </p>
+
+      {openTeamId
+        ? (() => {
+            const seasonTeams = [...teams]
+              .filter((tr) => tr.season_label === season)
+              .sort(
+                (a, b) =>
+                  (toNumber(b.points) ?? 0) - (toNumber(a.points) ?? 0) ||
+                  (toNumber(b.goal_diff) ?? 0) - (toNumber(a.goal_diff) ?? 0)
+              );
+            const idx = seasonTeams.findIndex((tr) => tr.team_id === openTeamId);
+            const teamRow = idx >= 0 ? seasonTeams[idx] : null;
+            if (!teamRow) return null;
+            return (
+              <Tff1TeamDrawer
+                key={`${season}-${openTeamId}`}
+                team={teamRow}
+                rank={idx + 1}
+                matches={matches}
+                players={players}
+                marketValues={marketValues}
+                onClose={() => setOpenTeamId(null)}
+                onOpenPlayer={(pid) => setOpenPlayerId(pid)}
+              />
+            );
+          })()
+        : null}
+
+      {openPlayerId
+        ? (() => {
+            const seasonRows = players
+              .filter((p) => p.player_id === openPlayerId)
+              .sort((a, b) => b.season_label.localeCompare(a.season_label));
+            if (seasonRows.length === 0) return null;
+            return (
+              <Tff1PlayerDrawer
+                key={openPlayerId}
+                seasonRows={seasonRows}
+                info={info[openPlayerId]}
+                marketValue={marketValues[openPlayerId]}
+                teams={teams}
+                onClose={() => setOpenPlayerId(null)}
+              />
+            );
+          })()
+        : null}
     </div>
   );
 }

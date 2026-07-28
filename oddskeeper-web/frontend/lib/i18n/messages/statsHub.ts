@@ -26,6 +26,13 @@ export const statsHub = defineMessages({
     noPlayersMatch: "No players match your filters.",
     hideDeparted: "Hide departed",
     allNationalities: "All nationalities",
+    xg: "xG",
+    xgot: "xGOT",
+    xa: "xA",
+    yellowCards: "Yellow",
+    redCards: "Red",
+    flashscoreNote:
+      "xG, xGOT, xA and cards are sourced from FlashScore (2025/26 season).",
   },
   tr: {
     hubKicker: "İstatistik & Analiz",
@@ -52,5 +59,12 @@ export const statsHub = defineMessages({
     noPlayersMatch: "Filtrelere uyan oyuncu yok.",
     hideDeparted: "Ayrılanları gizle",
     allNationalities: "Tüm ülkeler",
+    xg: "xG",
+    xgot: "xGOT",
+    xa: "xA",
+    yellowCards: "Sarı",
+    redCards: "Kırmızı",
+    flashscoreNote:
+      "xG, xGOT, xA ve kart verileri FlashScore kaynaklıdır (2025/26 sezonu).",
   },
 });

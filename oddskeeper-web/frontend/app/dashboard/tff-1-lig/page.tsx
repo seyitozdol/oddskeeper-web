@@ -1,16 +1,28 @@
 import Tff1Explorer from "@/features/tff1/components/Tff1Explorer";
 import {
+  getTff1Matches,
+  getTff1MarketValues,
+  getTff1PlayerInfo,
   getTff1PlayerSeasonStats,
   getTff1TeamSeasonStats,
 } from "@/features/tff1/server/getTff1Stats";
+import type { Tff1MarketValue, Tff1PlayerInfo } from "@/features/tff1/types";
 import { getT } from "@/lib/i18n/server";
 
 export default async function Tff1LigPage() {
-  const [players, teams, t] = await Promise.all([
+  const [players, teams, matches, infoRows, mvRows, t] = await Promise.all([
     getTff1PlayerSeasonStats(),
     getTff1TeamSeasonStats(),
+    getTff1Matches(),
+    getTff1PlayerInfo(),
+    getTff1MarketValues(),
     getT(),
   ]);
+
+  const info: Record<string, Tff1PlayerInfo> = {};
+  for (const row of infoRows) info[row.player_id] = row;
+  const marketValues: Record<string, Tff1MarketValue> = {};
+  for (const row of mvRows) marketValues[row.player_id] = row;
 
   return (
     <section className="w-full">
@@ -32,7 +44,13 @@ export default async function Tff1LigPage() {
             {t("tff1.noRows")}
           </div>
         ) : (
-          <Tff1Explorer players={players} teams={teams} />
+          <Tff1Explorer
+            players={players}
+            teams={teams}
+            matches={matches}
+            info={info}
+            marketValues={marketValues}
+          />
         )}
       </div>
     </section>

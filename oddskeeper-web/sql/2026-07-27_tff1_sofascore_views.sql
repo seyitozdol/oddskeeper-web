@@ -74,7 +74,9 @@ fs_agg as (
     round(sum((d.raw_stats->>'EXPECTED_ASSISTS')::numeric), 2)      as xa,
     sum(coalesce((d.raw_stats->>'CARDS_YELLOW')::int, 0))           as yellow_cards,
     -- CARDS_RED ikinci saridan atilmalari da icerir (dogrulandi), ekstra toplama yok
-    sum(coalesce((d.raw_stats->>'CARDS_RED')::int, 0))              as red_cards
+    sum(coalesce((d.raw_stats->>'CARDS_RED')::int, 0))              as red_cards,
+    -- FlashScore ayrintili pozisyon adi (Winger, Centre back vs.)
+    mode() within group (order by d.raw_stats->>'_position')        as fs_position
   from football.match_player_stats_details d
   join football.matches m
     on m.source = d.source and m.source_match_id = d.source_match_id
@@ -148,7 +150,8 @@ select
   fs.xgot,
   fs.xa,
   fs.yellow_cards,
-  fs.red_cards
+  fs.red_cards,
+  fs.fs_position
 from agg
 left join fs_agg fs
   on fs.season_label = agg.season_label and fs.player_id = agg.player_id;

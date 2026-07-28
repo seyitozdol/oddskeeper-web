@@ -19,4 +19,9 @@ export type PlayerStatsListRow = {
   total_minutes: number;
   avg_minutes: number | null;
   market_value_eur: number | null;
+  xg: number | null;
+  xgot: number | null;
+  xa: number | null;
+  yellowCards: number | null;
+  redCards: number | null;
 };

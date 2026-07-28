@@ -3,6 +3,7 @@ import type { PlayerStatsListRow } from "../types";
 
 type CurrentInfoDbRow = {
   player_slug: string;
+  opta_player_id: string | null;
   player_name: string;
   full_name: string | null;
   first_name: string | null;
@@ -14,6 +15,15 @@ type CurrentInfoDbRow = {
   shirt_number: number | null;
   nationality: string | null;
   photo_url: string | null;
+};
+
+type FlashscoreDbRow = {
+  opta_player_id: string | null;
+  xg: number | string | null;
+  xgot: number | string | null;
+  xa: number | string | null;
+  yellow_cards: number | null;
+  red_cards: number | null;
 };
 
 type ProfileDbRow = {
@@ -50,13 +60,15 @@ function toNumberOrNull(value: number | string | null): number | null {
 export async function getPlayerStatsList(): Promise<PlayerStatsListRow[]> {
   const supabase = await createClient();
 
-  const [currentInfoResult, profileResult, marketValueResult] = await Promise.all([
+  const [currentInfoResult, profileResult, marketValueResult, flashscoreResult] =
+    await Promise.all([
     supabase
       .schema("analytics")
       .from("player_current_info_v1")
       .select(
         `
           player_slug,
+          opta_player_id,
           player_name,
           full_name,
           first_name,
@@ -101,6 +113,13 @@ export async function getPlayerStatsList(): Promise<PlayerStatsListRow[]> {
       .select("player_slug, market_value_eur")
       .limit(2000)
       .returns<{ player_slug: string; market_value_eur: number | null }[]>(),
+
+    supabase
+      .schema("analytics")
+      .from("tsl_player_flashscore_season_mat")
+      .select("opta_player_id, xg, xgot, xa, yellow_cards, red_cards")
+      .limit(1000)
+      .returns<FlashscoreDbRow[]>(),
   ]);
 
   if (currentInfoResult.error) {
@@ -132,6 +151,21 @@ export async function getPlayerStatsList(): Promise<PlayerStatsListRow[]> {
     profileRows.map((row) => [row.player_slug, row])
   );
 
+  if (flashscoreResult.error) {
+    console.error("player stats list flashscore fetch error:", {
+      message: flashscoreResult.error.message,
+      details: flashscoreResult.error.details,
+      code: flashscoreResult.error.code,
+    });
+  }
+
+  const flashscoreByOptaId = new Map<string, FlashscoreDbRow>();
+  for (const row of flashscoreResult.data ?? []) {
+    if (row.opta_player_id) {
+      flashscoreByOptaId.set(row.opta_player_id, row);
+    }
+  }
+
   const merged = new Map<string, PlayerStatsListRow>();
 
   for (const info of currentInfoRows) {
@@ -143,6 +177,9 @@ export async function getPlayerStatsList(): Promise<PlayerStatsListRow[]> {
     const fullName =
       [info.first_name, info.last_name].filter(Boolean).join(" ") ||
       info.full_name;
+    const flashscore = info.opta_player_id
+      ? flashscoreByOptaId.get(info.opta_player_id)
+      : undefined;
 
     merged.set(info.player_slug, {
       player_slug: info.player_slug,
@@ -165,6 +202,11 @@ export async function getPlayerStatsList(): Promise<PlayerStatsListRow[]> {
       assists: profile?.assists ?? 0,
       total_minutes: profile?.total_minutes ?? 0,
       avg_minutes: toNumberOrNull(profile?.avg_minutes ?? null),
+      xg: toNumberOrNull(flashscore?.xg ?? null),
+      xgot: toNumberOrNull(flashscore?.xgot ?? null),
+      xa: toNumberOrNull(flashscore?.xa ?? null),
+      yellowCards: flashscore?.yellow_cards ?? null,
+      redCards: flashscore?.red_cards ?? null,
     });
   }
 
@@ -195,6 +237,11 @@ export async function getPlayerStatsList(): Promise<PlayerStatsListRow[]> {
       assists: profile.assists,
       total_minutes: profile.total_minutes,
       avg_minutes: toNumberOrNull(profile.avg_minutes),
+      xg: null,
+      xgot: null,
+      xa: null,
+      yellowCards: null,
+      redCards: null,
     });
   }
 
