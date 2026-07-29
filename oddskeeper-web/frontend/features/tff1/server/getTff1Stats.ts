@@ -1,6 +1,8 @@
 import { createClient } from "../../../lib/supabase/server";
 import type {
+  Tff1FixtureRow,
   Tff1MarketValue,
+  Tff1MatchLogRow,
   Tff1MatchRow,
   Tff1PlayerInfo,
   Tff1PlayerRow,
@@ -117,6 +119,88 @@ export async function getTff1TeamLogos(): Promise<Tff1TeamLogo[]> {
 
   if (error) {
     console.error("getTff1TeamLogos error:", error.message);
+    return [];
+  }
+
+  return data ?? [];
+}
+
+// Oyuncunun mac bazli logu (tum sezonlar; Super Lig satirlari da gelebilir).
+export async function getTff1PlayerMatchLog(
+  playerId: string
+): Promise<Tff1MatchLogRow[]> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .schema("analytics")
+    .from("tff1_player_match_log_mat")
+    .select("*")
+    .eq("player_id", playerId)
+    .order("match_datetime", { ascending: false })
+    .limit(300)
+    .returns<Tff1MatchLogRow[]>();
+
+  if (error) {
+    console.error("getTff1PlayerMatchLog error:", error.message);
+    return [];
+  }
+
+  return data ?? [];
+}
+
+// Tek macin tum oyuncu satirlari (mac detay sayfasi kadrolari).
+export async function getTff1MatchPlayers(
+  matchId: string
+): Promise<Tff1MatchLogRow[]> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .schema("analytics")
+    .from("tff1_player_match_log_mat")
+    .select("*")
+    .eq("match_id", matchId)
+    .limit(60)
+    .returns<Tff1MatchLogRow[]>();
+
+  if (error) {
+    console.error("getTff1MatchPlayers error:", error.message);
+    return [];
+  }
+
+  return data ?? [];
+}
+
+export async function getTff1Match(matchId: string): Promise<Tff1MatchRow | null> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .schema("analytics")
+    .from("tff1_matches_v1")
+    .select("*")
+    .eq("match_id", matchId)
+    .maybeSingle<Tff1MatchRow>();
+
+  if (error) {
+    console.error("getTff1Match error:", error.message);
+    return null;
+  }
+
+  return data;
+}
+
+export async function getTff1Fixtures(): Promise<Tff1FixtureRow[]> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .schema("analytics")
+    .from("tff1_fixtures_v1")
+    .select("*")
+    .order("fixture_datetime", { ascending: true })
+    .limit(500)
+    .returns<Tff1FixtureRow[]>();
+
+  if (error) {
+    console.error("getTff1Fixtures error:", error.message);
     return [];
   }
 

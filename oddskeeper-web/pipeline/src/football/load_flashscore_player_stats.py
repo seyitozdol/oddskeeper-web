@@ -195,6 +195,9 @@ def refresh_mats():
         cur = conn.cursor()
         cur.execute("refresh materialized view analytics.tff1_player_season_stats_mat")
         cur.execute("refresh materialized view analytics.tff1_team_season_stats_mat")
+        cur.execute("refresh materialized view analytics.tff1_player_match_log_mat")
+        cur.execute("refresh materialized view analytics.tff1_pm_player_season_mat")
+        cur.execute("refresh materialized view analytics.tff1_squad_mat")
         print("[mat] tff1 materialized view'lar tazelendi", flush=True)
     except Exception as e:  # noqa
         print(f"UYARI: mat refresh basarisiz: {e}", flush=True)

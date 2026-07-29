@@ -9,6 +9,7 @@ import {
   squadRole,
 } from "@/features/tff1/lib";
 import {
+  getTff1Fixtures,
   getTff1Matches,
   getTff1MarketValues,
   getTff1PlayerSeasonStats,
@@ -38,15 +39,17 @@ export default async function Tff1TeamPage({
 }) {
   const { teamId } = await params;
   const { season: seasonParam } = await searchParams;
-  const [players, teams, matches, mvRows, logos, t, locale] = await Promise.all([
-    getTff1PlayerSeasonStats(),
-    getTff1TeamSeasonStats(),
-    getTff1Matches(),
-    getTff1MarketValues(),
-    getTff1TeamLogos(),
-    getT(),
-    getLocale(),
-  ]);
+  const [players, teams, matches, fixtures, mvRows, logos, t, locale] =
+    await Promise.all([
+      getTff1PlayerSeasonStats(),
+      getTff1TeamSeasonStats(),
+      getTff1Matches(),
+      getTff1Fixtures(),
+      getTff1MarketValues(),
+      getTff1TeamLogos(),
+      getT(),
+      getLocale(),
+    ]);
 
   const teamSeasons = teams
     .filter((tr) => tr.team_id === teamId)
@@ -96,6 +99,16 @@ export default async function Tff1TeamPage({
 
   const leagueMatches = teamMatches.filter((m) => !m.competition.includes("Play-off"));
   const form = leagueMatches.slice(0, 5).map(resultFor);
+
+  const now = new Date().toISOString();
+  const teamFixtures = fixtures
+    .filter(
+      (f) =>
+        (f.home_team_id === teamId || f.away_team_id === teamId) &&
+        f.fixture_status !== "completed" &&
+        (f.fixture_datetime ?? "") >= now
+    )
+    .slice(0, 8);
 
   const summary: Array<[string, string]> = [
     [t("tff1.drawerRank"), `${rank}.`],
@@ -180,6 +193,44 @@ export default async function Tff1TeamPage({
           ))}
         </div>
 
+        {teamFixtures.length > 0 ? (
+          <>
+            <h2 className="mt-8 text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-3">
+              {t("tff1.teamFixturesSection")}
+            </h2>
+            <div className="mt-2 overflow-x-auto rounded-lg border border-line">
+              <table className="min-w-full border-collapse text-[13px]">
+                <tbody>
+                  {teamFixtures.map((f) => (
+                    <tr
+                      key={f.fixture_id}
+                      className="border-t border-line text-ink first:border-t-0"
+                    >
+                      <td className="whitespace-nowrap px-3 py-1.5 text-[12px] text-ink-3">
+                        {formatMatchDate(f.fixture_datetime, locale)}
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-1.5 text-[12px] text-ink-3">
+                        {f.round_number !== null
+                          ? t("tff1.roundLabel", { round: f.round_number })
+                          : ""}
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-1.5">
+                        <span className={f.home_team_id === teamId ? "font-semibold" : ""}>
+                          {f.home_team_name}
+                        </span>
+                        <span className="mx-1.5 text-ink-3">-</span>
+                        <span className={f.away_team_id === teamId ? "font-semibold" : ""}>
+                          {f.away_team_name}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        ) : null}
+
         <h2 className="mt-8 text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-3">
           {t("tff1.drawerSquad", { count: squad.length })}
         </h2>
@@ -255,15 +306,20 @@ export default async function Tff1TeamPage({
                       {formatMatchDate(m.match_datetime, locale)}
                     </td>
                     <td className="whitespace-nowrap px-3 py-1.5">
-                      <span className={m.home_team_id === teamId ? "font-semibold" : ""}>
-                        {m.home_team_name}
-                      </span>
-                      <span className="mx-1.5 rounded bg-veil px-1.5 py-0.5 text-[12px] tabular-nums">
-                        {m.home_score ?? "-"}:{m.away_score ?? "-"}
-                      </span>
-                      <span className={m.away_team_id === teamId ? "font-semibold" : ""}>
-                        {m.away_team_name}
-                      </span>
+                      <Link
+                        href={`/dashboard/tff-1-lig/match/${m.match_id}`}
+                        className="transition hover:text-accent-ink"
+                      >
+                        <span className={m.home_team_id === teamId ? "font-semibold" : ""}>
+                          {m.home_team_name}
+                        </span>
+                        <span className="mx-1.5 rounded bg-veil px-1.5 py-0.5 text-[12px] tabular-nums">
+                          {m.home_score ?? "-"}:{m.away_score ?? "-"}
+                        </span>
+                        <span className={m.away_team_id === teamId ? "font-semibold" : ""}>
+                          {m.away_team_name}
+                        </span>
+                      </Link>
                     </td>
                     <td className="px-3 py-1.5 text-right">
                       {m.competition.includes("Play-off") ? (

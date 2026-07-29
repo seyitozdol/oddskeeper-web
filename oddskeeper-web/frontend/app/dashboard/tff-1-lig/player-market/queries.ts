@@ -2,6 +2,15 @@
 
 import { createClient } from "@/lib/supabase/client";
 
+// TFF 1. Lig player market veri katmani. UI, TSL modulundeki
+// app/dashboard/player-market-prediction ile birebir ayni; tek fark burada
+// SofaScore kaynakli tff1_* view/mat'larindan okunmasi ve pm_* kalici
+// tablolarinda league='tff1' ayriminin kullanilmasi.
+// Kimlikler: takim = tff1 team_id (text), oyuncu = sofascore player_id (text).
+// Slug kavrami yok; TSL arayuzuyle uyum icin player_slug alanina player_id yazilir.
+
+const LEAGUE = "tff1";
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export type UpcomingFixture = {
@@ -11,20 +20,16 @@ export type UpcomingFixture = {
   away_team_name: string;
   home_source_team_id: string;
   away_source_team_id: string;
-  home_team_slug: string;
-  away_team_slug: string;
   label: string;
 };
 
 export type PlayerRow = {
   player_source_id: string;
   player_name: string;
-  player_slug: string;
+  player_slug: string; // = player_id (sofascore); pm_player_ids anahtari
   primary_position_code: string;
-  position_group: string;
   appearances: number;
   starts: number;
-  sub_appearances: number;
   starter_rate_pct: number | null;
   last_match_datetime: string | null;
 };
@@ -45,54 +50,63 @@ export type PlayerMetricStat = {
 export type MarketOption = {
   key: string;
   label: string;
-  // key in player_metric_leaderboard_current; "" = istatistik yok;
-  // "log:<kolon>" = sezon ortalamasi player_log_season_avg_v1'den (leaderboard'da
-  // karsiligi olmayan metrikler icin, or. shots_off_target)
+  // tff1_pm_player_season_mat kolon adi; "" = istatistik yok. TSL'deki "log:"
+  // oneki burada gerekmez (tum metrikler tek uzayda) ama tip yapisi ayni kalir.
   metricKey: string;
-  logField: string;  // field in player_match_log_v1 ("" = istatistik yok)
+  logField: string; // tff1_player_match_log_mat kolon adi ("" = istatistik yok)
   includeGk: boolean; // false ise kaleciler listede gosterilmez
 };
 
+// tff1_squad_mat pozisyon kodlari (G/D/M/F) -> TSL arayuzunun bekledigi kisa
+// kodlar; sayfa GK dedup/gizleme mantigi "GK" bekliyor.
+const POSITION_CODE: Record<string, string> = {
+  G: "GK",
+  D: "DF",
+  M: "MF",
+  F: "FW",
+};
+
+function toPositionCode(pos: string | null | undefined): string {
+  if (!pos) return "";
+  return POSITION_CODE[pos] ?? pos;
+}
+
 // ─── Market definitions ───────────────────────────────────────────────────────
-// metricKey/logField bos olan marketlerin verisi yok; secilince Ort. kolonlari
-// bos gelir, manuel beklentiyle calisilir. "shots_derived" ozel alan:
-// on target + off target + blocked toplami (tek kolon yok).
+// metricKey = sezon mat kolonu, logField = mac logu kolonu (ayni adlar).
+// Avg CLIENT'ta kolon_toplami / appearances olarak hesaplanir (per_match_value
+// karsiligi yok). Saves disinda kaleciler gizlenir (TSL konvansiyonu).
 
 export const MARKET_OPTIONS: MarketOption[] = [
-  { key: "shots_on_target", label: "Shots on Target",   metricKey: "shots_on_target_total",  logField: "shots_on_target",  includeGk: false },
-  { key: "shots_off_target", label: "Shots Off Target", metricKey: "log:shots_off_target",   logField: "shots_off_target", includeGk: false },
-  { key: "blocked_shots",   label: "Blocked Shots",     metricKey: "log:shots_blocked",      logField: "shots_blocked",    includeGk: false },
-  { key: "total_shots",     label: "Total Shots",       metricKey: "shots_total",            logField: "shots_derived",    includeGk: false },
-  { key: "attempts_ibox",   label: "Attempts In Box",   metricKey: "attempts_ibox_total",    logField: "shots_on_target",  includeGk: false },
-  { key: "attempts_obox",   label: "Attempts Out Box",  metricKey: "attempts_obox_total",    logField: "shots_off_target", includeGk: false },
-  { key: "xg",              label: "xG",                metricKey: "expected_goals_total",   logField: "expected_goals",   includeGk: false },
-  { key: "fouls_suffered",  label: "Fouls Suffered",    metricKey: "fouls_won_total",        logField: "fouls_won",        includeGk: false },
-  { key: "passes",          label: "Passes",            metricKey: "passes_total",           logField: "passes",           includeGk: true },
-  { key: "accurate_passes", label: "Accurate Passes",   metricKey: "accurate_pass_total",    logField: "accurate_pass",    includeGk: true },
-  { key: "tackles",         label: "Tackles",           metricKey: "tackles_total",          logField: "tackles",          includeGk: false },
-  { key: "fouls",           label: "Fouls",             metricKey: "fouls_conceded_total",   logField: "fouls_conceded",   includeGk: false },
-  { key: "yellow_cards",    label: "Yellow Cards",      metricKey: "cards_yellow_total",     logField: "cards_yellow",     includeGk: true },
-  { key: "red_card",        label: "Red Card",          metricKey: "cards_red_total",        logField: "cards_red",        includeGk: true },
-  { key: "offsides",        label: "Offsides",          metricKey: "offsides_total",         logField: "offsides",         includeGk: false },
-  { key: "saves",           label: "Saves",             metricKey: "saves_total_total",      logField: "saves_total",      includeGk: true },
-  { key: "score",           label: "Score",             metricKey: "goals_total",            logField: "goals",            includeGk: false },
-  { key: "assist",          label: "Assist",            metricKey: "assists_total",          logField: "assists",          includeGk: false },
-  { key: "freekick_goal",   label: "Freekick Goal",     metricKey: "",                       logField: "",                 includeGk: false },
-  { key: "header_goal",     label: "Header Goal",       metricKey: "",                       logField: "",                 includeGk: false },
-  { key: "outsidebox_goal", label: "OutsideBox Goal",   metricKey: "",                       logField: "",                 includeGk: false },
-  { key: "brace",           label: "Brace",             metricKey: "",                       logField: "",                 includeGk: false },
-  { key: "hat_trick",       label: "Hat Trick",         metricKey: "",                       logField: "",                 includeGk: false },
+  { key: "shots",           label: "Shots",            metricKey: "shots",            logField: "shots",            includeGk: false },
+  { key: "shots_on_target", label: "Shots on Target",  metricKey: "shots_on_target",  logField: "shots_on_target",  includeGk: false },
+  { key: "goals",           label: "Goals",            metricKey: "goals",            logField: "goals",            includeGk: false },
+  { key: "assists",         label: "Assists",          metricKey: "assists",          logField: "assists",          includeGk: false },
+  { key: "passes",          label: "Passes",           metricKey: "total_passes",     logField: "total_passes",     includeGk: false },
+  { key: "accurate_passes", label: "Accurate Passes",  metricKey: "accurate_passes",  logField: "accurate_passes",  includeGk: false },
+  { key: "key_passes",      label: "Key Passes",       metricKey: "key_passes",       logField: "key_passes",       includeGk: false },
+  { key: "crosses",         label: "Crosses",          metricKey: "crosses",          logField: "crosses",          includeGk: false },
+  { key: "tackles",         label: "Tackles",          metricKey: "tackles",          logField: "tackles",          includeGk: false },
+  { key: "interceptions",   label: "Interceptions",    metricKey: "interceptions",    logField: "interceptions",    includeGk: false },
+  { key: "clearances",      label: "Clearances",       metricKey: "clearances",       logField: "clearances",       includeGk: false },
+  { key: "ball_recoveries", label: "Ball Recoveries",  metricKey: "ball_recoveries",  logField: "ball_recoveries",  includeGk: false },
+  { key: "duels_won",       label: "Duels Won",        metricKey: "duels_won",        logField: "duels_won",        includeGk: false },
+  { key: "aerials_won",     label: "Aerials Won",      metricKey: "aerials_won",      logField: "aerials_won",      includeGk: false },
+  { key: "fouls",           label: "Fouls",            metricKey: "fouls",            logField: "fouls",            includeGk: false },
+  { key: "fouls_suffered",  label: "Fouls Suffered",   metricKey: "was_fouled",       logField: "was_fouled",       includeGk: false },
+  { key: "offsides",        label: "Offsides",         metricKey: "offsides",         logField: "offsides",         includeGk: false },
+  { key: "dribbles",        label: "Dribbles",         metricKey: "dribbles_won",     logField: "dribbles_won",     includeGk: false },
+  { key: "touches",         label: "Touches",          metricKey: "touches",          logField: "touches",          includeGk: false },
+  { key: "saves",           label: "Saves",            metricKey: "saves",            logField: "saves",            includeGk: true },
 ];
 
 // ─── Latest season with metric data ──────────────────────────────────────────
-// Sayfa "Avg" icin bu sezonu, "LY Avg" icin bir oncekini kullanir; yeni sezon
-// verisi geldiginde otomatik olarak ona kayar.
+// Avg bu sezondan, LY Avg bir oncekinden okunur (lib/season previousSeasonLabel).
 
 export async function fetchLatestMetricSeason(): Promise<string> {
   const supabase = createClient();
   const { data, error } = await supabase
     .schema("analytics")
-    .from("player_metric_leaderboard_current")
+    .from("tff1_pm_player_season_mat")
     .select("season_label")
     .order("season_label", { ascending: false })
     .limit(1);
@@ -107,43 +121,21 @@ export async function fetchLatestMetricSeason(): Promise<string> {
 // ─── All current squad players (Player List tab) ─────────────────────────────
 
 export type DirectoryPlayer = {
-  player_slug: string;
+  player_id: string;
   full_name: string;
-  team_slug: string | null;
+  team_id: string | null;
   team_name: string | null;
-  nationality: string | null;
-  position: string | null;
+  position: string | null; // kisa kod (GK/DF/MF/FW) veya null
 };
-
-// Bilindik isim kurali: apifootball kadro ismi bilindik isimdir ("Talisca",
-// "Ederson"); "L. Torreira" gibi kisaltmali ise bas harf, bio first_name
-// icindeki bas harfe uyan kelimeyle acilir ("Lucas Torreira", "K. Akturkoglu"
-// + "Muhammed Kerem" -> "Kerem Akturkoglu"); uyan kelime yoksa ilk kelime.
-// Resmi uzun isimler kullanilmaz.
-function knownDisplayName(
-  playerName: string | null,
-  firstName: string | null
-): string {
-  if (!playerName) return "";
-  const m = playerName.match(/^(\p{Lu})\.\s*(.+)$/u);
-  if (m) {
-    const words = (firstName ?? "").split(" ").filter(Boolean);
-    const first = words.find((w) => w.startsWith(m[1])) ?? words[0];
-    if (first) return `${first} ${m[2]}`;
-  }
-  return playerName;
-}
 
 export async function fetchAllCurrentPlayers(): Promise<DirectoryPlayer[]> {
   const supabase = createClient();
 
   const { data, error } = await supabase
     .schema("analytics")
-    .from("player_current_info_v1")
-    .select(
-      "player_slug, player_name, full_name, first_name, last_name, current_team_slug, current_team_name, nationality, position"
-    )
-    .order("current_team_name", { ascending: true })
+    .from("tff1_squad_mat")
+    .select("team_id, team_name, player_id, player_name, position")
+    .order("team_name", { ascending: true })
     .order("player_name", { ascending: true })
     .limit(2000);
 
@@ -152,22 +144,18 @@ export async function fetchAllCurrentPlayers(): Promise<DirectoryPlayer[]> {
     return [];
   }
 
-  // Slug bazinda mukerrer satirlar olabiliyor; ilkini al.
+  // Ayni oyuncu iki kadroda gorunebilir (sezon ici transfer); ilk satiri al.
   const seen = new Set<string>();
   const result: DirectoryPlayer[] = [];
   for (const row of data ?? []) {
-    if (!row.player_slug || seen.has(row.player_slug)) continue;
-    seen.add(row.player_slug);
+    if (!row.player_id || seen.has(row.player_id)) continue;
+    seen.add(row.player_id);
     result.push({
-      player_slug: row.player_slug,
-      full_name:
-        knownDisplayName(row.player_name, row.first_name) ||
-        row.full_name ||
-        row.player_name,
-      team_slug: row.current_team_slug ?? null,
-      team_name: row.current_team_name ?? null,
-      nationality: row.nationality ?? null,
-      position: row.position ?? null,
+      player_id: row.player_id,
+      full_name: row.player_name,
+      team_id: row.team_id ?? null,
+      team_name: row.team_name ?? null,
+      position: row.position ? toPositionCode(row.position) : null,
     });
   }
   return result;
@@ -181,15 +169,13 @@ export async function fetchUpcomingFixtures(): Promise<UpcomingFixture[]> {
 
   const { data, error } = await supabase
     .schema("analytics")
-    .from("league_fixtures_v1")
+    .from("tff1_fixtures_v1")
     .select(
-      "fixture_id, fixture_date, home_team_name, away_team_name, home_team_source_id, away_team_source_id, home_team_slug, away_team_slug, fixture_status"
+      "fixture_id, fixture_date, fixture_datetime, home_team_id, home_team_name, away_team_id, away_team_name, fixture_status"
     )
-    // football.fixtures artik TFF 1. Lig fiksturlerini de iceriyor; sizmasin
-    .eq("competition", "Süper Lig")
     .gte("fixture_date", today)
-    .neq("fixture_status", "played")
-    .order("fixture_date", { ascending: true })
+    .eq("fixture_status", "scheduled")
+    .order("fixture_datetime", { ascending: true })
     .limit(50);
 
   if (error) {
@@ -202,32 +188,27 @@ export async function fetchUpcomingFixtures(): Promise<UpcomingFixture[]> {
     fixture_date: row.fixture_date,
     home_team_name: row.home_team_name,
     away_team_name: row.away_team_name,
-    home_source_team_id: row.home_team_source_id,
-    away_source_team_id: row.away_team_source_id,
-    home_team_slug: row.home_team_slug,
-    away_team_slug: row.away_team_slug,
+    home_source_team_id: String(row.home_team_id),
+    away_source_team_id: String(row.away_team_id),
     label: `${row.home_team_name} vs ${row.away_team_name} (${String(row.fixture_date).slice(0, 10)})`,
   }));
 }
 
-// ─── Fetch team players (current squad + latest season stats) ────────────────
-// Kaynak: analytics.team_current_squad_profile_v1. Guncel kadro apifootball
-// team_squad_current'tan gelir (fixture'daki takim id'leriyle ayni uzay),
-// istatistikler player_mapping uzerinden Opta profiline baglanir.
-// player_source_id = Opta id (eslesme varsa) yoksa 'af-<id>'; eslesmeyen
-// oyuncular (yeni transferler, yukselen takimlar) istatistiksiz gelir.
+// ─── Fetch team players (current squad + 2025/2026 stats) ────────────────────
+// Kaynak: analytics.tff1_squad_mat (TM kadrosu + roster birlesimi). Yeni
+// transferlerde istatistik alanlari null olabilir; 0 olarak normalize edilir.
 
 export async function fetchTeamPlayers(sourceTeamId: string): Promise<PlayerRow[]> {
   const supabase = createClient();
 
   const { data, error } = await supabase
     .schema("analytics")
-    .from("team_current_squad_profile_v1")
+    .from("tff1_squad_mat")
     .select(
-      "player_key, player_name, display_name, player_slug, primary_position_code, position_group, appearances, starts, sub_appearances, starter_rate_pct, last_match_datetime"
+      "player_id, player_name, position, appearances, starts, starter_rate_pct, last_match_datetime"
     )
-    .eq("team_source_id", sourceTeamId)
-    .order("appearances", { ascending: false });
+    .eq("team_id", sourceTeamId)
+    .order("appearances", { ascending: false, nullsFirst: false });
 
   if (error) {
     console.error("fetchTeamPlayers error:", error);
@@ -235,20 +216,21 @@ export async function fetchTeamPlayers(sourceTeamId: string): Promise<PlayerRow[
   }
 
   return (data ?? []).map((row) => ({
-    player_source_id: row.player_key,
-    player_name: row.display_name ?? row.player_name,
-    player_slug: row.player_slug,
-    primary_position_code: row.primary_position_code,
-    position_group: row.position_group,
+    player_source_id: row.player_id,
+    player_name: row.player_name,
+    player_slug: row.player_id,
+    primary_position_code: toPositionCode(row.position),
     appearances: row.appearances ?? 0,
     starts: row.starts ?? 0,
-    sub_appearances: row.sub_appearances ?? 0,
     starter_rate_pct: row.starter_rate_pct ?? null,
     last_match_datetime: row.last_match_datetime ?? null,
   }));
 }
 
 // ─── Fetch last N matches per player for status inference ────────────────────
+// lineup_status='bench' kadroda olup oynamayan oyuncudur (minutes 0); TSL
+// logunda boyle satir yok. inferPlayerStatus starter/substitute oranina
+// baktigindan bench satirlari filtrelenir, yoksa oranlari sulandirir.
 
 export async function fetchPlayerRecentMatches(
   playerSourceIds: string[],
@@ -260,10 +242,11 @@ export async function fetchPlayerRecentMatches(
 
   const { data, error } = await supabase
     .schema("analytics")
-    .from("player_match_log_v1")
-    .select("player_source_id, match_datetime, lineup_status, minutes_played")
+    .from("tff1_player_match_log_mat")
+    .select("player_id, match_datetime, lineup_status, minutes")
     .eq("season_label", seasonLabel)
-    .in("player_source_id", playerSourceIds)
+    .neq("lineup_status", "bench")
+    .in("player_id", playerSourceIds)
     .order("match_datetime", { ascending: false })
     .limit(Math.min(playerSourceIds.length * lastN * 2, 1000));
 
@@ -274,11 +257,16 @@ export async function fetchPlayerRecentMatches(
 
   const grouped: Record<string, PlayerMatchEntry[]> = {};
   for (const row of data ?? []) {
-    const id = row.player_source_id;
+    const id = row.player_id;
     if (!id) continue;
     if (!grouped[id]) grouped[id] = [];
     if (grouped[id].length < lastN) {
-      grouped[id].push(row as PlayerMatchEntry);
+      grouped[id].push({
+        player_source_id: id,
+        match_datetime: row.match_datetime,
+        lineup_status: row.lineup_status,
+        minutes_played: row.minutes ?? 0,
+      });
     }
   }
 
@@ -286,6 +274,7 @@ export async function fetchPlayerRecentMatches(
 }
 
 // ─── Fetch last 5 match avg per player for selected metric ───────────────────
+// TSL davranisiyla tutarli: yalnizca oynanan maclar (bench haric) sayilir.
 
 export async function fetchPlayerLast5Avg(
   playerSourceIds: string[],
@@ -297,12 +286,11 @@ export async function fetchPlayerLast5Avg(
 
   const { data, error } = await supabase
     .schema("analytics")
-    .from("player_match_log_v1")
-    .select(
-      "player_source_id, match_datetime, shots_on_target, shots_off_target, shots_blocked, passes, accurate_pass, tackles, fouls_conceded, fouls_won, cards_yellow, cards_red, offsides, saves_total, goals, assists, expected_goals"
-    )
+    .from("tff1_player_match_log_mat")
+    .select(`player_id, match_datetime, ${logField}`)
     .eq("season_label", seasonLabel)
-    .in("player_source_id", playerSourceIds)
+    .neq("lineup_status", "bench")
+    .in("player_id", playerSourceIds)
     .order("match_datetime", { ascending: false })
     .limit(Math.min(playerSourceIds.length * 5 * 2, 1000));
 
@@ -311,24 +299,14 @@ export async function fetchPlayerLast5Avg(
     return {};
   }
 
-  // Group by player, take last 5, compute avg for the requested field
   const grouped: Record<string, number[]> = {};
-  for (const row of data ?? []) {
-    const id = row.player_source_id;
+  for (const row of (data ?? []) as unknown as Record<string, unknown>[]) {
+    const id = row.player_id ? String(row.player_id) : null;
     if (!id) continue;
     if (!grouped[id]) grouped[id] = [];
     if (grouped[id].length < 5) {
-      const r = row as Record<string, unknown>;
-      let num: number | null;
-      if (logField === "shots_derived") {
-        num =
-          Number(r.shots_on_target ?? 0) +
-          Number(r.shots_off_target ?? 0) +
-          Number(r.shots_blocked ?? 0);
-      } else {
-        const val = r[logField];
-        num = val !== null && val !== undefined ? Number(val) : null;
-      }
+      const val = row[logField];
+      const num = val !== null && val !== undefined ? Number(val) : null;
       if (num !== null && !isNaN(num)) grouped[id].push(num);
     }
   }
@@ -345,9 +323,10 @@ export async function fetchPlayerLast5Avg(
   return result;
 }
 
-// ─── Fetch player metric stats (season avg + last5) ──────────────────────────
-// metricKey "log:<kolon>" ise sezon ortalamasi leaderboard yerine
-// player_log_season_avg_v1'den okunur (leaderboard'da olmayan metrikler).
+// ─── Fetch player metric stats (season avg) ──────────────────────────────────
+// tff1_pm_player_season_mat sezon x oyuncu greninde TOPLAM tutar; mac basi
+// ortalama client'ta toplam / appearances olarak hesaplanir (appearances 0
+// ise null). last5 zaten log'dan ayrica hesaplandigindan burada null doner.
 
 export async function fetchPlayerMetricStats(
   playerSourceIds: string[],
@@ -357,40 +336,12 @@ export async function fetchPlayerMetricStats(
   if (playerSourceIds.length === 0 || !metricKey) return {};
   const supabase = createClient();
 
-  if (metricKey.startsWith("log:")) {
-    const field = metricKey.slice(4);
-    const { data, error } = await supabase
-      .schema("analytics")
-      .from("player_log_season_avg_v1")
-      .select(`player_source_id, ${field}`)
-      .eq("season_label", seasonLabel)
-      .in("player_source_id", playerSourceIds);
-
-    if (error) {
-      console.error("fetchPlayerMetricStats (log avg) error:", error);
-      return {};
-    }
-
-    const logResult: Record<string, PlayerMetricStat> = {};
-    for (const row of (data ?? []) as unknown as Record<string, unknown>[]) {
-      const id = String(row.player_source_id);
-      const val = row[field];
-      logResult[id] = {
-        player_source_id: id,
-        per_match_value: val !== null && val !== undefined ? Number(val) : null,
-        last5_value: null,
-      };
-    }
-    return logResult;
-  }
-
   const { data, error } = await supabase
     .schema("analytics")
-    .from("player_metric_leaderboard_current")
-    .select("player_source_id, per_match_value, last5_value")
-    .eq("metric_key", metricKey)
+    .from("tff1_pm_player_season_mat")
+    .select(`player_id, appearances, ${metricKey}`)
     .eq("season_label", seasonLabel)
-    .in("player_source_id", playerSourceIds);
+    .in("player_id", playerSourceIds);
 
   if (error) {
     console.error("fetchPlayerMetricStats error:", error);
@@ -398,18 +349,23 @@ export async function fetchPlayerMetricStats(
   }
 
   const result: Record<string, PlayerMetricStat> = {};
-  for (const row of data ?? []) {
-    result[row.player_source_id] = {
-      player_source_id: row.player_source_id,
-      per_match_value: row.per_match_value ?? null,
-      last5_value: row.last5_value ?? null,
+  for (const row of (data ?? []) as unknown as Record<string, unknown>[]) {
+    const id = String(row.player_id);
+    const apps = Number(row.appearances ?? 0);
+    const total = row[metricKey] !== null && row[metricKey] !== undefined
+      ? Number(row[metricKey])
+      : null;
+    result[id] = {
+      player_source_id: id,
+      per_match_value: total !== null && apps > 0 ? total / apps : null,
+      last5_value: null,
     };
   }
   return result;
 }
 
 // ─── Season appearances (Model: mac sayisi kolonu) ───────────────────────────
-// Ayni oyuncu sezon icinde iki takimda oynadiysa maclari toplanir.
+// Mat sezon x oyuncu greninde tekildir (takimlar birlesik).
 
 export async function fetchPlayerSeasonAppearances(
   playerSourceIds: string[],
@@ -420,10 +376,10 @@ export async function fetchPlayerSeasonAppearances(
 
   const { data, error } = await supabase
     .schema("analytics")
-    .from("player_profile_v1")
-    .select("player_source_id, appearances")
+    .from("tff1_pm_player_season_mat")
+    .select("player_id, appearances")
     .eq("season_label", seasonLabel)
-    .in("player_source_id", playerSourceIds);
+    .in("player_id", playerSourceIds);
 
   if (error) {
     console.error("fetchPlayerSeasonAppearances error:", error);
@@ -432,14 +388,13 @@ export async function fetchPlayerSeasonAppearances(
 
   const result: Record<string, number> = {};
   for (const row of data ?? []) {
-    result[row.player_source_id] =
-      (result[row.player_source_id] ?? 0) + (row.appearances ?? 0);
+    result[row.player_id] = (result[row.player_id] ?? 0) + (row.appearances ?? 0);
   }
   return result;
 }
 
-// ─── Player IDs (analytics.pm_player_ids) ────────────────────────────────────
-// Oyuncu Listesi sekmesindeki ozel ID'ler; Kaydet ile upsert edilir.
+// ─── Player IDs (analytics.pm_player_ids, league='tff1') ─────────────────────
+// player_slug alanina sofascore player_id yazilir (tff1'de slug yok).
 
 export async function fetchPlayerIds(): Promise<Record<string, string>> {
   const supabase = createClient();
@@ -447,7 +402,7 @@ export async function fetchPlayerIds(): Promise<Record<string, string>> {
     .schema("analytics")
     .from("pm_player_ids")
     .select("player_slug, external_id")
-    .eq("league", "tsl");
+    .eq("league", LEAGUE);
 
   if (error) {
     console.error("fetchPlayerIds error:", error);
@@ -464,9 +419,9 @@ export async function fetchPlayerIds(): Promise<Record<string, string>> {
 export async function savePlayerIds(
   entries: Record<string, string>
 ): Promise<boolean> {
-  const rows = Object.entries(entries).map(([slug, value]) => ({
-    league: "tsl",
-    player_slug: slug,
+  const rows = Object.entries(entries).map(([playerId, value]) => ({
+    league: LEAGUE,
+    player_slug: playerId,
     external_id: value.trim() || null,
     updated_at: new Date().toISOString(),
   }));
@@ -485,9 +440,7 @@ export async function savePlayerIds(
   return true;
 }
 
-// ─── Fixture ID inputs (analytics.pm_fixture_inputs) ─────────────────────────
-// Fixture ID sekmesindeki mac basina girilen deger; Model'deki Ekle akisi
-// ileride bu kayitlari kullanacak.
+// ─── Fixture ID inputs (analytics.pm_fixture_inputs, league='tff1') ──────────
 
 export async function fetchFixtureInputs(): Promise<Record<number, string>> {
   const supabase = createClient();
@@ -495,7 +448,7 @@ export async function fetchFixtureInputs(): Promise<Record<number, string>> {
     .schema("analytics")
     .from("pm_fixture_inputs")
     .select("fixture_id, input_value")
-    .eq("league", "tsl");
+    .eq("league", LEAGUE);
 
   if (error) {
     console.error("fetchFixtureInputs error:", error);
@@ -513,7 +466,7 @@ export async function saveFixtureInputs(
   entries: Record<number, string>
 ): Promise<boolean> {
   const rows = Object.entries(entries).map(([fixtureId, value]) => ({
-    league: "tsl",
+    league: LEAGUE,
     fixture_id: Number(fixtureId),
     input_value: value.trim() || null,
     updated_at: new Date().toISOString(),
@@ -533,9 +486,7 @@ export async function saveFixtureInputs(
   return true;
 }
 
-// ─── Market store (analytics.pm_markets) ─────────────────────────────────────
-// Yeni butonuyla eklenen ozel marketler (is_custom=true) + yerlesik marketlerin
-// Market Template ID kayitlari (is_custom=false).
+// ─── Market store (analytics.pm_markets, league='tff1') ──────────────────────
 
 export type MarketType = "static" | "dynamic";
 
@@ -546,8 +497,6 @@ export type StoredMarket = {
   is_custom: boolean;
   sort_order: number;
   market_type: MarketType;
-  // Market Listesi'ndeki tik: false ise Model ekranindaki market dropdown'da
-  // gizlenir. Kayitli satiri olmayan yerlesik marketler varsayilan olarak dahil.
   in_model: boolean;
 };
 
@@ -557,7 +506,7 @@ export async function fetchStoredMarkets(): Promise<StoredMarket[]> {
     .schema("analytics")
     .from("pm_markets")
     .select("market_key, label, template_id, is_custom, sort_order, market_type, in_model")
-    .eq("league", "tsl")
+    .eq("league", LEAGUE)
     .order("sort_order", { ascending: true })
     .order("created_at", { ascending: true });
 
@@ -580,7 +529,7 @@ export async function upsertStoredMarket(
     .from("pm_markets")
     .upsert(
       {
-        league: "tsl",
+        league: LEAGUE,
         market_key: market.market_key,
         label: market.label,
         template_id: market.template_id,
@@ -606,7 +555,7 @@ export async function deleteStoredMarket(marketKey: string): Promise<boolean> {
     .schema("analytics")
     .from("pm_markets")
     .delete()
-    .eq("league", "tsl")
+    .eq("league", LEAGUE)
     .eq("market_key", marketKey);
 
   if (error) {

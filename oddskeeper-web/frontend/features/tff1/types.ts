@@ -76,6 +76,78 @@ export type Tff1MatchRow = {
   away_score: number | null;
 };
 
+// Mac bazli oyuncu logu (analytics.tff1_player_match_log_mat).
+// source='sofascore' TUM ligleri icerir (kume dusen kulup oyunculari icin
+// Super Lig satirlari da gelir); competition kolonuyla ayirt edilir.
+export type Tff1MatchLogRow = {
+  season_label: string;
+  competition: string;
+  match_id: string;
+  match_datetime: string | null;
+  player_id: string;
+  player_name: string | null;
+  team_id: string | null;
+  team_name: string | null;
+  opponent_id: string | null;
+  opponent_name: string | null;
+  is_home: boolean | null;
+  home_score: number | null;
+  away_score: number | null;
+  lineup_status: string | null;
+  position_code: string | null;
+  minutes: number | null;
+  rating: number | null;
+  goals: number | null;
+  assists: number | null;
+  shots: number | null;
+  shots_on_target: number | null;
+  total_passes: number | null;
+  accurate_passes: number | null;
+  key_passes: number | null;
+  crosses: number | null;
+  accurate_crosses: number | null;
+  long_balls: number | null;
+  accurate_long_balls: number | null;
+  tackles: number | null;
+  tackles_won: number | null;
+  interceptions: number | null;
+  clearances: number | null;
+  blocks: number | null;
+  ball_recoveries: number | null;
+  duels_won: number | null;
+  duels_lost: number | null;
+  aerials_won: number | null;
+  aerials_lost: number | null;
+  fouls: number | null;
+  was_fouled: number | null;
+  offsides: number | null;
+  dispossessed: number | null;
+  possession_lost: number | null;
+  dribbles_won: number | null;
+  dribbles_attempted: number | null;
+  touches: number | null;
+  saves: number | null;
+  penalties_saved: number | null;
+  km_covered: number | null;
+  sprints: number | null;
+  top_speed: number | null;
+};
+
+// Yaklasan fikstur (analytics.tff1_fixtures_v1; football.fixtures source='sofascore')
+export type Tff1FixtureRow = {
+  fixture_id: number;
+  season_label: string;
+  competition: string;
+  round_number: number | null;
+  fixture_date: string | null;
+  fixture_datetime: string | null;
+  home_team_id: string | null;
+  home_team_name: string | null;
+  away_team_id: string | null;
+  away_team_name: string | null;
+  fixture_status: string | null;
+};
+
 export type Tff1PlayerInfo = {
   player_id: string;
   birth_date: string | null;

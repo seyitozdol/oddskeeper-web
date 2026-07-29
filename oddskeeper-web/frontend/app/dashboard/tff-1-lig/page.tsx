@@ -1,3 +1,4 @@
+import Link from "next/link";
 import Tff1Explorer from "@/features/tff1/components/Tff1Explorer";
 import {
   getTff1MarketValues,
@@ -35,6 +36,21 @@ export default async function Tff1LigPage() {
           </h1>
 
           <p className="mt-3 text-sm text-ink-2">{t("tff1.subtitle")}</p>
+
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Link
+              href="/dashboard/tff-1-lig/matches"
+              className="rounded-lg border border-line bg-veil px-3 py-1.5 text-[13px] text-ink-2 transition hover:border-line-strong hover:text-ink"
+            >
+              {t("tff1.matchesLink")}
+            </Link>
+            <Link
+              href="/dashboard/tff-1-lig/player-market"
+              className="rounded-lg border border-line bg-veil px-3 py-1.5 text-[13px] text-ink-2 transition hover:border-line-strong hover:text-ink"
+            >
+              {t("tff1.playerMarketLink")}
+            </Link>
+          </div>
         </div>
 
         {players.length === 0 && teams.length === 0 ? (
