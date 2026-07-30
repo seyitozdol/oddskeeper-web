@@ -108,6 +108,68 @@ def competition_from_text(text: str, home: str) -> str | None:
     return None
 
 
+# --- Detay sayfasi ayristirma -------------------------------------------------
+# Liste sayfasi ILERI TARIHLI maclar icin oran gostermiyor; oranlar mac detay
+# sayfasinda ve shadow DOM metninde su duzende geliyor:
+#
+#   Maç Sonucu
+#   Bandırmaspor / 2.20 / Beraberlik / 3.50 / İstanbulspor / 2.98
+#   Toplam Gol Sayısı
+#   üstü 2.5 / 1.94 / altı 2.5 / 1.78
+#
+# Takim adlari basliktan alinir: "<Ev>\nvs\n<Dep>"
+DETAIL_TEAMS_RE = re.compile(r"^(.+?)\nvs\n(.+?)$", re.M)
+DECIMAL_RE = re.compile(r"^\d+\.\d+$")
+
+DETAIL_MARKETS = {
+    "Maç Sonucu": "three",
+    "Toplam Gol Sayısı": "overunder",
+    "Çifte Şans": "skip",
+    "Karşılıklı Gol": "yesno",
+}
+
+
+def parse_detail_text(text: str) -> dict | None:
+    """Detay sayfasi shadow metninden takimlari ve market oranlarini cikarir."""
+    m = DETAIL_TEAMS_RE.search(text)
+    if not m:
+        return None
+    home, away = m.group(1).strip(), m.group(2).strip()
+    if not home or not away or len(home) > 60 or len(away) > 60:
+        return None
+
+    lines = [ln.strip() for ln in text.split("\n")]
+    lines = [ln for ln in lines if ln]
+    out: list[tuple[str, str, float]] = []
+
+    for i, ln in enumerate(lines):
+        shape = DETAIL_MARKETS.get(ln)
+        if shape is None or shape == "skip":
+            continue
+        # Blok icini oku: etiket + oran ciftleri
+        pairs: list[tuple[str, float]] = []
+        pending: str | None = None
+        for cur in lines[i + 1 : i + 16]:
+            if cur in DETAIL_MARKETS:
+                break
+            if DECIMAL_RE.match(cur):
+                if pending is not None:
+                    pairs.append((pending, float(cur)))
+                    pending = None
+                continue
+            pending = cur
+        if shape == "three" and len(pairs) >= 3:
+            out.extend((ln, s, o) for s, o in pairs[:3])
+        elif shape == "overunder" and len(pairs) >= 2:
+            out.extend((ln, s, o) for s, o in pairs[:2])
+        elif shape == "yesno" and len(pairs) >= 2:
+            out.extend((ln, s, o) for s, o in pairs[:2])
+
+    if not out:
+        return None
+    return {"home": home, "away": away, "markets": out}
+
+
 # Mac linki kalibi: /tr/spor-bahisleri/<spor>/<bolge>/<lig>/<ev-takim>-<dep-takim>
 MATCH_HREF_RE = re.compile(r"/spor-bahisleri/[^/]+/[^/]+/[^/]+/[^/?]+")
 
@@ -120,9 +182,36 @@ def parse_dump(path: str) -> list[dict]:
     best: dict[str, dict] = {}  # oranli maclar
     listed: dict[str, dict] = {}  # sitede goruldu ama orani yakalanamadi
 
+    detail_rows: list[dict] = []
+
     for snap in d.get("snapshots", []):
         captured = snap.get("at")
         label = snap.get("label")
+
+        # Detay sayfasi snapshot'i: oranlar shadow metninde
+        shadow = "\n".join(s.get("text", "") for s in snap.get("shadowTexts", []))
+        if shadow:
+            det = parse_detail_text(shadow)
+            if det:
+                for market, selection, odds in det["markets"]:
+                    detail_rows.append(
+                        {
+                            "competition": None,
+                            "home": det["home"],
+                            "away": det["away"],
+                            "start_text": None,
+                            "market": market,
+                            "selection": selection,
+                            "odds": odds,
+                            "page_kind": "detail",
+                            "captured_at": captured,
+                            "snapshot_label": label,
+                            "site_event_id": None,
+                            "sport": None,
+                            "listed_only": False,
+                        }
+                    )
+
         for a in snap.get("anchors", []):
             href, text = a.get("href", ""), a.get("text", "")
             if not MATCH_HREF_RE.search(href):
@@ -161,7 +250,8 @@ def parse_dump(path: str) -> list[dict]:
                     },
                 )
 
-    rows: list[dict] = []
+    rows: list[dict] = list(detail_rows)
+    detail_pairs = {(r["home"], r["away"]) for r in detail_rows}
     for e in best.values():
         for selection, odds in e["odds"]:
             rows.append(
@@ -216,6 +306,8 @@ if __name__ == "__main__":
     rows = parse_dump(sys.argv[1])
     events: dict[tuple, list] = {}
     for r in rows:
+        if r.get("listed_only"):
+            continue
         events.setdefault((r["home"], r["away"]), []).append(r)
     print(f"{len(rows)} satir, {len(events)} mac\n")
     for (h, a), rs in events.items():

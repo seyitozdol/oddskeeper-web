@@ -7,3 +7,4 @@ requests
 selenium
 curl_cffi
 psycopg2-binary
+playwright
