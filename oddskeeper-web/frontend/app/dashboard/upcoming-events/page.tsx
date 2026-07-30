@@ -34,7 +34,7 @@ export default async function UpcomingEventsPage() {
                 {new Intl.DateTimeFormat(
                   locale === "tr" ? "tr-TR" : "en-GB",
                   {
-                    timeZone: "Europe/Istanbul",
+                    timeZone: "Europe/Malta",
                     day: "2-digit",
                     month: "2-digit",
                     hour: "2-digit",

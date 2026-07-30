@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { useI18n } from "@/lib/i18n/LanguageProvider";
 import {
@@ -8,9 +9,13 @@ import {
   type TrackedSport,
   type UpcomingEventRow,
 } from "../types";
-import { isPriorityEvent } from "../priority";
+import { isPriorityEvent, superLigTeamSlug } from "../priority";
 
-const TZ = "Europe/Istanbul";
+// Kullanıcı Malta'da; tüm saatler Malta saatine göre gösterilir.
+const TZ = "Europe/Malta";
+
+const TEAM_DETAIL_BASE =
+  "/dashboard/stats-analysis/football/team-stats/detail?team=";
 
 type SiteKey = "bet365" | "bets10" | "oddsportal";
 
@@ -240,6 +245,28 @@ export default function UpcomingEventsPanel({
     );
   }
 
+  // Süper Lig kulübü ise takım adı detay sayfasına linklenir; değilse düz metin.
+  function TeamName({
+    teamId,
+    name,
+  }: {
+    teamId: number | null;
+    name: string;
+  }) {
+    const slug = superLigTeamSlug(teamId);
+    if (slug) {
+      return (
+        <Link
+          href={`${TEAM_DETAIL_BASE}${slug}`}
+          className="font-medium underline-offset-2 transition hover:text-accent-ink hover:underline"
+        >
+          {name}
+        </Link>
+      );
+    }
+    return <span className="font-medium">{name}</span>;
+  }
+
   return (
     <div>
       <div className="flex flex-wrap gap-1.5">
@@ -283,9 +310,9 @@ export default function UpcomingEventsPanel({
         <div className="mt-3 overflow-x-auto rounded-lg border border-line">
           <table className="min-w-[560px] table-auto border-collapse text-[13px]">
             <colgroup>
-              <col className="w-[22px]" />
+              <col className="w-[26px]" />
               <col className="w-[46px]" />
-              <col className="w-[64px]" />
+              <col className="w-[74px]" />
               <col />
               <col />
               <col className="w-[48px]" />
@@ -298,7 +325,7 @@ export default function UpcomingEventsPanel({
                 <th className="px-2 py-1 font-semibold">
                   {t("upcomingEvents.thTime")}
                 </th>
-                <th className="px-1.5 py-1 font-semibold">
+                <th className="whitespace-nowrap px-1.5 py-1 font-semibold">
                   {t("upcomingEvents.thStartsIn")}
                 </th>
                 <th className="px-2 py-1 font-semibold">
@@ -338,8 +365,11 @@ export default function UpcomingEventsPanel({
                             : "border-t border-line first:border-t-0"
                         }`}
                       >
-                        <td className="px-1 py-1 text-center">
-                          {alert ? <AlertIcon /> : null}
+                        <td className="px-1 py-1">
+                          <span className="flex flex-col items-center gap-0.5">
+                            {priority ? <StarIcon /> : null}
+                            {alert ? <AlertIcon /> : null}
+                          </span>
                         </td>
                         <td className="whitespace-nowrap px-2 py-1 text-[12px] tabular-nums text-ink-2">
                           {timeFmt.format(new Date(e.start_ts))}
@@ -356,9 +386,8 @@ export default function UpcomingEventsPanel({
                             </span>
                           ) : null}
                         </td>
-                        <td className="max-w-[240px] overflow-hidden px-2 py-1">
-                          <span className="flex items-center gap-1.5 truncate">
-                            {priority ? <StarIcon /> : null}
+                        <td className="whitespace-nowrap px-2 py-1">
+                          <span className="flex items-center gap-1.5">
                             <Image
                               src={SPORT_ICON[e.sport] ?? SPORT_ICON.football}
                               alt={e.sport}
@@ -366,14 +395,16 @@ export default function UpcomingEventsPanel({
                               height={13}
                               className="shrink-0 opacity-80"
                             />
-                            <span className="truncate">
-                              <span className="font-medium">
-                                {e.home_team_name}
-                              </span>
+                            <span>
+                              <TeamName
+                                teamId={e.home_team_id}
+                                name={e.home_team_name}
+                              />
                               <span className="px-1 text-ink-3">-</span>
-                              <span className="font-medium">
-                                {e.away_team_name}
-                              </span>
+                              <TeamName
+                                teamId={e.away_team_id}
+                                name={e.away_team_name}
+                              />
                             </span>
                             {e.gender === "F" ? (
                               <span className="shrink-0 rounded bg-fuchsia-500/15 px-1 py-0.5 text-[9px] font-semibold text-fuchsia-400">
@@ -382,8 +413,8 @@ export default function UpcomingEventsPanel({
                             ) : null}
                           </span>
                         </td>
-                        <td className="max-w-[300px] overflow-hidden px-2 py-1 text-[11px] text-ink-3">
-                          <span className="block truncate">
+                        <td className="whitespace-nowrap px-2 py-1 text-[11px] text-ink-3">
+                          <span className="block">
                             {e.tournament_name}
                             {e.round_info ? (
                               <span className="ml-1 text-ink-3/80">

@@ -71,6 +71,33 @@ function normalize(value: string | null | undefined): string {
     .replace(/[^a-z0-9]/g, "");
 }
 
+// Süper Lig SofaScore takım id'si -> takım detay sayfası slug'ı
+// (public/images/football_logos dosya adları). "Bizim takımlar" için maç
+// listesindeki isimler bu slug ile takım sayfasına linklenir.
+const SUPER_LIG_TEAM_SLUGS: Record<number, string> = {
+  6362: "alanyaspor",
+  3056: "antalyaspor",
+  3086: "basaksehir",
+  3050: "besiktas",
+  3064: "rizespor",
+  7040: "eyupspor",
+  3052: "fenerbahce",
+  3061: "galatasaray",
+  5138: "gaziantep",
+  3054: "goztepe",
+  6063: "kasimpasa",
+  3072: "kayserispor",
+  3085: "konyaspor",
+  3053: "samsunspor",
+  3051: "trabzonspor",
+};
+
+// Takımın detay sayfası slug'ı (yalnız Süper Lig kulüpleri); yoksa null.
+export function superLigTeamSlug(teamId: number | null): string | null {
+  if (teamId == null) return null;
+  return SUPER_LIG_TEAM_SLUGS[teamId] ?? null;
+}
+
 // Alt yaş / genç milli takımlarını ayıklar (U15..U23, "youth").
 function isYouthTeam(name: string | null | undefined): boolean {
   if (!name) return false;
