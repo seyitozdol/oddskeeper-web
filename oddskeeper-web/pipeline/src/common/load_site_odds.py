@@ -26,6 +26,7 @@ from dotenv import load_dotenv
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from parse_bet365_snapshot import parse_dump as parse_bet365  # noqa: E402
 from parse_bets10_snapshot import parse_dump as parse_bets10  # noqa: E402
+from parse_bets10_network import parse_dump as parse_bets10_net  # noqa: E402
 
 # Takim adi normalizasyonunda atilacak kulup ekleri. u16/u18/u21 gibi yas
 # belirtecleri KASITLI olarak birakilir; atilirsa farkli yas gruplari birbirine
@@ -164,7 +165,13 @@ def main() -> None:
     dry = "--dry-run" in sys.argv
 
     site = site_from_dump(path)
-    parser = PARSERS.get(site)
+    # Ag-yakalama (capture_odds_vps.py) dump'i = kind:"network-capture";
+    # DOM snapshot'tan (capture_odds_headless/snippet) farkli parser kullanir.
+    dump_kind = json.load(open(path, encoding="utf-8")).get("kind", "")
+    if dump_kind == "network-capture":
+        parser = parse_bets10_net
+    else:
+        parser = PARSERS.get(site)
     if parser is None:
         raise SystemExit(
             f"{site} icin parser yok. Once bu sitenin snapshot yapisi cozulmeli."

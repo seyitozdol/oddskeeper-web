@@ -45,16 +45,18 @@ ROOT = Path(__file__).resolve().parents[2]  # pipeline/
 ENV = dotenv_values(ROOT / ".env")
 DEFAULT_OUT = ROOT / "data" / "odds"
 
-# Proxy'den GECMEYECEK (abort) kaynak tipleri ve host desenleri: GB tasarrufu.
-BLOCK_TYPES = {"image", "media", "font", "stylesheet"}
+# Proxy'den GECMEYECEK (abort) kaynak tipleri: GB tasarrufu. stylesheet ve
+# host bloklamasi KASITLI DAR: fazla agresif abort sportsbook app'ini bozuyordu
+# (spike'ta 329 -> 2 response dususu). Yalnizca agir medya + saf analitik.
+BLOCK_TYPES = {"image", "media", "font"}
 BLOCK_HOSTS = (
-    "google-analytics", "googletagmanager", "doubleclick", "adform",
-    "hotjar", "sentry", "coralogix", "facebook", "sportradar", "casino",
-    "imageapi", "cdn-static",
+    "google-analytics", "googletagmanager", "doubleclick", "hotjar",
+    "sentry", "coralogix", "facebook.com", "adform",
 )
 
-# Yakaladigimiz ilginc XHR/fetch adres desenleri (oran/olay tasiyabilecekler).
-KEEP_URL_HINTS = ("/sb/", "/api/", "route-data", "market", "event", "odds")
+# Yakaladigimiz XHR/fetch adres desenleri. events-table/v2 = oran tablosu (1X2+
+# Alt/Ust, competition basina); event-market = tek market; route-data = yapi.
+KEEP_URL_HINTS = ("events-table", "event-market", "route-data", "widgets/event", "/sb/")
 
 TAB = "?tab=liveAndUpcoming"
 SITES: dict[str, dict] = {
@@ -77,19 +79,26 @@ MAX_BODY = 800_000        # tek yanit/frame ust siniri (char/byte)
 MAX_TOTAL_MB = 60         # dump ust siniri, kacak onlemi
 
 
-def proxy_config(session_id: str) -> dict | None:
+def proxy_config(session_id: str, country: str | None) -> dict | None:
     """Proxy URL'ini Playwright proxy config'ine cevirir (auth ayri).
 
-    Once PROXY_ODDS_TR (varsa ozel geo/sticky), yoksa PROXY_URL (genel residential).
+    PROXY_ODDS_TR (varsa ozel), yoksa PROXY_URL (genel residential). `country`
+    verilirse DataImpulse ulke hedeflemesi username'e eklenir (`__cr.<cc>`).
+    AMPIRIK: Bets10 datacenter + coğu geo'yu 403 country-blocked ile engelliyor;
+    TR exit IP ile aciliyor (2026-07-30 VPS'te dogrulandi). Bu yuzden Bets10 icin
+    --cc tr gerekli. Kod ulkeyi ZORUNLU tutmaz, parametre olarak alir.
     """
     raw = (ENV.get("PROXY_ODDS_TR") or ENV.get("PROXY_URL") or "").strip()
     if not raw:
         return None
     raw = raw.replace("{session}", session_id)
     parts = urlsplit(raw if "://" in raw else "http://" + raw)
+    user = unquote(parts.username) if parts.username else ""
+    if country and user:
+        user = f"{user}__cr.{country}"
     cfg: dict = {"server": f"{parts.scheme}://{parts.hostname}:{parts.port}"}
-    if parts.username:
-        cfg["username"] = unquote(parts.username)
+    if user:
+        cfg["username"] = user
     if parts.password:
         cfg["password"] = unquote(parts.password)
     return cfg
@@ -197,12 +206,12 @@ def match_hrefs(page) -> list[str]:
 
 def capture(site: str, headed: bool, out_dir: Path, only, per_league: int,
             detail_wait_ms: int, list_wait_ms: int,
-            use_proxy: bool, chromium_path: str | None) -> Path:
+            use_proxy: bool, chromium_path: str | None, country: str | None) -> Path:
     cfg = SITES[site]
     session_id = secrets.token_hex(6)  # sticky: kosu boyunca sabit
     # Varsayilan DIREKT (VPS IP). --proxy verilirse PROXY_URL uzerinden.
-    proxy = proxy_config(session_id) if use_proxy else None
-    print(f"[proxy] {'AKTIF' if proxy else 'yok (direkt VPS IP)'}", flush=True)
+    proxy = proxy_config(session_id, country) if use_proxy else None
+    print(f"[proxy] {'AKTIF cc=' + (country or 'yok') if proxy else 'yok (direkt VPS IP)'}", flush=True)
 
     store = {
         "version": 1, "kind": "network-capture", "site": site,
@@ -283,15 +292,18 @@ def main() -> None:
     ap.add_argument("--headed", action="store_true", help="yerelde gorunur tarayici")
     ap.add_argument("--out", default=str(DEFAULT_OUT))
     ap.add_argument("--pages", nargs="*")
-    ap.add_argument("--per-league", type=int, default=8)
-    ap.add_argument("--detail-wait-ms", type=int, default=9000)
-    ap.add_argument("--list-wait-ms", type=int, default=7000)
+    # events-table/v2 competition sayfasinda tum maclarin 1X2+Alt/Ust'unu verdigi
+    # icin detay taramasi VARSAYILAN KAPALI (per-league 0). Daha cok market icin >0.
+    ap.add_argument("--per-league", type=int, default=0)
+    ap.add_argument("--detail-wait-ms", type=int, default=14000)
+    ap.add_argument("--list-wait-ms", type=int, default=22000)  # oran tablosu ~20s'de doluyor
     ap.add_argument("--proxy", action="store_true", help="PROXY_URL uzerinden geç (varsayilan direkt)")
+    ap.add_argument("--cc", default=None, help="proxy ulke hedefleme (Bets10 icin: tr)")
     ap.add_argument("--chromium-path", default=None, help="sistem chromium yolu, ör. /usr/bin/chromium")
     args = ap.parse_args()
     capture(args.site, args.headed, Path(args.out), args.pages,
             args.per_league, args.detail_wait_ms, args.list_wait_ms,
-            args.proxy, args.chromium_path)
+            args.proxy, args.chromium_path, args.cc)
 
 
 if __name__ == "__main__":
