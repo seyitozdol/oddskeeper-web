@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useState, type ReactElement } from "react";
 import { createClient } from "../lib/supabase/client";
 import { useI18n } from "../lib/i18n/LanguageProvider";
 import { LOCALES, type Locale } from "../lib/i18n/config";
@@ -34,10 +34,11 @@ const LEAGUE_DETAIL_PATH =
   "/dashboard/stats-analysis/football/league-stats/detail";
 
 // Header'daki lig kisayollari: her biri ilgili "league details" sayfasina gider.
+// Simgeler inline SVG (ozgun, marka renkli lig amblemleri).
 const LEAGUE_ITEMS: {
   key: string;
   label: string;
-  icon: string;
+  Icon: (props: { className?: string }) => ReactElement;
   href: string;
   competition?: string;
   sport?: string;
@@ -45,21 +46,21 @@ const LEAGUE_ITEMS: {
   {
     key: "tsl",
     label: "TSL",
-    icon: "/icons/football.svg",
+    Icon: TslMark,
     href: FOOTBALL_LEAGUE_DETAIL_HREF,
     competition: "Süper Lig",
   },
   {
     key: "1lig",
     label: "1.Lig",
-    icon: "/icons/football.svg",
+    Icon: Lig1Mark,
     href: TFF1_LEAGUE_DETAIL_HREF,
     competition: "1. Lig",
   },
   {
     key: "tbl",
     label: "TBL",
-    icon: "/icons/basketball.svg",
+    Icon: TblMark,
     href: BASKETBALL_LEAGUE_HREF,
     sport: "basketball",
   },
@@ -275,13 +276,7 @@ export default function AppHeader({
                       isLeagueActive(item)
                     )}`}
                   >
-                    <Image
-                      src={item.icon}
-                      alt=""
-                      width={14}
-                      height={14}
-                      className="opacity-85"
-                    />
+                    <item.Icon className="h-4 w-4 shrink-0" />
                     <span>{item.label}</span>
                   </Link>
                 ))}
@@ -437,13 +432,7 @@ export default function AppHeader({
                     isLeagueActive(item)
                   )}`}
                 >
-                  <Image
-                    src={item.icon}
-                    alt=""
-                    width={14}
-                    height={14}
-                    className="opacity-85"
-                  />
+                  <item.Icon className="h-4 w-4 shrink-0" />
                   <span>{item.label}</span>
                 </Link>
               ))
@@ -581,6 +570,70 @@ function StatsMenuItem({
         ))}
       </div>
     </div>
+  );
+}
+
+// Ozgun lig amblemleri (resmi trademark logolar degil): TSL kirmizi + futbol
+// topu, 1.Lig lacivert + "1", TBL turuncu + basketbol topu.
+function TslMark({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
+      <circle cx="12" cy="12" r="11.5" fill="#E4032E" />
+      <circle
+        cx="12"
+        cy="12"
+        r="9.4"
+        fill="none"
+        stroke="#ffffff"
+        strokeOpacity="0.28"
+        strokeWidth="1"
+      />
+      <circle cx="12" cy="12" r="6.6" fill="#ffffff" />
+      <polygon
+        points="12,8.35 14.35,10.05 13.45,12.75 10.55,12.75 9.65,10.05"
+        fill="#E4032E"
+      />
+      <g stroke="#E4032E" strokeWidth="1.05" strokeLinecap="round">
+        <path d="M12 8.35V5.55" />
+        <path d="M14.35 10.05l2.05-1.2" />
+        <path d="M13.45 12.75l1.7 2.2" />
+        <path d="M10.55 12.75l-1.7 2.2" />
+        <path d="M9.65 10.05l-2.05-1.2" />
+      </g>
+    </svg>
+  );
+}
+
+function Lig1Mark({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
+      <circle cx="12" cy="12" r="11.5" fill="#0E2A56" />
+      <circle
+        cx="12"
+        cy="12"
+        r="9.4"
+        fill="none"
+        stroke="#ffffff"
+        strokeOpacity="0.28"
+        strokeWidth="1"
+      />
+      <path d="M13.7 6.4V17.6H11.3V9.3L8.9 10.1V8.2L12.2 6.4Z" fill="#ffffff" />
+    </svg>
+  );
+}
+
+function TblMark({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
+      <circle cx="12" cy="12" r="11.5" fill="#EE7203" />
+      <circle cx="12" cy="12" r="6.9" fill="none" stroke="#ffffff" strokeWidth="1.5" />
+      <g stroke="#ffffff" strokeWidth="1.3" fill="none" strokeLinecap="round">
+        <path d="M12 5.1v13.8" />
+        <path d="M5.1 12h13.8" />
+        <path d="M7.15 7.1c2.35 1.85 2.35 8.05 0 9.8" />
+        <path d="M16.85 7.1c-2.35 1.85-2.35 8.05 0 9.8" />
+      </g>
+    </svg>
   );
 }
 
