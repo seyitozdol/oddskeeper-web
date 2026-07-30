@@ -134,7 +134,10 @@
               if (tag === "STYLE" || tag === "SCRIPT" || tag === "TEMPLATE") {
                 continue;
               }
-              t += (child.innerText || child.textContent || "") + "\n";
+              // SADECE innerText. textContent'e dusmek yok: ic ice <style>
+              // varsa textContent CSS'i geri getiriyor (Bets10'da 20 KB CSS
+              // butceyi yiyordu). innerText bossa o blok zaten bize yaramaz.
+              t += (child.innerText || "") + "\n";
             }
             t = t.replace(/[ \t]+/g, " ").trim();
             if (t.length > 40) {

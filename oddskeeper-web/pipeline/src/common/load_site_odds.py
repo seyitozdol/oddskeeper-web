@@ -25,6 +25,7 @@ from dotenv import load_dotenv
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from parse_bet365_snapshot import parse_dump as parse_bet365  # noqa: E402
+from parse_bets10_snapshot import parse_dump as parse_bets10  # noqa: E402
 
 # Takim adi normalizasyonunda atilacak kulup ekleri. u16/u18/u21 gibi yas
 # belirtecleri KASITLI olarak birakilir; atilirsa farkli yas gruplari birbirine
@@ -103,7 +104,7 @@ def resolve(site_events: list[tuple[str, str]], our_events: list[dict]) -> dict:
     return out
 
 
-PARSERS = {"bet365": parse_bet365}
+PARSERS = {"bet365": parse_bet365, "bets10": parse_bets10}
 
 
 def site_from_dump(path: str) -> str:
