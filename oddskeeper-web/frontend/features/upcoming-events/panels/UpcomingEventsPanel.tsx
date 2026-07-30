@@ -9,13 +9,10 @@ import {
   type TrackedSport,
   type UpcomingEventRow,
 } from "../types";
-import { isPriorityEvent, superLigTeamSlug } from "../priority";
+import { isPriorityEvent } from "../priority";
 
 // Kullanıcı Malta'da; tüm saatler Malta saatine göre gösterilir.
 const TZ = "Europe/Malta";
-
-const TEAM_DETAIL_BASE =
-  "/dashboard/stats-analysis/football/team-stats/detail?team=";
 
 type SiteKey = "bet365" | "bets10" | "oddsportal";
 
@@ -245,19 +242,18 @@ export default function UpcomingEventsPanel({
     );
   }
 
-  // Süper Lig kulübü ise takım adı detay sayfasına linklenir; değilse düz metin.
+  // Takım sayfası varsa (Süper Lig / 1. Lig) ad linklenir; yoksa düz metin.
   function TeamName({
-    teamId,
+    href,
     name,
   }: {
-    teamId: number | null;
+    href: string | null;
     name: string;
   }) {
-    const slug = superLigTeamSlug(teamId);
-    if (slug) {
+    if (href) {
       return (
         <Link
-          href={`${TEAM_DETAIL_BASE}${slug}`}
+          href={href}
           className="font-medium underline-offset-2 transition hover:text-accent-ink hover:underline"
         >
           {name}
@@ -397,12 +393,12 @@ export default function UpcomingEventsPanel({
                             />
                             <span>
                               <TeamName
-                                teamId={e.home_team_id}
+                                href={e.home_team_href}
                                 name={e.home_team_name}
                               />
                               <span className="px-1 text-ink-3">-</span>
                               <TeamName
-                                teamId={e.away_team_id}
+                                href={e.away_team_href}
                                 name={e.away_team_name}
                               />
                             </span>

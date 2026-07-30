@@ -28,6 +28,8 @@ const SUPER_LIG_TEAM_IDS = new Set<number>([
   3085, // Konyaspor
   3053, // Samsunspor
   3051, // Trabzonspor
+  3065, // Kocaelispor (2025/26 çıkan)
+  7802, // Gençlerbirliği (2025/26 çıkan)
 ]);
 
 // İsim bazlı yedek eşleşme (id boş gelirse). Normalize edilmiş isimde bu

@@ -28,6 +28,10 @@ export type UpcomingEventRow = {
   away_score: number | null;
   event_slug: string | null;
   updated_at: string;
+  // Server tarafında zenginleştirilir: takım detay sayfası linki (yoksa null).
+  // Süper Lig -> stats-analysis detay; 1. Lig -> tff-1-lig/team/<id>.
+  home_team_href: string | null;
+  away_team_href: string | null;
   // tracker.event_odds_availability'den.
   //   has_odds null           -> henuz kontrol edilmedi
   //   has_odds true           -> oran yakalandi
