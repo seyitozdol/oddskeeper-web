@@ -81,9 +81,25 @@ type CreateBody = {
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const ALIAS_RE = /^[a-z0-9][a-z0-9._-]{2,31}$/;
 
+// Supabase her hesap icin e-posta ister; e-postasiz (sadece alias'li)
+// kullanicilar icin bu domain ile sentetik adres uretilir.
+const SYNTHETIC_EMAIL_DOMAIN = "ok.local";
+
+function randomPassword(): string {
+  const chars =
+    "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789.-_";
+  let out = "";
+  for (let i = 0; i < 24; i++) {
+    out += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return out;
+}
+
 // Manuel kullanici olusturma. E-posta onayi beklenmez (email_confirm: true),
 // hesap aninda giris yapabilir. directAlias verilirse kullanici sifresiz
-// giris listesine de eklenir.
+// giris listesine de eklenir. E-posta bos birakilirsa alias zorunludur;
+// sentetik e-posta uretilir ve hesap sadece alias ile giris yapabilir.
+// Sifre bos birakilirsa rastgele uretilir (alias'li hesaplarda gerekmez).
 export async function POST(request: NextRequest) {
   const access = await getNavAccess();
 
@@ -98,23 +114,33 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "invalid_body" }, { status: 400 });
   }
 
-  const email =
+  let email =
     typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
-  const password = typeof body.password === "string" ? body.password : "";
+  let password = typeof body.password === "string" ? body.password : "";
   const isAdmin = body.isAdmin === true;
   const directAlias =
     typeof body.directAlias === "string"
       ? body.directAlias.trim().toLowerCase()
       : "";
 
-  if (!EMAIL_RE.test(email)) {
-    return NextResponse.json({ error: "invalid_email" }, { status: 400 });
-  }
-  if (password.length < 8) {
-    return NextResponse.json({ error: "invalid_password" }, { status: 400 });
-  }
   if (directAlias && !ALIAS_RE.test(directAlias)) {
     return NextResponse.json({ error: "invalid_alias" }, { status: 400 });
+  }
+  if (email) {
+    if (!EMAIL_RE.test(email)) {
+      return NextResponse.json({ error: "invalid_email" }, { status: 400 });
+    }
+  } else {
+    // E-postasiz hesap sadece alias ile giris yapabilecegi icin alias sart.
+    if (!directAlias) {
+      return NextResponse.json({ error: "email_or_alias" }, { status: 400 });
+    }
+    email = `${directAlias}@${SYNTHETIC_EMAIL_DOMAIN}`;
+  }
+  if (!password) {
+    password = randomPassword();
+  } else if (password.length < 8) {
+    return NextResponse.json({ error: "invalid_password" }, { status: 400 });
   }
 
   const admin = createAdminClient();
