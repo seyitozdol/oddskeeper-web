@@ -30,6 +30,7 @@ export const upcomingEvents = defineMessages({
     marketCountTitle: "{count} markets available",
     oddsListed: "Listed",
     oddsListedTitle: "Match found on the site, but no odds were captured",
+    alertBets10Missing: "Odds exist on OddsPortal/bet365 but not on Bets10",
   },
   tr: {
     title: "Yaklaşan Maçlar",
@@ -60,5 +61,6 @@ export const upcomingEvents = defineMessages({
     marketCountTitle: "{count} market mevcut",
     oddsListed: "Listede",
     oddsListedTitle: "Maç sitede bulundu ama oranı yakalanamadı",
+    alertBets10Missing: "OddsPortal/bet365'te oran var ama Bets10'da yok",
   },
 });

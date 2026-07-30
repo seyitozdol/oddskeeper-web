@@ -132,6 +132,33 @@ export default function UpcomingEventsPanel({
         ? "bg-amber-500/15 text-amber-500"
         : "bg-veil text-ink-2";
 
+  // Uyari: rakip kaynakta (OddsPortal veya bet365) oran VAR ama Bets10'da YOK.
+  // Bets10 birincil kaynak; bu durum bir kapsam bosluğu/firsat isaretidir.
+  const needsAlert = (e: UpcomingEventRow) =>
+    (e.bet365_has_odds === true || e.oddsportal_has_odds === true) &&
+    e.bets10_has_odds !== true;
+
+  function AlertIcon() {
+    return (
+      <span title={t("upcomingEvents.alertBets10Missing")}>
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="h-3.5 w-3.5 text-red-500"
+          aria-hidden="true"
+        >
+          <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z" />
+          <line x1="12" y1="9" x2="12" y2="13" />
+          <line x1="12" y1="17" x2="12.01" y2="17" />
+        </svg>
+      </span>
+    );
+  }
+
   // Marka rozeti (metin yerine gorsel kimlik). Dis logo dosyasi yok; her rozet
   // sitenin marka renginde stillendirilmis kucuk bir isaret.
   function brandBadge(site: SiteKey) {
@@ -240,6 +267,7 @@ export default function UpcomingEventsPanel({
         <div className="mt-3 overflow-x-auto rounded-lg border border-line">
           <table className="w-full min-w-[760px] table-fixed border-collapse text-[13px]">
             <colgroup>
+              <col className="w-[22px]" />
               <col className="w-[46px]" />
               <col className="w-[70px]" />
               <col />
@@ -250,6 +278,7 @@ export default function UpcomingEventsPanel({
             </colgroup>
             <thead>
               <tr className="text-left text-[10px] uppercase tracking-[0.08em] text-ink-3">
+                <th className="px-1 py-1" />
                 <th className="px-2 py-1 font-semibold">
                   {t("upcomingEvents.thTime")}
                 </th>
@@ -274,7 +303,7 @@ export default function UpcomingEventsPanel({
                 <Fragment key={key}>
                   <tr>
                     <td
-                      colSpan={7}
+                      colSpan={8}
                       className="border-y border-line bg-veil px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-3"
                     >
                       {dayLabel(key, rows[0])}
@@ -282,11 +311,19 @@ export default function UpcomingEventsPanel({
                   </tr>
                   {rows.map((e) => {
                     const cd = countdown(e);
+                    const alert = needsAlert(e);
                     return (
                       <tr
                         key={e.event_id}
-                        className="border-t border-line text-ink first:border-t-0"
+                        className={`text-ink ${
+                          alert
+                            ? "bg-red-500/[0.06] [&>td]:border-y [&>td]:border-red-500/70 [&>td:first-child]:border-l [&>td:last-child]:border-r"
+                            : "border-t border-line first:border-t-0"
+                        }`}
                       >
+                        <td className="px-1 py-1 text-center">
+                          {alert ? <AlertIcon /> : null}
+                        </td>
                         <td className="whitespace-nowrap px-2 py-1 text-[12px] tabular-nums text-ink-2">
                           {timeFmt.format(new Date(e.start_ts))}
                         </td>
