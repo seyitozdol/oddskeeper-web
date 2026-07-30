@@ -9,6 +9,8 @@ export const dashboardHome = defineMessages({
     matchFiltersTitle: "Match Filters",
     teamInputsTitle: "Team Inputs",
     quickOutputsTitle: "Quick Outputs",
+    noAccess:
+      "Your account has no accessible sections yet. Contact an administrator.",
   },
   tr: {
     title: "Kural tabanlı tahmin çalışma alanı",
@@ -18,5 +20,7 @@ export const dashboardHome = defineMessages({
     matchFiltersTitle: "Maç Filtreleri",
     teamInputsTitle: "Takım Girdileri",
     quickOutputsTitle: "Hızlı Çıktılar",
+    noAccess:
+      "Hesabına açık bir başlık yok. Yöneticiyle iletişime geç.",
   },
 });
