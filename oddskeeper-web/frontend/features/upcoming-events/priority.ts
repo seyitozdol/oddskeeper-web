@@ -32,6 +32,32 @@ const SUPER_LIG_TEAM_IDS = new Set<number>([
   7802, // Gençlerbirliği (2025/26 çıkan)
 ]);
 
+// 1. Lig (TFF 1. Lig) SofaScore takım id'leri — bu takımların maçları da
+// (her turnuvada, hazırlık dahil) öncelikli sayılır. Kaynak: 2025/26 "1. Lig"
+// fikstürleri (tracker.upcoming_events) + Amed. Sezon başı kadro değişirse
+// buradan güncellenir.
+const FIRST_LIG_TEAM_IDS = new Set<number>([
+  44320, // Bandırmaspor
+  3099, // Batman Petrolspor
+  202390, // Bodrum FK
+  6414, // Boluspor
+  3055, // Bursaspor
+  262480, // Esenler Erokspor
+  4954, // Fatih Karagümrük
+  388264, // Iğdır FK
+  3066, // İstanbulspor
+  6366, // Keçiörengücü
+  202391, // Manisa FK
+  296730, // Mardin 1969 Spor
+  7034, // Muğlaspor
+  7032, // Pendikspor
+  4952, // Sarıyer
+  3076, // Sivasspor
+  55625, // Ümraniyespor
+  24750, // Vanspor FK
+  207011, // Amed Sportif Faaliyetler (1. Lig'e yeni çıkan)
+]);
+
 // İsim bazlı yedek eşleşme (id boş gelirse). Normalize edilmiş isimde bu
 // belirteçlerden biri geçerse Süper Lig kulübü sayılır. SADECE 2025/26 Süper
 // Lig takımları: yukarıdaki 15 id'li kulüp + id'si listede olmayan çıkanlar
@@ -120,6 +146,15 @@ function isSuperLigClub(
   return n.length > 0 && SUPER_LIG_NAME_TOKENS.some((token) => n.includes(token));
 }
 
+// Süper Lig veya 1. Lig kulübü (id/isim ile). Her ikisinin de maçları öncelikli.
+function isTurkishLeagueClub(
+  teamId: number | null,
+  teamName: string | null
+): boolean {
+  if (teamId != null && FIRST_LIG_TEAM_IDS.has(teamId)) return true;
+  return isSuperLigClub(teamId, teamName);
+}
+
 function isSeniorTurkNational(
   name: string | null,
   country: string | null,
@@ -130,11 +165,11 @@ function isSeniorTurkNational(
 
 // Maç öncelik listesinde mi (sarı yıldız gösterilecek mi).
 export function isPriorityEvent(e: UpcomingEventRow): boolean {
-  // 1) Süper Lig kulüplerinin futbol maçları.
+  // 1) Süper Lig + 1. Lig kulüplerinin futbol maçları.
   if (
     e.sport === "football" &&
-    (isSuperLigClub(e.home_team_id, e.home_team_name) ||
-      isSuperLigClub(e.away_team_id, e.away_team_name))
+    (isTurkishLeagueClub(e.home_team_id, e.home_team_name) ||
+      isTurkishLeagueClub(e.away_team_id, e.away_team_name))
   ) {
     return true;
   }
