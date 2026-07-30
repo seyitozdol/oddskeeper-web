@@ -39,14 +39,19 @@ chmod +x /opt/oddskeeper/run_upcoming_events.sh /opt/oddskeeper/run_odds_capture
   `{session}` yer tutucusu her koşuda yeni sticky id ile değiştirilir (oturum boyunca sabit IP).
 
 ## Cron (`crontab -e`)
-Sunucu saati UTC; aşağıdaki satırlar TSİ ile 3 saat ileridir.
+Sunucu saati UTC. Üç iş:
 ```cron
-# Yaklaşan maçlar: 3 saatte bir (SofaScore proxy'den, JSON hafif)
+# 1) Yaklaşan maçlar (SofaScore proxy'den; tracker.upcoming_events besler): 3 saatte bir
 30 */3 * * *  /opt/oddskeeper/run_upcoming_events.sh
 
-# Oran yakalama: 6 saatte bir (proxy GB ücretli, sık değil)
+# 2) Bets10 oranları (headful+xvfb+TR proxy, capture+load): 6 saatte bir (GB ücretli)
 0 */6 * * *   /opt/oddskeeper/run_odds_capture.sh
+
+# 3) bet365 oranları (API-Football, tarayıcısız; Avrupa maçları): 3 saatte bir (ucuz)
+45 */3 * * *  /opt/oddskeeper/run_bet365_odds.sh
 ```
+Wrapper'ları kopyala: `cp oddskeeper-web/pipeline/deploy/run_*.sh /opt/oddskeeper/ && chmod +x /opt/oddskeeper/run_*.sh`
+`.env`'e `API_FOOTBALL_KEY` ekli olmalı (bet365 işi için).
 
 ## İş 2 — SPIKE (parser yazmadan önce, ZORUNLU)
 `capture_odds_vps.py` şu an yalnızca ağı kaydeder. Önce dump al, incele:
