@@ -7,6 +7,7 @@ import { getTeamLogoPath } from "../utils/getTeamLogoPath";
 import { formatDecimal } from "../utils/formatDecimal";
 import type { PlayerCurrentInfoRow } from "../types";
 import { getT } from "@/lib/i18n/server";
+import { knownDisplayName } from "@/lib/player-name";
 import {
   canonicalNationality,
   getCountryFlagUrl,
@@ -69,9 +70,7 @@ export async function PlayerDetailHeader({
   const displayTeamSlug = currentInfo?.current_team_slug ?? profile.team_slug;
   const displayTeamName = currentInfo?.current_team_name ?? profile.team_name;
   const displayPlayerName =
-    [currentInfo?.first_name, currentInfo?.last_name]
-      .filter(Boolean)
-      .join(" ") ||
+    knownDisplayName(currentInfo?.player_name, currentInfo?.first_name) ||
     currentInfo?.full_name ||
     profile.player_name;
 

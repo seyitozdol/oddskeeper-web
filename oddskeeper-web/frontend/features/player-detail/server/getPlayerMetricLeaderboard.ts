@@ -168,6 +168,11 @@ export const getPlayerMetricLeaderboard = cache(
         `
       )
       .eq("metric_key", options.metricKey)
+      // Her oyuncu v1'de havuz basina bir satir tasir (OUTFIELD_PLAYERS/
+      // GOALKEEPERS + ALL_PLAYERS). ranking_pool filtresi olmadan her oyuncu
+      // iki kez (ayni isim + ayni deger) listeleniyordu; genel siralama icin
+      // herkesin birlikte siralandigi ALL_PLAYERS havuzunu kullan.
+      .eq("ranking_pool", "ALL_PLAYERS")
       .order("league_rank", { ascending: true, nullsFirst: false })
       .order("player_name", { ascending: true });
 

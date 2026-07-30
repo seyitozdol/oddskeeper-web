@@ -1,6 +1,7 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
+import { knownDisplayName } from "@/lib/player-name";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -114,25 +115,6 @@ export type DirectoryPlayer = {
   nationality: string | null;
   position: string | null;
 };
-
-// Bilindik isim kurali: apifootball kadro ismi bilindik isimdir ("Talisca",
-// "Ederson"); "L. Torreira" gibi kisaltmali ise bas harf, bio first_name
-// icindeki bas harfe uyan kelimeyle acilir ("Lucas Torreira", "K. Akturkoglu"
-// + "Muhammed Kerem" -> "Kerem Akturkoglu"); uyan kelime yoksa ilk kelime.
-// Resmi uzun isimler kullanilmaz.
-function knownDisplayName(
-  playerName: string | null,
-  firstName: string | null
-): string {
-  if (!playerName) return "";
-  const m = playerName.match(/^(\p{Lu})\.\s*(.+)$/u);
-  if (m) {
-    const words = (firstName ?? "").split(" ").filter(Boolean);
-    const first = words.find((w) => w.startsWith(m[1])) ?? words[0];
-    if (first) return `${first} ${m[2]}`;
-  }
-  return playerName;
-}
 
 export async function fetchAllCurrentPlayers(): Promise<DirectoryPlayer[]> {
   const supabase = createClient();

@@ -18,6 +18,7 @@ import type {
   ValidPlayerTab,
 } from "@/features/player-detail/types";
 import { getT } from "@/lib/i18n/server";
+import { knownDisplayName } from "@/lib/player-name";
 
 type PageProps = {
   searchParams?: Promise<{
@@ -44,7 +45,7 @@ function buildFallbackProfile(
   info: PlayerCurrentInfoRow
 ): PlayerProfileRow {
   const fullName =
-    [info.first_name, info.last_name].filter(Boolean).join(" ") ||
+    knownDisplayName(info.player_name, info.first_name) ||
     info.full_name ||
     info.player_name;
   const position = POSITION_CODES[info.position ?? ""] ?? {

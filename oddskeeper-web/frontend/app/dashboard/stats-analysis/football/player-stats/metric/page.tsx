@@ -11,6 +11,7 @@ import { getPlayerDetailedMetrics } from "@/features/player-detail/server/getPla
 import { getPlayerMetricLeaderboard } from "@/features/player-detail/server/getPlayerMetricLeaderboard";
 import { getPlayerNameMap } from "@/features/player-detail/server/getPlayerNameMap";
 import { getPlayerProfile } from "@/features/player-detail/server/getPlayerProfile";
+import { knownDisplayName } from "@/lib/player-name";
 import { getLeaguePlayerLeaderboardMeta } from "@/features/league-detail/server/getLeaguePlayerLeaderboard";
 import { getAllFootballTeamLogos } from "@/lib/football-teams";
 import { getT } from "@/lib/i18n/server";
@@ -133,9 +134,7 @@ export default async function PlayerMetricLeaderboardPage({
   );
 
   const displayName = playerSlug
-    ? [currentInfo?.first_name, currentInfo?.last_name]
-        .filter(Boolean)
-        .join(" ") ||
+    ? knownDisplayName(currentInfo?.player_name, currentInfo?.first_name) ||
       currentInfo?.full_name ||
       profile?.player_name ||
       playerSlug

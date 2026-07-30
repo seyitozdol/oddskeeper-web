@@ -1,7 +1,9 @@
 import { createClient } from "./supabase/server";
+import { knownDisplayName } from "./player-name";
 
 type NameRow = {
   player_slug: string;
+  player_name: string | null;
   full_name: string | null;
   first_name: string | null;
   last_name: string | null;
@@ -30,7 +32,7 @@ export async function getPlayerDisplayNameMap(
     const { data, error } = await supabase
       .schema("analytics")
       .from("player_current_info_v1")
-      .select("player_slug, full_name, first_name, last_name")
+      .select("player_slug, player_name, full_name, first_name, last_name")
       .in("player_slug", chunk)
       .returns<NameRow[]>();
 
@@ -44,8 +46,9 @@ export async function getPlayerDisplayNameMap(
 
     for (const row of data ?? []) {
       const name =
-        [row.first_name, row.last_name].filter(Boolean).join(" ") ||
-        row.full_name;
+        knownDisplayName(row.player_name, row.first_name) ||
+        row.full_name ||
+        row.player_name;
 
       if (name) {
         map.set(row.player_slug, name);

@@ -1,4 +1,5 @@
 import { createClient } from "../../../lib/supabase/server";
+import { knownDisplayName } from "../../../lib/player-name";
 import type { TeamSquadRow } from "../types";
 
 type TeamSquadDbRow = {
@@ -35,6 +36,7 @@ type PlayerCurrentTeamDbRow = {
   player_slug: string;
   current_team_slug: string | null;
   current_team_name: string | null;
+  player_name: string | null;
   full_name: string | null;
   first_name: string | null;
   last_name: string | null;
@@ -130,7 +132,7 @@ export async function getTeamSquad(teamSlug: string): Promise<TeamSquadRow[]> {
       .schema("analytics")
       .from("player_current_info_v1")
       .select(
-        "player_slug, current_team_slug, current_team_name, full_name, first_name, last_name"
+        "player_slug, current_team_slug, current_team_name, player_name, full_name, first_name, last_name"
       )
       .in("player_slug", playerSlugs)
       .returns<PlayerCurrentTeamDbRow[]>();
@@ -152,9 +154,9 @@ export async function getTeamSquad(teamSlug: string): Promise<TeamSquadRow[]> {
           row.current_team_slug = current.current_team_slug;
           row.current_team_name = current.current_team_name;
 
-          // Opta kısaltması yerine bio'daki uzun isim.
+          // Opta kısaltması yerine bilindik isim (Talisca) / açılmış ad.
           const longName =
-            [current.first_name, current.last_name].filter(Boolean).join(" ") ||
+            knownDisplayName(current.player_name, current.first_name) ||
             current.full_name;
           if (longName) {
             row.player_name = longName;

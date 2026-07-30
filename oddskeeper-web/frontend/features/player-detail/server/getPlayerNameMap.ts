@@ -1,4 +1,5 @@
 import { createClient } from "../../../lib/supabase/server";
+import { knownDisplayName } from "../../../lib/player-name";
 
 export type PlayerNameEntry = {
   slug: string | null;
@@ -23,12 +24,15 @@ export async function getPlayerNameMap(): Promise<
     supabase
       .schema("analytics")
       .from("player_current_info_v1")
-      .select("opta_player_id, player_slug, full_name, first_name, last_name")
+      .select(
+        "opta_player_id, player_slug, player_name, full_name, first_name, last_name"
+      )
       .limit(2000)
       .returns<
         {
           opta_player_id: string | null;
           player_slug: string;
+          player_name: string | null;
           full_name: string | null;
           first_name: string | null;
           last_name: string | null;
@@ -50,8 +54,9 @@ export async function getPlayerNameMap(): Promise<
     }
 
     const fullName =
-      [row.first_name, row.last_name].filter(Boolean).join(" ") ||
-      row.full_name;
+      knownDisplayName(row.player_name, row.first_name) ||
+      row.full_name ||
+      row.player_name;
 
     map[row.opta_player_id] = {
       slug: map[row.opta_player_id]?.slug ?? row.player_slug,

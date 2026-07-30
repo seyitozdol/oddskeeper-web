@@ -1,4 +1,5 @@
 import { createClient } from "../../../lib/supabase/server";
+import { knownDisplayName } from "../../../lib/player-name";
 import type { PlayerStatsListRow } from "../types";
 
 type CurrentInfoDbRow = {
@@ -175,8 +176,9 @@ export async function getPlayerStatsList(): Promise<PlayerStatsListRow[]> {
       group: profile?.position_group ?? "OTHER",
     };
     const fullName =
-      [info.first_name, info.last_name].filter(Boolean).join(" ") ||
-      info.full_name;
+      knownDisplayName(info.player_name, info.first_name) ||
+      info.full_name ||
+      info.player_name;
     const flashscore = info.opta_player_id
       ? flashscoreByOptaId.get(info.opta_player_id)
       : undefined;
