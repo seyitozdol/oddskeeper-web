@@ -70,7 +70,10 @@ BETS10_PAGES = [
     ("futbol-turkiye-1lig", "/tr/spor-bahisleri/futbol/turkiye/turkiye-1-lig"),
     ("futbol-turkiye-super-lig", "/tr/spor-bahisleri/futbol/turkiye/turkiye-super-lig"),
     # --- futbol Avrupa (Turk takimlari eleme/gruplar) ---
-    ("futbol-sampiyonlar-ligi", "/tr/spor-bahisleri/futbol/uefa-sampiyonlar-ligi/sampiyonlar-ligi"),
+    # NOT: slug'lar TUTARSIZ - Sampiyonlar/Konferans "uefa-" ONEKSIZ, yalniz Avrupa
+    # Ligi "uefa-avrupa-ligi". Yanlis slug futbol kokune yonlenip competition'i
+    # yuklemiyor (2026-07-30 dogrulandi: Fenerbahce-Sturm sampiyonlar-ligi'nde).
+    ("futbol-sampiyonlar-ligi", "/tr/spor-bahisleri/futbol/sampiyonlar-ligi/sampiyonlar-ligi"),
     ("futbol-avrupa-ligi", "/tr/spor-bahisleri/futbol/uefa-avrupa-ligi/avrupa-ligi"),
     ("futbol-konferans-ligi", "/tr/spor-bahisleri/futbol/konferans-ligi/konferans-ligi"),
     ("futbol-kulup-maclari", "/tr/spor-bahisleri/futbol/dostluk-maclari/kulup-maclari"),
