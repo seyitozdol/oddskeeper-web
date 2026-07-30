@@ -46,3 +46,16 @@ end $$;
 grant insert, update, delete on analytics.pm_player_ids    to authenticated;
 grant insert, update, delete on analytics.pm_fixture_inputs to authenticated;
 grant insert, update, delete on analytics.pm_markets        to authenticated;
+
+-- SECURITY DEFINER fonksiyonlar owner yetkisiyle calisir; tablo grant'larini
+-- ATLARLAR. Bu yuzden anon'un cagirabildigi definer fonksiyonlar da ayrica
+-- kisitlanmali (anon canli olarak takim karsilastirma verisi cekebiliyordu).
+revoke execute on function public.get_team_comparison_v1(text,text,text,text) from public, anon;
+grant  execute on function public.get_team_comparison_v1(text,text,text,text) to authenticated, service_role;
+
+-- Refresh fonksiyonu materialized view yeniler (pahali). Frontend cagirmaz;
+-- anon tetikleyince kaynak tuketimi/DoS riski. Sadece service_role.
+revoke execute on function public.refresh_league_serving_v1()    from public, anon, authenticated;
+grant  execute on function public.refresh_league_serving_v1()    to service_role;
+revoke execute on function analytics.refresh_league_serving_v1() from public, anon, authenticated;
+grant  execute on function analytics.refresh_league_serving_v1() to service_role;
