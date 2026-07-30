@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { useI18n } from "@/lib/i18n/LanguageProvider";
 import {
   TRACKED_SPORTS,
@@ -130,6 +130,44 @@ export default function UpcomingEventsPanel({
         ? "bg-amber-500/15 text-amber-500"
         : "bg-veil text-ink-2";
 
+  function OddsMark({
+    value,
+    marketCount,
+  }: {
+    value: boolean | null;
+    marketCount: number;
+  }) {
+    if (value == null) {
+      return (
+        <span
+          className="text-[12px] text-ink-3"
+          title={t("upcomingEvents.oddsUnchecked")}
+        >
+          -
+        </span>
+      );
+    }
+    return value ? (
+      <span
+        className="inline-flex items-center gap-1 rounded bg-emerald-500/15 px-1.5 py-0.5 text-[11px] font-semibold text-emerald-500"
+        title={t("upcomingEvents.marketCountTitle", { count: marketCount })}
+      >
+        <span aria-hidden="true">✓</span>
+        {t("upcomingEvents.oddsLive")}
+        {marketCount > 0 ? (
+          <span className="font-normal tabular-nums opacity-80">
+            {marketCount}
+          </span>
+        ) : null}
+      </span>
+    ) : (
+      <span className="inline-flex items-center gap-1 rounded bg-red-500/15 px-1.5 py-0.5 text-[11px] font-semibold text-red-400">
+        <span aria-hidden="true">✗</span>
+        {t("upcomingEvents.oddsNoLive")}
+      </span>
+    );
+  }
+
   return (
     <div>
       <div className="flex flex-wrap gap-1.5">
@@ -170,14 +208,51 @@ export default function UpcomingEventsPanel({
           {t("upcomingEvents.noEvents")}
         </div>
       ) : (
-        <div className="mt-4 space-y-4">
-          {dayGroups.map(([key, rows]) => (
-            <div key={key} className="rounded-lg border border-line">
-              <p className="border-b border-line bg-veil px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-3">
-                {dayLabel(key, rows[0])}
-              </p>
-              <table className="min-w-full border-collapse text-[13px]">
-                <tbody>
+        <div className="mt-4 overflow-x-auto rounded-lg border border-line">
+          <table className="w-full min-w-[880px] table-fixed border-collapse text-[13px]">
+            <colgroup>
+              <col className="w-[60px]" />
+              <col className="w-[96px]" />
+              <col className="w-[36px]" />
+              <col />
+              <col className="w-[32%]" />
+              <col className="w-[84px]" />
+              <col className="w-[84px]" />
+            </colgroup>
+            <thead>
+              <tr className="text-left text-[11px] uppercase tracking-[0.08em] text-ink-3">
+                <th className="px-3 py-2 font-semibold">
+                  {t("upcomingEvents.thTime")}
+                </th>
+                <th className="px-2 py-2 font-semibold">
+                  {t("upcomingEvents.thStartsIn")}
+                </th>
+                <th className="px-2 py-2" />
+                <th className="px-2 py-2 font-semibold">
+                  {t("upcomingEvents.thMatch")}
+                </th>
+                <th className="px-3 py-2 font-semibold">
+                  {t("upcomingEvents.thTournament")}
+                </th>
+                <th className="px-2 py-2 text-center font-semibold normal-case">
+                  Bet365
+                </th>
+                <th className="px-2 py-2 text-center font-semibold normal-case">
+                  Bets10
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {dayGroups.map(([key, rows]) => (
+                <Fragment key={key}>
+                  <tr>
+                    <td
+                      colSpan={7}
+                      className="border-y border-line bg-veil px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-3"
+                    >
+                      {dayLabel(key, rows[0])}
+                    </td>
+                  </tr>
                   {rows.map((e) => {
                     const cd = countdown(e);
                     return (
@@ -209,37 +284,51 @@ export default function UpcomingEventsPanel({
                             className="opacity-85"
                           />
                         </td>
-                        <td className="px-2 py-2">
-                          <span className="inline-flex flex-wrap items-center gap-1.5">
+                        <td className="overflow-hidden px-2 py-2">
+                          <span className="flex items-center gap-1.5 truncate">
                             <span className="font-medium">
                               {e.home_team_name}
                             </span>
-                            <span className="text-ink-3">-</span>
+                            <span className="shrink-0 text-ink-3">-</span>
                             <span className="font-medium">
                               {e.away_team_name}
                             </span>
                             {e.gender === "F" ? (
-                              <span className="rounded bg-fuchsia-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-fuchsia-400">
+                              <span className="shrink-0 rounded bg-fuchsia-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-fuchsia-400">
                                 {t("upcomingEvents.women")}
                               </span>
                             ) : null}
                           </span>
                         </td>
-                        <td className="hidden px-3 py-2 text-[12px] text-ink-3 md:table-cell">
-                          {e.tournament_name}
-                          {e.round_info ? (
-                            <span className="ml-1.5 text-ink-3/80">
-                              {e.round_info}
-                            </span>
-                          ) : null}
+                        <td className="overflow-hidden px-3 py-2 text-[12px] text-ink-3">
+                          <span className="block truncate">
+                            {e.tournament_name}
+                            {e.round_info ? (
+                              <span className="ml-1.5 text-ink-3/80">
+                                {e.round_info}
+                              </span>
+                            ) : null}
+                          </span>
+                        </td>
+                        <td className="px-2 py-2 text-center">
+                          <OddsMark
+                            value={e.bet365_has_odds}
+                            marketCount={e.bet365_market_count}
+                          />
+                        </td>
+                        <td className="px-2 py-2 text-center">
+                          <OddsMark
+                            value={e.bets10_has_odds}
+                            marketCount={e.bets10_market_count}
+                          />
                         </td>
                       </tr>
                     );
                   })}
-                </tbody>
-              </table>
-            </div>
-          ))}
+                </Fragment>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </div>
