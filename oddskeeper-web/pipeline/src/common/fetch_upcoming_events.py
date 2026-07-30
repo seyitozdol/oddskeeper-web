@@ -17,7 +17,7 @@ tracker.upcoming_events'e upsert eder; ayrica:
   - baslangici 3 gunden eski kayitlari siler,
   - 24 saattir sweep'te gorulmeyen notstarted kayitlari siler (kaynaktan kalkti).
 
-Kullanim: python fetch_upcoming_events.py [gun_sayisi]  (varsayilan 14)
+Kullanim: python fetch_upcoming_events.py [gun_sayisi]  (varsayilan 28)
 Periyodik: VPS'te cron (/opt/oddskeeper/run_upcoming_events.sh).
 """
 import os
@@ -31,7 +31,7 @@ from dotenv import load_dotenv
 
 API = "https://api.sofascore.com/api/v1"
 REQUEST_GAP_SEC = 0.35
-DEFAULT_DAYS_AHEAD = 14
+DEFAULT_DAYS_AHEAD = 28
 
 # main() icinde load_dotenv sonrasi doldurulur. SofaScore residential proxy
 # (PROXY_URL, .env) ardindan cekilir; bos kalirsa VPS'te 403 gelir.
