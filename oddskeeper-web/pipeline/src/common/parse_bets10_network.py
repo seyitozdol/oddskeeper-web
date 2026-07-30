@@ -30,6 +30,10 @@ MARKET_NAME = {
 # selectionTemplateId -> okunabilir secim (takim adi ayrica participantLabel'dan)
 SEL_NAME = {"DRAW": "Beraberlik", "OVER": "Üst", "UNDER": "Alt", "YES": "Var", "NO": "Yok"}
 
+# categoryName -> tracker.upcoming_events.sport degeri. Basketbol 2-yollu (beraberlik
+# yok); parser secimleri selectionTemplateId'den turettigi icin ek is gerekmez.
+SPORT_MAP = {"Futbol": "football", "Basketbol": "basketball", "Voleybol": "volleyball"}
+
 
 def rows_from_events_table(body: dict, captured_at: str | None, label: str | None) -> list[dict]:
     data = body.get("data") or {}
@@ -44,6 +48,7 @@ def rows_from_events_table(body: dict, captured_at: str | None, label: str | Non
             "home": home, "away": away,
             "competition": ev.get("competitionName"),
             "start": ev.get("startDate"),
+            "sport": SPORT_MAP.get(ev.get("categoryName"), "football"),
         }
     markets = {}
     for m in data.get("markets") or []:
@@ -85,7 +90,7 @@ def rows_from_events_table(body: dict, captured_at: str | None, label: str | Non
             "captured_at": captured_at,
             "snapshot_label": label,
             "site_event_id": mk["eventId"],
-            "sport": "football",
+            "sport": ev.get("sport", "football"),
             "listed_only": False,
         })
     return out

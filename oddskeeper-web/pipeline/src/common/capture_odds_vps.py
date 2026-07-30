@@ -59,19 +59,38 @@ BLOCK_HOSTS = (
 KEEP_URL_HINTS = ("events-table", "event-market", "route-data", "widgets/event", "/sb/")
 
 TAB = "?tab=liveAndUpcoming"
+# Kapsam (kullanici tanimi): Turk futbol takimlarinin Avrupa maclari + TSL + 1.Lig,
+# basketbol BSL + TBL, kadin/erkek milli takim maclari. Her competition Bets10'da
+# ayri bir sayfa; events-table/v2 o competition'in tum maclarini verir. Yanlis/bos
+# sayfalar harness'te sessizce atlanir. Slug deseni: /spor-bahisleri/<spor>/<bolge>/<lig>.
+# NOT (2026-07-30): basketbol (BSL ~Ekim) + milli takimlar su an SEZON DISI, sayfalari
+# bos doner; sezon baslayinca otomatik dolar. Futbol competition'lari aktif.
+BETS10_PAGES = [
+    # --- futbol domestic (Turkiye) ---
+    ("futbol-turkiye-1lig", "/tr/spor-bahisleri/futbol/turkiye/turkiye-1-lig"),
+    ("futbol-turkiye-super-lig", "/tr/spor-bahisleri/futbol/turkiye/turkiye-super-lig"),
+    # --- futbol Avrupa (Turk takimlari eleme/gruplar) ---
+    ("futbol-sampiyonlar-ligi", "/tr/spor-bahisleri/futbol/uefa-sampiyonlar-ligi/sampiyonlar-ligi"),
+    ("futbol-avrupa-ligi", "/tr/spor-bahisleri/futbol/uefa-avrupa-ligi/avrupa-ligi"),
+    ("futbol-konferans-ligi", "/tr/spor-bahisleri/futbol/konferans-ligi/konferans-ligi"),
+    ("futbol-kulup-maclari", "/tr/spor-bahisleri/futbol/dostluk-maclari/kulup-maclari"),
+    # --- basketbol (SEZON DISI; slug tahmini, sezonda dogrulanacak) ---
+    ("basketbol-super-lig", "/tr/spor-bahisleri/basketbol/turkiye/turkiye-basketbol-super-ligi"),
+    ("basketbol-tbl", "/tr/spor-bahisleri/basketbol/turkiye/turkiye-basketbol-ligi"),
+    ("basketbol-euroleague", "/tr/spor-bahisleri/basketbol/euroleague/euroleague"),
+    # --- milli takimlar (SEZON DISI; uluslararasi turnuvalar mac oldukca eklenir) ---
+    ("futbol-milli-eleme", "/tr/spor-bahisleri/futbol/dunya-kupasi-eleme-uefa/dunya-kupasi-eleme-uefa"),
+]
 SITES: dict[str, dict] = {
     "bets10": {
         "domain_template": "https://www.{n}bets10.com",
         "domain_start": 10020,
         "domain_tries": 12,
         "probe_path": "/tr/spor-bahisleri/futbol",
-        "pages": [
-            ("futbol-turkiye-1lig", "/tr/spor-bahisleri/futbol/turkiye/turkiye-1-lig" + TAB),
-            ("futbol-avrupa-ligi", "/tr/spor-bahisleri/futbol/uefa-avrupa-ligi/avrupa-ligi" + TAB),
-            ("futbol-konferans-ligi", "/tr/spor-bahisleri/futbol/konferans-ligi/konferans-ligi" + TAB),
-        ],
+        "pages": [(lbl, path + TAB) for lbl, path in BETS10_PAGES],
     },
-    # bet365: TR geo'dan erisilemeyebilir (pazardan cekildi). Spike'ta netlesir.
+    # bet365 dogrudan otomasyonla oran vermiyor (anti-bot); bet365 oranlari
+    # API-Football uzerinden aliniyor (fetch_apifootball_odds.py).
     "bet365": {"base": "https://www.bet365.com", "probe_path": "/", "pages": [("anasayfa", "/#/AS/B1/")]},
 }
 
