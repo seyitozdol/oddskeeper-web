@@ -46,9 +46,13 @@ export async function updateSession(request: NextRequest) {
       .eq("user_id", userId)
       .maybeSingle();
 
+    // Izin satiri olmayan kullanici (kendi kaydolan) hicbir basliga erisemez:
+    // satirsiz durumu bos diziye cevir. Satir icindeki null tam erisim demek.
+    const effectiveKeys = perm ? (perm.allowed_keys ?? null) : [];
+
     const allowed = adminPath
       ? perm?.is_admin === true
-      : isNavKeyAllowed(navKey!, perm?.allowed_keys ?? null);
+      : isNavKeyAllowed(navKey!, effectiveKeys);
 
     if (!allowed) {
       const redirectResponse = NextResponse.redirect(

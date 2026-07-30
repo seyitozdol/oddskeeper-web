@@ -45,6 +45,10 @@ export async function getNavAccess(): Promise<NavAccess> {
     userId: user.id,
     userEmail: user.email ?? null,
     isAdmin: perm?.is_admin === true,
-    allowedKeys: perm?.allowed_keys ?? null,
+    // Izin satiri OLMAYAN kullanici ( or. kendi kaydolan biri) hicbir basliga
+    // erisemez: satirsiz durumu bos diziye cevir. Satir icinde allowed_keys
+    // null ise bu bilincli "tam erisim" demektir (admin panelinden acilan
+    // kullanici varsayilani), oyle kalir.
+    allowedKeys: perm ? (perm.allowed_keys ?? null) : [],
   };
 }
