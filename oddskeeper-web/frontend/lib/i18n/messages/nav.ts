@@ -3,6 +3,7 @@ import { defineMessages } from "../defineMessages";
 export const nav = defineMessages({
   en: {
     workspace: "Prediction Workspace",
+    upcomingEvents: "Upcoming Events",
     smartPrediction: "Smart Prediction",
     deepPredictionMl: "Deep Prediction ML",
     matchPredictions: "Match Predictions",
@@ -41,6 +42,7 @@ export const nav = defineMessages({
   },
   tr: {
     workspace: "Tahmin Merkezi",
+    upcomingEvents: "Yaklaşan Maçlar",
     smartPrediction: "Akıllı Tahmin",
     deepPredictionMl: "Derin Tahmin ML",
     matchPredictions: "Maç Tahminleri",

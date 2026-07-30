@@ -40,6 +40,7 @@ export default function AppHeader({
   const [isLangOpen, setIsLangOpen] = useState(false);
 
   const initials = userEmail ? userEmail.slice(0, 1).toUpperCase() : "U";
+  const isUpcomingActive = pathname.startsWith("/dashboard/upcoming-events");
   const isStatsActive = pathname.startsWith("/dashboard/stats-analysis");
   const isTff1Active = pathname.startsWith("/dashboard/tff-1-lig");
   const isAdminActive = pathname.startsWith("/dashboard/admin");
@@ -83,6 +84,15 @@ export default function AppHeader({
           </Link>
 
           <nav className="hidden items-center gap-1 md:flex">
+            {can("upcoming-events") ? (
+              <Link
+                href="/dashboard/upcoming-events"
+                className={navLinkClass(isUpcomingActive)}
+              >
+                {t("nav.upcomingEvents")}
+              </Link>
+            ) : null}
+
             {can("smart-prediction") ? (
               <Link
                 href="/dashboard/smart-prediction"
@@ -253,6 +263,15 @@ export default function AppHeader({
 
       <div className="px-4 pb-2 md:hidden">
         <div className="flex flex-wrap gap-1.5">
+          {can("upcoming-events") ? (
+            <Link
+              href="/dashboard/upcoming-events"
+              className={navLinkClass(isUpcomingActive)}
+            >
+              {t("nav.upcomingEvents")}
+            </Link>
+          ) : null}
+
           {can("smart-prediction") ? (
             <Link
               href="/dashboard/smart-prediction"

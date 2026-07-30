@@ -1,0 +1,44 @@
+import { defineMessages } from "../defineMessages";
+
+export const upcomingEvents = defineMessages({
+  en: {
+    title: "Upcoming Events",
+    subtitle:
+      "Turkish clubs and national teams in football, basketball and volleyball, sorted by kickoff time.",
+    filterAll: "All",
+    football: "Football",
+    basketball: "Basketball",
+    volleyball: "Volleyball",
+    today: "Today",
+    tomorrow: "Tomorrow",
+    live: "Live",
+    started: "Started",
+    women: "Women",
+    noEvents: "No upcoming events found.",
+    lastUpdated: "Data updated",
+    timeZoneNote: "Times are in Türkiye time (TSI).",
+    dayShort: "d",
+    hourShort: "h",
+    minuteShort: "m",
+  },
+  tr: {
+    title: "Yaklaşan Maçlar",
+    subtitle:
+      "Futbol, basketbol ve voleybolda Türk takımları ve milli takımların maçları, başlama saatine göre sıralı.",
+    filterAll: "Tümü",
+    football: "Futbol",
+    basketball: "Basketbol",
+    volleyball: "Voleybol",
+    today: "Bugün",
+    tomorrow: "Yarın",
+    live: "Canlı",
+    started: "Başladı",
+    women: "Kadın",
+    noEvents: "Yaklaşan maç bulunamadı.",
+    lastUpdated: "Veri güncellenme",
+    timeZoneNote: "Saatler Türkiye saatidir (TSİ).",
+    dayShort: "g",
+    hourShort: "sa",
+    minuteShort: "dk",
+  },
+});

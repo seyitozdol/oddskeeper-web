@@ -5,6 +5,7 @@
 // (layout, admin API), hem proxy middleware bu modulu kullanir.
 
 export const NAV_KEYS = [
+  "upcoming-events",
   "smart-prediction",
   "deep-prediction-ml",
   "match-predictions",
@@ -23,6 +24,12 @@ export type NavPermissionItem = {
 };
 
 export const NAV_PERMISSION_ITEMS: NavPermissionItem[] = [
+  {
+    key: "upcoming-events",
+    labelKey: "nav.upcomingEvents",
+    href: "/dashboard/upcoming-events",
+    pathPrefixes: ["/dashboard/upcoming-events"],
+  },
   {
     key: "smart-prediction",
     labelKey: "nav.smartPrediction",

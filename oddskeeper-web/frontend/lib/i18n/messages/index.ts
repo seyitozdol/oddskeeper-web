@@ -16,6 +16,7 @@ import { smartPrediction } from "./smartPrediction";
 import { statsHub } from "./statsHub";
 import { teamDetail } from "./teamDetail";
 import { tff1 } from "./tff1";
+import { upcomingEvents } from "./upcomingEvents";
 
 const MESSAGES: Record<
   string,
@@ -38,6 +39,7 @@ const MESSAGES: Record<
   statsHub,
   teamDetail,
   tff1,
+  upcomingEvents,
 };
 
 export type TranslateParams = Record<string, string | number>;
