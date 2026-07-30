@@ -8,12 +8,17 @@ Futbol / basketbol / voleybol icin iki tur kategori taranir:
 Dogrudan requests 403 yedigi icin curl_cffi ile Chrome TLS taklidi yapilir
 (api.sofascore.com tarayici disi TLS parmak izlerini engelliyor).
 
+SofaScore datacenter IP'lerini de engelledigi icin istekler PROXY_URL
+(residential, .env) uzerinden gider; VPS'te proxysiz calismaz. Bu, uretim
+fetcher'i fetch_sofascore_matches.py ile ayni desen. NOT: proxy GB basina
+ucretlidir, bu yuzden yalnizca SofaScore istekleri proxy'den geciyor.
+
 tracker.upcoming_events'e upsert eder; ayrica:
   - baslangici 3 gunden eski kayitlari siler,
   - 24 saattir sweep'te gorulmeyen notstarted kayitlari siler (kaynaktan kalkti).
 
 Kullanim: python fetch_upcoming_events.py [gun_sayisi]  (varsayilan 14)
-Periyodik: pipeline/run_upcoming_events.bat -> Windows Task Scheduler.
+Periyodik: VPS'te cron (/opt/oddskeeper/run_upcoming_events.sh).
 """
 import os
 import sys
@@ -27,6 +32,10 @@ from dotenv import load_dotenv
 API = "https://api.sofascore.com/api/v1"
 REQUEST_GAP_SEC = 0.35
 DEFAULT_DAYS_AHEAD = 14
+
+# main() icinde load_dotenv sonrasi doldurulur. SofaScore residential proxy
+# (PROXY_URL, .env) ardindan cekilir; bos kalirsa VPS'te 403 gelir.
+PROXIES: dict = {}
 
 # Kategori id'leri /api/v1/sport/{sport}/categories ciktisindan (2026-07-30).
 # "all": kategorinin tum maclari; "tr_only": sadece TR takimli maclar.
@@ -73,7 +82,7 @@ def log(msg: str) -> None:
 def get_json(url: str) -> dict | None:
     for attempt in (1, 2):
         try:
-            r = creq.get(url, impersonate="chrome", timeout=20)
+            r = creq.get(url, impersonate="chrome", timeout=40, proxies=PROXIES)
             if r.status_code == 200:
                 return r.json()
             if r.status_code == 404:
@@ -139,6 +148,14 @@ def main() -> None:
 
     here = os.path.dirname(os.path.abspath(__file__))
     load_dotenv(os.path.join(here, "..", "..", ".env"))
+
+    # SofaScore residential proxy uzerinden gider (VPS datacenter IP'si engelli).
+    proxy = (os.environ.get("PROXY_URL") or "").strip()
+    if not proxy:
+        raise SystemExit("Eksik PROXY_URL (.env) - SofaScore proxy'siz 403 verir")
+    global PROXIES
+    PROXIES = {"http": proxy, "https": proxy}
+
     conn = psycopg2.connect(os.environ["DATABASE_URL"])
     conn.autocommit = False
     cur = conn.cursor()

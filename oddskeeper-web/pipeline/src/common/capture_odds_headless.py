@@ -1,5 +1,11 @@
-"""Bahis sitesi oran yakalayici (headless, sunucuda zamanlanabilir).
+"""[KULLANIMDAN KALKIYOR] Bahis sitesi oran yakalayici (headless, DOM kazima).
 
+VPS uretim yolu artik `capture_odds_vps.py`: headful Chromium + Xvfb, TR-geo
+sticky residential proxy, oranin AGDAN (CDP ile WS/XHR) yakalanmasi. Bu dosya
+(headless + proxysiz + DOM kazima) yerel/referans amacli tutuluyor; VPS harness'i
+uctan uca dogrulaninca kaldirilacak.
+
+--- eski aciklama ---
 Tarayici konsoluna elle yapistirilan `pipeline/browser/capture_odds_snippet.js`
 ile AYNI cikarim mantigini kullanir: snippet sayfaya enjekte edilir, `okAuto()`
 kaydirarak toplar, sonra `window.__okCapture` okunur. Tek dogruluk kaynagi
