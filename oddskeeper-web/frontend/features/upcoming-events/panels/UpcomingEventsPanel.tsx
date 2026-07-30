@@ -11,6 +11,8 @@ import {
 
 const TZ = "Europe/Istanbul";
 
+type SiteKey = "bet365" | "bets10" | "oddsportal";
+
 const SPORT_ICON: Record<TrackedSport, string> = {
   football: "/icons/football.svg",
   basketball: "/icons/basketball.svg",
@@ -130,54 +132,67 @@ export default function UpcomingEventsPanel({
         ? "bg-amber-500/15 text-amber-500"
         : "bg-veil text-ink-2";
 
-  function OddsMark({
+  // Marka rozeti (metin yerine gorsel kimlik). Dis logo dosyasi yok; her rozet
+  // sitenin marka renginde stillendirilmis kucuk bir isaret.
+  function brandBadge(site: SiteKey) {
+    if (site === "bets10")
+      return (
+        <span className="inline-flex h-4 min-w-[16px] items-center justify-center rounded-[3px] bg-[#0aa84f] px-1 text-[10px] font-bold leading-none text-white">
+          10
+        </span>
+      );
+    if (site === "bet365")
+      return (
+        <span className="inline-flex h-4 items-center rounded-[3px] bg-[#027b5b] px-1 text-[10px] font-bold leading-none tracking-tight text-[#ffdf1a]">
+          bet365
+        </span>
+      );
+    return (
+      <span className="inline-flex h-4 items-center rounded-[3px] bg-[#e8522b] px-1 text-[10px] font-bold leading-none text-white">
+        OP
+      </span>
+    );
+  }
+
+  function SiteMark({
+    site,
     value,
     marketCount,
     listed,
   }: {
+    site: SiteKey;
     value: boolean | null;
     marketCount: number;
     listed: boolean;
   }) {
-    if (value == null) {
+    if (value) {
       return (
         <span
-          className="text-[12px] text-ink-3"
-          title={t("upcomingEvents.oddsUnchecked")}
+          className="inline-flex items-center gap-0.5"
+          title={t("upcomingEvents.marketCountTitle", { count: marketCount })}
         >
-          -
+          {brandBadge(site)}
+          {marketCount > 0 ? (
+            <span className="text-[10px] tabular-nums text-ink-3">
+              {marketCount}
+            </span>
+          ) : null}
         </span>
       );
     }
-    // Sitede goruldu ama oran yakalanamadi: "oran yok" demek yanlis olur.
     if (!value && listed) {
       return (
         <span
-          className="inline-flex items-center gap-1 rounded bg-amber-500/15 px-1.5 py-0.5 text-[11px] font-semibold text-amber-500"
+          className="inline-flex opacity-40 grayscale"
           title={t("upcomingEvents.oddsListedTitle")}
         >
-          <span aria-hidden="true">~</span>
-          {t("upcomingEvents.oddsListed")}
+          {brandBadge(site)}
         </span>
       );
     }
-    return value ? (
-      <span
-        className="inline-flex items-center gap-1 rounded bg-emerald-500/15 px-1.5 py-0.5 text-[11px] font-semibold text-emerald-500"
-        title={t("upcomingEvents.marketCountTitle", { count: marketCount })}
-      >
-        <span aria-hidden="true">✓</span>
-        {t("upcomingEvents.oddsLive")}
-        {marketCount > 0 ? (
-          <span className="font-normal tabular-nums opacity-80">
-            {marketCount}
-          </span>
-        ) : null}
-      </span>
-    ) : (
-      <span className="inline-flex items-center gap-1 rounded bg-red-500/15 px-1.5 py-0.5 text-[11px] font-semibold text-red-400">
-        <span aria-hidden="true">✗</span>
-        {t("upcomingEvents.oddsNoLive")}
+    return (
+      <span className="text-[11px] text-ink-3/50" title={t("upcomingEvents.oddsUnchecked")}>
+        ·
       </span>
     );
   }
@@ -222,37 +237,35 @@ export default function UpcomingEventsPanel({
           {t("upcomingEvents.noEvents")}
         </div>
       ) : (
-        <div className="mt-4 overflow-x-auto rounded-lg border border-line">
-          <table className="w-full min-w-[880px] table-fixed border-collapse text-[13px]">
+        <div className="mt-3 overflow-x-auto rounded-lg border border-line">
+          <table className="w-full min-w-[760px] table-fixed border-collapse text-[13px]">
             <colgroup>
-              <col className="w-[60px]" />
-              <col className="w-[96px]" />
-              <col className="w-[36px]" />
+              <col className="w-[46px]" />
+              <col className="w-[70px]" />
               <col />
-              <col className="w-[32%]" />
-              <col className="w-[84px]" />
-              <col className="w-[84px]" />
+              <col className="w-[26%]" />
+              <col className="w-[52px]" />
+              <col className="w-[52px]" />
+              <col className="w-[52px]" />
             </colgroup>
             <thead>
-              <tr className="text-left text-[11px] uppercase tracking-[0.08em] text-ink-3">
-                <th className="px-3 py-2 font-semibold">
+              <tr className="text-left text-[10px] uppercase tracking-[0.08em] text-ink-3">
+                <th className="px-2 py-1 font-semibold">
                   {t("upcomingEvents.thTime")}
                 </th>
-                <th className="px-2 py-2 font-semibold">
+                <th className="px-1.5 py-1 font-semibold">
                   {t("upcomingEvents.thStartsIn")}
                 </th>
-                <th className="px-2 py-2" />
-                <th className="px-2 py-2 font-semibold">
+                <th className="px-2 py-1 font-semibold">
                   {t("upcomingEvents.thMatch")}
                 </th>
-                <th className="px-3 py-2 font-semibold">
+                <th className="px-2 py-1 font-semibold">
                   {t("upcomingEvents.thTournament")}
                 </th>
-                <th className="px-2 py-2 text-center font-semibold normal-case">
-                  Bet365
-                </th>
-                <th className="px-2 py-2 text-center font-semibold normal-case">
-                  Bets10
+                <th className="px-1 py-1 text-center">{brandBadge("bet365")}</th>
+                <th className="px-1 py-1 text-center">{brandBadge("bets10")}</th>
+                <th className="px-1 py-1 text-center">
+                  {brandBadge("oddsportal")}
                 </th>
               </tr>
             </thead>
@@ -262,7 +275,7 @@ export default function UpcomingEventsPanel({
                   <tr>
                     <td
                       colSpan={7}
-                      className="border-y border-line bg-veil px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-3"
+                      className="border-y border-line bg-veil px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-3"
                     >
                       {dayLabel(key, rows[0])}
                     </td>
@@ -274,68 +287,78 @@ export default function UpcomingEventsPanel({
                         key={e.event_id}
                         className="border-t border-line text-ink first:border-t-0"
                       >
-                        <td className="whitespace-nowrap px-3 py-2 text-[12px] tabular-nums text-ink-2">
+                        <td className="whitespace-nowrap px-2 py-1 text-[12px] tabular-nums text-ink-2">
                           {timeFmt.format(new Date(e.start_ts))}
                         </td>
                         <td
-                          className="whitespace-nowrap px-2 py-2"
+                          className="whitespace-nowrap px-1.5 py-1"
                           suppressHydrationWarning
                         >
                           {cd.text ? (
                             <span
-                              className={`rounded px-1.5 py-0.5 text-[11px] font-semibold tabular-nums ${badgeClass(cd.tone)}`}
+                              className={`rounded px-1 py-0.5 text-[10px] font-semibold tabular-nums ${badgeClass(cd.tone)}`}
                             >
                               {cd.text}
                             </span>
                           ) : null}
                         </td>
-                        <td className="px-2 py-2">
-                          <Image
-                            src={SPORT_ICON[e.sport] ?? SPORT_ICON.football}
-                            alt={e.sport}
-                            width={15}
-                            height={15}
-                            className="opacity-85"
-                          />
-                        </td>
-                        <td className="overflow-hidden px-2 py-2">
+                        <td className="overflow-hidden px-2 py-1">
                           <span className="flex items-center gap-1.5 truncate">
-                            <span className="font-medium">
-                              {e.home_team_name}
-                            </span>
-                            <span className="shrink-0 text-ink-3">-</span>
-                            <span className="font-medium">
-                              {e.away_team_name}
+                            <Image
+                              src={SPORT_ICON[e.sport] ?? SPORT_ICON.football}
+                              alt={e.sport}
+                              width={13}
+                              height={13}
+                              className="shrink-0 opacity-80"
+                            />
+                            <span className="truncate">
+                              <span className="font-medium">
+                                {e.home_team_name}
+                              </span>
+                              <span className="px-1 text-ink-3">-</span>
+                              <span className="font-medium">
+                                {e.away_team_name}
+                              </span>
                             </span>
                             {e.gender === "F" ? (
-                              <span className="shrink-0 rounded bg-fuchsia-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-fuchsia-400">
+                              <span className="shrink-0 rounded bg-fuchsia-500/15 px-1 py-0.5 text-[9px] font-semibold text-fuchsia-400">
                                 {t("upcomingEvents.women")}
                               </span>
                             ) : null}
                           </span>
                         </td>
-                        <td className="overflow-hidden px-3 py-2 text-[12px] text-ink-3">
+                        <td className="overflow-hidden px-2 py-1 text-[11px] text-ink-3">
                           <span className="block truncate">
                             {e.tournament_name}
                             {e.round_info ? (
-                              <span className="ml-1.5 text-ink-3/80">
+                              <span className="ml-1 text-ink-3/80">
                                 {e.round_info}
                               </span>
                             ) : null}
                           </span>
                         </td>
-                        <td className="px-2 py-2 text-center">
-                          <OddsMark
+                        <td className="px-1 py-1 text-center">
+                          <SiteMark
+                            site="bet365"
                             value={e.bet365_has_odds}
                             marketCount={e.bet365_market_count}
                             listed={e.bet365_listed}
                           />
                         </td>
-                        <td className="px-2 py-2 text-center">
-                          <OddsMark
+                        <td className="px-1 py-1 text-center">
+                          <SiteMark
+                            site="bets10"
                             value={e.bets10_has_odds}
                             marketCount={e.bets10_market_count}
                             listed={e.bets10_listed}
+                          />
+                        </td>
+                        <td className="px-1 py-1 text-center">
+                          <SiteMark
+                            site="oddsportal"
+                            value={e.oddsportal_has_odds}
+                            marketCount={e.oddsportal_market_count}
+                            listed={e.oddsportal_listed}
                           />
                         </td>
                       </tr>

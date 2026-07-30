@@ -38,4 +38,7 @@ export type UpcomingEventRow = {
   bets10_has_odds: boolean | null;
   bets10_market_count: number;
   bets10_listed: boolean;
+  oddsportal_has_odds: boolean | null;
+  oddsportal_market_count: number;
+  oddsportal_listed: boolean;
 };
