@@ -5,27 +5,27 @@ NEDEN AG YAKALAMA (DOM DEGIL): Bets10 oranlari WebSocket ile guncelleniyor,
 arayuz shadow DOM icinde; DOM kazimak kirilgan. Bu harness oranin geldigi ham
 kaynagi (WS frame'leri + /sb/ XHR/fetch JSON'lari) CDP ile kaydeder.
 
-NEDEN HEADFUL + XVFB: bet365/Bets10 anti-bot headless Chromium'u ve datacenter
-IP'sini yakalar. VPS'te wrapper `xvfb-run -a` ile sanal ekranda gercek (headful)
-tarayici acar; bu script yalnizca headless=False ile baslar.
+NEDEN HEADFUL + XVFB: bet365/Bets10 anti-bot headless Chromium'u yakalar. VPS'te
+wrapper `xvfb-run -a` ile sanal ekranda gercek (headful) tarayici acar; bu script
+yalnizca headless=False ile baslar.
 
-NEDEN TR-GEO STICKY PROXY: Bets10 dogru oranlari yalnizca TR exit IP'ye verir
-(yanlis geo = farkli/engelli oran). Sticky session = oturum boyunca ayni IP,
-yoksa anti-bot cerezi + WS baglantisi bozulur. DataImpulse'ta username ekiyle:
-  PROXY_ODDS_TR = http://<user>__cr.tr;session-<id>:<pass>@gw.dataimpulse.com:823
-.env'de {session} yer tutucusu varsa her kosuda yeni sticky id uretilir.
+PROXY (opsiyonel): varsayilan DIREKT (VPS IP'si). Site VPS'in datacenter IP'sini
+engellerse `--proxy` ile PROXY_URL (.env, residential) uzerinden gecilir. Proxy GB
+basina ucretli oldugu icin once proxysiz denenir; gerekliligi ampirik belirlenir.
+Geo, proxy neyse odur; ozel bir ulke ZORUNLU tutulmaz. `.env`'de proxy string'inde
+{session} yer tutucusu varsa sticky icin her kosuda sabit id ile degistirilir.
 
-GB TASARRUFU: proxy GB basina ucretli ve tarayicida TUM alt kaynak proxy'den
-gecer. image/font/media/stylesheet ve casino/analitik host'lari abort edilir;
-yalnizca sportsbook HTML/JS + /sb/ API + WS gecer.
+GB TASARRUFU: proxy kullanilirsa tarayicida TUM alt kaynak proxy'den gecer;
+image/font/media/stylesheet ve casino/analitik host'lari abort edilir, yalnizca
+sportsbook HTML/JS + /sb/ API + WS gecer.
 
-BU ASAMA (SPIKE): parser YOK. Amac ham agi VPS'te (dogru TR geo ile) kaydedip
-oranin XHR JSON'da mi yoksa WS binary'de mi geldigini gormek. Cikti dump'i
-data/odds/ altina yazilir; incelendikten sonra parse_bets10_network.py yazilir.
+BU ASAMA (SPIKE): parser YOK. Amac ham agi kaydedip oranin XHR JSON'da mi yoksa
+WS binary'de mi geldigini + VPS IP'sinin (ya da proxy'nin) engellenip
+engellenmedigini gormek. Cikti data/odds/ altina; sonra parse_bets10_network.py.
 
 Kullanim (VPS):
-  xvfb-run -a /opt/oddskeeper/venv/bin/python src/common/capture_odds_vps.py bets10
-  # secenekler: --pages <etiket...>  --per-league N  --detail-wait-ms MS  --headed(yerel gorunur)
+  xvfb-run -a python src/common/capture_odds_vps.py bets10 --chromium-path /usr/bin/chromium
+  # +opsiyon: --proxy (PROXY_URL uzerinden)  --pages <etiket>  --per-league N
 """
 from __future__ import annotations
 
@@ -78,8 +78,11 @@ MAX_TOTAL_MB = 60         # dump ust siniri, kacak onlemi
 
 
 def proxy_config(session_id: str) -> dict | None:
-    """PROXY_ODDS_TR URL'ini Playwright proxy config'ine cevirir (auth ayri)."""
-    raw = (ENV.get("PROXY_ODDS_TR") or "").strip()
+    """Proxy URL'ini Playwright proxy config'ine cevirir (auth ayri).
+
+    Once PROXY_ODDS_TR (varsa ozel geo/sticky), yoksa PROXY_URL (genel residential).
+    """
+    raw = (ENV.get("PROXY_ODDS_TR") or ENV.get("PROXY_URL") or "").strip()
     if not raw:
         return None
     raw = raw.replace("{session}", session_id)
@@ -193,12 +196,13 @@ def match_hrefs(page) -> list[str]:
 
 
 def capture(site: str, headed: bool, out_dir: Path, only, per_league: int,
-            detail_wait_ms: int, list_wait_ms: int) -> Path:
+            detail_wait_ms: int, list_wait_ms: int,
+            use_proxy: bool, chromium_path: str | None) -> Path:
     cfg = SITES[site]
     session_id = secrets.token_hex(6)  # sticky: kosu boyunca sabit
-    proxy = proxy_config(session_id)
-    if not proxy and site == "bets10":
-        raise SystemExit("Eksik PROXY_ODDS_TR (.env) - Bets10 TR-geo proxy sart")
+    # Varsayilan DIREKT (VPS IP). --proxy verilirse PROXY_URL uzerinden.
+    proxy = proxy_config(session_id) if use_proxy else None
+    print(f"[proxy] {'AKTIF' if proxy else 'yok (direkt VPS IP)'}", flush=True)
 
     store = {
         "version": 1, "kind": "network-capture", "site": site,
@@ -211,8 +215,14 @@ def capture(site: str, headed: bool, out_dir: Path, only, per_league: int,
     if only:
         pages = [p for p in pages if p[0] in only]
 
+    launch_kw: dict = {"headless": not headed}
+    if proxy:
+        launch_kw["proxy"] = proxy
+    if chromium_path:
+        launch_kw["executable_path"] = chromium_path  # sistem chromium'u kullan
+
     with sync_playwright() as pw:
-        browser = pw.chromium.launch(headless=not headed, proxy=proxy)
+        browser = pw.chromium.launch(**launch_kw)
         ctx = browser.new_context(
             locale="tr-TR", timezone_id="Europe/Istanbul",
             viewport={"width": 1600, "height": 1000},
@@ -276,9 +286,12 @@ def main() -> None:
     ap.add_argument("--per-league", type=int, default=8)
     ap.add_argument("--detail-wait-ms", type=int, default=9000)
     ap.add_argument("--list-wait-ms", type=int, default=7000)
+    ap.add_argument("--proxy", action="store_true", help="PROXY_URL uzerinden geç (varsayilan direkt)")
+    ap.add_argument("--chromium-path", default=None, help="sistem chromium yolu, ör. /usr/bin/chromium")
     args = ap.parse_args()
     capture(args.site, args.headed, Path(args.out), args.pages,
-            args.per_league, args.detail_wait_ms, args.list_wait_ms)
+            args.per_league, args.detail_wait_ms, args.list_wait_ms,
+            args.proxy, args.chromium_path)
 
 
 if __name__ == "__main__":
