@@ -49,6 +49,9 @@ Sunucu saati UTC. Üç iş:
 
 # 3) bet365 oranları (API-Football, tarayıcısız; Avrupa maçları): 3 saatte bir (ucuz)
 45 */3 * * *  /opt/oddskeeper/run_bet365_odds.sh
+
+# 4) OddsPortal oranları (headful+xvfb, proxy YOK; domestic+Avrupa): 6 saatte bir
+30 */6 * * *  /opt/oddskeeper/run_oddsportal.sh
 ```
 Wrapper'ları kopyala: `cp oddskeeper-web/pipeline/deploy/run_*.sh /opt/oddskeeper/ && chmod +x /opt/oddskeeper/run_*.sh`
 `.env`'e `API_FOOTBALL_KEY` ekli olmalı (bet365 işi için).
