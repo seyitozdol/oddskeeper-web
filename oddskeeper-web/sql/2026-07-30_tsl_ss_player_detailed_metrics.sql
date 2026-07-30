@@ -176,9 +176,94 @@ derived_rows as (
     true as coverage_flag
   from psum p
   join analytics.tsl_ss_metric_catalog_v1 c on c.agg_kind = 'derived'
+),
+-- ── FlashScore kart overlay (SofaScore oyuncu istatistiginde kart YOK) ──
+-- FlashScore oyuncu id -> opta id (ref.flashscore_player_map); FS TSL sadece 25/26.
+fs_match as (
+  select
+    fmap.opta_player_id                                          as player_source_id,
+    m.season_label,
+    d.source_match_id,
+    d.source_team_id,
+    d.team_name,
+    d.player_name,
+    m.match_datetime,
+    coalesce((d.raw_stats->>'MATCH_MINUTES_PLAYED')::numeric, 0) as minutes,
+    (m.home_team_source_id = d.source_team_id)                   as is_home,
+    coalesce((d.raw_stats->>'CARDS_YELLOW')::numeric, 0)         as yellow,
+    coalesce((d.raw_stats->>'CARDS_RED')::numeric, 0)            as red
+  from football.match_player_stats_details d
+  join football.matches m
+    on m.source = d.source and m.source_match_id = d.source_match_id
+  join ref.flashscore_player_map fmap
+    on fmap.flashscore_player_id = d.source_player_id
+  where d.source = 'flashscore' and m.competition = 'Süper Lig'
+    and fmap.opta_player_id is not null
+),
+fs_card_long as (
+  select player_source_id, season_label, source_team_id, team_name, player_name,
+         source_match_id, match_datetime, minutes, is_home, x.metric_key, x.val
+  from fs_match
+  cross join lateral (values
+    ('cards_yellow_total', yellow),
+    ('cards_red_total',    red)
+  ) as x(metric_key, val)
+),
+fs_card_agg as (
+  select
+    player_source_id, season_label, source_team_id, metric_key,
+    (array_agg(team_name   order by match_datetime desc))[1] as team_name,
+    (array_agg(player_name order by match_datetime desc))[1] as player_name,
+    count(distinct source_match_id) filter (where minutes > 0) as apps,
+    count(distinct source_match_id) filter (where minutes > 0) as sample_matches,
+    sum(val)                                                   as sum_all,
+    sum(val) filter (where is_home)                            as home_sum,
+    sum(val) filter (where not is_home)                        as away_sum,
+    sum(minutes) filter (where minutes > 0)                    as min_all
+  from fs_card_long
+  group by player_source_id, season_label, source_team_id, metric_key
+),
+fs_card_last5 as (
+  select player_source_id, season_label, source_team_id, metric_key,
+         round(avg(val), 2) as last5_value
+  from (
+    select fcl.*, row_number() over (
+      partition by player_source_id, season_label, source_team_id, metric_key
+      order by match_datetime desc) as rn
+    from fs_card_long fcl where minutes > 0
+  ) t where rn <= 5
+  group by 1, 2, 3, 4
+),
+fs_card_rows as (
+  select
+    a.season_label,
+    'Süper Lig'::text as competition,
+    a.player_source_id,
+    a.metric_key,
+    a.player_name,
+    null::text as position_code,
+    null::text as role_group,
+    a.source_team_id,
+    null::text as team_slug,
+    a.team_name,
+    c.metric_label, c.category_key, c.category_label, c.display_priority,
+    a.sum_all as total_value,
+    a.sample_matches,
+    case when a.apps > 0 then round(a.sum_all / a.apps, 2) end       as per_match_value,
+    case when a.min_all > 0 then round(a.sum_all / a.min_all * 90, 3) end as per90_value,
+    a.home_sum as home_value,
+    a.away_sum as away_value,
+    l.last5_value,
+    c.is_higher_better, c.rank_direction, c.value_format,
+    (a.sample_matches > 0) as coverage_flag
+  from fs_card_agg a
+  join analytics.tsl_ss_metric_catalog_v1 c using (metric_key)
+  left join fs_card_last5 l using (player_source_id, season_label, source_team_id, metric_key)
 )
 select * from direct_rows
 union all
-select * from derived_rows;
+select * from derived_rows
+union all
+select * from fs_card_rows;
 
 grant select on analytics.tsl_ss_player_detailed_metrics_v1 to anon, authenticated, service_role;
