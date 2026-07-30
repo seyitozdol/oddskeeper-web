@@ -44,8 +44,19 @@ export default function AppHeader({
   const isStatsActive = pathname.startsWith("/dashboard/stats-analysis");
   const isTff1Active = pathname.startsWith("/dashboard/tff-1-lig");
   const isAdminActive = pathname.startsWith("/dashboard/admin");
+  const isPlayerToolsActive = pathname.startsWith(
+    "/dashboard/player-market-prediction"
+  );
+  const isPredictionsActive =
+    pathname.startsWith("/dashboard/smart-prediction") ||
+    pathname.startsWith("/dashboard/deep-prediction-ml") ||
+    pathname.startsWith("/dashboard/match-predictions");
 
   const can = (key: NavKey) => isNavKeyAllowed(key, allowedNavKeys);
+  const canAnyPrediction =
+    can("smart-prediction") ||
+    can("deep-prediction-ml") ||
+    can("match-predictions");
 
   async function handleSignOut() {
     try {
@@ -67,6 +78,13 @@ export default function AppHeader({
     `rounded-lg px-3 py-1.5 text-[13px] font-medium transition ${
       active
         ? "bg-card-2 text-ink"
+        : "text-ink-2 hover:bg-veil hover:text-ink"
+    }`;
+
+  const dropdownItemClass = (active: boolean) =>
+    `block rounded-lg px-3 py-2 text-[13px] transition ${
+      active
+        ? "bg-card-2 font-medium text-ink"
         : "text-ink-2 hover:bg-veil hover:text-ink"
     }`;
 
@@ -93,45 +111,61 @@ export default function AppHeader({
               </Link>
             ) : null}
 
-            {can("smart-prediction") ? (
-              <Link
-                href="/dashboard/smart-prediction"
-                className={navLinkClass(
-                  pathname === "/dashboard/smart-prediction"
-                )}
-              >
-                {t("nav.smartPrediction")}
-              </Link>
-            ) : null}
+            {canAnyPrediction ? (
+              <div className="group relative">
+                <button
+                  type="button"
+                  className={`flex items-center gap-1.5 ${navLinkClass(
+                    isPredictionsActive
+                  )}`}
+                >
+                  <span>{t("nav.predictions")}</span>
+                  <ChevronDownIcon />
+                </button>
 
-            {can("deep-prediction-ml") ? (
-              <Link
-                href="/dashboard/deep-prediction-ml2"
-                className={navLinkClass(
-                  pathname === "/dashboard/deep-prediction-ml2"
-                )}
-              >
-                {t("nav.deepPredictionMl")}
-              </Link>
-            ) : null}
+                <div className="pointer-events-none absolute left-0 top-full z-50 pt-2 opacity-0 transition duration-200 group-hover:pointer-events-auto group-hover:opacity-100">
+                  <div className="w-[220px] rounded-xl border border-line bg-card p-1.5 shadow-lg">
+                    {can("smart-prediction") ? (
+                      <Link
+                        href="/dashboard/smart-prediction"
+                        className={dropdownItemClass(
+                          pathname === "/dashboard/smart-prediction"
+                        )}
+                      >
+                        {t("nav.smartPrediction")}
+                      </Link>
+                    ) : null}
 
-            {can("match-predictions") ? (
-              <Link
-                href="/dashboard/match-predictions"
-                className={navLinkClass(
-                  pathname === "/dashboard/match-predictions"
-                )}
-              >
-                {t("nav.matchPredictions")}
-              </Link>
+                    {can("deep-prediction-ml") ? (
+                      <Link
+                        href="/dashboard/deep-prediction-ml2"
+                        className={dropdownItemClass(
+                          pathname === "/dashboard/deep-prediction-ml2"
+                        )}
+                      >
+                        {t("nav.deepPredictionMl")}
+                      </Link>
+                    ) : null}
+
+                    {can("match-predictions") ? (
+                      <Link
+                        href="/dashboard/match-predictions"
+                        className={dropdownItemClass(
+                          pathname === "/dashboard/match-predictions"
+                        )}
+                      >
+                        {t("nav.matchPredictions")}
+                      </Link>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
             ) : null}
 
             {can("player-market") ? (
               <Link
                 href="/dashboard/player-market-prediction"
-                className={navLinkClass(
-                  pathname === "/dashboard/player-market-prediction"
-                )}
+                className={navLinkClass(isPlayerToolsActive)}
               >
                 {t("nav.playerMarket")}
               </Link>
@@ -291,6 +325,26 @@ export default function AppHeader({
               )}
             >
               {t("nav.deepPredictionMl")}
+            </Link>
+          ) : null}
+
+          {can("match-predictions") ? (
+            <Link
+              href="/dashboard/match-predictions"
+              className={navLinkClass(
+                pathname === "/dashboard/match-predictions"
+              )}
+            >
+              {t("nav.matchPredictions")}
+            </Link>
+          ) : null}
+
+          {can("player-market") ? (
+            <Link
+              href="/dashboard/player-market-prediction"
+              className={navLinkClass(isPlayerToolsActive)}
+            >
+              {t("nav.playerMarket")}
             </Link>
           ) : null}
 

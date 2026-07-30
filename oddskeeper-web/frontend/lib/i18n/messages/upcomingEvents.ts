@@ -31,6 +31,8 @@ export const upcomingEvents = defineMessages({
     oddsListed: "Listed",
     oddsListedTitle: "Match found on the site, but no odds were captured",
     alertBets10Missing: "Odds exist on OddsPortal/bet365 but not on Bets10",
+    priorityStar:
+      "Priority match (Süper Lig club, or Türkiye national football/basketball/women's volleyball)",
   },
   tr: {
     title: "Yaklaşan Maçlar",
@@ -62,5 +64,7 @@ export const upcomingEvents = defineMessages({
     oddsListed: "Listede",
     oddsListedTitle: "Maç sitede bulundu ama oranı yakalanamadı",
     alertBets10Missing: "OddsPortal/bet365'te oran var ama Bets10'da yok",
+    priorityStar:
+      "Öncelikli maç (Süper Lig kulübü ya da Türkiye A Milli futbol/basketbol/kadın voleybol)",
   },
 });

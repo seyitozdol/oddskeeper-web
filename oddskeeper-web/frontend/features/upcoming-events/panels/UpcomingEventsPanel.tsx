@@ -8,6 +8,7 @@ import {
   type TrackedSport,
   type UpcomingEventRow,
 } from "../types";
+import { isPriorityEvent } from "../priority";
 
 const TZ = "Europe/Istanbul";
 
@@ -138,6 +139,21 @@ export default function UpcomingEventsPanel({
     (e.bet365_has_odds === true || e.oddsportal_has_odds === true) &&
     e.bets10_has_odds !== true;
 
+  function StarIcon() {
+    return (
+      <span className="shrink-0" title={t("upcomingEvents.priorityStar")}>
+        <svg
+          viewBox="0 0 24 24"
+          fill="currentColor"
+          className="h-3.5 w-3.5 text-amber-400"
+          aria-hidden="true"
+        >
+          <path d="M12 2.5l2.9 6.06 6.6.79-4.86 4.53 1.28 6.52L12 17.9l-5.92 3.5 1.28-6.52L2.5 9.35l6.6-.79L12 2.5z" />
+        </svg>
+      </span>
+    );
+  }
+
   function AlertIcon() {
     return (
       <span title={t("upcomingEvents.alertBets10Missing")}>
@@ -265,16 +281,16 @@ export default function UpcomingEventsPanel({
         </div>
       ) : (
         <div className="mt-3 overflow-x-auto rounded-lg border border-line">
-          <table className="w-full min-w-[760px] table-fixed border-collapse text-[13px]">
+          <table className="min-w-[560px] table-auto border-collapse text-[13px]">
             <colgroup>
               <col className="w-[22px]" />
               <col className="w-[46px]" />
-              <col className="w-[70px]" />
+              <col className="w-[64px]" />
               <col />
-              <col className="w-[26%]" />
-              <col className="w-[52px]" />
-              <col className="w-[52px]" />
-              <col className="w-[52px]" />
+              <col />
+              <col className="w-[48px]" />
+              <col className="w-[48px]" />
+              <col className="w-[48px]" />
             </colgroup>
             <thead>
               <tr className="text-left text-[10px] uppercase tracking-[0.08em] text-ink-3">
@@ -312,6 +328,7 @@ export default function UpcomingEventsPanel({
                   {rows.map((e) => {
                     const cd = countdown(e);
                     const alert = needsAlert(e);
+                    const priority = isPriorityEvent(e);
                     return (
                       <tr
                         key={e.event_id}
@@ -339,8 +356,9 @@ export default function UpcomingEventsPanel({
                             </span>
                           ) : null}
                         </td>
-                        <td className="overflow-hidden px-2 py-1">
+                        <td className="max-w-[240px] overflow-hidden px-2 py-1">
                           <span className="flex items-center gap-1.5 truncate">
+                            {priority ? <StarIcon /> : null}
                             <Image
                               src={SPORT_ICON[e.sport] ?? SPORT_ICON.football}
                               alt={e.sport}
@@ -364,7 +382,7 @@ export default function UpcomingEventsPanel({
                             ) : null}
                           </span>
                         </td>
-                        <td className="overflow-hidden px-2 py-1 text-[11px] text-ink-3">
+                        <td className="max-w-[300px] overflow-hidden px-2 py-1 text-[11px] text-ink-3">
                           <span className="block truncate">
                             {e.tournament_name}
                             {e.round_info ? (

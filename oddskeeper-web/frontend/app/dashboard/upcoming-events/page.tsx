@@ -20,26 +20,33 @@ export default async function UpcomingEventsPage() {
   return (
     <section className="w-full">
       <div className="rounded-2xl border border-line bg-card p-8">
-        <h1 className="text-2xl font-semibold text-ink lg:text-3xl">
-          {t("upcomingEvents.title")}
-        </h1>
-        <p className="mt-1 text-sm text-ink-2">
-          {t("upcomingEvents.subtitle")}
-        </p>
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+          <h1 className="text-2xl font-semibold text-ink lg:text-3xl">
+            {t("upcomingEvents.title")}
+          </h1>
+          {lastUpdated ? (
+            <span className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-veil px-2.5 py-1 text-[12px] text-ink-2">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              <span className="text-ink-3">
+                {t("upcomingEvents.lastUpdated")}:
+              </span>
+              <span className="font-medium tabular-nums text-ink-2">
+                {new Intl.DateTimeFormat(
+                  locale === "tr" ? "tr-TR" : "en-GB",
+                  {
+                    timeZone: "Europe/Istanbul",
+                    day: "2-digit",
+                    month: "2-digit",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  }
+                ).format(new Date(lastUpdated))}
+              </span>
+            </span>
+          ) : null}
+        </div>
         <p className="mt-1 text-[12px] text-ink-3">
           {t("upcomingEvents.timeZoneNote")}
-          {lastUpdated
-            ? ` ${t("upcomingEvents.lastUpdated")}: ${new Intl.DateTimeFormat(
-                locale === "tr" ? "tr-TR" : "en-GB",
-                {
-                  timeZone: "Europe/Istanbul",
-                  day: "2-digit",
-                  month: "2-digit",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                }
-              ).format(new Date(lastUpdated))}`
-            : null}
         </p>
 
         <div className="mt-6">
