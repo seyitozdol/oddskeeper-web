@@ -17,13 +17,37 @@
 -- value_format: 'count' | 'pct' | 'decimal'.
 -- per90_eligible: sayim event metriklerinde true; oran/rating/dakika/appearance'da false.
 
-drop view if exists analytics.tsl_ss_metric_catalog_v1;
-create view analytics.tsl_ss_metric_catalog_v1 (
-  metric_key, category_key, category_label, metric_label,
-  rank_direction, is_higher_better, value_format, per90_eligible,
-  agg_kind, sofa_key, source_note, display_priority
-) as
-values
+-- Asama 4 (2026-07-30): benchmark_allowed/overview_allowed/role_scope/value_basis
+-- flag'leri eklendi. create or replace (drop DEGIL): stage2/stage3 view'lari bu
+-- katalogu join'liyor, cascade drop olmamali. Yeni kolonlar SONA eklendiginden
+-- create or replace gecerli. Flag'ler mevcut kolonlardan turetilir (52 satir degismedi).
+create or replace view analytics.tsl_ss_metric_catalog_v1 as
+select
+  b.*,
+  (b.metric_key in ('appearances','starts','starter_rate_pct','total_minutes','avg_minutes',
+     'goals_total','assists_total','expected_goals_total','expected_assists_total',
+     'expected_goals_on_target_total','shots_total','shots_on_target_total','shot_accuracy_pct',
+     'xg_per90','key_passes_total','big_chances_created_total','passes_total','accurate_pass_total',
+     'pass_accuracy_pct','crosses_total','long_balls_total','tackles_total','tackles_won_total',
+     'interceptions_total','clearances_total','blocks_total','ball_recoveries_total','duels_won_total',
+     'aerials_won_total','dribbles_won_total','touches_total','fouls_conceded_total','fouls_won_total',
+     'cards_yellow_total','cards_red_total','offsides_total','saves_total_total','penalties_saved_total',
+     'goals_prevented_total','km_covered_total','sprints_total','top_speed','rating_avg')) as benchmark_allowed,
+  (b.metric_key in ('goals_total','assists_total','expected_goals_total','expected_assists_total',
+     'expected_goals_on_target_total','shots_on_target_total','key_passes_total','big_chances_created_total',
+     'dribbles_won_total','duels_won_total','aerials_won_total','tackles_total','tackles_won_total',
+     'interceptions_total','clearances_total','ball_recoveries_total','pass_accuracy_pct','accurate_pass_total',
+     'saves_total_total','penalties_saved_total','goals_prevented_total','rating_avg','top_speed',
+     'km_covered_total','sprints_total')) as overview_allowed,
+  case when b.category_key = 'goalkeeping' then 'gk' else 'all' end as role_scope,
+  case
+    when b.agg_kind = 'sum' and b.per90_eligible then 'per90'
+    when b.value_format = 'pct' then 'pct'
+    when b.metric_key in ('appearances','starts','total_minutes') then 'total'
+    when b.agg_kind in ('avg','max') then 'season'
+    else 'per_match'
+  end as value_basis
+from (values
   -- ── Oynama suresi ─────────────────────────────────────────────
   ('appearances',            'playing_time','Oynama Suresi','Maç',              'desc', true,  'count',  false, 'derived', null,               'sofascore', 10),
   ('starts',                 'playing_time','Oynama Suresi','İlk 11',           'desc', true,  'count',  false, 'derived', null,               'sofascore', 11),
@@ -96,6 +120,9 @@ values
   ('top_speed',              'physical','Fiziksel','En Yüksek Hız (km/s)',      'desc', true,  'decimal',false, 'max',     'topSpeed',             'sofascore', 102),
 
   -- ── Genel ─────────────────────────────────────────────────────
-  ('rating_avg',             'overall','Genel','Ortalama Reyting',              'desc', true,  'decimal',false, 'avg',     'rating',               'sofascore', 110);
+  ('rating_avg',             'overall','Genel','Ortalama Reyting',              'desc', true,  'decimal',false, 'avg',     'rating',               'sofascore', 110)
+) as b(metric_key, category_key, category_label, metric_label,
+       rank_direction, is_higher_better, value_format, per90_eligible,
+       agg_kind, sofa_key, source_note, display_priority);
 
 grant select on analytics.tsl_ss_metric_catalog_v1 to anon, authenticated, service_role;
