@@ -95,7 +95,8 @@
     }
   };
 
-  window.okSnap = (label) => {
+  window.okSnap = (label, opts) => {
+    const silent = !!(opts && opts.silent);
     const anchors = [];
     const shadowTexts = [];
     const seen = new Set();
@@ -177,13 +178,15 @@
       "\n" +
       anchors.map((a) => a.text).join("\n");
     const oddsLike = (allText.match(/\b\d+\.\d{2}\b/g) || []).length;
-    console.log(
-      `[oddskeeper] snapshot alindi${label ? " (" + label + ")" : ""}: ` +
-        `${bodyText.length} char body, ${shadowTexts.length} shadow blok ` +
-        `(${shadowTexts.reduce((n, s) => n + s.text.length, 0)} char), ` +
-        `${anchors.length} link, oran benzeri sayi: ${oddsLike}`
-    );
-    if (oddsLike === 0) {
+    if (!silent) {
+      console.log(
+        `[oddskeeper] snapshot alindi${label ? " (" + label + ")" : ""}: ` +
+          `${bodyText.length} char body, ${shadowTexts.length} shadow blok ` +
+          `(${shadowTexts.reduce((n, s) => n + s.text.length, 0)} char), ` +
+          `${anchors.length} link, oran benzeri sayi: ${oddsLike}`
+      );
+    }
+    if (oddsLike === 0 && !silent) {
       console.warn(
         "[oddskeeper] hic oran benzeri sayi bulunamadi. Oran listesi ekranda " +
           "gorunuyor mu? Liste sanal kaydirmali olabilir; sayfayi asagi kaydirip " +
@@ -196,6 +199,108 @@
       anchors: anchors.length,
       oddsLike,
     };
+  };
+
+  // Sanal kaydirmali listeler icin: sayfayi kademeli kaydirip her adimda
+  // toplar, sonunda TEK birlesik snapshot yazar. Bets10'da liste sayfa basina
+  // ~5 satir render ediyor, elle kaydirmadan geri kalani DOM'a hic gelmiyor.
+  window.okAuto = async (label, opts) => {
+    const steps = (opts && opts.steps) || 14;
+    const waitMs = (opts && opts.waitMs) || 800;
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+    // Kaydirilabilir kapsayicilari bul (pencere olmayabilir; shadow DOM
+    // uygulamalari kendi scroller'ini kullaniyor).
+    const scrollers = [];
+    const seenRoots = new Set();
+    const findScrollers = (root) => {
+      let els;
+      try {
+        els = root.querySelectorAll("*");
+      } catch {
+        return;
+      }
+      for (const el of els) {
+        try {
+          if (el.scrollHeight - el.clientHeight > 400) scrollers.push(el);
+        } catch {}
+        if (el.shadowRoot && !seenRoots.has(el.shadowRoot)) {
+          seenRoots.add(el.shadowRoot);
+          findScrollers(el.shadowRoot);
+        }
+      }
+    };
+    findScrollers(document);
+    scrollers.sort((a, b) => b.scrollHeight - a.scrollHeight);
+    // Tek bir kapsayici secip tahmin yurutmuyoruz: yanlis secersek hicbir sey
+    // kaydirilmaz ve okAuto sessizce ise yaramaz olur. Aday kapsayicilarin
+    // HEPSI ve pencere birlikte kaydirilir.
+    const targets = scrollers.slice(0, 6);
+
+    const byHref = new Map();
+    const collect = () => {
+      const snap = window.okSnap(null, { silent: true });
+      const last = store.snapshots.pop(); // gecici snapshot'i geri al
+      if (!last) return;
+      for (const a of last.anchors) {
+        // Ayni href'in en UZUN metnini tut: kisa olan cogu zaman oransiz stub
+        const prev = byHref.get(a.href);
+        if (!prev || a.text.length > prev.text.length) byHref.set(a.href, a);
+      }
+      return last;
+    };
+
+    let lastSnap = collect();
+
+    for (let i = 1; i <= steps; i++) {
+      const frac = i / steps;
+      for (const el of targets) {
+        try {
+          el.scrollTop = (el.scrollHeight - el.clientHeight) * frac;
+        } catch {}
+      }
+      try {
+        window.scrollTo(
+          0,
+          (document.documentElement.scrollHeight - window.innerHeight) * frac
+        );
+      } catch {}
+      await sleep(waitMs);
+      const s = collect();
+      if (s) lastSnap = s;
+    }
+    for (const el of targets) {
+      try {
+        el.scrollTop = 0;
+      } catch {}
+    }
+    try {
+      window.scrollTo(0, 0);
+    } catch {}
+
+    const merged = {
+      ...lastSnap,
+      label: label || null,
+      anchors: Array.from(byHref.values()),
+      mergedFromScroll: steps + 1,
+    };
+    store.snapshots.push(merged);
+    const withOdds = merged.anchors.filter((a) =>
+      /\d+\.\d{2}/.test(a.text)
+    ).length;
+    console.log(
+      `[oddskeeper] okAuto bitti${label ? " (" + label + ")" : ""}: ` +
+        `${steps + 1} kaydirma adimi, ${targets.length} kapsayici + pencere, ` +
+        `${merged.anchors.length} benzersiz link, ` +
+        `bunlarin ${withOdds} tanesinde oran var`
+    );
+    if (withOdds === 0) {
+      console.warn(
+        "[oddskeeper] hic oranli satir yok. Sayfada mac listesi acik mi? " +
+          "Sekme 'Canli ve Yaklasan' olmali."
+      );
+    }
+    return { anchors: merged.anchors.length, withOdds };
   };
 
   window.okStats = () => {
