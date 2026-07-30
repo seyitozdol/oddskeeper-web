@@ -28,9 +28,14 @@ export type UpcomingEventRow = {
   away_score: number | null;
   event_slug: string | null;
   updated_at: string;
-  // tracker.event_odds_availability'den; null = henuz kontrol edilmedi
+  // tracker.event_odds_availability'den.
+  //   has_odds null           -> henuz kontrol edilmedi
+  //   has_odds true           -> oran yakalandi
+  //   has_odds false + listed -> mac sitede goruldu, oran yakalanamadi
   bet365_has_odds: boolean | null;
   bet365_market_count: number;
+  bet365_listed: boolean;
   bets10_has_odds: boolean | null;
   bets10_market_count: number;
+  bets10_listed: boolean;
 };

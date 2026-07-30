@@ -133,9 +133,11 @@ export default function UpcomingEventsPanel({
   function OddsMark({
     value,
     marketCount,
+    listed,
   }: {
     value: boolean | null;
     marketCount: number;
+    listed: boolean;
   }) {
     if (value == null) {
       return (
@@ -144,6 +146,18 @@ export default function UpcomingEventsPanel({
           title={t("upcomingEvents.oddsUnchecked")}
         >
           -
+        </span>
+      );
+    }
+    // Sitede goruldu ama oran yakalanamadi: "oran yok" demek yanlis olur.
+    if (!value && listed) {
+      return (
+        <span
+          className="inline-flex items-center gap-1 rounded bg-amber-500/15 px-1.5 py-0.5 text-[11px] font-semibold text-amber-500"
+          title={t("upcomingEvents.oddsListedTitle")}
+        >
+          <span aria-hidden="true">~</span>
+          {t("upcomingEvents.oddsListed")}
         </span>
       );
     }
@@ -314,12 +328,14 @@ export default function UpcomingEventsPanel({
                           <OddsMark
                             value={e.bet365_has_odds}
                             marketCount={e.bet365_market_count}
+                            listed={e.bet365_listed}
                           />
                         </td>
                         <td className="px-2 py-2 text-center">
                           <OddsMark
                             value={e.bets10_has_odds}
                             marketCount={e.bets10_market_count}
+                            listed={e.bets10_listed}
                           />
                         </td>
                       </tr>

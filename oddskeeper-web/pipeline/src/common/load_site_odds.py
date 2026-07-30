@@ -104,6 +104,49 @@ def resolve(site_events: list[tuple[str, str]], our_events: list[dict]) -> dict:
     return out
 
 
+def slug_tokens(name: str) -> list[str]:
+    s = fold(name)
+    return [t for t in "".join(c if c.isalnum() else " " for c in s).split() if t]
+
+
+def resolve_listed(
+    listed_rows: list[dict], our_events: list[dict], exclude: set[int]
+) -> dict:
+    """Oran bileseni gelmemis satirlar: slug'da her iki takim adi da geciyorsa esle.
+
+    Slug ornegi: 'fc-inter-turku-basaksehir-fk'
+    Bizim kayit : 'Inter Turku' - 'Başakşehir FK'
+    Takim adlari slug'da BITISIK oldugu icin ayirmaya calismak yerine, her iki
+    tarafin anlamli tokenlarinin slug icinde gecip gecmedigine bakilir. Iki
+    taraf da gecmeliyse eslesme kabul edilir; belirsizlikte (birden fazla aday)
+    eslesme yapilmaz.
+    """
+    out: dict[str, dict] = {}
+    for r in listed_rows:
+        slug = fold(r.get("slug") or "")
+        if not slug:
+            continue
+        cands = []
+        for ev in our_events:
+            if ev["event_id"] in exclude:
+                continue
+            ht = [t for t in slug_tokens(ev["home_team_name"]) if len(t) > 2]
+            at = [t for t in slug_tokens(ev["away_team_name"]) if len(t) > 2]
+            if not ht or not at:
+                continue
+            home_ok = all(t in slug for t in ht)
+            away_ok = all(t in slug for t in at)
+            if home_ok and away_ok:
+                cands.append(ev)
+        if len(cands) == 1:
+            ev = cands[0]
+            out[r["slug"]] = {
+                "event_id": ev["event_id"],
+                "our": f"{ev['home_team_name']} - {ev['away_team_name']}",
+            }
+    return out
+
+
 PARSERS = {"bet365": parse_bet365, "bets10": parse_bets10}
 
 
@@ -130,6 +173,10 @@ def main() -> None:
     rows = parser(path)
     if not rows:
         raise SystemExit("dump'tan hic satir cikarilamadi")
+
+    # "Sitede goruldu ama orani yakalanamadi" satirlari ayri islenir.
+    listed_rows = [r for r in rows if r.get("listed_only")]
+    rows = [r for r in rows if not r.get("listed_only")]
 
     # Ayni (market, selection) birden fazla snapshot'ta varsa en yenisini tut.
     dedup: dict[tuple, dict] = {}
@@ -167,12 +214,19 @@ def main() -> None:
     site_pairs = sorted({(r["home"], r["away"]) for r in rows})
     matches = resolve(site_pairs, our)
 
+    matched_ids = {m["event_id"] for m in matches.values()}
+    listed_matches = resolve_listed(listed_rows, our, exclude=matched_ids)
+
     print(f"site: {site}")
-    print(f"dump'tan {len(rows)} satir, {len(site_pairs)} mac")
+    print(f"dump'tan {len(rows)} oranli satir, {len(site_pairs)} mac")
     print(f"bizim takipteki mac sayisi: {len(our)}")
-    print(f"ESLESEN: {len(matches)}\n")
+    print(f"ORANI ESLESEN: {len(matches)}\n")
     for (h, a), m in sorted(matches.items()):
         print(f"  [{m['score']}] {h} - {a}   ->   {m['our']}")
+    if listed_matches:
+        print(f"\nSITEDE VAR AMA ORAN YAKALANAMADI: {len(listed_matches)}")
+        for slug, m in sorted(listed_matches.items()):
+            print(f"  {slug}   ->   {m['our']}")
     unmatched = [p for p in site_pairs if p not in matches]
     print(f"\neslesmeyen site maci: {len(unmatched)} (bizim listede olmayanlar dahil)")
 
@@ -218,11 +272,12 @@ def main() -> None:
         cur.execute(
             """
             insert into tracker.event_odds_availability (
-                event_id, site, has_odds, market_count,
+                event_id, site, has_odds, listed, market_count,
                 site_home_name, site_away_name, match_score, checked_at
-            ) values (%s,%s,true,%s,%s,%s,%s,now())
+            ) values (%s,%s,true,true,%s,%s,%s,%s,now())
             on conflict (event_id, site) do update set
                 has_odds = true,
+                listed = true,
                 market_count = excluded.market_count,
                 site_home_name = excluded.site_home_name,
                 site_away_name = excluded.site_away_name,
@@ -233,6 +288,21 @@ def main() -> None:
                 event_id, site, info["market_count"],
                 info["home"], info["away"], info["score"],
             ),
+        )
+
+    # Sitede goruldu ama orani yakalanamadi: listed=true, has_odds=false.
+    # Zaten oranla isaretlenmis kayitlarin uzerine YAZILMAZ.
+    for slug, m in listed_matches.items():
+        cur.execute(
+            """
+            insert into tracker.event_odds_availability (
+                event_id, site, has_odds, listed, market_count, checked_at
+            ) values (%s,%s,false,true,0,now())
+            on conflict (event_id, site) do update set
+                listed = true,
+                checked_at = now()
+            """,
+            (m["event_id"], site),
         )
 
     # Bu sitede taradigimiz ama bulamadigimiz maclar: has_odds = false.

@@ -108,33 +108,58 @@ def competition_from_text(text: str, home: str) -> str | None:
     return None
 
 
+# Mac linki kalibi: /tr/spor-bahisleri/<spor>/<bolge>/<lig>/<ev-takim>-<dep-takim>
+MATCH_HREF_RE = re.compile(r"/spor-bahisleri/[^/]+/[^/]+/[^/]+/[^/?]+")
+
+# Mac satiri olmayan linkler (breadcrumb, menu).
+NON_MATCH_SLUGS = {"canli-bahis", "tum-mac-sonuclari"}
+
+
 def parse_dump(path: str) -> list[dict]:
     d = json.load(open(path, encoding="utf-8"))
-    # event_id -> en yeni satir
-    best: dict[str, dict] = {}
+    best: dict[str, dict] = {}  # oranli maclar
+    listed: dict[str, dict] = {}  # sitede goruldu ama orani yakalanamadi
 
     for snap in d.get("snapshots", []):
         captured = snap.get("at")
         label = snap.get("label")
         for a in snap.get("anchors", []):
             href, text = a.get("href", ""), a.get("text", "")
-            if "eventId=" not in href or MARKET_LABEL not in text:
+            if not MATCH_HREF_RE.search(href):
                 continue
-            parsed = parse_anchor(text)
-            if not parsed:
+            slug = href.split("?")[0].rstrip("/").split("/")[-1]
+            if slug in NON_MATCH_SLUGS:
                 continue
+
+            parsed = parse_anchor(text) if MARKET_LABEL in text else None
             info = parse_href(href)
-            key = info["event_id"] or f"{parsed['home']}|{parsed['away']}"
-            prev = best.get(key)
-            if prev and (prev["captured_at"] or "") > (captured or ""):
-                continue
-            best[key] = {
-                **parsed,
-                **info,
-                "competition": competition_from_text(text, parsed["home"]),
-                "captured_at": captured,
-                "snapshot_label": label,
-            }
+
+            if parsed:
+                key = info["event_id"] or slug
+                prev = best.get(key)
+                if prev and (prev["captured_at"] or "") > (captured or ""):
+                    continue
+                best[key] = {
+                    **parsed,
+                    **info,
+                    "competition": competition_from_text(text, parsed["home"]),
+                    "captured_at": captured,
+                    "snapshot_label": label,
+                }
+            else:
+                # Oran bileseni DOM'a gelmemis satir. Macin sitede oldugunu
+                # biliyoruz; takim adlari slug'da (bitisik yazildigi icin
+                # metinden guvenle ayrilamiyor), eslestirme slug uzerinden.
+                listed.setdefault(
+                    slug,
+                    {
+                        **info,
+                        "slug": slug,
+                        "match_text": text,
+                        "captured_at": captured,
+                        "snapshot_label": label,
+                    },
+                )
 
     rows: list[dict] = []
     for e in best.values():
@@ -153,8 +178,37 @@ def parse_dump(path: str) -> list[dict]:
                     "snapshot_label": e.get("snapshot_label"),
                     "site_event_id": e.get("event_id"),
                     "sport": e.get("sport"),
+                    "listed_only": False,
                 }
             )
+
+    parsed_slugs = {
+        (e.get("slug") or "") for e in best.values()
+    } | {
+        f"{e['home']}-{e['away']}".lower() for e in best.values()
+    }
+    for slug, e in listed.items():
+        if slug in parsed_slugs:
+            continue
+        rows.append(
+            {
+                "competition": None,
+                "home": None,
+                "away": None,
+                "start_text": None,
+                "market": None,
+                "selection": None,
+                "odds": None,
+                "page_kind": "list",
+                "captured_at": e["captured_at"],
+                "snapshot_label": e.get("snapshot_label"),
+                "site_event_id": e.get("event_id"),
+                "sport": e.get("sport"),
+                "listed_only": True,
+                "slug": slug,
+                "match_text": e["match_text"],
+            }
+        )
     return rows
 
 

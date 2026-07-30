@@ -28,6 +28,8 @@ export const upcomingEvents = defineMessages({
     oddsNoLive: "NoLive",
     oddsUnchecked: "Not checked yet",
     marketCountTitle: "{count} markets available",
+    oddsListed: "Listed",
+    oddsListedTitle: "Match found on the site, but no odds were captured",
   },
   tr: {
     title: "Yaklaşan Maçlar",
@@ -56,5 +58,7 @@ export const upcomingEvents = defineMessages({
     oddsNoLive: "NoLive",
     oddsUnchecked: "Henüz kontrol edilmedi",
     marketCountTitle: "{count} market mevcut",
+    oddsListed: "Listede",
+    oddsListedTitle: "Maç sitede bulundu ama oranı yakalanamadı",
   },
 });
