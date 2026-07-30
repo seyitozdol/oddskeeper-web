@@ -17,7 +17,9 @@ export const auth = defineMessages({
     forgotPasswordLink: "Forgot password?",
     signingIn: "Signing In...",
     signInButton: "Sign In",
+    invalidCredentials: "Sign-in failed. Check your details.",
     noAccountYet: "No account yet?",
+    signUpOffline: "Sign-up is currently offline.",
 
     signUpKicker: "Sign Up",
     signUpTitle: "Create your workspace",
@@ -67,7 +69,9 @@ export const auth = defineMessages({
     forgotPasswordLink: "Şifreni mi unuttun?",
     signingIn: "Giriş yapılıyor...",
     signInButton: "Giriş Yap",
+    invalidCredentials: "Giriş yapılamadı. Bilgilerini kontrol et.",
     noAccountYet: "Henüz hesabın yok mu?",
+    signUpOffline: "Kayıt şu anda kapalı.",
 
     signUpKicker: "Kayıt Ol",
     signUpTitle: "Çalışma alanını oluştur",

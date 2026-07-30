@@ -65,14 +65,6 @@ export default function ResetPasswordPage() {
               </span>
             </div>
 
-            <div className="flex flex-col">
-              <span className="text-sm font-semibold tracking-wide text-ink">
-                OddsKeeper
-              </span>
-              <span className="text-[11px] uppercase tracking-[0.24em] text-ink-3">
-                {t("landing.brandTagline")}
-              </span>
-            </div>
           </Link>
 
           <Link

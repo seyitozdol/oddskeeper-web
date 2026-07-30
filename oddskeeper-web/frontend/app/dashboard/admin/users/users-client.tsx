@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { useI18n } from "@/lib/i18n/LanguageProvider";
+import type { Translator } from "@/lib/i18n/messages";
 import {
   NAV_KEYS,
   NAV_PERMISSION_ITEMS,
@@ -16,11 +17,14 @@ type AdminUserRow = {
   lastSignInAt: string | null;
   isAdmin: boolean;
   allowedKeys: string[] | null;
+  directAlias: string | null;
 };
 
 type AdminUsersClientProps = {
   requesterId: string | null;
 };
+
+const ALIAS_RE = /^[a-z0-9][a-z0-9._-]{2,31}$/;
 
 export default function AdminUsersClient({
   requesterId,
@@ -32,6 +36,13 @@ export default function AdminUsersClient({
   const [loadFailed, setLoadFailed] = useState(false);
   const [saveError, setSaveError] = useState(false);
   const [savingIds, setSavingIds] = useState<Set<string>>(new Set());
+
+  const [newEmail, setNewEmail] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [newIsAdmin, setNewIsAdmin] = useState(false);
+  const [newAlias, setNewAlias] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState("");
 
   const loadUsers = useCallback(async () => {
     setIsLoading(true);
@@ -54,10 +65,73 @@ export default function AdminUsersClient({
     void loadUsers();
   }, [loadUsers]);
 
+  async function createUser(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setCreateError("");
+
+    const email = newEmail.trim().toLowerCase();
+    const alias = newAlias.trim().toLowerCase();
+
+    if (newPassword.length < 8) {
+      setCreateError(t("adminUsers.createPasswordTooShort"));
+      return;
+    }
+    if (alias && !ALIAS_RE.test(alias)) {
+      setCreateError(t("adminUsers.invalidAlias"));
+      return;
+    }
+
+    setCreating(true);
+
+    try {
+      const res = await fetch("/api/admin/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email,
+          password: newPassword,
+          isAdmin: newIsAdmin,
+          directAlias: alias || undefined,
+        }),
+      });
+
+      const data = (await res.json().catch(() => null)) as
+        | { user?: AdminUserRow; error?: string }
+        | null;
+
+      if (!res.ok || !data?.user) {
+        if (data?.error === "email_exists") {
+          setCreateError(t("adminUsers.emailExists"));
+        } else if (data?.error === "alias_taken") {
+          setCreateError(t("adminUsers.aliasTaken"));
+          void loadUsers();
+        } else {
+          setCreateError(t("adminUsers.createFailed"));
+        }
+        return;
+      }
+
+      setUsers((prev) => [...prev, data.user!]);
+      setNewEmail("");
+      setNewPassword("");
+      setNewIsAdmin(false);
+      setNewAlias("");
+    } catch (error) {
+      console.error("Admin user create error:", error);
+      setCreateError(t("adminUsers.createFailed"));
+    } finally {
+      setCreating(false);
+    }
+  }
+
   async function patchUser(
     user: AdminUserRow,
-    patch: { allowedKeys?: string[] | null; isAdmin?: boolean }
-  ) {
+    patch: {
+      allowedKeys?: string[] | null;
+      isAdmin?: boolean;
+      directAlias?: string | null;
+    }
+  ): Promise<boolean> {
     const previous = users;
 
     setSaveError(false);
@@ -71,6 +145,9 @@ export default function AdminUsersClient({
                 ? { allowedKeys: patch.allowedKeys }
                 : {}),
               ...(patch.isAdmin !== undefined ? { isAdmin: patch.isAdmin } : {}),
+              ...(patch.directAlias !== undefined
+                ? { directAlias: patch.directAlias }
+                : {}),
             }
           : u
       )
@@ -83,10 +160,12 @@ export default function AdminUsersClient({
         body: JSON.stringify(patch),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return true;
     } catch (error) {
       console.error("Admin users save error:", error);
       setUsers(previous);
       setSaveError(true);
+      return false;
     } finally {
       setSavingIds((prev) => {
         const next = new Set(prev);
@@ -131,6 +210,76 @@ export default function AdminUsersClient({
         </p>
       </div>
 
+      <form
+        onSubmit={createUser}
+        className="mb-4 rounded-xl border border-line bg-card px-4 py-3"
+      >
+        <p className="mb-2 text-[13px] font-medium text-ink">
+          {t("adminUsers.createTitle")}
+        </p>
+        <div className="flex flex-wrap items-end gap-2">
+          <div>
+            <label className="mb-1 block text-[11px] text-ink-3">
+              {t("adminUsers.createEmailLabel")}
+            </label>
+            <input
+              type="email"
+              value={newEmail}
+              onChange={(e) => setNewEmail(e.target.value)}
+              required
+              className="w-56 rounded-lg border border-line bg-field px-2.5 py-1.5 text-[13px] text-ink outline-none transition focus:border-line-strong"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-[11px] text-ink-3">
+              {t("adminUsers.createPasswordLabel")}
+            </label>
+            <input
+              type="text"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              required
+              autoComplete="off"
+              className="w-40 rounded-lg border border-line bg-field px-2.5 py-1.5 text-[13px] text-ink outline-none transition focus:border-line-strong"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-[11px] text-ink-3">
+              {t("adminUsers.createAliasLabel")}
+            </label>
+            <input
+              type="text"
+              value={newAlias}
+              onChange={(e) => setNewAlias(e.target.value)}
+              placeholder={t("adminUsers.aliasPlaceholder")}
+              autoComplete="off"
+              className="w-44 rounded-lg border border-line bg-field px-2.5 py-1.5 text-[13px] text-ink outline-none transition placeholder:text-ink-3 focus:border-line-strong"
+            />
+          </div>
+          <label className="flex cursor-pointer items-center gap-1.5 pb-1.5 text-[13px] text-ink-2">
+            <input
+              type="checkbox"
+              checked={newIsAdmin}
+              onChange={(e) => setNewIsAdmin(e.target.checked)}
+              className="h-3.5 w-3.5 accent-current"
+            />
+            {t("adminUsers.adminColumn")}
+          </label>
+          <button
+            type="submit"
+            disabled={creating}
+            className="rounded-lg border border-line-strong bg-accent px-3 py-1.5 text-[13px] font-semibold text-on-accent transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {creating
+              ? t("adminUsers.creating")
+              : t("adminUsers.createButton")}
+          </button>
+        </div>
+        {createError ? (
+          <p className="mt-2 text-[12px] text-neg">{createError}</p>
+        ) : null}
+      </form>
+
       {saveError ? (
         <div className="mb-3 rounded-lg border border-line bg-card px-3 py-2 text-[13px] text-neg">
           {t("adminUsers.saveError")}
@@ -154,7 +303,7 @@ export default function AdminUsersClient({
         </div>
       ) : (
         <div className="overflow-x-auto rounded-xl border border-line bg-card">
-          <table className="w-full min-w-[860px] border-collapse text-left">
+          <table className="w-full min-w-[1020px] border-collapse text-left">
             <thead>
               <tr className="border-b border-line text-[11px] uppercase tracking-[0.08em] text-ink-3">
                 <th className="px-4 py-2.5 font-medium">
@@ -168,6 +317,9 @@ export default function AdminUsersClient({
                 </th>
                 <th className="px-3 py-2.5 text-center font-medium">
                   {t("adminUsers.adminColumn")}
+                </th>
+                <th className="px-3 py-2.5 font-medium">
+                  {t("adminUsers.superColumn")}
                 </th>
                 <th className="px-3 py-2.5 font-medium">
                   {t("adminUsers.accessColumn")}
@@ -202,6 +354,11 @@ export default function AdminUsersClient({
                             ? t("adminUsers.fullAccess")
                             : t("adminUsers.restricted")}
                         </span>
+                        {user.directAlias ? (
+                          <span className="rounded-md border border-line-strong bg-card-2 px-1.5 py-0.5 text-[10px] font-medium text-accent-ink">
+                            {t("adminUsers.superBadge")}
+                          </span>
+                        ) : null}
                       </div>
                     </td>
                     <td className="whitespace-nowrap px-3 py-2.5 text-[12px] text-ink-2">
@@ -232,6 +389,16 @@ export default function AdminUsersClient({
                           }`}
                         />
                       </button>
+                    </td>
+                    <td className="px-3 py-2.5">
+                      <AliasCell
+                        user={user}
+                        isSaving={isSaving}
+                        onSave={(alias) =>
+                          patchUser(user, { directAlias: alias })
+                        }
+                        t={t}
+                      />
                     </td>
                     <td className="px-3 py-2.5">
                       <div className="flex flex-wrap gap-1.5">
@@ -274,6 +441,64 @@ export default function AdminUsersClient({
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+type AliasCellProps = {
+  user: AdminUserRow;
+  isSaving: boolean;
+  onSave: (alias: string | null) => Promise<boolean>;
+  t: Translator;
+};
+
+function AliasCell({ user, isSaving, onSave, t }: AliasCellProps) {
+  const [value, setValue] = useState(user.directAlias ?? "");
+  const [invalid, setInvalid] = useState(false);
+
+  useEffect(() => {
+    setValue(user.directAlias ?? "");
+    setInvalid(false);
+  }, [user.directAlias]);
+
+  const trimmed = value.trim().toLowerCase();
+  const dirty = trimmed !== (user.directAlias ?? "");
+
+  async function save() {
+    if (!dirty) return;
+    if (trimmed && !ALIAS_RE.test(trimmed)) {
+      setInvalid(true);
+      return;
+    }
+    setInvalid(false);
+    await onSave(trimmed || null);
+  }
+
+  return (
+    <div className="flex items-center gap-1.5">
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        placeholder={t("adminUsers.aliasPlaceholder")}
+        disabled={isSaving}
+        autoComplete="off"
+        className={`w-32 rounded-lg border px-2 py-1 text-[12px] text-ink outline-none transition placeholder:text-ink-3 focus:border-line-strong ${
+          invalid ? "border-neg" : "border-line"
+        } bg-field`}
+      />
+      {dirty ? (
+        <button
+          type="button"
+          onClick={() => void save()}
+          disabled={isSaving}
+          className="rounded-md border border-line px-2 py-1 text-[11px] font-medium text-ink-2 transition hover:border-line-strong hover:text-ink disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {trimmed
+            ? t("adminUsers.aliasSave")
+            : t("adminUsers.aliasRemove")}
+        </button>
+      ) : null}
     </div>
   );
 }

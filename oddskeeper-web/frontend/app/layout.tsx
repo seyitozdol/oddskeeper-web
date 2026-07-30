@@ -17,8 +17,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Odds Keeper",
-  description: "Odds Keeper web uygulaması",
+  title: "OK",
+  description: "OK",
 };
 
 export default async function RootLayout({
