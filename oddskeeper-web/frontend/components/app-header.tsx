@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { createClient } from "../lib/supabase/client";
 import { useI18n } from "../lib/i18n/LanguageProvider";
@@ -22,6 +22,49 @@ type AppHeaderProps = {
 const FOOTBALL_LEAGUE_DETAIL_HREF =
   "/dashboard/stats-analysis/football/league-stats/detail?competition=S%C3%BCper%20Lig&season=2025%2F2026&tab=overview";
 
+const TFF1_LEAGUE_DETAIL_HREF =
+  "/dashboard/stats-analysis/football/league-stats/detail?competition=1.%20Lig&season=2025%2F2026&tab=overview";
+
+// TBL (Türkiye Basketbol Ligi) icin ayri lig-detay sayfasi henuz yok; simdilik
+// basketbol istatistik gorunumune baglaniyor (icerik sonra degisecek).
+const BASKETBALL_LEAGUE_HREF =
+  "/dashboard/stats-analysis?sport=basketball&view=team";
+
+const LEAGUE_DETAIL_PATH =
+  "/dashboard/stats-analysis/football/league-stats/detail";
+
+// Header'daki lig kisayollari: her biri ilgili "league details" sayfasina gider.
+const LEAGUE_ITEMS: {
+  key: string;
+  label: string;
+  icon: string;
+  href: string;
+  competition?: string;
+  sport?: string;
+}[] = [
+  {
+    key: "tsl",
+    label: "TSL",
+    icon: "/icons/football.svg",
+    href: FOOTBALL_LEAGUE_DETAIL_HREF,
+    competition: "Süper Lig",
+  },
+  {
+    key: "1lig",
+    label: "1.Lig",
+    icon: "/icons/football.svg",
+    href: TFF1_LEAGUE_DETAIL_HREF,
+    competition: "1. Lig",
+  },
+  {
+    key: "tbl",
+    label: "TBL",
+    icon: "/icons/basketball.svg",
+    href: BASKETBALL_LEAGUE_HREF,
+    sport: "basketball",
+  },
+];
+
 const LOCALE_LABEL_KEYS: Record<Locale, string> = {
   en: "nav.english",
   tr: "nav.turkish",
@@ -34,6 +77,7 @@ export default function AppHeader({
   isAdmin = false,
 }: AppHeaderProps) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const router = useRouter();
   const { t, locale, setLocale } = useI18n();
   const [isSigningOut, setIsSigningOut] = useState(false);
@@ -51,6 +95,19 @@ export default function AppHeader({
     pathname.startsWith("/dashboard/smart-prediction") ||
     pathname.startsWith("/dashboard/deep-prediction-ml") ||
     pathname.startsWith("/dashboard/match-predictions");
+
+  const isLeagueActive = (item: (typeof LEAGUE_ITEMS)[number]) => {
+    if (item.competition != null) {
+      return (
+        pathname === LEAGUE_DETAIL_PATH &&
+        searchParams.get("competition") === item.competition
+      );
+    }
+    return (
+      pathname === "/dashboard/stats-analysis" &&
+      searchParams.get("sport") === item.sport
+    );
+  };
 
   const can = (key: NavKey) => isNavKeyAllowed(key, allowedNavKeys);
   const canAnyPrediction =
@@ -208,6 +265,29 @@ export default function AppHeader({
             </div>
             ) : null}
 
+            {can("stats-analysis") ? (
+              <div className="flex items-center gap-1 border-l border-line pl-2">
+                {LEAGUE_ITEMS.map((item) => (
+                  <Link
+                    key={item.key}
+                    href={item.href}
+                    className={`flex items-center gap-1.5 ${navLinkClass(
+                      isLeagueActive(item)
+                    )}`}
+                  >
+                    <Image
+                      src={item.icon}
+                      alt=""
+                      width={14}
+                      height={14}
+                      className="opacity-85"
+                    />
+                    <span>{item.label}</span>
+                  </Link>
+                ))}
+              </div>
+            ) : null}
+
             {can("tff-1-lig") ? (
               <Link
                 href="/dashboard/tff-1-lig"
@@ -347,6 +427,27 @@ export default function AppHeader({
               {t("nav.playerMarket")}
             </Link>
           ) : null}
+
+          {can("stats-analysis")
+            ? LEAGUE_ITEMS.map((item) => (
+                <Link
+                  key={item.key}
+                  href={item.href}
+                  className={`flex items-center gap-1.5 ${navLinkClass(
+                    isLeagueActive(item)
+                  )}`}
+                >
+                  <Image
+                    src={item.icon}
+                    alt=""
+                    width={14}
+                    height={14}
+                    className="opacity-85"
+                  />
+                  <span>{item.label}</span>
+                </Link>
+              ))
+            : null}
 
           {can("stats-analysis") ? (
             <>
