@@ -49,7 +49,7 @@ export default async function BasketballPlayerPage({
             <h1 className="text-2xl font-semibold text-ink">{player.player_name}</h1>
             {player.team_slug ? (
               <Link href={`/dashboard/basketball/team/${player.team_slug}`} className="mt-1 flex items-center gap-1.5 text-sm text-ink-2 hover:text-accent-ink">
-                <TeamCrest slug={player.team_slug} name={player.team_name} size={16} />
+                <TeamCrest slug={player.team_slug} name={player.team_name} size={22} />
                 <span>{player.team_name}</span>
               </Link>
             ) : (
@@ -120,7 +120,7 @@ export default async function BasketballPlayerPage({
                   <td className="px-2 py-2">
                     {m.opponent_slug ? (
                       <Link href={`/dashboard/basketball/team/${m.opponent_slug}`} className="flex items-center gap-1.5 text-ink hover:text-accent-ink">
-                        <TeamCrest slug={m.opponent_slug} name={m.opponent_name} size={16} />
+                        <TeamCrest slug={m.opponent_slug} name={m.opponent_name} size={22} />
                         <span className="whitespace-nowrap">{m.opponent_name}</span>
                       </Link>
                     ) : (

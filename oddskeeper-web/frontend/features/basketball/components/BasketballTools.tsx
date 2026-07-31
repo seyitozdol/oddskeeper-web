@@ -1,15 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useI18n } from "@/lib/i18n/LanguageProvider";
 import { buildLadder, moneyline } from "../odds";
 import { PLAYER_MARKETS, TEAM_MARKETS, teamStd } from "../marketConfig";
-import { fetchBasketballPlayerLog } from "../clientQueries";
 import { TeamCrest } from "./ui";
+import BasketballPlayerDrawer from "./BasketballPlayerDrawer";
 import type { PmFixture } from "../pmQueries";
 import type {
   BktHomeAwaySplitRow, BktTeamMetricFormRow, BktPlayerWindowRow,
-  BktTeamLogRow, BktPlayerLogRow, BktInputRow,
+  BktTeamLogRow, BktInputRow,
 } from "../types";
 
 type Props = {
@@ -118,6 +118,9 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
     const k = `${slug}:${mk}:${w.player_slug}`;
     if (playerVal[k] != null) return playerVal[k];
     if (!isTicked(slug, mk, w)) return 0;
+    const market = PLAYER_MARKETS.find((m) => m.key === mk);
+    // kombine + yüzde marketleri dağıtılmaz: oyuncunun kendi ortalaması (elle düzeltilir)
+    if (!market?.distributable) return Math.round((w.season_avg ?? 0) * 10) / 10;
     const target = teamTrader(slug, mk, effPts);
     return Math.round((target * w.total / tickedTotal(slug, mk, list)) * 10) / 10;
   };
@@ -187,11 +190,11 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
         <>
           {/* maç sayıları özeti */}
           <div className="flex flex-wrap items-center gap-4 rounded-lg border border-line bg-veil px-4 py-3 text-sm">
-            <div className="flex items-center gap-2"><TeamCrest slug={homeSlug} name={home.team_name} size={22} />
+            <div className="flex items-center gap-2"><TeamCrest slug={homeSlug} name={home.team_name} size={30} />
               <NumInput value={effHome} onChange={(v) => setPtsOv((p) => ({ ...p, h: v }))} /></div>
             <span className="text-ink-3">–</span>
             <div className="flex items-center gap-2"><NumInput value={effAway} onChange={(v) => setPtsOv((p) => ({ ...p, a: v }))} />
-              <TeamCrest slug={awaySlug} name={away.team_name} size={22} /></div>
+              <TeamCrest slug={awaySlug} name={away.team_name} size={30} /></div>
             <div><span className="text-ink-3">{t("basketball.matchTotal")}: </span><span className="font-semibold text-accent-ink">{fmt(effHome + effAway)}</span></div>
             <div><span className="text-ink-3">{t("basketball.matchMoneyline")}: </span><span className="font-semibold text-ink">{ml.homePrice.toFixed(2)} / {ml.awayPrice.toFixed(2)}</span></div>
           </div>
@@ -240,7 +243,7 @@ function TeamPanel({ slug, name, eff, formBy, teamTrader, setTrader, teamModel, 
 }) {
   return (
     <div>
-      <div className="mb-2 flex items-center gap-2 text-[12px] font-medium text-ink"><TeamCrest slug={slug} name={name} size={18} />{name}</div>
+      <div className="mb-2 flex items-center gap-2 text-[12px] font-medium text-ink"><TeamCrest slug={slug} name={name} size={24} />{name}</div>
       <table className="min-w-full border-collapse text-[13px]">
         <thead><tr className="border-b border-line text-[10px] uppercase tracking-[0.12em] text-ink-3">
           <th className="px-2 py-1.5 text-left">{t("basketball.colMarket")}</th>
@@ -313,7 +316,6 @@ function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effA
   const [side, setSide] = useState<"home" | "away">("home");
   const [mk, setMk] = useState("points");
   const [selPlayer, setSelPlayer] = useState<string | null>(null);
-  const [log, setLog] = useState<BktPlayerLogRow[]>([]);
   const slug = side === "home" ? homeSlug : awaySlug;
   const eff = side === "home" ? effHome : effAway;
   const met = PLAYER_MARKETS.find((m) => m.key === mk)!;
@@ -340,22 +342,6 @@ function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effA
     if (rows.length) onAdd(rows);
   };
 
-  useEffect(() => {
-    if (!selPlayer) return;
-    let alive = true;
-    fetchBasketballPlayerLog(selPlayer).then((r) => { if (alive) setLog(r); });
-    return () => { alive = false; };
-  }, [selPlayer]);
-
-  const logVal = (m: BktPlayerLogRow): number => {
-    switch (mk) {
-      case "points": return m.points ?? 0; case "rebounds": return m.treb ?? 0; case "assists": return m.assists ?? 0;
-      case "threes": return m.fg3m ?? 0; case "twos": return m.fg2m ?? 0; case "ftm": return m.ftm ?? 0;
-      case "steals": return m.steals ?? 0; case "blocks": return m.blocks ?? 0; case "turnovers": return m.turnovers ?? 0;
-      case "pra": return m.pra ?? 0; case "pa": return m.pa ?? 0; case "pr": return m.pr ?? 0; default: return 0;
-    }
-  };
-
   return (
     <div>
       <div className="mb-3 flex flex-wrap items-center gap-3">
@@ -370,8 +356,14 @@ function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effA
           ))}
         </div>
         <span className="ml-auto text-[12px] text-ink-3">
-          {t("basketball.distTarget")}: <span className="font-semibold text-accent-ink">{fmt(target)}</span>
-          {" · "}{t("basketball.distSum")}: <span className={`font-semibold ${Math.abs(distributed - target) <= target * 0.03 ? "text-pos" : "text-neg"}`}>{fmt(distributed)}</span>
+          {met.distributable ? (
+            <>
+              {t("basketball.distTarget")}: <span className="font-semibold text-accent-ink">{fmt(target)}</span>
+              {" · "}{t("basketball.distSum")}: <span className={`font-semibold ${Math.abs(distributed - target) <= target * 0.03 ? "text-pos" : "text-neg"}`}>{fmt(distributed)}</span>
+            </>
+          ) : (
+            <span className="text-ink-2">{t("basketball.manualValues")}</span>
+          )}
           {" · Std "}{met.std}
         </span>
         <button onClick={addCurrent} className="rounded-md border border-teal-500/30 bg-teal-500/10 px-3 py-1 text-[12px] font-semibold text-teal-300 hover:bg-teal-500/20">
@@ -416,21 +408,8 @@ function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effA
         </table>
       </div>
 
-      {/* seçili oyuncunun son maçları */}
-      {selPlayer ? (
-        <div className="mt-4 rounded-lg border border-line bg-veil p-3">
-          <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-3">{t("basketball.recentMatches")} — {met.label}</div>
-          <div className="flex flex-wrap gap-1.5">
-            {log.map((m) => (
-              <div key={m.match_key + m.match_date} className="rounded border border-line bg-card px-2 py-1 text-center">
-                <div className="text-[9px] text-ink-3">{m.opponent_name?.slice(0, 10)}</div>
-                <div className="text-sm font-semibold tabular-nums text-ink">{logVal(m)}</div>
-              </div>
-            ))}
-            {log.length === 0 ? <span className="text-[11px] text-ink-3">…</span> : null}
-          </div>
-        </div>
-      ) : (<p className="mt-3 text-[11px] text-ink-3">{t("basketball.selectPlayerHint")}</p>)}
+      <p className="mt-3 text-[11px] text-ink-3">{t("basketball.selectPlayerHint")}</p>
+      {selPlayer ? <BasketballPlayerDrawer key={selPlayer} slug={selPlayer} onClose={() => setSelPlayer(null)} /> : null}
     </div>
   );
 }

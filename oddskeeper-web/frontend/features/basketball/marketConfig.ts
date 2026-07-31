@@ -24,6 +24,8 @@ export const PLAYER_MARKETS: PlayerMarket[] = [
   { key: "pr",        label: "Sayı+Ribaund",   tpl: "PPTSREB",   std: 8,    distributable: false },
   { key: "pa",        label: "Sayı+Asist",     tpl: "PPTSAST",   std: 8,    distributable: false },
   { key: "pra",       label: "Sayı+Rib+Asist", tpl: "PPTSRBAST", std: 8,    distributable: false },
+  { key: "fgmadepct", label: "İsabet %",       tpl: "PFGLSM",    std: 7,    distributable: false },
+  { key: "ftpct",     label: "Serbest %",      tpl: "PTFTRWM",   std: 11.3, distributable: false },
 ];
 
 export function playerStd(key: string): number {

@@ -24,7 +24,9 @@ with pu as (
     ('turnovers', 'Top Kaybı',       coalesce(e.turnovers,0)::numeric),
     ('pra',       'Sayı+Rib+Asist',  (coalesce(e.points,0)+coalesce(e.treb,0)+coalesce(e.assists,0))::numeric),
     ('pa',        'Sayı+Asist',      (coalesce(e.points,0)+coalesce(e.assists,0))::numeric),
-    ('pr',        'Sayı+Ribaund',    (coalesce(e.points,0)+coalesce(e.treb,0))::numeric)
+    ('pr',        'Sayı+Ribaund',    (coalesce(e.points,0)+coalesce(e.treb,0))::numeric),
+    ('fgmadepct', 'İsabet %',        case when (coalesce(e.fg2a,0)+coalesce(e.fg3a,0)) > 0 then (coalesce(e.fg2m,0)+coalesce(e.fg3m,0))::numeric / (coalesce(e.fg2a,0)+coalesce(e.fg3a,0)) * 100 else null end),
+    ('ftpct',     'Serbest %',       case when coalesce(e.fta,0) > 0 then coalesce(e.ftm,0)::numeric / e.fta * 100 else null end)
   ) as m(market_key, market_label, val)
 ),
 ranked as (

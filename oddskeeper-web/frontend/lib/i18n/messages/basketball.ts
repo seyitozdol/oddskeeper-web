@@ -171,6 +171,10 @@ export const basketball = defineMessages({
     inputCount: "{n} rows",
     saved: "Saved",
     marketTemplate: "Template",
+    manualValues: "Manual values",
+    drawerSeason: "Season",
+    drawerLog: "Game Log",
+    close: "Close",
   },
   tr: {
     kicker: "TBSL",
@@ -337,5 +341,9 @@ export const basketball = defineMessages({
     inputCount: "{n} satır",
     saved: "Kaydedildi",
     marketTemplate: "Şablon",
+    manualValues: "Elle değer",
+    drawerSeason: "Sezon",
+    drawerLog: "Maç Geçmişi",
+    close: "Kapat",
   },
 });

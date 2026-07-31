@@ -49,7 +49,7 @@ export default async function BasketballTeamPage({
 
         {/* Header */}
         <div className="mt-4 flex items-center gap-4">
-          <TeamCrest slug={team.team_slug} name={team.team_name} size={52} />
+          <TeamCrest slug={team.team_slug} name={team.team_name} size={64} />
           <div>
             <h1 className="text-2xl font-semibold text-ink">{team.team_name}</h1>
             <p className="mt-0.5 text-sm text-ink-3">
@@ -157,7 +157,7 @@ export default async function BasketballTeamPage({
                   <td className="px-2 py-2">
                     {m.opponent_slug ? (
                       <Link href={`/dashboard/basketball/team/${m.opponent_slug}`} className="flex items-center gap-1.5 text-ink hover:text-accent-ink">
-                        <TeamCrest slug={m.opponent_slug} name={m.opponent_name} size={16} />
+                        <TeamCrest slug={m.opponent_slug} name={m.opponent_name} size={24} />
                         <span className="whitespace-nowrap">{m.opponent_name}</span>
                       </Link>
                     ) : (

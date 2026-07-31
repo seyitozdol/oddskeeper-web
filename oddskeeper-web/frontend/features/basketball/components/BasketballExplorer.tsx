@@ -92,7 +92,7 @@ function StandingsTable({ rows }: { rows: BktTeamSeasonRow[] }) {
               <td className="px-2 py-2 text-ink-3 tabular-nums">{r.standings_rank}</td>
               <td className="px-2 py-2">
                 <Link href={`/dashboard/basketball/team/${r.team_slug}`} className="flex items-center gap-2 font-medium text-ink hover:text-accent-ink">
-                  <TeamCrest slug={r.team_slug} name={r.team_name} />
+                  <TeamCrest slug={r.team_slug} name={r.team_name} size={28} />
                   <span className="whitespace-nowrap">{r.team_name}</span>
                 </Link>
               </td>
@@ -201,7 +201,7 @@ function PlayerLeaders({ rows }: { rows: BktLeaderboardRow[] }) {
                   </td>
                   <td className="px-2 py-2">
                     <Link href={`/dashboard/basketball/team/${r.team_slug}`} className="flex items-center gap-1.5 text-ink-2 hover:text-accent-ink">
-                      <TeamCrest slug={r.team_slug} name={r.team_name} size={16} />
+                      <TeamCrest slug={r.team_slug} name={r.team_name} size={22} />
                       <span className="whitespace-nowrap text-[12px]">{r.team_name}</span>
                     </Link>
                   </td>
@@ -281,7 +281,7 @@ function TeamLeaders({ rows }: { rows: BktTeamSeasonRow[] }) {
                 <td className="px-2 py-2 text-ink-3 tabular-nums">{i + 1}</td>
                 <td className="px-2 py-2">
                   <Link href={`/dashboard/basketball/team/${r.team_slug}`} className="flex items-center gap-2 font-medium text-ink hover:text-accent-ink">
-                    <TeamCrest slug={r.team_slug} name={r.team_name} />
+                    <TeamCrest slug={r.team_slug} name={r.team_name} size={28} />
                     <span className="whitespace-nowrap">{r.team_name}</span>
                   </Link>
                 </td>

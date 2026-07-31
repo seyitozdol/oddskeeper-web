@@ -26,7 +26,7 @@ export function TeamCrest({
   return (
     <span
       className="inline-flex shrink-0 items-center justify-center rounded bg-white ring-1 ring-black/5"
-      style={{ width: size, height: size, padding: Math.max(1, Math.round(size * 0.08)) }}
+      style={{ width: size, height: size, padding: size >= 40 ? 3 : 1 }}
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={src} alt={name ?? ""} className="h-full w-full object-contain" />
