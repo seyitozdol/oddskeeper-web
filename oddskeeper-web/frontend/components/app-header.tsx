@@ -22,6 +22,9 @@ type AppHeaderProps = {
 const FOOTBALL_LEAGUE_DETAIL_HREF =
   "/dashboard/stats-analysis/football/league-stats/detail?competition=S%C3%BCper%20Lig&season=2025%2F2026&tab=overview";
 
+// TSL kisayolu artik uc-tasarimli deneyim merkezine gider.
+const TSL_HUB_HREF = "/dashboard/stats-analysis/tsl";
+
 const TFF1_LEAGUE_DETAIL_HREF =
   "/dashboard/stats-analysis/football/league-stats/detail?competition=1.%20Lig&season=2025%2F2026&tab=overview";
 
@@ -47,8 +50,7 @@ const LEAGUE_ITEMS: {
     key: "tsl",
     label: "TSL",
     Icon: TslMark,
-    href: FOOTBALL_LEAGUE_DETAIL_HREF,
-    competition: "Süper Lig",
+    href: TSL_HUB_HREF,
   },
   {
     key: "1lig",
@@ -98,6 +100,9 @@ export default function AppHeader({
     pathname.startsWith("/dashboard/match-predictions");
 
   const isLeagueActive = (item: (typeof LEAGUE_ITEMS)[number]) => {
+    if (item.key === "tsl") {
+      return pathname.startsWith("/dashboard/stats-analysis/tsl");
+    }
     if (item.competition != null) {
       return (
         pathname === LEAGUE_DETAIL_PATH &&
