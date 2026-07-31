@@ -1,0 +1,111 @@
+"use client";
+
+import { createClient } from "@/lib/supabase/client";
+
+const LEAGUE = "basketball";
+
+export type PmMarket = {
+  market_key: string;
+  label: string;
+  template_id: string | null;
+  std: number | null;
+  is_custom: boolean;
+  market_type: string;   // static | participant
+  in_model: boolean;
+  sort_order: number;
+};
+
+export type PmFixture = {
+  id: number;
+  home_team_slug: string;
+  away_team_slug: string;
+  home_team_name: string | null;
+  away_team_name: string | null;
+  external_id: string | null;
+  match_date: string | null;
+  note: string | null;
+};
+
+/* ---------------- markets ---------------- */
+export async function fetchMarkets(): Promise<PmMarket[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .schema("analytics").from("bb_pm_markets")
+    .select("market_key,label,template_id,std,is_custom,market_type,in_model,sort_order")
+    .eq("league", LEAGUE)
+    .order("sort_order", { ascending: true })
+    .returns<PmMarket[]>();
+  if (error) { console.error("fetchMarkets", error.message); return []; }
+  return data ?? [];
+}
+export async function upsertMarket(m: Partial<PmMarket> & { market_key: string; label: string }): Promise<boolean> {
+  const supabase = createClient();
+  const { error } = await supabase.schema("analytics").from("bb_pm_markets").upsert(
+    { league: LEAGUE, ...m, updated_at: new Date().toISOString() },
+    { onConflict: "league,market_key" }
+  );
+  if (error) { console.error("upsertMarket", error.message); return false; }
+  return true;
+}
+export async function deleteMarket(market_key: string): Promise<boolean> {
+  const supabase = createClient();
+  const { error } = await supabase.schema("analytics").from("bb_pm_markets").delete().eq("league", LEAGUE).eq("market_key", market_key);
+  if (error) { console.error("deleteMarket", error.message); return false; }
+  return true;
+}
+
+/* ---------------- fixtures (manual) ---------------- */
+export async function fetchPmFixtures(): Promise<PmFixture[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .schema("analytics").from("bb_pm_fixtures")
+    .select("id,home_team_slug,away_team_slug,home_team_name,away_team_name,external_id,match_date,note")
+    .eq("league", LEAGUE)
+    .order("match_date", { ascending: true, nullsFirst: false })
+    .order("id", { ascending: true })
+    .returns<PmFixture[]>();
+  if (error) { console.error("fetchPmFixtures", error.message); return []; }
+  return data ?? [];
+}
+export async function insertFixture(f: Omit<PmFixture, "id">): Promise<boolean> {
+  const supabase = createClient();
+  const { error } = await supabase.schema("analytics").from("bb_pm_fixtures").insert({ league: LEAGUE, ...f });
+  if (error) { console.error("insertFixture", error.message); return false; }
+  return true;
+}
+export async function updateFixture(id: number, patch: Partial<PmFixture>): Promise<boolean> {
+  const supabase = createClient();
+  const { error } = await supabase.schema("analytics").from("bb_pm_fixtures")
+    .update({ ...patch, updated_at: new Date().toISOString() }).eq("id", id);
+  if (error) { console.error("updateFixture", error.message); return false; }
+  return true;
+}
+export async function deleteFixture(id: number): Promise<boolean> {
+  const supabase = createClient();
+  const { error } = await supabase.schema("analytics").from("bb_pm_fixtures").delete().eq("id", id);
+  if (error) { console.error("deleteFixture", error.message); return false; }
+  return true;
+}
+
+/* ---------------- player external ids ---------------- */
+export async function fetchPlayerIds(): Promise<Record<string, string>> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .schema("analytics").from("bb_pm_player_ids")
+    .select("player_slug,external_id").eq("league", LEAGUE)
+    .returns<{ player_slug: string; external_id: string | null }[]>();
+  if (error) { console.error("fetchPlayerIds", error.message); return {}; }
+  const out: Record<string, string> = {};
+  for (const r of data ?? []) if (r.external_id) out[r.player_slug] = r.external_id;
+  return out;
+}
+export async function savePlayerIds(entries: Record<string, string>): Promise<boolean> {
+  const rows = Object.entries(entries).map(([player_slug, v]) => ({
+    league: LEAGUE, player_slug, external_id: v.trim() || null, updated_at: new Date().toISOString(),
+  }));
+  if (rows.length === 0) return true;
+  const supabase = createClient();
+  const { error } = await supabase.schema("analytics").from("bb_pm_player_ids").upsert(rows, { onConflict: "league,player_slug" });
+  if (error) { console.error("savePlayerIds", error.message); return false; }
+  return true;
+}

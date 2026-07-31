@@ -15,6 +15,7 @@ import type {
   BktPlayerShareRow,
   BktPlayerWindowRow,
   BktFixtureRow,
+  BktPlayerListRow,
 } from "../types";
 
 const SEASON = "2025-2026";
@@ -143,6 +144,23 @@ export async function getBasketballPlayerWindows(): Promise<BktPlayerWindowRow[]
     rows.push(...(data ?? []));
     if (!data || data.length < PAGE_SIZE) return rows;
   }
+}
+
+export async function getBasketballPlayerList(): Promise<BktPlayerListRow[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .schema("analytics")
+    .from("bb_player_season_stats_v1")
+    .select("player_slug,player_name,team_slug,team_name,games")
+    .eq("season_label", SEASON)
+    .order("team_name", { ascending: true })
+    .order("player_name", { ascending: true })
+    .returns<BktPlayerListRow[]>();
+  if (error) {
+    console.error("getBasketballPlayerList error:", error.message);
+    return [];
+  }
+  return data ?? [];
 }
 
 export async function getBasketballFixtures(): Promise<BktFixtureRow[]> {

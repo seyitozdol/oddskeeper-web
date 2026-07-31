@@ -184,6 +184,27 @@ export type BktPlayerShareRow = {
   share: number;
 };
 
+export type BktInputRow = {
+  fixtureExtId: string;
+  template: string;
+  participant: string;
+  side: number;        // 1 home, 2 away
+  line: number;
+  over: number;
+  under: number;
+  marketLabel: string;
+  playerName: string;
+  teamName: string;
+};
+
+export type BktPlayerListRow = {
+  player_slug: string;
+  player_name: string;
+  team_slug: string | null;
+  team_name: string | null;
+  games: number;
+};
+
 export type BktPlayerWindowRow = {
   player_slug: string;
   player_name: string;

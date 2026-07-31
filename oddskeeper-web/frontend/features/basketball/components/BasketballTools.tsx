@@ -6,17 +6,20 @@ import { buildLadder, moneyline } from "../odds";
 import { PLAYER_MARKETS, TEAM_MARKETS, teamStd } from "../marketConfig";
 import { fetchBasketballPlayerLog } from "../clientQueries";
 import { TeamCrest } from "./ui";
+import type { PmFixture } from "../pmQueries";
 import type {
   BktHomeAwaySplitRow, BktTeamMetricFormRow, BktPlayerWindowRow,
-  BktTeamLogRow, BktFixtureRow, BktPlayerLogRow,
+  BktTeamLogRow, BktPlayerLogRow, BktInputRow,
 } from "../types";
 
 type Props = {
-  fixtures: BktFixtureRow[];
+  pmFixtures: PmFixture[];
   splits: BktHomeAwaySplitRow[];
   forms: BktTeamMetricFormRow[];
   windows: BktPlayerWindowRow[];
   teamLogs: BktTeamLogRow[];
+  playerIds: Record<string, string>;
+  onAdd: (rows: BktInputRow[]) => void;
 };
 
 const PROP_PAYBACK = 0.915;
@@ -39,7 +42,7 @@ function NumInput({ value, onChange, step = 0.1, w = "w-16" }: { value: number; 
   );
 }
 
-export default function BasketballTools({ fixtures, splits, forms, windows, teamLogs }: Props) {
+export default function BasketballTools({ pmFixtures, splits, forms, windows, teamLogs, playerIds, onAdd }: Props) {
   const { t } = useI18n();
   const teams = useMemo(() => [...splits].sort((a, b) => a.team_name.localeCompare(b.team_name, "tr")), [splits]);
   const splitBy = useMemo(() => new Map(splits.map((s) => [s.team_slug, s])), [splits]);
@@ -69,6 +72,8 @@ export default function BasketballTools({ fixtures, splits, forms, windows, team
   const [homeSlug, setHomeSlug] = useState(teams[0]?.team_slug ?? "");
   const [awaySlug, setAwaySlug] = useState(teams[1]?.team_slug ?? "");
   const [tab, setTab] = useState<"team" | "player">("team");
+  const [fixSel, setFixSel] = useState("");
+  const fixExtId = pmFixtures.find((f) => String(f.id) === fixSel)?.external_id ?? "";
 
   const home = splitBy.get(homeSlug);
   const away = splitBy.get(awaySlug);
@@ -156,11 +161,11 @@ export default function BasketballTools({ fixtures, splits, forms, windows, team
         <label className="flex flex-col gap-1">
           <span className="text-[10px] uppercase tracking-[0.14em] text-ink-3">{t("basketball.fixtureLabel")}</span>
           <select
-            value=""
-            onChange={(e) => { const f = fixtures.find((x) => String(x.fixture_id) === e.target.value); if (f?.home_team_slug && f?.away_team_slug) { setHomeSlug(f.home_team_slug); setAwaySlug(f.away_team_slug); } }}
+            value={fixSel}
+            onChange={(e) => { setFixSel(e.target.value); const f = pmFixtures.find((x) => String(x.id) === e.target.value); if (f) { setHomeSlug(f.home_team_slug); setAwaySlug(f.away_team_slug); } }}
             className="rounded-md border border-line bg-field px-2 py-1.5 text-[13px] text-ink outline-none focus:border-line-strong">
             <option value="">{t("basketball.fixtureManual")}…</option>
-            {fixtures.map((f) => (<option key={f.fixture_id} value={f.fixture_id}>{f.home_team_name} — {f.away_team_name}</option>))}
+            {pmFixtures.map((f) => (<option key={f.id} value={f.id}>{(f.home_team_name || f.home_team_slug)} — {(f.away_team_name || f.away_team_slug)}{f.external_id ? ` [${f.external_id}]` : ""}</option>))}
           </select>
         </label>
         <label className="flex flex-col gap-1">
@@ -209,7 +214,8 @@ export default function BasketballTools({ fixtures, splits, forms, windows, team
             <PlayerDistPanel homeSlug={homeSlug} awaySlug={awaySlug} homeName={home.team_name} awayName={away.team_name}
               effHome={effHome} effAway={effAway} winBy={winBy} isTicked={isTicked} setTick={(k, v) => setTicks((p) => ({ ...p, [k]: v }))}
               playerValue={playerValue} setVal={(k, v) => setPlayerVal((p) => ({ ...p, [k]: v }))} expRef={expRef}
-              teamTarget={(slug, mk) => teamTrader(slug, mk, slug === homeSlug ? effHome : effAway)} t={t} />
+              teamTarget={(slug, mk) => teamTrader(slug, mk, slug === homeSlug ? effHome : effAway)}
+              onAdd={onAdd} playerIds={playerIds} fixExtId={fixExtId} t={t} />
           )}
 
           {/* export */}
@@ -290,7 +296,7 @@ function TeamPanel({ slug, name, eff, formBy, teamTrader, setTrader, teamModel, 
 }
 
 /* ---------- Player distribution panel ---------- */
-function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effAway, winBy, isTicked, setTick, playerValue, setVal, expRef, teamTarget, t }: {
+function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effAway, winBy, isTicked, setTick, playerValue, setVal, expRef, teamTarget, onAdd, playerIds, fixExtId, t }: {
   homeSlug: string; awaySlug: string; homeName: string; awayName: string; effHome: number; effAway: number;
   winBy: Map<string, Map<string, BktPlayerWindowRow[]>>;
   isTicked: (s: string, mk: string, w: BktPlayerWindowRow) => boolean;
@@ -299,6 +305,9 @@ function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effA
   setVal: (k: string, v: number) => void;
   expRef: (s: string, mk: string, w: BktPlayerWindowRow, e: number) => number;
   teamTarget: (s: string, mk: string) => number;
+  onAdd: (rows: BktInputRow[]) => void;
+  playerIds: Record<string, string>;
+  fixExtId: string;
   t: (k: string) => string;
 }) {
   const [side, setSide] = useState<"home" | "away">("home");
@@ -312,6 +321,24 @@ function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effA
   const players = allList.filter((w) => w.avg_minutes >= 5 || w.season_avg >= 1);
   const target = teamTarget(slug, mk);
   const distributed = allList.filter((w) => isTicked(slug, mk, w)).reduce((a, w) => a + playerValue(slug, mk, w, allList, eff), 0);
+
+  // Ekle: bu takım+market'in tikli oyuncularının mid±2 çizgilerini Input'a gönder
+  const addCurrent = () => {
+    const rows: BktInputRow[] = [];
+    const sideNum = side === "home" ? 1 : 2;
+    const teamNm = side === "home" ? homeName : awayName;
+    for (const w of allList) {
+      if (!isTicked(slug, mk, w)) continue;
+      const val = playerValue(slug, mk, w, allList, eff);
+      const ladder = buildLadder(val, met.std, PROP_PAYBACK);
+      const midIdx = Math.max(0, ladder.findIndex((r) => r.isMid));
+      for (let i = Math.max(0, midIdx - 2); i <= Math.min(ladder.length - 1, midIdx + 2); i++) {
+        const r = ladder[i];
+        rows.push({ fixtureExtId: fixExtId, template: met.tpl, participant: playerIds[w.player_slug] || w.player_slug, side: sideNum, line: r.line, over: r.overPrice, under: r.underPrice, marketLabel: met.label, playerName: w.player_name, teamName: teamNm });
+      }
+    }
+    if (rows.length) onAdd(rows);
+  };
 
   useEffect(() => {
     if (!selPlayer) return;
@@ -347,6 +374,9 @@ function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effA
           {" · "}{t("basketball.distSum")}: <span className={`font-semibold ${Math.abs(distributed - target) <= target * 0.03 ? "text-pos" : "text-neg"}`}>{fmt(distributed)}</span>
           {" · Std "}{met.std}
         </span>
+        <button onClick={addCurrent} className="rounded-md border border-teal-500/30 bg-teal-500/10 px-3 py-1 text-[12px] font-semibold text-teal-300 hover:bg-teal-500/20">
+          {t("basketball.addToInput")}
+        </button>
       </div>
 
       <div className="overflow-x-auto">

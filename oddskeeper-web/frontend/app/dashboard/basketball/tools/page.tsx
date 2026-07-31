@@ -1,21 +1,21 @@
 import Link from "next/link";
 import {
-  getBasketballFixtures,
   getBasketballHomeAwaySplits,
   getBasketballTeamMetricForms,
   getBasketballPlayerWindows,
   getBasketballAllTeamMatchLogs,
+  getBasketballPlayerList,
 } from "@/features/basketball/server/getBasketballStats";
-import BasketballTools from "@/features/basketball/components/BasketballTools";
+import BasketballParticipantTools from "@/features/basketball/components/BasketballParticipantTools";
 import { getT } from "@/lib/i18n/server";
 
 export default async function BasketballToolsPage() {
-  const [fixtures, splits, forms, windows, teamLogs, t] = await Promise.all([
-    getBasketballFixtures(),
+  const [splits, forms, windows, teamLogs, players, t] = await Promise.all([
     getBasketballHomeAwaySplits(),
     getBasketballTeamMetricForms(),
     getBasketballPlayerWindows(),
     getBasketballAllTeamMatchLogs(),
+    getBasketballPlayerList(),
     getT(),
   ]);
 
@@ -29,7 +29,7 @@ export default async function BasketballToolsPage() {
           </Link>
         </div>
 
-        <BasketballTools fixtures={fixtures} splits={splits} forms={forms} windows={windows} teamLogs={teamLogs} />
+        <BasketballParticipantTools splits={splits} forms={forms} windows={windows} teamLogs={teamLogs} players={players} />
       </div>
     </section>
   );
