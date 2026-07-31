@@ -28,9 +28,11 @@ from load_site_odds import resolve  # takim-adi eslestirme  # noqa: E402
 API_BASE = "https://v3.football.api-sports.io"
 SEASON = 2026
 BOOKMAKER_BET365 = 8
-# Turk takimlarinin oynadigi Avrupa kupalari (API-Football league id).
-# Milli takim turnuvalari mac oldukca eklenebilir (EURO=4, Nations=5, Dunya K.=1).
-LEAGUES = [2, 3, 848]  # Sampiyonlar / Avrupa / Konferans Ligi
+# Turk takimlarinin oynadigi ligler (API-Football league id):
+#   2/3/848 = Sampiyonlar/Avrupa/Konferans Ligi ; 667 = Kulup Hazirlik maclari.
+# Milli takim turnuvalari mac oldukca eklenebilir (10=uluslararasi hazirlik,
+# 5=Nations, 4=EURO elemeleri, 34=Dunya K. elemeleri UEFA).
+LEAGUES = [2, 3, 848, 667]
 MW_BET = "Match Winner"
 OU_BET = "Goals Over/Under"
 
@@ -48,7 +50,9 @@ def api_get(key: str, path: str) -> dict:
 
 
 def fixtures_for_league(key: str, league: int, date_from: str, date_to: str) -> dict:
-    """fixture_id -> (home, away, iso_date)."""
+    """fixture_id -> (home, away, iso_date). /fixtures SAYFALAMA DESTEKLEMEZ
+    ('page' parametresi hata verir); tek cagrida tum fikstur'leri doner (buyuk
+    liglerde 500+ mac tek yanitta gelir)."""
     out = {}
     d = api_get(key, f"/fixtures?league={league}&season={SEASON}&from={date_from}&to={date_to}")
     for fx in d.get("response", []):
@@ -57,34 +61,24 @@ def fixtures_for_league(key: str, league: int, date_from: str, date_to: str) -> 
     return out
 
 
-def odds_for_league(key: str, league: int) -> dict:
-    """fixture_id -> [(market, selection, odd)] (yalnizca bet365, 1X2 + A/U 2.5)."""
-    out: dict[int, list] = {}
-    page = 1
-    while True:
-        d = api_get(key, f"/odds?league={league}&season={SEASON}&bookmaker={BOOKMAKER_BET365}&page={page}")
-        for r in d.get("response", []):
-            fid = r["fixture"]["id"]
-            rows = []
-            for bm in r.get("bookmakers", []):
-                for bet in bm.get("bets", []):
-                    if bet["name"] == MW_BET:
-                        for v in bet["values"]:
-                            sel = {"Home": "HOME", "Draw": "Beraberlik", "Away": "AWAY"}.get(v["value"], v["value"])
-                            rows.append(("Maç Sonucu", sel, float(v["odd"])))
-                    elif bet["name"] == OU_BET:
-                        for v in bet["values"]:
-                            if v["value"] in ("Over 2.5", "Under 2.5"):
-                                sel = "Üst 2.5" if v["value"].startswith("Over") else "Alt 2.5"
-                                rows.append(("Alt/Üst 2.5", sel, float(v["odd"])))
-            if rows:
-                out[fid] = rows
-        paging = d.get("paging", {})
-        if page >= paging.get("total", 1):
-            break
-        page += 1
-        time.sleep(0.3)
-    return out
+def odds_for_fixture(key: str, fid: int) -> list:
+    """Tek fikstur icin bet365 (1X2 + A/U 2.5) satirlari. Kota verimli: yalnizca
+    takipteki maclarla eslesen fikstur'lere cagrilir (lig geneli sayfalama yok)."""
+    d = api_get(key, f"/odds?fixture={fid}&bookmaker={BOOKMAKER_BET365}")
+    rows = []
+    for r in d.get("response", []):
+        for bm in r.get("bookmakers", []):
+            for bet in bm.get("bets", []):
+                if bet["name"] == MW_BET:
+                    for v in bet["values"]:
+                        sel = {"Home": "HOME", "Draw": "Beraberlik", "Away": "AWAY"}.get(v["value"], v["value"])
+                        rows.append(("Maç Sonucu", sel, float(v["odd"])))
+                elif bet["name"] == OU_BET:
+                    for v in bet["values"]:
+                        if v["value"] in ("Over 2.5", "Under 2.5"):
+                            sel = "Üst 2.5" if v["value"].startswith("Over") else "Alt 2.5"
+                            rows.append(("Alt/Üst 2.5", sel, float(v["odd"])))
+    return rows
 
 
 def main() -> None:
@@ -109,29 +103,34 @@ def main() -> None:
     today = datetime.date.today()
     date_from, date_to = today.isoformat(), (today + datetime.timedelta(days=14)).isoformat()
 
-    # API'den bet365 oranli maclari topla
-    site_rows: list[dict] = []  # {home, away, market, selection, odds, site_event_id}
-    n_api_matches = 0
+    # 1) Tum liglerin fikstur'lerini topla (ucuz, sayfalamali), (home,away)->fid.
+    fixture_by_pair: dict[tuple, int] = {}
     for lg in LEAGUES:
-        fixtures = fixtures_for_league(key, lg, date_from, date_to)
-        odds = odds_for_league(key, lg)
-        for fid, rows in odds.items():
-            if fid not in fixtures:
-                continue
-            home, away, _ = fixtures[fid]
-            n_api_matches += 1
-            for market, sel, odd in rows:
-                selection = home if sel == "HOME" else away if sel == "AWAY" else sel
-                site_rows.append({"home": home, "away": away, "market": market,
-                                  "selection": selection, "odds": odd, "site_event_id": str(fid)})
+        for fid, (home, away, _) in fixtures_for_league(key, lg, date_from, date_to).items():
+            fixture_by_pair.setdefault((home, away), fid)
+    print(f"API-Football fikstur: {len(fixture_by_pair)} mac ({len(LEAGUES)} lig)")
 
-    site_pairs = sorted({(r["home"], r["away"]) for r in site_rows})
+    # 2) Fikstur'leri takipteki maclarla ESLESTIR (isim), sonra YALNIZCA
+    #    eslesenler icin bet365 orani cek (kota verimli).
+    site_pairs = sorted(fixture_by_pair.keys())
     matches = resolve(site_pairs, our)
+    print(f"takipteki futbol maci: {len(our)} | ESLESEN fikstur: {len(matches)}")
 
-    print(f"API-Football bet365: {n_api_matches} Avrupa maci oranli, {len(site_rows)} satir")
-    print(f"takipteki futbol maci: {len(our)} | ESLESEN: {len(matches)}")
+    site_rows: list[dict] = []
     for (h, a), m in sorted(matches.items()):
-        print(f"  {h} - {a}  ->  {m['our']}")
+        fid = fixture_by_pair[(h, a)]
+        rows = odds_for_fixture(key, fid)
+        got = "bet365 VAR" if rows else "oran yok"
+        print(f"  {h} - {a}  ->  {m['our']}  ({got})")
+        for market, sel, odd in rows:
+            selection = h if sel == "HOME" else a if sel == "AWAY" else sel
+            site_rows.append({"home": h, "away": a, "market": market,
+                              "selection": selection, "odds": odd, "site_event_id": str(fid)})
+
+    # Yalnizca gercekten bet365 orani olan maclari isaretle.
+    matches = {p: m for p, m in matches.items()
+               if any(r["home"] == p[0] and r["away"] == p[1] for r in site_rows)}
+    print(f"bet365 orani olan: {len(matches)}")
 
     if dry:
         print("--dry-run: yazilmadi")
