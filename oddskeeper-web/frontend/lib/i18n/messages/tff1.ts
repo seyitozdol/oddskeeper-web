@@ -138,6 +138,10 @@ export const tff1 = defineMessages({
     noFixtures: "No upcoming fixtures.",
     noMatchLog: "No match data.",
     teamFixturesSection: "Upcoming fixtures",
+    noSeasonStatsTitle: "No stats in this league yet",
+    noSeasonStatsBody:
+      "This team has no played matches in the 1. Lig database yet (newly promoted, or its history is in another league). Upcoming fixtures are shown below.",
+    bridgeProfileCta: "View this team's full profile (past seasons) →",
     matchLogNote:
       "Match log covers all matches with SofaScore data; Süper Lig rows are shown with their competition tag.",
   },
@@ -278,6 +282,10 @@ export const tff1 = defineMessages({
     noFixtures: "Yaklaşan fikstür yok.",
     noMatchLog: "Maç verisi yok.",
     teamFixturesSection: "Yaklaşan maçlar",
+    noSeasonStatsTitle: "Bu ligde henüz istatistik yok",
+    noSeasonStatsBody:
+      "Bu takımın 1. Lig veri tabanında henüz oynanmış maçı yok (yeni çıktı ya da geçmişi başka ligde). Aşağıda yaklaşan maçları listeleniyor.",
+    bridgeProfileCta: "Bu takımın tam profilini gör (geçmiş sezonlar) →",
     matchLogNote:
       "Maç logu SofaScore verisi olan tüm maçları kapsar; Süper Lig maçları lig etiketiyle gösterilir.",
   },

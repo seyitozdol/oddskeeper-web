@@ -121,9 +121,19 @@ export function isNavKeyAllowed(
 // "match" prefix'ine dusup acilmaz, kapali kalir.
 const SHARED_ACCESS_PREFIXES: { prefix: string; keys: NavKey[] }[] = [
   { prefix: "/dashboard/tff-1-lig/player-market", keys: ["player-market", "tff-1-lig"] },
-  { prefix: "/dashboard/tff-1-lig/team/", keys: ["player-market", "tff-1-lig"] },
-  { prefix: "/dashboard/tff-1-lig/player/", keys: ["player-market", "tff-1-lig"] },
-  { prefix: "/dashboard/tff-1-lig/match/", keys: ["player-market", "tff-1-lig"] },
+  // 1. Lig Resmi deneyimi (league-1lig) takım/oyuncu/maç detaylarına link verir;
+  // o deneyimi görebilen kullanıcı drill-down da yapabilmeli.
+  { prefix: "/dashboard/tff-1-lig/team/", keys: ["player-market", "tff-1-lig", "league-1lig"] },
+  { prefix: "/dashboard/tff-1-lig/player/", keys: ["player-market", "tff-1-lig", "league-1lig"] },
+  { prefix: "/dashboard/tff-1-lig/match/", keys: ["player-market", "tff-1-lig", "league-1lig"] },
+  // TSL Resmi deneyimi (league-tsl) oyuncu/takım/maç detayları için ortak
+  // Stats & Analysis sayfalarına gider; league-tsl izni bunlara erişim vermeli
+  // (yoksa TSL'den takıma/oyuncuya tıklayan kullanıcı /dashboard'a atılıyordu).
+  // league-1lig da dahil: 1. Lig'den düşen takımların (ör. Kayserispor) 1. Lig
+  // sayfası, geçmiş verisi için bu football profiline köprülenir.
+  { prefix: "/dashboard/stats-analysis/football/team-stats/detail", keys: ["stats-analysis", "league-tsl", "league-1lig"] },
+  { prefix: "/dashboard/stats-analysis/football/player-stats/detail", keys: ["stats-analysis", "league-tsl", "league-1lig"] },
+  { prefix: "/dashboard/stats-analysis/football/match-stats/detail", keys: ["stats-analysis", "league-tsl", "league-1lig"] },
 ];
 
 // Proxy middleware bu fonksiyonu kullanir: bir yolu acmak icin gereken

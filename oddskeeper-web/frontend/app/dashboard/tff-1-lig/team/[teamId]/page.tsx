@@ -17,6 +17,7 @@ import {
   getTff1TeamSeasonStats,
 } from "@/features/tff1/server/getTff1Stats";
 import type { Tff1MatchRow } from "@/features/tff1/types";
+import { getAnyFootballTeamBySlug, slugifyTeamName } from "@/lib/football-teams";
 import { getLocale, getT } from "@/lib/i18n/server";
 
 function num(v: number | string | null | undefined): number {
@@ -54,7 +55,136 @@ export default async function Tff1TeamPage({
   const teamSeasons = teams
     .filter((tr) => tr.team_id === teamId)
     .sort((a, b) => b.season_label.localeCompare(a.season_label));
-  if (teamSeasons.length === 0) notFound();
+
+  // Bu takımın 1. Lig sezon istatistiği yok (yeni yükselen ya da ligi değişen
+  // takım; verisi başka id-uzayında). 404 yerine ad + logo + yaklaşan fikstürü
+  // göster; böylece fikstürde yer alan her takımın bir sayfası olur.
+  if (teamSeasons.length === 0) {
+    const teamFx = fixtures.filter(
+      (f) => f.home_team_id === teamId || f.away_team_id === teamId
+    );
+    const nameFromFx =
+      teamFx
+        .map((f) => (f.home_team_id === teamId ? f.home_team_name : f.away_team_name))
+        .find((n) => Boolean(n)) ?? null;
+    const nameFromMatch =
+      matches
+        .map((m) =>
+          m.home_team_id === teamId
+            ? m.home_team_name
+            : m.away_team_id === teamId
+              ? m.away_team_name
+              : null
+        )
+        .find((n) => Boolean(n)) ?? null;
+    const logoUrl = logos.find((l) => l.team_id === teamId)?.logo_url ?? null;
+
+    // Takıma dair hiçbir iz yoksa (ne fikstür, ne maç, ne logo) gerçekten 404.
+    if (!nameFromFx && !nameFromMatch && !logoUrl) notFound();
+
+    const teamName = nameFromFx ?? nameFromMatch ?? teamId;
+
+    // Köprü: bu takımın verisi başka lig id-uzayında (ör. TSL'den düşen
+    // Kayserispor/Antalyaspor) football profilinde slug bazlı duruyor. Adı
+    // slug'a çevirip mevcut bir football profili varsa oraya bağla.
+    const bridgeSlug = slugifyTeamName(teamName);
+    const bridgeTeam = bridgeSlug ? await getAnyFootballTeamBySlug(bridgeSlug) : null;
+    const bridgeHref = bridgeTeam
+      ? `/dashboard/stats-analysis/football/team-stats/detail?team=${encodeURIComponent(bridgeSlug)}`
+      : null;
+
+    const now = new Date().toISOString();
+    const upcoming = teamFx
+      .filter(
+        (f) => f.fixture_status !== "completed" && (f.fixture_datetime ?? "") >= now
+      )
+      .slice(0, 12);
+
+    return (
+      <section className="w-full">
+        <div className="rounded-2xl border border-line bg-card p-8">
+          <Link
+            href="/dashboard/tff-1-lig"
+            className="text-[13px] text-ink-3 transition hover:text-ink"
+          >
+            ← {t("tff1.backToLeague")}
+          </Link>
+
+          <div className="mt-4 flex flex-wrap items-center gap-4">
+            {logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={logoUrl} alt={teamName} className="h-16 w-16 object-contain" />
+            ) : (
+              <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-line bg-veil text-2xl font-semibold text-ink-3">
+                {teamName.slice(0, 1)}
+              </div>
+            )}
+            <div>
+              <h1 className="text-2xl font-semibold text-ink lg:text-3xl">
+                {teamName}
+              </h1>
+              <p className="mt-1 text-[13px] text-ink-3">{t("tff1.kicker")}</p>
+            </div>
+          </div>
+
+          <div className="mt-6 rounded-lg border border-line bg-veil px-4 py-3">
+            <p className="text-sm font-semibold text-ink">
+              {t("tff1.noSeasonStatsTitle")}
+            </p>
+            <p className="mt-1 text-[13px] text-ink-3">
+              {t("tff1.noSeasonStatsBody")}
+            </p>
+            {bridgeHref ? (
+              <Link
+                href={bridgeHref}
+                className="mt-3 inline-flex items-center rounded-md border border-line-strong bg-card-2 px-3 py-1.5 text-[13px] font-medium text-ink transition hover:bg-card"
+              >
+                {t("tff1.bridgeProfileCta")}
+              </Link>
+            ) : null}
+          </div>
+
+          {upcoming.length > 0 ? (
+            <>
+              <h2 className="mt-8 text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-3">
+                {t("tff1.teamFixturesSection")}
+              </h2>
+              <div className="mt-2 overflow-x-auto rounded-lg border border-line">
+                <table className="min-w-full border-collapse text-[13px]">
+                  <tbody>
+                    {upcoming.map((f) => (
+                      <tr
+                        key={f.fixture_id}
+                        className="border-t border-line text-ink first:border-t-0"
+                      >
+                        <td className="whitespace-nowrap px-3 py-1.5 text-[12px] text-ink-3">
+                          {formatMatchDate(f.fixture_datetime, locale)}
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-1.5 text-[12px] text-ink-3">
+                          {f.round_number !== null
+                            ? t("tff1.roundLabel", { round: f.round_number })
+                            : ""}
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-1.5">
+                          <span className={f.home_team_id === teamId ? "font-semibold" : ""}>
+                            {f.home_team_name}
+                          </span>
+                          <span className="mx-1.5 text-ink-3">-</span>
+                          <span className={f.away_team_id === teamId ? "font-semibold" : ""}>
+                            {f.away_team_name}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          ) : null}
+        </div>
+      </section>
+    );
+  }
 
   const season =
     seasonParam && teamSeasons.some((tr) => tr.season_label === seasonParam)

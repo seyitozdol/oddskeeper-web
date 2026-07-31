@@ -1,4 +1,4 @@
-import { getFootballTeams } from "../../../lib/football-teams";
+import { getAllFootballTeamLogos, getFootballTeams } from "../../../lib/football-teams";
 import { getTeamDetailHref } from "../../../lib/routes";
 import {
   playerHrefFor,
@@ -109,7 +109,12 @@ async function teamHrefMap(
   season: string
 ): Promise<Record<string, string | null>> {
   const out: Record<string, string | null> = {};
-  const valid = config.source === "tsl" ? new Set((await getFootballTeams()).map((t) => t.slug)) : null;
+  // Güncel + arşiv logolar: ligden düşen takımlar (arşivde) da profillerine
+  // bağlanabilsin (aksi halde eski TSL sezonunda takıma tıklanınca link boştu).
+  const valid =
+    config.source === "tsl"
+      ? new Set(Object.keys(await getAllFootballTeamLogos()))
+      : null;
   for (const m of Object.values(meta)) {
     const slug = config.source === "tsl" ? slugFromLogo(m.logo) : null;
     const okSlug = slug && valid?.has(slug) ? slug : null;

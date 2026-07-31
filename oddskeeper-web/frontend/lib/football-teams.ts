@@ -30,6 +30,12 @@ function slugify(value: string) {
     .replace(/^-+|-+$/g, "");
 }
 
+// Tak\u0131m ad\u0131n\u0131 (\u00f6r. "Kayserispor") yerel logo slug'\u0131na \u00e7evirir; ba\u015fka lig
+// deneyimlerinin bir tak\u0131m\u0131 slug bazl\u0131 football profiline k\u00f6pr\u00fclemesi i\u00e7in.
+export function slugifyTeamName(value: string) {
+  return slugify(value);
+}
+
 function toDisplayName(baseName: string) {
   return baseName
     .replace(/[_-]+/g, " ")
