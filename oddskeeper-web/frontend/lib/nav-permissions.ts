@@ -11,6 +11,13 @@ export const NAV_KEYS = [
   "match-predictions",
   "player-market",
   "stats-analysis",
+  // Header'daki lig kisayollari (Stats & Analysis'ten bagimsiz kontrol edilir).
+  // league-tsl'in temiz bir yol prefix'i var (proxy'de gercekten kilitlenir);
+  // league-1lig ve league-tbl query-param ile paylasilan Stats sayfalarina
+  // gider, bu yuzden yalnizca header gorunurlugunu kontrol eder.
+  "league-tsl",
+  "league-1lig",
+  "league-tbl",
   "tff-1-lig",
 ] as const;
 
@@ -62,6 +69,27 @@ export const NAV_PERMISSION_ITEMS: NavPermissionItem[] = [
     pathPrefixes: ["/dashboard/stats-analysis"],
   },
   {
+    key: "league-tsl",
+    labelKey: "nav.leagueTsl",
+    href: "/dashboard/stats-analysis/tsl/resmi?season=2026%2F2027&section=league",
+    // Temiz yol: proxy bu rotayi league-tsl iznine gore kilitler.
+    pathPrefixes: ["/dashboard/stats-analysis/tsl"],
+  },
+  {
+    key: "league-1lig",
+    labelKey: "nav.league1Lig",
+    href: "/dashboard/stats-analysis/football/league-stats/detail?competition=1.%20Lig&season=2025%2F2026&tab=overview",
+    // Query-param ile paylasilan Stats sayfasi; yol bazli kilitlenemez, sadece
+    // header gorunurlugu kontrol edilir.
+    pathPrefixes: [],
+  },
+  {
+    key: "league-tbl",
+    labelKey: "nav.leagueTbl",
+    href: "/dashboard/stats-analysis?sport=basketball&view=team",
+    pathPrefixes: [],
+  },
+  {
     key: "tff-1-lig",
     labelKey: "nav.tff1Lig",
     href: "/dashboard/tff-1-lig",
@@ -83,16 +111,20 @@ export function isNavKeyAllowed(
 }
 
 export function navKeyForPath(pathname: string): NavKey | null {
+  // En uzun (en ozgul) eslesen prefix kazanir; boylece
+  // "/dashboard/stats-analysis/tsl" league-tsl'e giderken
+  // "/dashboard/stats-analysis/football" stats-analysis'e gider.
+  let best: NavKey | null = null;
+  let bestLen = -1;
   for (const item of NAV_PERMISSION_ITEMS) {
     for (const prefix of item.pathPrefixes) {
-      // Duz startsWith: "/dashboard/deep-prediction-ml" prefix'i
-      // deep-prediction-ml2 rotasini da kapsamali.
-      if (pathname.startsWith(prefix)) {
-        return item.key;
+      if (pathname.startsWith(prefix) && prefix.length > bestLen) {
+        best = item.key;
+        bestLen = prefix.length;
       }
     }
   }
-  return null;
+  return best;
 }
 
 export function isAdminPath(pathname: string): boolean {
