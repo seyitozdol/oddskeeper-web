@@ -166,7 +166,9 @@ export default function PlayerProfileDrawer({
         photoUrl: (ci?.photo_url as string) ?? null,
       });
 
-      if (currentRow && String(currentRow.season_label) === seasonLabel) {
+      // Sezon ozeti: secili sezon (guncel) veri yoksa en son oynanan sezona
+      // duser (currentRow zaten seasonRows[0]'a geriler); bos gostermeyiz.
+      if (currentRow) {
         const apps = currentRow.appearances != null ? Number(currentRow.appearances) : null;
         const starts = currentRow.starts != null ? Number(currentRow.starts) : null;
         setSummary({

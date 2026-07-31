@@ -127,17 +127,17 @@ export default function PlayerProfileDrawer({
           )
           .eq("player_slug", playerSlug)
           .limit(1),
-        seasonLabel
-          ? supabase
-              .schema("analytics")
-              .from("player_profile_v1")
-              .select(
-                "appearances, starts, total_minutes, goals, assists, starter_rate_pct, season_label, team_name"
-              )
-              .eq("player_slug", playerSlug)
-              .eq("season_label", seasonLabel)
-              .limit(1)
-          : Promise.resolve({ data: [], error: null }),
+        // Sezon ozeti: secili sezon (guncel) veri yoksa (sezon basi) en son
+        // oynanan sezona duser; bos "veri yok" gostermek yerine anlamli kalir.
+        supabase
+          .schema("analytics")
+          .from("player_profile_v1")
+          .select(
+            "appearances, starts, total_minutes, goals, assists, starter_rate_pct, season_label, team_name"
+          )
+          .eq("player_slug", playerSlug)
+          .order("season_label", { ascending: false })
+          .limit(6),
         supabase
           .schema("analytics")
           .from("player_market_value_v1")
@@ -177,7 +177,11 @@ export default function PlayerProfileDrawer({
         });
       }
 
-      const pr = (profileRes.data?.[0] ?? null) as Record<string, unknown> | null;
+      const profileRows = (profileRes.data ?? []) as Record<string, unknown>[];
+      const pr =
+        profileRows.find((r) => String(r.season_label) === seasonLabel) ??
+        profileRows[0] ??
+        null;
       if (pr) {
         setSummary({
           appearances: (pr.appearances as number) ?? null,
@@ -241,31 +245,66 @@ export default function PlayerProfileDrawer({
             }
           }
         } else {
-          const { data: mrows } = await supabase
-            .schema("analytics")
-            .from("player_metric_by_season_v1")
-            .select(
-              "season_label, per_match_value, last5_value, total_value, league_rank, sample_matches"
+          // player_metric_by_season_v1'in GUNCEL sezon kolu leaderboard'i
+          // ranking_pool (ALL_PLAYERS + OUTFIELD/GK) bazinda tuttugundan her oyuncu
+          // ayni sezonda 2 satirla gelir ve toplamlar (mac/deger) IKIYE KATLANIR.
+          // Cozum: leaderboard'da bulunan (guncel) sezonlari tek havuzdan
+          // (ALL_PLAYERS) okuruz — sezon x takim greninde tekil, sezon ici transfer
+          // hala toplanir. Gecmis sezonlar (leaderboard'da olmayanlar) by_season'dan
+          // gelir; orada havuz katlanmasi yok. by_season anon'a acik, history view'i
+          // degil — bu yuzden gecmisi ondan cekmeyiz.
+          const [curRes, allRes] = await Promise.all([
+            supabase
+              .schema("analytics")
+              .from("player_metric_leaderboard_current")
+              .select(
+                "season_label, per_match_value, last5_value, total_value, league_rank, sample_matches"
+              )
+              .eq("player_source_id", playerSourceId)
+              .eq("metric_key", metricKey)
+              .eq("ranking_pool", "ALL_PLAYERS"),
+            supabase
+              .schema("analytics")
+              .from("player_metric_by_season_v1")
+              .select(
+                "season_label, per_match_value, last5_value, total_value, league_rank, sample_matches"
+              )
+              .eq("player_source_id", playerSourceId)
+              .eq("metric_key", metricKey),
+          ]);
+
+          const accumulate = (rows: Record<string, unknown>[]) => {
+            for (const row of rows) {
+              const e = ensure(String(row.season_label));
+              const m = Number(row.sample_matches ?? 0);
+              e.total += Number(row.total_value ?? 0);
+              e.matches += m;
+              const pm = row.per_match_value != null ? Number(row.per_match_value) : null;
+              if (pm != null) {
+                e.pmNum += pm * m;
+                e.pmDen += m;
+              }
+              if (m > e.last5Matches) {
+                e.last5Matches = m;
+                e.last5 = row.last5_value != null ? Number(row.last5_value) : null;
+              }
+              const rk = row.league_rank != null ? Number(row.league_rank) : null;
+              if (rk != null && (e.rank == null || rk < e.rank)) e.rank = rk;
+            }
+          };
+
+          const curRows = (curRes.data ?? []) as Record<string, unknown>[];
+          const leaderboardSeasons = new Set(
+            curRows.map((r) => String(r.season_label))
+          );
+          accumulate(curRows);
+          // by_season'dan yalnizca leaderboard'da OLMAYAN (gecmis) sezonlar; guncel
+          // sezonlar zaten yukarida havuz-tekil olarak eklendi (katlanma onlenir).
+          accumulate(
+            ((allRes.data ?? []) as Record<string, unknown>[]).filter(
+              (r) => !leaderboardSeasons.has(String(r.season_label))
             )
-            .eq("player_source_id", playerSourceId)
-            .eq("metric_key", metricKey);
-          for (const row of (mrows ?? []) as Record<string, unknown>[]) {
-            const e = ensure(String(row.season_label));
-            const m = Number(row.sample_matches ?? 0);
-            e.total += Number(row.total_value ?? 0);
-            e.matches += m;
-            const pm = row.per_match_value != null ? Number(row.per_match_value) : null;
-            if (pm != null) {
-              e.pmNum += pm * m;
-              e.pmDen += m;
-            }
-            if (m > e.last5Matches) {
-              e.last5Matches = m;
-              e.last5 = row.last5_value != null ? Number(row.last5_value) : null;
-            }
-            const rk = row.league_rank != null ? Number(row.league_rank) : null;
-            if (rk != null && (e.rank == null || rk < e.rank)) e.rank = rk;
-          }
+          );
         }
 
         const seasons: MetricSeason[] = [...bySeason.entries()].map(

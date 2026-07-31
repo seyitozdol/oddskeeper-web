@@ -21,7 +21,7 @@ import {
   type StoredMarket,
   type MarketType,
 } from "./queries";
-import { previousSeasonLabel } from "@/lib/season";
+import { previousSeasonLabel, currentSeasonLabel, latestSeasonLabel } from "@/lib/season";
 import {
   PlayerListTab,
   MarketListTab,
@@ -431,7 +431,9 @@ export default function PlayerMarketPredictionPage({
   const [awayDistExp, setAwayDistExp] = useState<string>("23");
   const [paybackPct, setPaybackPct] = useState<string>("93");
   // Beklenti Dagit: kapaliyken dagitilan beklenti bos kalir, oranlar manuelle calisir.
-  const [distributeEnabled, setDistributeEnabled] = useState(true);
+  // Varsayilan kapali: sezon basinda guncel sezon verisi olmadigindan dagitim
+  // yerine manuel calisilir.
+  const [distributeEnabled, setDistributeEnabled] = useState(false);
 
   // ── Data ──
   const [homePlayers, setHomePlayers] = useState<PlayerState[]>([]);
@@ -458,10 +460,15 @@ export default function PlayerMarketPredictionPage({
     sourceId: string;
   } | null>(null);
 
-  // ── On mount: load fixtures + latest metric season + stored markets ──
+  // ── On mount: load fixtures + current season + stored markets ──
+  // Guncel sezon takvimden turetilir (Temmuz'da yeni sezona doner); veri henuz
+  // gelmemis yeni sezonda bile dogru anah­tar kullanilir. Yine de takvim veri
+  // sezonunun gerisinde kalmasin diye en yeni veri sezonuyla max alinir.
   useEffect(() => {
     fetchUpcomingFixtures().then(setFixtures);
-    fetchLatestMetricSeason().then(setCurrentSeason);
+    fetchLatestMetricSeason().then((dataSeason) =>
+      setCurrentSeason(latestSeasonLabel(currentSeasonLabel(), dataSeason))
+    );
     fetchStoredMarkets().then(setStoredMarkets);
   }, []);
 
@@ -531,13 +538,14 @@ export default function PlayerMarketPredictionPage({
 
       const allIds = [...homeRaw, ...awayRaw].map((p) => p.player_source_id);
 
-      const [recentMatches, metricStats, last5AvgMap, lyStats, lyApps] = await Promise.all([
+      const [recentMatches, metricStats, last5AvgMap, lyStats, curApps, lyApps] = await Promise.all([
         fetchPlayerRecentMatches(allIds, season),
         fetchPlayerMetricStats(allIds, selectedMarket.metricKey, season),
         fetchPlayerLast5Avg(allIds, selectedMarket.logField, season),
         prevSeason
           ? fetchPlayerMetricStats(allIds, selectedMarket.metricKey, prevSeason)
           : Promise.resolve({} as Record<string, PlayerMetricStat>),
+        fetchPlayerSeasonAppearances(allIds, season),
         prevSeason
           ? fetchPlayerSeasonAppearances(allIds, prevSeason)
           : Promise.resolve({} as Record<string, number>),
@@ -547,6 +555,10 @@ export default function PlayerMarketPredictionPage({
         const states = rawPlayers.map((p) => {
           const matches = recentMatches[p.player_source_id] ?? [];
           const stat: PlayerMetricStat | undefined = metricStats[p.player_source_id];
+          // Durum cikarimi guncel kadro profilindeki (en son oynanan sezon) mac
+          // sayisiyla yapilir; goruntulenen "mac sayisi" ise secili (guncel)
+          // sezona aittir. Sezon basinda guncel sezon 0 olur, parantezde gecen
+          // sezon gorunur.
           const status = inferPlayerStatus(matches, p.appearances, p.last_match_datetime);
 
           return {
@@ -554,7 +566,7 @@ export default function PlayerMarketPredictionPage({
             player_name: p.player_name,
             player_slug: p.player_slug,
             primary_position_code: p.primary_position_code,
-            appearances: p.appearances,
+            appearances: curApps[p.player_source_id] ?? 0,
             lyAppearances: lyApps[p.player_source_id] ?? null,
             last_match_datetime: p.last_match_datetime ?? null,
             checked: false,
@@ -566,10 +578,15 @@ export default function PlayerMarketPredictionPage({
           };
         });
 
-        // GK dedup: only the GK with most appearances can be Pos. Starter
+        // GK dedup: only the GK with most appearances can be Pos. Starter.
+        // Guncel sezon (appearances) sezon basinda 0 oldugundan gecen sezona
+        // (lyAppearances) gore siralanir; ikisi de yoksa 0 sayilir.
         const gkStarters = states
           .filter((p) => p.primary_position_code === "GK" && p.status === "Pos. Starter")
-          .sort((a, b) => b.appearances - a.appearances);
+          .sort(
+            (a, b) =>
+              (b.lyAppearances ?? b.appearances) - (a.lyAppearances ?? a.appearances)
+          );
 
         if (gkStarters.length > 1) {
           const keepId = gkStarters[0].player_source_id;
@@ -822,7 +839,7 @@ export default function PlayerMarketPredictionPage({
       {/* Lig secici: TSL / 1. Lig */}
       <PlayerMarketLeagueToggle active="tsl" />
 
-      {/* Tabs */}
+      {/* Tabs (en sagda: dinamik makrolu Excel indir) */}
       <div className="flex items-center gap-1 rounded-xl border border-line bg-card px-2 py-1.5">
         {TABS.map((tab) => (
           <button
@@ -837,6 +854,14 @@ export default function PlayerMarketPredictionPage({
             {tab.label}
           </button>
         ))}
+        {/* TSL dinamik makrolu Excel; dosya frontend/public/downloads altinda */}
+        <a
+          href="/downloads/tsl-dinamik-model.xlsm"
+          download
+          className="ml-auto rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-1.5 text-[13px] font-semibold text-emerald-300 transition hover:bg-emerald-500/20"
+        >
+          {t("playerMarket.openExcelLabel")}
+        </a>
       </div>
 
       {activeTab === "players" && <PlayerListTab teamLogos={teamLogos} />}

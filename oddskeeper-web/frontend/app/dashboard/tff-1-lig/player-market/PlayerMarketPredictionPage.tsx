@@ -25,7 +25,7 @@ import {
   type StoredMarket,
   type MarketType,
 } from "./queries";
-import { previousSeasonLabel } from "@/lib/season";
+import { previousSeasonLabel, currentSeasonLabel, latestSeasonLabel } from "@/lib/season";
 import {
   PlayerListTab,
   MarketListTab,
@@ -434,7 +434,9 @@ export default function PlayerMarketPredictionPage({
   const [awayDistExp, setAwayDistExp] = useState<string>("23");
   const [paybackPct, setPaybackPct] = useState<string>("93");
   // Beklenti Dagit: kapaliyken dagitilan beklenti bos kalir, oranlar manuelle calisir.
-  const [distributeEnabled, setDistributeEnabled] = useState(true);
+  // Varsayilan kapali: sezon basinda guncel sezon verisi olmadigindan dagitim
+  // yerine manuel calisilir.
+  const [distributeEnabled, setDistributeEnabled] = useState(false);
 
   // ── Data ──
   const [homePlayers, setHomePlayers] = useState<PlayerState[]>([]);
@@ -460,10 +462,14 @@ export default function PlayerMarketPredictionPage({
     name: string;
   } | null>(null);
 
-  // ── On mount: load fixtures + latest metric season + stored markets ──
+  // ── On mount: load fixtures + current season + stored markets ──
+  // Guncel sezon takvimden turetilir (Temmuz'da yeni sezona doner); en yeni veri
+  // sezonuyla max alinarak takvimin veriden geride kalmasi engellenir.
   useEffect(() => {
     fetchUpcomingFixtures().then(setFixtures);
-    fetchLatestMetricSeason().then(setCurrentSeason);
+    fetchLatestMetricSeason().then((dataSeason) =>
+      setCurrentSeason(latestSeasonLabel(currentSeasonLabel(), dataSeason))
+    );
     fetchStoredMarkets().then(setStoredMarkets);
   }, []);
 
@@ -533,13 +539,14 @@ export default function PlayerMarketPredictionPage({
 
       const allIds = [...homeRaw, ...awayRaw].map((p) => p.player_source_id);
 
-      const [recentMatches, metricStats, last5AvgMap, lyStats, lyApps] = await Promise.all([
+      const [recentMatches, metricStats, last5AvgMap, lyStats, curApps, lyApps] = await Promise.all([
         fetchPlayerRecentMatches(allIds, season),
         fetchPlayerMetricStats(allIds, selectedMarket.metricKey, season),
         fetchPlayerLast5Avg(allIds, selectedMarket.logField, season),
         prevSeason
           ? fetchPlayerMetricStats(allIds, selectedMarket.metricKey, prevSeason)
           : Promise.resolve({} as Record<string, PlayerMetricStat>),
+        fetchPlayerSeasonAppearances(allIds, season),
         prevSeason
           ? fetchPlayerSeasonAppearances(allIds, prevSeason)
           : Promise.resolve({} as Record<string, number>),
@@ -549,6 +556,8 @@ export default function PlayerMarketPredictionPage({
         const states = rawPlayers.map((p) => {
           const matches = recentMatches[p.player_source_id] ?? [];
           const stat: PlayerMetricStat | undefined = metricStats[p.player_source_id];
+          // Durum cikarimi kadro profilindeki (en son oynanan sezon) mac sayisiyla;
+          // goruntulenen "mac sayisi" secili (guncel) sezona ait, parantez gecen sezon.
           const status = inferPlayerStatus(matches, p.appearances, p.last_match_datetime);
 
           return {
@@ -556,7 +565,7 @@ export default function PlayerMarketPredictionPage({
             player_name: p.player_name,
             player_slug: p.player_slug,
             primary_position_code: p.primary_position_code,
-            appearances: p.appearances,
+            appearances: curApps[p.player_source_id] ?? 0,
             lyAppearances: lyApps[p.player_source_id] ?? null,
             last_match_datetime: p.last_match_datetime ?? null,
             checked: false,
@@ -568,10 +577,14 @@ export default function PlayerMarketPredictionPage({
           };
         });
 
-        // GK dedup: only the GK with most appearances can be Pos. Starter
+        // GK dedup: only the GK with most appearances can be Pos. Starter.
+        // Guncel sezon (appearances) sezon basinda 0; gecen sezona gore siralanir.
         const gkStarters = states
           .filter((p) => p.primary_position_code === "GK" && p.status === "Pos. Starter")
-          .sort((a, b) => b.appearances - a.appearances);
+          .sort(
+            (a, b) =>
+              (b.lyAppearances ?? b.appearances) - (a.lyAppearances ?? a.appearances)
+          );
 
         if (gkStarters.length > 1) {
           const keepId = gkStarters[0].player_source_id;
