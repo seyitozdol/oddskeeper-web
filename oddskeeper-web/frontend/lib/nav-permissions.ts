@@ -60,14 +60,7 @@ export const NAV_PERMISSION_ITEMS: NavPermissionItem[] = [
     key: "player-market",
     labelKey: "nav.playerMarket",
     href: "/dashboard/player-market-prediction",
-    // 1. Lig player-market ekrani da (Oyuncu Katilim Araclari toggle'inin
-    // 1. Lig tarafi) bu izne baglidir. Yol tff-1-lig altinda olsa da bu daha
-    // ozgul prefix, navKeyForPath'te tff-1-lig prefix'ini yener; boylece
-    // tff-1-lig izni kapali kullanicilar da player-market izniyle girebilir.
-    pathPrefixes: [
-      "/dashboard/player-market-prediction",
-      "/dashboard/tff-1-lig/player-market",
-    ],
+    pathPrefixes: ["/dashboard/player-market-prediction"],
   },
   {
     key: "stats-analysis",
@@ -115,6 +108,41 @@ export function isNavKeyAllowed(
 ): boolean {
   if (allowedKeys == null) return true;
   return allowedKeys.includes(key);
+}
+
+// Bazi yollar birden fazla izinle acilabilir (OR mantigi). 1. Lig
+// player-market ekrani ve oradan gidilen detay sayfalari (team/player/match)
+// hem tff-1-lig hem player-market izniyle erisilebilir olmali; boylece
+// tff-1-lig menusu kullanicilara kapali olsa da player-market izni olanlar
+// Oyuncu Katilim Araclari toggle'i ile 1. Lig'e girip drill-down yapabilir.
+// tff-1-lig izni olan kullanicilar da bu sayfalara normalde erismeye devam eder.
+// Not: team/player/match prefix'leri sonunda "/" ile biter; boylece
+// "/dashboard/tff-1-lig/matches" (tff-1-lig'e ait mac listesi) yanlislikla
+// "match" prefix'ine dusup acilmaz, kapali kalir.
+const SHARED_ACCESS_PREFIXES: { prefix: string; keys: NavKey[] }[] = [
+  { prefix: "/dashboard/tff-1-lig/player-market", keys: ["player-market", "tff-1-lig"] },
+  { prefix: "/dashboard/tff-1-lig/team/", keys: ["player-market", "tff-1-lig"] },
+  { prefix: "/dashboard/tff-1-lig/player/", keys: ["player-market", "tff-1-lig"] },
+  { prefix: "/dashboard/tff-1-lig/match/", keys: ["player-market", "tff-1-lig"] },
+];
+
+// Proxy middleware bu fonksiyonu kullanir: bir yolu acmak icin gereken
+// izin anahtarlarini dondurur. Birden fazla anahtar donerse OR gecerlidir
+// (herhangi biri yeterli). Eslesme yoksa null (izin kontrolu yok).
+export function navAccessKeysForPath(pathname: string): NavKey[] | null {
+  // Once en uzun eslesen shared-access prefix'i (OR listesi) dene.
+  let sharedKeys: NavKey[] | null = null;
+  let sharedLen = -1;
+  for (const item of SHARED_ACCESS_PREFIXES) {
+    if (pathname.startsWith(item.prefix) && item.prefix.length > sharedLen) {
+      sharedKeys = item.keys;
+      sharedLen = item.prefix.length;
+    }
+  }
+  if (sharedKeys) return sharedKeys;
+
+  const single = navKeyForPath(pathname);
+  return single ? [single] : null;
 }
 
 export function navKeyForPath(pathname: string): NavKey | null {

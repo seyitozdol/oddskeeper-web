@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import {
   isAdminPath,
   isNavKeyAllowed,
-  navKeyForPath,
+  navAccessKeysForPath,
 } from "../nav-permissions";
 
 export async function updateSession(request: NextRequest) {
@@ -36,10 +36,10 @@ export async function updateSession(request: NextRequest) {
   // girilirse /dashboard'a yonlendir. Kullanici yoksa dokunma
   // (oturum kontrolu dashboard/layout.tsx'te; dev bypass da orada).
   const pathname = request.nextUrl.pathname;
-  const navKey = navKeyForPath(pathname);
+  const accessKeys = navAccessKeysForPath(pathname);
   const adminPath = isAdminPath(pathname);
 
-  if (userId && (navKey || adminPath)) {
+  if (userId && (accessKeys || adminPath)) {
     const { data: perm } = await supabase
       .from("user_nav_permissions")
       .select("is_admin, allowed_keys")
@@ -50,9 +50,10 @@ export async function updateSession(request: NextRequest) {
     // satirsiz durumu bos diziye cevir. Satir icindeki null tam erisim demek.
     const effectiveKeys = perm ? (perm.allowed_keys ?? null) : [];
 
+    // accessKeys birden fazla anahtar donebilir (OR): herhangi biri izinliyse gecer.
     const allowed = adminPath
       ? perm?.is_admin === true
-      : isNavKeyAllowed(navKey!, effectiveKeys);
+      : accessKeys!.some((key) => isNavKeyAllowed(key, effectiveKeys));
 
     if (!allowed) {
       const redirectResponse = NextResponse.redirect(
