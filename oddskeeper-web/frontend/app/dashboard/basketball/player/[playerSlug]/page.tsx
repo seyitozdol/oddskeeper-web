@@ -2,8 +2,10 @@ import Link from "next/link";
 import {
   getBasketballPlayer,
   getBasketballPlayerMatchLog,
+  getBasketballPlayerModel,
 } from "@/features/basketball/server/getBasketballStats";
 import { TeamCrest, StatTile } from "@/features/basketball/components/ui";
+import BasketballOdds from "@/features/basketball/components/BasketballOdds";
 import { fmt, formatMatchDate, homeAwayLabel } from "@/features/basketball/lib";
 import { getT, getLocale } from "@/lib/i18n/server";
 
@@ -13,9 +15,10 @@ export default async function BasketballPlayerPage({
   params: Promise<{ playerSlug: string }>;
 }) {
   const { playerSlug } = await params;
-  const [player, log, t, locale] = await Promise.all([
+  const [player, log, model, t, locale] = await Promise.all([
     getBasketballPlayer(playerSlug),
     getBasketballPlayerMatchLog(playerSlug),
+    getBasketballPlayerModel(playerSlug),
     getT(),
     getLocale(),
   ]);
@@ -92,6 +95,14 @@ export default async function BasketballPlayerPage({
           <StatTile label={t("basketball.pra")} value={fmt(player.pra_pg)} />
           <StatTile label="P+A" value={fmt(player.pa_pg)} />
         </div>
+
+        {/* Odds */}
+        {model.length > 0 ? (
+          <>
+            <h2 className="mt-8 mb-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-3">{t("basketball.odds")}</h2>
+            <BasketballOdds models={model} defaultPayback={0.915} />
+          </>
+        ) : null}
 
         {/* Game log */}
         <h2 className="mt-8 mb-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-3">{t("basketball.gameLog")}</h2>

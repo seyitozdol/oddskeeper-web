@@ -5,13 +5,15 @@ import Link from "next/link";
 import { useI18n } from "@/lib/i18n/LanguageProvider";
 import { fmt } from "../lib";
 import { TeamCrest } from "./ui";
-import type { BktTeamSeasonRow, BktLeaderboardRow } from "../types";
+import MatchOdds from "./MatchOdds";
+import type { BktTeamSeasonRow, BktLeaderboardRow, BktMarketModelRow } from "../types";
 
-type Tab = "standings" | "players" | "teams";
+type Tab = "standings" | "players" | "teams" | "match";
 
 type Props = {
   standings: BktTeamSeasonRow[];
   leaderboard: BktLeaderboardRow[];
+  teamPoints: BktMarketModelRow[];
   initialTab?: Tab;
 };
 
@@ -23,7 +25,7 @@ function Th({ children, right }: { children: React.ReactNode; right?: boolean })
   );
 }
 
-export default function BasketballExplorer({ standings, leaderboard, initialTab = "standings" }: Props) {
+export default function BasketballExplorer({ standings, leaderboard, teamPoints, initialTab = "standings" }: Props) {
   const { t } = useI18n();
   const [tab, setTab] = useState<Tab>(initialTab);
 
@@ -31,6 +33,7 @@ export default function BasketballExplorer({ standings, leaderboard, initialTab 
     { key: "standings", label: t("basketball.tabStandings") },
     { key: "players", label: t("basketball.tabPlayers") },
     { key: "teams", label: t("basketball.tabTeams") },
+    { key: "match", label: t("basketball.tabMatchOdds") },
   ];
 
   return (
@@ -54,6 +57,7 @@ export default function BasketballExplorer({ standings, leaderboard, initialTab 
       {tab === "standings" && <StandingsTable rows={standings} />}
       {tab === "players" && <PlayerLeaders rows={leaderboard} />}
       {tab === "teams" && <TeamLeaders rows={standings} />}
+      {tab === "match" && <MatchOdds standings={standings} teamPoints={teamPoints} />}
     </div>
   );
 }

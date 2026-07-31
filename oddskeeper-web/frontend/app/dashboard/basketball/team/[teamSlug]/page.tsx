@@ -3,8 +3,10 @@ import {
   getBasketballTeam,
   getBasketballTeamRoster,
   getBasketballTeamMatchLog,
+  getBasketballTeamModel,
 } from "@/features/basketball/server/getBasketballStats";
 import { TeamCrest, StatTile, FormBadge } from "@/features/basketball/components/ui";
+import BasketballOdds from "@/features/basketball/components/BasketballOdds";
 import { fmt, formatMatchDate, homeAwayLabel, RESULT_BADGE_CLASS } from "@/features/basketball/lib";
 import { getT, getLocale } from "@/lib/i18n/server";
 
@@ -14,10 +16,11 @@ export default async function BasketballTeamPage({
   params: Promise<{ teamSlug: string }>;
 }) {
   const { teamSlug } = await params;
-  const [team, roster, log, t, locale] = await Promise.all([
+  const [team, roster, log, model, t, locale] = await Promise.all([
     getBasketballTeam(teamSlug),
     getBasketballTeamRoster(teamSlug),
     getBasketballTeamMatchLog(teamSlug),
+    getBasketballTeamModel(teamSlug),
     getT(),
     getLocale(),
   ]);
@@ -122,6 +125,14 @@ export default async function BasketballTeamPage({
             </tbody>
           </table>
         </div>
+
+        {/* Odds */}
+        {model.length > 0 ? (
+          <>
+            <h2 className="mt-8 mb-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-3">{t("basketball.odds")}</h2>
+            <BasketballOdds models={model} defaultPayback={0.915} />
+          </>
+        ) : null}
 
         {/* Results */}
         <h2 className="mt-8 mb-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-3">

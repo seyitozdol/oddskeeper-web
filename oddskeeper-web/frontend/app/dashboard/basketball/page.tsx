@@ -1,4 +1,4 @@
-import { getBasketballStandings, getBasketballPlayerLeaderboard } from "@/features/basketball/server/getBasketballStats";
+import { getBasketballStandings, getBasketballPlayerLeaderboard, getBasketballTeamPointsModel } from "@/features/basketball/server/getBasketballStats";
 import BasketballExplorer from "@/features/basketball/components/BasketballExplorer";
 import { getT } from "@/lib/i18n/server";
 
@@ -7,13 +7,15 @@ export default async function BasketballPage({
 }: {
   searchParams: Promise<{ tab?: string }>;
 }) {
-  const [{ tab }, standings, leaderboard, t] = await Promise.all([
+  const [{ tab }, standings, leaderboard, teamPoints, t] = await Promise.all([
     searchParams,
     getBasketballStandings(),
     getBasketballPlayerLeaderboard(),
+    getBasketballTeamPointsModel(),
     getT(),
   ]);
-  const initialTab = tab === "players" || tab === "teams" ? tab : "standings";
+  const initialTab =
+    tab === "players" || tab === "teams" || tab === "match" ? tab : "standings";
 
   return (
     <section className="w-full">
@@ -26,7 +28,7 @@ export default async function BasketballPage({
           <p className="mt-1 text-sm text-ink-3">{t("basketball.subtitle")}</p>
         </div>
 
-        <BasketballExplorer standings={standings} leaderboard={leaderboard} initialTab={initialTab} />
+        <BasketballExplorer standings={standings} leaderboard={leaderboard} teamPoints={teamPoints} initialTab={initialTab} />
       </div>
     </section>
   );

@@ -9,6 +9,7 @@ import type {
   BktLeaderboardRow,
   BktPlayerLogRow,
   BktTeamLogRow,
+  BktMarketModelRow,
 } from "../types";
 
 const SEASON = "2025-2026";
@@ -40,6 +41,22 @@ export async function getBasketballPlayerLeaderboard(): Promise<BktLeaderboardRo
     .returns<BktLeaderboardRow[]>();
   if (error) {
     console.error("getBasketballPlayerLeaderboard error:", error.message);
+    return [];
+  }
+  return data ?? [];
+}
+
+export async function getBasketballTeamPointsModel(): Promise<BktMarketModelRow[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .schema("analytics")
+    .from("bb_team_market_model_v1")
+    .select("*")
+    .eq("season_label", SEASON)
+    .eq("market_key", "points")
+    .returns<BktMarketModelRow[]>();
+  if (error) {
+    console.error("getBasketballTeamPointsModel error:", error.message);
     return [];
   }
   return data ?? [];
@@ -109,6 +126,38 @@ export async function getBasketballPlayer(playerSlug: string): Promise<BktPlayer
     return null;
   }
   return data ?? null;
+}
+
+export async function getBasketballPlayerModel(playerSlug: string): Promise<BktMarketModelRow[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .schema("analytics")
+    .from("bb_player_market_model_v1")
+    .select("*")
+    .eq("season_label", SEASON)
+    .eq("player_slug", playerSlug)
+    .returns<BktMarketModelRow[]>();
+  if (error) {
+    console.error("getBasketballPlayerModel error:", error.message);
+    return [];
+  }
+  return data ?? [];
+}
+
+export async function getBasketballTeamModel(teamSlug: string): Promise<BktMarketModelRow[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .schema("analytics")
+    .from("bb_team_market_model_v1")
+    .select("*")
+    .eq("season_label", SEASON)
+    .eq("team_slug", teamSlug)
+    .returns<BktMarketModelRow[]>();
+  if (error) {
+    console.error("getBasketballTeamModel error:", error.message);
+    return [];
+  }
+  return data ?? [];
 }
 
 export async function getBasketballPlayerMatchLog(playerSlug: string): Promise<BktPlayerLogRow[]> {

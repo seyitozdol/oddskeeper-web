@@ -128,6 +128,20 @@ export type BktPlayerLogRow = {
   ts_pct: number | null;
 };
 
+export type BktMarketModelRow = {
+  season_label: string;
+  player_slug?: string;
+  player_name?: string;
+  team_slug: string | null;
+  team_name: string | null;
+  market_key: string;
+  market_label: string;
+  games: number;
+  mean: number;
+  std: number;
+  max_val: number;
+};
+
 export type BktTeamLogRow = {
   season_label: string;
   match_key: string;
