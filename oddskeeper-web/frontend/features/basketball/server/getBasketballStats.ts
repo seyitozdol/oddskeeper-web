@@ -13,6 +13,8 @@ import type {
   BktHomeAwaySplitRow,
   BktTeamMetricFormRow,
   BktPlayerShareRow,
+  BktPlayerWindowRow,
+  BktFixtureRow,
 } from "../types";
 
 const SEASON = "2025-2026";
@@ -113,6 +115,66 @@ export async function getBasketballPlayerShares(): Promise<BktPlayerShareRow[]> 
       .returns<BktPlayerShareRow[]>();
     if (error) {
       console.error("getBasketballPlayerShares error:", error.message);
+      return rows;
+    }
+    rows.push(...(data ?? []));
+    if (!data || data.length < PAGE_SIZE) return rows;
+  }
+}
+
+export async function getBasketballPlayerWindows(): Promise<BktPlayerWindowRow[]> {
+  const supabase = await createClient();
+  const rows: BktPlayerWindowRow[] = [];
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await supabase
+      .schema("analytics")
+      .from("bb_player_metric_window_v1")
+      .select("*")
+      .eq("season_label", SEASON)
+      .order("team_slug", { ascending: true })
+      .order("market_key", { ascending: true })
+      .order("season_avg", { ascending: false })
+      .range(from, from + PAGE_SIZE - 1)
+      .returns<BktPlayerWindowRow[]>();
+    if (error) {
+      console.error("getBasketballPlayerWindows error:", error.message);
+      return rows;
+    }
+    rows.push(...(data ?? []));
+    if (!data || data.length < PAGE_SIZE) return rows;
+  }
+}
+
+export async function getBasketballFixtures(): Promise<BktFixtureRow[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .schema("analytics")
+    .from("bb_fixtures_v1")
+    .select("*")
+    .order("fixture_id", { ascending: true })
+    .returns<BktFixtureRow[]>();
+  if (error) {
+    console.error("getBasketballFixtures error:", error.message);
+    return [];
+  }
+  // yalnız iki takımı dolu olanlar (Excel Fixture'da boş satırlar var)
+  return (data ?? []).filter((f) => f.home_team_slug && f.away_team_slug);
+}
+
+export async function getBasketballAllTeamMatchLogs(): Promise<BktTeamLogRow[]> {
+  const supabase = await createClient();
+  const rows: BktTeamLogRow[] = [];
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await supabase
+      .schema("analytics")
+      .from("bb_team_match_log_v1")
+      .select("*")
+      .eq("season_label", SEASON)
+      .order("match_date", { ascending: false })
+      .range(from, from + PAGE_SIZE - 1)
+      .returns<BktTeamLogRow[]>();
+    if (error) {
+      console.error("getBasketballAllTeamMatchLogs error:", error.message);
       return rows;
     }
     rows.push(...(data ?? []));

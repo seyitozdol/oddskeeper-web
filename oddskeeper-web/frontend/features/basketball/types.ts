@@ -184,6 +184,34 @@ export type BktPlayerShareRow = {
   share: number;
 };
 
+export type BktPlayerWindowRow = {
+  player_slug: string;
+  player_name: string;
+  team_slug: string;
+  team_name: string;
+  market_key: string;
+  market_label: string;
+  games: number;
+  avg_minutes: number;
+  season_avg: number;
+  last5_avg: number | null;
+  last10_avg: number | null;
+  calc_std: number;
+  total: number;
+};
+
+export type BktFixtureRow = {
+  fixture_id: number;
+  season_label: string | null;
+  competition: string | null;
+  week: number | null;
+  match_text: string | null;
+  home_team_slug: string | null;
+  home_team_name: string | null;
+  away_team_slug: string | null;
+  away_team_name: string | null;
+};
+
 export type BktTeamLogRow = {
   season_label: string;
   match_key: string;
