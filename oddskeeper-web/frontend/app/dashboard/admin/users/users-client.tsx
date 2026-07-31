@@ -192,6 +192,36 @@ export default function AdminUsersClient({
     }
   }
 
+  // Sifre yaziliktir, satirda gosterilmez; optimistik guncelleme yok, sadece
+  // POST edip basari/hata dondururuz.
+  async function setPassword(
+    user: AdminUserRow,
+    password: string
+  ): Promise<boolean> {
+    setSaveError(false);
+    setSavingIds((prev) => new Set(prev).add(user.id));
+
+    try {
+      const res = await fetch(`/api/admin/users/${user.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return true;
+    } catch (error) {
+      console.error("Admin set password error:", error);
+      setSaveError(true);
+      return false;
+    } finally {
+      setSavingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(user.id);
+        return next;
+      });
+    }
+  }
+
   async function deleteUser(user: AdminUserRow) {
     if (!window.confirm(t("adminUsers.deleteConfirm", { email: user.email }))) {
       return;
@@ -365,6 +395,9 @@ export default function AdminUsersClient({
                 <th className="px-3 py-2.5 font-medium">
                   {t("adminUsers.accessColumn")}
                 </th>
+                <th className="px-3 py-2.5 font-medium">
+                  {t("adminUsers.passwordColumn")}
+                </th>
                 <th className="px-3 py-2.5 text-right font-medium">
                   {t("adminUsers.actionsColumn")}
                 </th>
@@ -455,6 +488,13 @@ export default function AdminUsersClient({
                         t={t}
                       />
                     </td>
+                    <td className="px-3 py-2.5">
+                      <PasswordCell
+                        isSaving={isSaving}
+                        onSave={(pw) => setPassword(user, pw)}
+                        t={t}
+                      />
+                    </td>
                     <td className="px-3 py-2.5 text-right">
                       <button
                         type="button"
@@ -483,6 +523,67 @@ export default function AdminUsersClient({
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+type PasswordCellProps = {
+  isSaving: boolean;
+  onSave: (password: string) => Promise<boolean>;
+  t: Translator;
+};
+
+function PasswordCell({ isSaving, onSave, t }: PasswordCellProps) {
+  const [value, setValue] = useState("");
+  const [invalid, setInvalid] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  async function save() {
+    if (value.length < 8) {
+      setInvalid(true);
+      setSaved(false);
+      return;
+    }
+    setInvalid(false);
+    const ok = await onSave(value);
+    if (ok) {
+      setValue("");
+      setSaved(true);
+    }
+  }
+
+  return (
+    <div className="flex items-center gap-1.5">
+      <input
+        type="password"
+        value={value}
+        onChange={(e) => {
+          setValue(e.target.value);
+          setSaved(false);
+          setInvalid(false);
+        }}
+        placeholder={t("adminUsers.passwordPlaceholder")}
+        disabled={isSaving}
+        autoComplete="new-password"
+        title={invalid ? t("adminUsers.createPasswordTooShort") : undefined}
+        className={`w-32 rounded-lg border px-2 py-1 text-[12px] text-ink outline-none transition placeholder:text-ink-3 focus:border-line-strong ${
+          invalid ? "border-neg" : "border-line"
+        } bg-field`}
+      />
+      {value ? (
+        <button
+          type="button"
+          onClick={() => void save()}
+          disabled={isSaving}
+          className="rounded-md border border-line px-2 py-1 text-[11px] font-medium text-ink-2 transition hover:border-line-strong hover:text-ink disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {t("adminUsers.passwordSet")}
+        </button>
+      ) : saved ? (
+        <span className="text-[11px] font-medium text-accent-ink">
+          {t("adminUsers.passwordSaved")}
+        </span>
+      ) : null}
     </div>
   );
 }

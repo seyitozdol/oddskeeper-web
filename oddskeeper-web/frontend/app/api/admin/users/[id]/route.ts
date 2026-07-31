@@ -9,6 +9,8 @@ type PatchBody = {
   // string = sifresiz giris alias'i ata/guncelle, null = kaldir
   directAlias?: string | null;
   email?: string;
+  // yeni sifre (en az 8 karakter); admin baska kullanicinin sifresini degistirir
+  password?: string;
 };
 
 const UUID_RE =
@@ -42,9 +44,20 @@ export async function PATCH(
   const hasIsAdmin = typeof body.isAdmin === "boolean";
   const hasDirectAlias = "directAlias" in body;
   const hasEmail = typeof body.email === "string";
+  const hasPassword = typeof body.password === "string";
 
-  if (!hasAllowedKeys && !hasIsAdmin && !hasDirectAlias && !hasEmail) {
+  if (
+    !hasAllowedKeys &&
+    !hasIsAdmin &&
+    !hasDirectAlias &&
+    !hasEmail &&
+    !hasPassword
+  ) {
     return NextResponse.json({ error: "empty_body" }, { status: 400 });
+  }
+
+  if (hasPassword && (body.password as string).length < 8) {
+    return NextResponse.json({ error: "invalid_password" }, { status: 400 });
   }
 
   let nextEmail: string | null = null;
@@ -88,19 +101,32 @@ export async function PATCH(
     return NextResponse.json({ error: "user_not_found" }, { status: 404 });
   }
 
-  // E-posta degisikligi: once auth tarafinda guncelle ki asagidaki
-  // user_nav_permissions satiri yeni adresi yazsin.
-  if (nextEmail !== null && nextEmail !== (target.user.email ?? "")) {
-    const { error: emailError } = await admin.auth.admin.updateUserById(id, {
-      email: nextEmail,
-      email_confirm: true,
-    });
+  // E-posta ve/veya sifre degisikligi: once auth tarafinda guncelle ki
+  // asagidaki user_nav_permissions satiri yeni adresi yazsin.
+  const emailChanged =
+    nextEmail !== null && nextEmail !== (target.user.email ?? "");
 
-    if (emailError) {
-      const status = /already|exists|registered/i.test(emailError.message)
+  if (emailChanged || hasPassword) {
+    const authUpdate: { email?: string; email_confirm?: boolean; password?: string } =
+      {};
+    if (emailChanged) {
+      authUpdate.email = nextEmail!;
+      authUpdate.email_confirm = true;
+    }
+    if (hasPassword) {
+      authUpdate.password = body.password as string;
+    }
+
+    const { error: authError } = await admin.auth.admin.updateUserById(
+      id,
+      authUpdate
+    );
+
+    if (authError) {
+      const status = /already|exists|registered/i.test(authError.message)
         ? 409
         : 500;
-      if (status === 500) console.error("Admin email update error:", emailError);
+      if (status === 500) console.error("Admin auth update error:", authError);
       return NextResponse.json(
         { error: status === 409 ? "email_exists" : "save_failed" },
         { status }
