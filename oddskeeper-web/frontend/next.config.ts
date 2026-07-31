@@ -17,6 +17,18 @@ const nextConfig: NextConfig = {
         hostname: "flagcdn.com",
         pathname: "/**",
       },
+      {
+        // Transfermarkt oyuncu fotograflari (transfer tablosu)
+        protocol: "https",
+        hostname: "img.a.transfermarkt.technology",
+        pathname: "/**",
+      },
+      {
+        // Transfermarkt kulup amblemleri
+        protocol: "https",
+        hostname: "tmssl.akamaized.net",
+        pathname: "/**",
+      },
     ],
   },
 };
