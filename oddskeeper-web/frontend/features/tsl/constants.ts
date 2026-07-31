@@ -29,6 +29,29 @@ export function isTslSection(v: string | undefined | null): v is TslSection {
 
 export const TSL_BASE_PATH = "/dashboard/stats-analysis/tsl";
 
+// 4. sablon (resmi): kendi rota agaci, lig amblemi + bayrak, 4 bolum.
+export const RESMI_BASE_PATH = "/dashboard/stats-analysis/tsl/resmi";
+
+export const RESMI_SECTIONS = ["league", "players", "teams", "ranking"] as const;
+export type ResmiSection = (typeof RESMI_SECTIONS)[number];
+
+export function isResmiSection(v: string | undefined | null): v is ResmiSection {
+  return !!v && (RESMI_SECTIONS as readonly string[]).includes(v);
+}
+
+// Lig liderleri metrik seti (client + server ortak; server modulu import etme).
+export const RESMI_LEADER_METRICS = [
+  { key: "goals_total", labelKey: "tsl.topScorer" },
+  { key: "assists_total", labelKey: "tsl.topAssist" },
+  { key: "expected_goals_total", labelKey: "tsl.topXg" },
+  { key: "key_passes_total", labelKey: "tsl.topKeyPass" },
+] as const;
+
+export function tslMatchHref(matchId: string, returnTo?: string): string {
+  const q = returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : "";
+  return `${TSL_BASE_PATH}/match/${encodeURIComponent(matchId)}${q}`;
+}
+
 // Puan durumunda renk bantlari (2025/26 18 takim; Avrupa ust ~5, kume alt 3).
 export function standingsZone(
   rank: number,

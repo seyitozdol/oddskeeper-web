@@ -96,3 +96,12 @@ select option {
   background: var(--field);
   color: var(--ink);
 }
+
+/* TSL lig amblemi: koyu temalarda (night / calimla-dark) dümdüz beyaz;
+   açık temada (calimla-light) orijinal renkli görünsün. */
+.tsl-league-mark {
+  filter: brightness(0) invert(1);
+}
+[data-theme="calimla-light"] .tsl-league-mark {
+  filter: none;
+}

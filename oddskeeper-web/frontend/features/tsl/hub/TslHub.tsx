@@ -12,13 +12,16 @@ type DesignCard = {
   Preview: () => React.ReactElement;
 };
 
-const CARDS: DesignCard[] = [
+type CardKey = TslDesign | "resmi";
+
+const CARDS: (Omit<DesignCard, "key"> & { key: CardKey })[] = [
+  { key: "resmi", accent: "bg-accent", ring: "group-hover:border-accent/50", Preview: ResmiPreview },
   { key: "sahne", accent: "bg-accent", ring: "group-hover:border-accent/50", Preview: SahnePreview },
   { key: "radar", accent: "bg-pos", ring: "group-hover:border-pos/50", Preview: RadarPreview },
   { key: "panel", accent: "bg-ink-2", ring: "group-hover:border-line-strong", Preview: PanelPreview },
 ];
 
-function hrefFor(d: TslDesign) {
+function hrefFor(d: CardKey) {
   return `${TSL_BASE_PATH}/${d}?season=${encodeURIComponent(TSL_DEFAULT_SEASON)}&section=league`;
 }
 
@@ -58,8 +61,8 @@ export default function TslHub() {
         </p>
       </motion.div>
 
-      {/* Uc tasarim karti */}
-      <div className="grid gap-4 md:grid-cols-3">
+      {/* Tasarim kartlari */}
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {CARDS.map((card, i) => {
           const Preview = card.Preview;
           return (
@@ -116,6 +119,36 @@ export default function TslHub() {
 }
 
 /* ---- Mini onizlemeler (semantik degil, tasarim karakteri) ---- */
+
+function ResmiPreview() {
+  const rows = [
+    { n: "GS", w: 96 },
+    { n: "FB", w: 90 },
+    { n: "TS", w: 74 },
+  ];
+  return (
+    <div className="flex h-full flex-col gap-2">
+      <div className="flex items-center gap-2">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/images/leagues/super-lig.png" alt="" className="tsl-league-mark h-6 w-6 object-contain" />
+        <span className="text-[11px] font-bold text-ink">Trendyol Süper Lig</span>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/images/flags/tr.png" alt="" className="ml-auto h-4 w-4 rounded-full object-cover" />
+      </div>
+      <div className="space-y-1.5">
+        {rows.map((r, i) => (
+          <div key={i} className="flex items-center gap-2">
+            <span className="w-3 text-[9px] font-bold tabular-nums text-ink-3">{i + 1}</span>
+            <span className="h-4 w-4 rounded-full bg-veil text-[7px] leading-4 text-ink-3 text-center">{r.n}</span>
+            <div className="h-2 flex-1 overflow-hidden rounded-full bg-veil">
+              <div className="h-full rounded-full bg-accent" style={{ width: `${r.w}%` }} />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 function SahnePreview() {
   const rows = [

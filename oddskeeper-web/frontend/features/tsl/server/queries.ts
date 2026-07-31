@@ -381,7 +381,7 @@ export async function getTslTeamMetrics(
     .from("tsl_ss_team_detailed_metrics_mat")
     .select(
       `source_team_id, team_name, metric_key, metric_label, category_key,
-       total_value, per_match_value, league_percentile, league_rank,
+       total_value, per_match_value, league_avg, league_percentile, league_rank,
        value_format, is_higher_better`
     )
     .eq("competition", TSL_COMPETITION)
@@ -402,6 +402,7 @@ export async function getTslTeamMetrics(
       categoryKey: r.category_key ?? null,
       total: toNum(r.total_value),
       perMatch: toNum(r.per_match_value),
+      leagueAvg: toNum(r.league_avg),
       leaguePct: pctToPercent(r.league_percentile),
       leagueRank: toNum(r.league_rank),
       valueFormat: r.value_format ?? "count",

@@ -128,6 +128,7 @@ export type TslTeamMetric = {
   categoryKey: string | null;
   total: number | null;
   perMatch: number | null;
+  leagueAvg: number | null;
   leaguePct: number | null;
   leagueRank: number | null;
   valueFormat: MetricFormat;

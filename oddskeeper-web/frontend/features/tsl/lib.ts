@@ -94,6 +94,19 @@ export const FORM_STYLE: Record<FormResult, string> = {
   L: "bg-neg/15 text-neg border-neg/30",
 };
 
+// Yerel logo yolundan (/images/football_logos/<slug>.png) takim slug'i cikar.
+export function slugFromLogo(logo: string | null | undefined): string | null {
+  if (!logo) return null;
+  const m = logo.match(/football_logos\/([^/]+)\.[a-z0-9]+$/i);
+  if (!m) return null;
+  return decodeURIComponent(m[1])
+    .normalize("NFKD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
 export function initials(name: string): string {
   const parts = name.split(/\s+/).filter(Boolean);
   if (parts.length === 0) return "?";

@@ -26,6 +26,25 @@ export const tsl = defineMessages({
     panelTag: "Analytics",
     panelDesc:
       "KPI tiles, comparisons and charts. Built for digging into numbers, xG and head-to-head.",
+    resmiName: "Resmi",
+    resmiTag: "Final",
+    resmiDesc:
+      "The definitive league page: league badge, standings, top-scorer board, results, players and transfers.",
+
+    leagueName: "Trendyol Süper Lig",
+    sectionRanking: "Ranking",
+    topKeyPass: "Key passes",
+    upcoming: "Fixtures",
+    lastWeek: "Last week",
+    transfers: "Transfers",
+    fee: "Fee",
+    aggression: "Aggression",
+    perMatchShort: "/match",
+    avgShort: "avg",
+    page: "Page",
+    ofAvg: "league avg",
+    weekResults: "Week-by-week results",
+    noUpcoming: "No upcoming fixtures for this season.",
 
     // Section nav
     sectionLeague: "League",
@@ -148,6 +167,25 @@ export const tsl = defineMessages({
     panelTag: "Analitik",
     panelDesc:
       "KPI kutuları, kıyaslar ve grafikler. Sayılara, xG'ye ve ikili karşılaştırmaya dalmak için.",
+    resmiName: "Resmi",
+    resmiTag: "Final",
+    resmiDesc:
+      "Ligin ana sayfası: lig amblemi, puan durumu, gol krallığı, sonuçlar, oyuncular ve transferler.",
+
+    leagueName: "Trendyol Süper Lig",
+    sectionRanking: "Ranking",
+    topKeyPass: "Kilit pas",
+    upcoming: "Gelecek maçlar",
+    lastWeek: "Son hafta",
+    transfers: "Transferler",
+    fee: "Bonservis",
+    aggression: "Agresyon",
+    perMatchShort: "/maç",
+    avgShort: "ort.",
+    page: "Sayfa",
+    ofAvg: "lig ort.",
+    weekResults: "Hafta hafta sonuçlar",
+    noUpcoming: "Bu sezon için gelecek maç yok.",
 
     sectionLeague: "Lig",
     sectionPlayers: "Oyuncular",

@@ -67,3 +67,17 @@ end $$;
 grant usage on schema ref to anon;
 grant select on ref.sofascore_team_logos to anon;
 grant select on analytics.tff1_team_logos_v1 to anon;
+
+-- 4. sablon (resmi) oyuncu foto/link/istatistik icin okunan view'lar.
+-- player_current_info/profile/market_value yalniz authenticated'ti (dev anon
+-- foto goremiyordu); iki TSL player mat'inin HIC grant'i yoktu (uretimde bile
+-- bos donuyordu). Hepsini anon+authenticated'a ac (public futbol istatistigi).
+grant select on analytics.player_current_info_v1 to anon, authenticated;
+grant select on analytics.player_profile_v1 to anon, authenticated;
+grant select on analytics.player_market_value_v1 to anon, authenticated;
+grant select on analytics.tsl_player_flashscore_season_mat to anon, authenticated;
+grant select on analytics.tsl_player_advanced_season_mat to anon, authenticated;
+
+-- TSL mac detay sayfasi (ve mevcut tff1 mac sayfalari) oyuncu-mac logunu okur;
+-- mat'in hic grant'i yoktu.
+grant select on analytics.tff1_player_match_log_mat to anon, authenticated;
