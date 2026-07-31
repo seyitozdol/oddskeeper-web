@@ -86,8 +86,10 @@ export const NAV_PERMISSION_ITEMS: NavPermissionItem[] = [
   {
     key: "league-tbl",
     labelKey: "nav.leagueTbl",
-    href: "/dashboard/stats-analysis?sport=basketball&view=team",
-    pathPrefixes: [],
+    href: "/dashboard/basketball",
+    // Basketbol (TBSL) lig panosu: proxy bu bolumu league-tbl iznine gore
+    // kilitler; team/player alt sayfalari da bu prefix'e duser.
+    pathPrefixes: ["/dashboard/basketball"],
   },
   {
     key: "tff-1-lig",

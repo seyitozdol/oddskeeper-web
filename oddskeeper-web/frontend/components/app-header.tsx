@@ -30,10 +30,8 @@ const TSL_HUB_HREF =
 const TFF1_RESMI_HREF =
   "/dashboard/stats-analysis/tff1/resmi?season=2026%2F2027&section=league";
 
-// TBL (Türkiye Basketbol Ligi) icin ayri lig-detay sayfasi henuz yok; simdilik
-// basketbol istatistik gorunumune baglaniyor (icerik sonra degisecek).
-const BASKETBALL_LEAGUE_HREF =
-  "/dashboard/stats-analysis?sport=basketball&view=team";
+// TBL (Türkiye Basketbol Süper Ligi) lig panosu.
+const BASKETBALL_LEAGUE_HREF = "/dashboard/basketball";
 
 const LEAGUE_DETAIL_PATH =
   "/dashboard/stats-analysis/football/league-stats/detail";
@@ -110,6 +108,9 @@ export default function AppHeader({
     }
     if (item.key === "1lig") {
       return pathname.startsWith("/dashboard/stats-analysis/tff1");
+    }
+    if (item.key === "tbl") {
+      return pathname.startsWith("/dashboard/basketball");
     }
     if (item.competition != null) {
       return (
@@ -271,8 +272,8 @@ export default function AppHeader({
                     title={t("nav.basketball")}
                     subtitle={t("nav.basketballSubtitle")}
                     iconSrc="/icons/basketball.svg"
-                    playerHref="/dashboard/stats-analysis?sport=basketball&view=player"
-                    teamHref="/dashboard/stats-analysis?sport=basketball&view=team"
+                    playerHref="/dashboard/basketball?tab=players"
+                    teamHref="/dashboard/basketball"
                   />
                 </div>
               </div>

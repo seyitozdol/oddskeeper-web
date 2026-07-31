@@ -1,6 +1,7 @@
 import type { Locale } from "../config";
 import { adminUsers } from "./adminUsers";
 import { auth } from "./auth";
+import { basketball } from "./basketball";
 import { common } from "./common";
 import { dashboardHome } from "./dashboardHome";
 import { deepPrediction } from "./deepPrediction";
@@ -25,6 +26,7 @@ const MESSAGES: Record<
 > = {
   adminUsers,
   auth,
+  basketball,
   common,
   dashboardHome,
   deepPrediction,
