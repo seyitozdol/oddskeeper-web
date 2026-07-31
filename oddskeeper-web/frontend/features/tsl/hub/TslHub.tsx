@@ -3,7 +3,12 @@
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { useI18n } from "../../../lib/i18n/LanguageProvider";
-import { TSL_BASE_PATH, TSL_DEFAULT_SEASON, type TslDesign } from "../constants";
+import {
+  RESMI_DEFAULT_SEASON,
+  TSL_BASE_PATH,
+  TSL_DEFAULT_SEASON,
+  type TslDesign,
+} from "../constants";
 
 type DesignCard = {
   key: TslDesign;
@@ -22,7 +27,8 @@ const CARDS: (Omit<DesignCard, "key"> & { key: CardKey })[] = [
 ];
 
 function hrefFor(d: CardKey) {
-  return `${TSL_BASE_PATH}/${d}?season=${encodeURIComponent(TSL_DEFAULT_SEASON)}&section=league`;
+  const season = d === "resmi" ? RESMI_DEFAULT_SEASON : TSL_DEFAULT_SEASON;
+  return `${TSL_BASE_PATH}/${d}?season=${encodeURIComponent(season)}&section=league`;
 }
 
 export default function TslHub() {

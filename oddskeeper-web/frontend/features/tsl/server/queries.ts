@@ -30,19 +30,20 @@ export async function getTslTeamMeta(
     supabase.schema("analytics").from("tff1_team_logos_v1").select("team_id, logo_url, team_name"),
   ]);
 
-  const logoMap = new Map<string, { logo: string | null; name: string | null }>();
-  for (const r of logos.data ?? []) {
-    logoMap.set(String(r.team_id), { logo: r.logo_url ?? null, name: r.team_name ?? null });
-  }
-
+  // Once TUM logolu takimlarla doldur (sezon bagimsiz; 26/27 gibi overview'i
+  // bos sezonlarda fikstur takimlarinin logosu/adi yine bulunur), sonra
+  // overview isimleriyle uzerine yaz.
   const out: Record<string, TslTeamMeta> = {};
+  for (const r of logos.data ?? []) {
+    const id = String(r.team_id);
+    out[id] = { teamId: id, name: r.team_name ?? id, logo: r.logo_url ?? null };
+  }
   for (const r of ov.data ?? []) {
     const id = String(r.source_team_id);
-    const l = logoMap.get(id);
     out[id] = {
       teamId: id,
-      name: r.team_name ?? l?.name ?? id,
-      logo: l?.logo ?? null,
+      name: r.team_name ?? out[id]?.name ?? id,
+      logo: out[id]?.logo ?? null,
     };
   }
   return out;

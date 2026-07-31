@@ -1,10 +1,10 @@
 import { getLocale, getT } from "@/lib/i18n/server";
 import { RESMI_BASE_PATH } from "@/features/tsl/constants";
 import { formatDate } from "@/features/tsl/lib";
-import type { ResmiRankingBundle } from "@/features/tsl/server/resmiLoaders";
+import type { ResmiResultsBundle } from "@/features/tsl/server/resmiLoaders";
 import { MatchRow, ResmiStandings } from "./parts";
 
-export default async function ResmiRanking({ data }: { data: ResmiRankingBundle }) {
+export default async function ResmiResults({ data }: { data: ResmiResultsBundle }) {
   const t = await getT();
   const locale = await getLocale();
   const { standings, rounds, teamSlugById } = data;

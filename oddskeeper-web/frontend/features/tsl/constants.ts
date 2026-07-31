@@ -2,11 +2,15 @@
 
 export const TSL_COMPETITION = "Süper Lig";
 
-// Elimizdeki sezonlar (güncel önce). tsl_ss_* view'lari bu iki sezonu kapsar.
-export const TSL_SEASONS = ["2025/2026", "2024/2025"] as const;
+// Sezonlar (güncel önce). 2026/2027 güncel sezon (14 Ağu 2026 başlar; şu an
+// sadece fikstür + transfer verisi var). 25/26 ve 24/25 tam veri (arşiv).
+export const TSL_SEASONS = ["2026/2027", "2025/2026", "2024/2025"] as const;
 export type TslSeason = (typeof TSL_SEASONS)[number];
 
+// Eski 3 tasarim (sahne/radar/panel) tam veri olan son sezonda açılsın.
 export const TSL_DEFAULT_SEASON: TslSeason = "2025/2026";
+// Resmi şablon güncel sezonda açılır.
+export const RESMI_DEFAULT_SEASON: TslSeason = "2026/2027";
 
 export function isTslSeason(v: string | undefined | null): v is TslSeason {
   return !!v && (TSL_SEASONS as readonly string[]).includes(v);
@@ -32,7 +36,14 @@ export const TSL_BASE_PATH = "/dashboard/stats-analysis/tsl";
 // 4. sablon (resmi): kendi rota agaci, lig amblemi + bayrak, 4 bolum.
 export const RESMI_BASE_PATH = "/dashboard/stats-analysis/tsl/resmi";
 
-export const RESMI_SECTIONS = ["league", "players", "teams", "ranking"] as const;
+export const RESMI_SECTIONS = [
+  "league",
+  "players",
+  "teams",
+  "results",
+  "playerRankings",
+  "teamRankings",
+] as const;
 export type ResmiSection = (typeof RESMI_SECTIONS)[number];
 
 export function isResmiSection(v: string | undefined | null): v is ResmiSection {

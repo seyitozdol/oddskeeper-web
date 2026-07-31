@@ -14,7 +14,9 @@ export default async function ResmiTeams({ data }: { data: ResmiTeamsBundle }) {
   const t = await getT();
   const { standings, teamMetrics, aggression, transfers, teamSlugById } = data;
 
-  if (!standings.length) {
+  // Sezon başlamadıysa (26/27) takım istatistiği yok ama transferler var.
+  const hasBoard = standings.length > 0;
+  if (!hasBoard && !transfers.length) {
     return <p className="py-16 text-center text-sm text-ink-3">{t("tsl.noData")}</p>;
   }
 
@@ -69,14 +71,16 @@ export default async function ResmiTeams({ data }: { data: ResmiTeamsBundle }) {
   const metrics = [...metricMap.values()];
 
   return (
-    <div className="grid gap-5 lg:grid-cols-[1fr_1fr]">
-      {/* Kompakt takim metrikleri */}
-      <div>
-        <h2 className="mb-2 text-[13px] font-semibold uppercase tracking-[0.12em] text-ink-2">
-          {t("tsl.sectionTeams")}
-        </h2>
-        <ResmiTeamBoard teams={teams} metrics={metrics} />
-      </div>
+    <div className={hasBoard ? "grid gap-5 lg:grid-cols-[1fr_1fr]" : "mx-auto max-w-3xl"}>
+      {/* Kompakt takim metrikleri (sadece veri varken) */}
+      {hasBoard ? (
+        <div>
+          <h2 className="mb-2 text-[13px] font-semibold uppercase tracking-[0.12em] text-ink-2">
+            {t("tsl.sectionTeams")}
+          </h2>
+          <ResmiTeamBoard teams={teams} metrics={metrics} />
+        </div>
+      ) : null}
 
       {/* Transferler */}
       <div>

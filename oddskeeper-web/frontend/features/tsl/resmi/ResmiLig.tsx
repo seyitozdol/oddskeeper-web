@@ -16,9 +16,33 @@ export default async function ResmiLig({ data }: { data: ResmiLigBundle }) {
   const t = await getT();
   const locale = await getLocale();
   const { standings, leaders, leaderMetric, lastRound, upcoming, teamSlugById } = data;
+  const preseasonReturnTo = `${RESMI_BASE_PATH}?season=${encodeURIComponent(data.season)}&section=league`;
 
+  // Sezon henüz başlamadıysa (ör. 2026/2027) istatistik yok; fikstürü göster.
   if (!standings.length) {
-    return <p className="py-16 text-center text-sm text-ink-3">{t("tsl.noData")}</p>;
+    if (!upcoming.length) {
+      return <p className="py-16 text-center text-sm text-ink-3">{t("tsl.noData")}</p>;
+    }
+    return (
+      <div className="space-y-5">
+        <div className="flex items-center gap-3 rounded-2xl border border-accent/30 bg-accent-soft px-5 py-4">
+          <span className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-accent" />
+          <p className="text-[14px] text-accent-ink">{t("tsl.seasonNotStarted")}</p>
+        </div>
+        <div className="overflow-hidden rounded-2xl border border-line bg-card">
+          <h3 className="border-b border-line px-4 py-2.5 text-[13px] font-semibold uppercase tracking-[0.12em] text-ink-2">
+            {t("tsl.upcoming")}
+          </h3>
+          <div className="grid gap-x-6 sm:grid-cols-2">
+            {upcoming.slice(0, 30).map((m) => (
+              <div key={m.matchId} className="border-b border-line/60">
+                <MatchRow match={m} locale={locale} returnTo={preseasonReturnTo} />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
   }
 
   const labels = {

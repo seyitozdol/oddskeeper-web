@@ -1,6 +1,6 @@
 import {
+  RESMI_DEFAULT_SEASON,
   RESMI_LEADER_METRICS,
-  TSL_DEFAULT_SEASON,
   isResmiSection,
   isTslSeason,
   type ResmiSection,
@@ -8,15 +8,19 @@ import {
 } from "../../../../../features/tsl/constants";
 import {
   loadResmiLig,
-  loadResmiRanking,
+  loadResmiPlayerRankings,
+  loadResmiResults,
+  loadResmiTeamRankings,
   loadResmiTeams,
 } from "../../../../../features/tsl/server/resmiLoaders";
 import ResmiControlBar from "../../../../../features/tsl/resmi/ResmiControlBar";
 import SectionTransition from "../../../../../features/tsl/shared/SectionTransition";
 import ResmiLig from "../../../../../features/tsl/resmi/ResmiLig";
-import ResmiRanking from "../../../../../features/tsl/resmi/ResmiRanking";
+import ResmiResults from "../../../../../features/tsl/resmi/ResmiResults";
 import ResmiTeams from "../../../../../features/tsl/resmi/ResmiTeams";
 import ResmiPlayers from "../../../../../features/tsl/resmi/ResmiPlayers";
+import ResmiPlayerRankings from "../../../../../features/tsl/resmi/ResmiPlayerRankings";
+import ResmiTeamRankings from "../../../../../features/tsl/resmi/ResmiTeamRankings";
 import { getPlayerStatsList } from "../../../../../features/player-stats/server/getPlayerStatsList";
 import { getTslAdvancedStats } from "../../../../../features/player-stats/server/getTslAdvancedStats";
 import { getAllFootballTeamLogos } from "../../../../../lib/football-teams";
@@ -36,10 +40,11 @@ export default async function ResmiPage({
 }) {
   const sp = await searchParams;
   const seasonRaw = first(sp.season);
-  const season: TslSeason = isTslSeason(seasonRaw) ? seasonRaw : TSL_DEFAULT_SEASON;
+  const season: TslSeason = isTslSeason(seasonRaw) ? seasonRaw : RESMI_DEFAULT_SEASON;
   const section: ResmiSection = isResmiSection(first(sp.section))
     ? (first(sp.section) as ResmiSection)
     : "league";
+  const metric = first(sp.metric);
 
   const leaderRaw = first(sp.leader);
   const leaderMetric =
@@ -48,10 +53,14 @@ export default async function ResmiPage({
   let content: React.ReactNode = null;
   if (section === "league") {
     content = <ResmiLig data={await loadResmiLig(season, leaderMetric)} />;
-  } else if (section === "ranking") {
-    content = <ResmiRanking data={await loadResmiRanking(season)} />;
+  } else if (section === "results") {
+    content = <ResmiResults data={await loadResmiResults(season)} />;
   } else if (section === "teams") {
     content = <ResmiTeams data={await loadResmiTeams(season)} />;
+  } else if (section === "playerRankings") {
+    content = <ResmiPlayerRankings data={await loadResmiPlayerRankings(season, metric)} />;
+  } else if (section === "teamRankings") {
+    content = <ResmiTeamRankings data={await loadResmiTeamRankings(season, metric)} />;
   } else {
     const [rows, advancedRows, teamLogos] = await Promise.all([
       getPlayerStatsList(),
@@ -59,19 +68,14 @@ export default async function ResmiPage({
       getAllFootballTeamLogos(),
     ]);
     content = (
-      <ResmiPlayers
-        rows={rows}
-        advancedRows={advancedRows}
-        teamLogos={teamLogos}
-        season={season}
-      />
+      <ResmiPlayers rows={rows} advancedRows={advancedRows} teamLogos={teamLogos} season={season} />
     );
   }
 
   return (
     <section className="px-4 pb-14 lg:px-8">
       <ResmiControlBar section={section} season={season} />
-      <SectionTransition transitionKey={`resmi-${section}-${season}-${leaderMetric}`}>
+      <SectionTransition transitionKey={`resmi-${section}-${season}-${leaderMetric}-${metric ?? ""}`}>
         {content}
       </SectionTransition>
     </section>
