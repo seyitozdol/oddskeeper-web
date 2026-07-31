@@ -10,9 +10,13 @@ import type {
   BktPlayerLogRow,
   BktTeamLogRow,
   BktMarketModelRow,
+  BktHomeAwaySplitRow,
+  BktTeamMetricFormRow,
+  BktPlayerShareRow,
 } from "../types";
 
 const SEASON = "2025-2026";
+const PAGE_SIZE = 1000;
 
 export async function getBasketballStandings(): Promise<BktTeamSeasonRow[]> {
   const supabase = await createClient();
@@ -60,6 +64,60 @@ export async function getBasketballTeamPointsModel(): Promise<BktMarketModelRow[
     return [];
   }
   return data ?? [];
+}
+
+// ---- Katılım Araçları veri katmanı ----
+export async function getBasketballHomeAwaySplits(): Promise<BktHomeAwaySplitRow[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .schema("analytics")
+    .from("bb_team_home_away_split_v1")
+    .select("*")
+    .eq("season_label", SEASON)
+    .returns<BktHomeAwaySplitRow[]>();
+  if (error) {
+    console.error("getBasketballHomeAwaySplits error:", error.message);
+    return [];
+  }
+  return data ?? [];
+}
+
+export async function getBasketballTeamMetricForms(): Promise<BktTeamMetricFormRow[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .schema("analytics")
+    .from("bb_team_metric_form_v1")
+    .select("*")
+    .eq("season_label", SEASON)
+    .returns<BktTeamMetricFormRow[]>();
+  if (error) {
+    console.error("getBasketballTeamMetricForms error:", error.message);
+    return [];
+  }
+  return data ?? [];
+}
+
+export async function getBasketballPlayerShares(): Promise<BktPlayerShareRow[]> {
+  const supabase = await createClient();
+  const rows: BktPlayerShareRow[] = [];
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await supabase
+      .schema("analytics")
+      .from("bb_player_metric_share_v1")
+      .select("*")
+      .eq("season_label", SEASON)
+      .order("team_slug", { ascending: true })
+      .order("market_key", { ascending: true })
+      .order("share", { ascending: false })
+      .range(from, from + PAGE_SIZE - 1)
+      .returns<BktPlayerShareRow[]>();
+    if (error) {
+      console.error("getBasketballPlayerShares error:", error.message);
+      return rows;
+    }
+    rows.push(...(data ?? []));
+    if (!data || data.length < PAGE_SIZE) return rows;
+  }
 }
 
 export async function getBasketballTeam(teamSlug: string): Promise<BktTeamSeasonRow | null> {

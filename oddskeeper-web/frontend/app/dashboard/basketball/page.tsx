@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { getBasketballStandings, getBasketballPlayerLeaderboard, getBasketballTeamPointsModel } from "@/features/basketball/server/getBasketballStats";
 import BasketballExplorer from "@/features/basketball/components/BasketballExplorer";
 import { getT } from "@/lib/i18n/server";
@@ -20,12 +21,20 @@ export default async function BasketballPage({
   return (
     <section className="w-full">
       <div className="rounded-2xl border border-line bg-card p-8">
-        <div className="mb-6">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-accent-ink">
-            {t("basketball.kicker")}
-          </p>
-          <h1 className="mt-1 text-2xl font-semibold text-ink">{t("basketball.title")}</h1>
-          <p className="mt-1 text-sm text-ink-3">{t("basketball.subtitle")}</p>
+        <div className="mb-6 flex items-start justify-between gap-4">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-accent-ink">
+              {t("basketball.kicker")}
+            </p>
+            <h1 className="mt-1 text-2xl font-semibold text-ink">{t("basketball.title")}</h1>
+            <p className="mt-1 text-sm text-ink-3">{t("basketball.subtitle")}</p>
+          </div>
+          <Link
+            href="/dashboard/basketball/tools"
+            className="shrink-0 rounded-md bg-accent px-4 py-2 text-[13px] font-semibold text-white hover:opacity-90"
+          >
+            {t("basketball.toolsNav")}
+          </Link>
         </div>
 
         <BasketballExplorer standings={standings} leaderboard={leaderboard} teamPoints={teamPoints} initialTab={initialTab} />

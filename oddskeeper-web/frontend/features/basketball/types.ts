@@ -142,6 +142,48 @@ export type BktMarketModelRow = {
   max_val: number;
 };
 
+export type BktHomeAwaySplitRow = {
+  team_slug: string;
+  team_name: string;
+  games: number;
+  ppg: number;
+  oppg: number;
+  home_pf: number | null;
+  home_pa: number | null;
+  away_pf: number | null;
+  away_pa: number | null;
+  home_pf_std: number | null;
+  away_pf_std: number | null;
+  pf_std: number | null;
+};
+
+export type BktTeamMetricFormRow = {
+  team_slug: string;
+  team_name: string;
+  market_key: string;
+  market_label: string;
+  games: number;
+  season_avg: number;
+  last10_avg: number | null;
+  std: number;
+};
+
+export type BktPlayerShareRow = {
+  player_slug: string;
+  player_name: string;
+  team_slug: string;
+  team_name: string;
+  market_key: string;
+  market_label: string;
+  games: number;
+  avg_minutes: number;
+  total: number;
+  per_game: number;
+  std: number;
+  team_total: number;
+  share: number;
+};
+
 export type BktTeamLogRow = {
   season_label: string;
   match_key: string;
