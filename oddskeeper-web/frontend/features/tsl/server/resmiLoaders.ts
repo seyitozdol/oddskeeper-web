@@ -1,10 +1,11 @@
-import { getAllFootballTeamLogos, getFootballTeams } from "../../../lib/football-teams";
+import { getAllFootballTeamLogos } from "../../../lib/football-teams";
 import { getTeamDetailHref } from "../../../lib/routes";
 import {
   playerHrefFor,
   teamHrefFor,
   type LeagueConfig,
 } from "../leagues";
+import { slugifyTeamName } from "../../../lib/football-teams";
 import { normalizeSearch, slugFromLogo } from "../lib";
 import type {
   TslLeaderRow,
@@ -102,23 +103,92 @@ function providerFor(config: LeagueConfig): Provider {
   };
 }
 
-// Takım id -> detay href (lig kaynağına göre; tsl slug doğrulamalı).
-async function teamHrefMap(
-  config: LeagueConfig,
+// Bir takım adı/logosundan yerel football slug'ı çözer. Önce logo yolundan
+// (yerel /images/football_logos/...), sonra ad slug'ından, sonra ad slug'ının
+// gitgide kısalan ön-eklerinden dener (ör. "Amed Sportif Faaliyetler" -> amed,
+// "Çorum FK" -> corum, "Erzurumspor FK" -> erzurumspor). Böylece logosu CDN
+// URL'i olan yeni yükselen takımlar da doğru profile bağlanır.
+function resolveFootballSlug(
+  teamName: string | null,
+  logo: string | null,
+  valid: Set<string>
+): string | null {
+  const fromLogo = slugFromLogo(logo);
+  if (fromLogo && valid.has(fromLogo)) return fromLogo;
+  const base = teamName ? slugifyTeamName(teamName) : "";
+  if (base && valid.has(base)) return base;
+  if (base) {
+    const parts = base.split("-").filter(Boolean);
+    for (let k = parts.length - 1; k >= 1; k--) {
+      const cand = parts.slice(0, k).join("-");
+      if (valid.has(cand)) return cand;
+    }
+  }
+  return null;
+}
+
+type HrefEntry = { teamId: string; teamName: string | null; logo: string | null };
+
+function pushEntry(
+  map: Map<string, HrefEntry>,
+  teamId: string | null | undefined,
+  teamName: string | null | undefined,
+  logo: string | null | undefined
+) {
+  if (!teamId) return;
+  const cur = map.get(teamId);
+  if (!cur) {
+    map.set(teamId, { teamId, teamName: teamName ?? null, logo: logo ?? null });
+    return;
+  }
+  if (!cur.teamName && teamName) cur.teamName = teamName;
+  if (!cur.logo && logo) cur.logo = logo;
+}
+
+// Gösterilecek TÜM takımlardan (meta + puan durumu + maçlar) href girdileri
+// toplar; böylece meta'da (logo tablosunda) olmayan takımlar da link alır.
+function collectEntries(
   meta: Record<string, TslTeamMeta>,
+  opts: {
+    standings?: TslStandingRow[];
+    matches?: TslMatch[];
+    upcoming?: TslMatch[];
+    players?: { teamId: string; teamName: string | null; teamLogo?: string | null }[];
+    leaders?: { teamId?: string | null; teamName?: string | null }[];
+  } = {}
+): HrefEntry[] {
+  const map = new Map<string, HrefEntry>();
+  for (const m of Object.values(meta)) pushEntry(map, m.teamId, m.name, m.logo);
+  for (const s of opts.standings ?? []) pushEntry(map, s.teamId, s.teamName, s.logo);
+  for (const list of [opts.matches ?? [], opts.upcoming ?? []])
+    for (const mm of list) {
+      pushEntry(map, mm.homeId, mm.homeName, mm.homeLogo);
+      pushEntry(map, mm.awayId, mm.awayName, mm.awayLogo);
+    }
+  for (const p of opts.players ?? []) pushEntry(map, p.teamId, p.teamName, p.teamLogo ?? null);
+  for (const l of opts.leaders ?? []) pushEntry(map, l.teamId ?? null, l.teamName ?? null, null);
+  return [...map.values()];
+}
+
+// Takım id -> detay href. tff1: her id için geçerli URL (slug gerekmez).
+// tsl: ad/logo'dan çözülen slug varsa football profiline, yoksa null.
+async function buildTeamHrefs(
+  config: LeagueConfig,
+  entries: HrefEntry[],
   season: string
 ): Promise<Record<string, string | null>> {
   const out: Record<string, string | null> = {};
-  // Güncel + arşiv logolar: ligden düşen takımlar (arşivde) da profillerine
-  // bağlanabilsin (aksi halde eski TSL sezonunda takıma tıklanınca link boştu).
   const valid =
     config.source === "tsl"
       ? new Set(Object.keys(await getAllFootballTeamLogos()))
       : null;
-  for (const m of Object.values(meta)) {
-    const slug = config.source === "tsl" ? slugFromLogo(m.logo) : null;
-    const okSlug = slug && valid?.has(slug) ? slug : null;
-    out[m.teamId] = teamHrefFor(config, m.teamId, okSlug, season);
+  for (const e of entries) {
+    if (config.source === "tff1") {
+      out[e.teamId] = teamHrefFor(config, e.teamId, null, season);
+    } else {
+      const slug = resolveFootballSlug(e.teamName, e.logo, valid!);
+      out[e.teamId] = teamHrefFor(config, e.teamId, slug, season);
+    }
   }
   return out;
 }
@@ -171,8 +241,12 @@ export async function loadResmiLig(
     p.upcoming(season, meta),
     p.leaderboard(season, leaderMetric, meta),
   ]);
-  const teamHrefById = await teamHrefMap(config, meta, season);
   const standings = standingsReal.length ? standingsReal : buildZeroStandings(upcoming, meta);
+  const teamHrefById = await buildTeamHrefs(
+    config,
+    collectEntries(meta, { standings, matches, upcoming, leaders: leaderRows }),
+    season
+  );
 
   const leaders: ResmiLeaderRow[] = leaderRows
     .slice()
@@ -214,7 +288,11 @@ export async function loadResmiResults(config: LeagueConfig, season: string): Pr
   const matches = await p.matches(season, meta);
   const [standingsReal, upcoming] = await Promise.all([p.standings(season, meta, matches), p.upcoming(season, meta)]);
   const standings = standingsReal.length ? standingsReal : buildZeroStandings(upcoming, meta);
-  const teamHrefById = await teamHrefMap(config, meta, season);
+  const teamHrefById = await buildTeamHrefs(
+    config,
+    collectEntries(meta, { standings, matches, upcoming }),
+    season
+  );
   const rounds = clusterRounds(matches).reverse();
   return { season, basePath: config.basePath, matchBase: config.matchBase, standings, rounds, teamHrefById };
 }
@@ -242,18 +320,20 @@ export async function loadResmiTeams(config: LeagueConfig, season: string): Prom
   ]);
   const standings = standingsReal.length ? standingsReal : buildZeroStandings(upcoming, meta);
   const teamMetrics = teamMetricsReal.length ? teamMetricsReal : await buildZeroTeamMetrics(p, standings, meta);
-  const teamHrefById = await teamHrefMap(config, meta, season);
+  const teamHrefById = await buildTeamHrefs(
+    config,
+    collectEntries(meta, { standings, upcoming }),
+    season
+  );
 
   // Transfer hedef kulübü (TSL) href'i normalize-isim eşleşmesiyle.
-  const valid = config.source === "tsl" ? new Set((await getFootballTeams()).map((t) => t.slug)) : new Set<string>();
   const nameToHref: Record<string, string> = {};
   if (config.source === "tsl") {
+    const valid = new Set(Object.keys(await getAllFootballTeamLogos()));
     for (const m of Object.values(meta)) {
-      const slug = slugFromLogo(m.logo);
-      if (slug && valid.has(slug)) {
-        const href = getTeamDetailHref(slug);
-        if (href) nameToHref[normalizeSearch(m.name)] = href;
-      }
+      const slug = resolveFootballSlug(m.name, m.logo, valid);
+      const href = slug ? getTeamDetailHref(slug) : null;
+      if (href) nameToHref[normalizeSearch(m.name)] = href;
     }
   }
   const transfersLinked = transfers.map((tr) => ({
@@ -274,7 +354,13 @@ export async function loadResmiPlayers(config: LeagueConfig, season: string): Pr
   const meta = await p.teamMeta(season);
   const assets = await p.assets();
   const rows = await p.players(season, meta, assets);
-  const teamHrefById = await teamHrefMap(config, meta, season);
+  const teamHrefById = await buildTeamHrefs(
+    config,
+    collectEntries(meta, {
+      players: rows.map((r) => ({ teamId: r.teamId, teamName: r.teamName, teamLogo: r.teamLogo })),
+    }),
+    season
+  );
   const filled = rows.map((r) => ({
     ...r,
     playerHref: playerHrefFor(config, r.playerId, r.slug),
@@ -310,7 +396,11 @@ export async function loadResmiPlayerRankings(
     null;
   const metricKey = metric?.metricKey ?? "goals_total";
   const [rows, assets] = await Promise.all([p.leaderboard(season, metricKey, meta), p.assets()]);
-  const teamHrefById = await teamHrefMap(config, meta, season);
+  const teamHrefById = await buildTeamHrefs(
+    config,
+    collectEntries(meta, { leaders: rows }),
+    season
+  );
   const playerHrefById: Record<string, string | null> = {};
   for (const r of rows) playerHrefById[r.playerId] = playerHrefFor(config, r.playerId, assets[r.playerId]?.slug ?? null);
   return { season, basePath: config.basePath, catalog, metricKey, metric, rows, playerHrefById, teamHrefById };
@@ -362,7 +452,11 @@ export async function loadResmiTeamRankings(
       .map((r, i) => ({ ...r, rank: i + 1 }));
   }
 
-  const teamHrefById = await teamHrefMap(config, meta, season);
+  const teamHrefById = await buildTeamHrefs(
+    config,
+    collectEntries(meta, { leaders: rows }),
+    season
+  );
   return {
     season, basePath: config.basePath, catalog, metricKey, metricLabel: catMap.get(metricKey)?.label ?? metricKey,
     rows, metaById: meta, teamHrefById,
