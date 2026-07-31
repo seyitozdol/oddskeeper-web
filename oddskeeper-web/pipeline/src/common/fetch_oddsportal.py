@@ -34,7 +34,7 @@ LEAGUES = [
     ("Konferans Ligi", "/football/europe/conference-league/"),
     # Kulup hazirlik maclari (Turk takimlarinin hazirlik maclari burada, ulke
     # ekli: "Rizespor (Tur) – Abha (Sau)"). Milli takim hazirliklari mac oldukca.
-    ("Kulüp Hazırlık", "/football/world/club-friendly-games/"),
+    ("Kulüp Hazırlık", "/football/world/club-friendly/"),
 ]
 UA = ("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36")
