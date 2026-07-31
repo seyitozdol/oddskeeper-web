@@ -139,6 +139,16 @@ export function formMeta(
   return { text: locale === "tr" ? m.tr : m.en, tone: m.tone, arrow: m.arrow };
 }
 
+// Sayim (gol/asist/sut...) metrikleri varsayilan TOPLAM gosterilir (gol krali
+// mantigi); oran/ondalik metrikler kataloglarindaki basis'i kullanir.
+export function preferredBasis(metric: {
+  valueFormat: string;
+  defaultBasis: string;
+}): string {
+  if (metric.valueFormat === "count") return "total";
+  return metric.defaultBasis || "total";
+}
+
 // Bir metrik icin oyuncu degeri (basis'e gore).
 export function pickBasis(
   row: { total: number | null; perMatch: number | null; per90: number | null },

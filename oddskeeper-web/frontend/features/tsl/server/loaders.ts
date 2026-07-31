@@ -47,12 +47,23 @@ export async function loadLeague(season: string): Promise<LeagueBundle> {
     getTslLeaderboard(season, "expected_goals_total"),
     getTslTeamMetrics(season, meta),
   ]);
+
+  // View'lar per90'a gore siralanir; lig liderleri (gol krali/asist lideri/xG)
+  // TOPLAM degere gore siralanmali. Reyting zaten sezon ortalamasidir.
+  const byTotalDesc = (rows: TslLeaderRow[]) =>
+    rows.slice().sort((a, b) => (b.total ?? 0) - (a.total ?? 0));
+
   return {
     season,
     standings,
     matches,
     summary: computeSummary(matches, standings.length),
-    leaders: { goals, assists, rating, xg },
+    leaders: {
+      goals: byTotalDesc(goals),
+      assists: byTotalDesc(assists),
+      rating: byTotalDesc(rating),
+      xg: byTotalDesc(xg),
+    },
     teamMetrics,
     meta,
   };

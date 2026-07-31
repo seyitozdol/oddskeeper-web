@@ -5,6 +5,7 @@ import {
   formatMetric,
   pickBasis,
   positionLabel,
+  preferredBasis,
   usageMeta,
 } from "@/features/tsl/lib";
 import type { TslLeaderRow, TslPlayerOverview } from "@/features/tsl/types";
@@ -20,7 +21,7 @@ export default async function RadarPlayers({ data }: { data: PlayersBundle }) {
     return <p className="py-16 text-center text-sm text-ink-3">{t("tsl.noData")}</p>;
   }
 
-  const basis = metric?.defaultBasis ?? "total";
+  const basis = metric ? preferredBasis(metric) : "total";
   const withVal = rows
     .map((r) => ({ r, v: pickBasis(r, basis) }))
     .filter((x) => x.v != null) as { r: TslLeaderRow; v: number }[];

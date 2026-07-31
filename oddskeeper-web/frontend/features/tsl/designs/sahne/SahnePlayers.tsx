@@ -1,5 +1,6 @@
 import { getT } from "@/lib/i18n/server";
 import type { PlayersBundle } from "@/features/tsl/server/loaders";
+import { preferredBasis } from "@/features/tsl/lib";
 import TslMetricNav from "@/features/tsl/shared/TslMetricNav";
 import SahneLeaderTable from "./SahneLeaderTable";
 
@@ -26,7 +27,7 @@ export default async function SahnePlayers({ data }: { data: PlayersBundle }) {
         <TslMetricNav catalog={catalog} metricKey={metricKey} />
       </div>
 
-      <SahneLeaderTable rows={rows} defaultBasis={metric?.defaultBasis ?? "total"} />
+      <SahneLeaderTable rows={rows} defaultBasis={metric ? preferredBasis(metric) : "total"} />
       <p className="text-[11px] text-ink-3">{t("tsl.dataNote")}</p>
     </div>
   );
