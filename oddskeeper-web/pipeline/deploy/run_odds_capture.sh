@@ -10,6 +10,11 @@ PIPELINE=/opt/oddskeeper/repo/oddskeeper-web/pipeline
 LOG=/opt/oddskeeper/logs
 mkdir -p "$LOG"
 
+# Tek Bets10 kosusu: scheduled cron ile manuel tetik ayni anda calismasin
+# (cift proxy GB + Xvfb cakismasi). Zaten calisiyorsa atla.
+exec 8>/tmp/ok_odds_capture.lock
+flock -n 8 || { echo "$(date '+%F %T') odds_capture zaten calisiyor, atlandi" >> "$LOG/odds_capture.log"; exit 0; }
+
 # 1) Yakala (tum competition sayfalari; futbol dolu, basketbol/milli sezonda)
 xvfb-run -a "$VENV" "$PIPELINE/src/common/capture_odds_vps.py" bets10 \
   --proxy --cc tr --chromium-path /usr/bin/chromium \

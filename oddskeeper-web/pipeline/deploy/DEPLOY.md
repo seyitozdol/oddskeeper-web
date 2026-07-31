@@ -52,7 +52,13 @@ Sunucu saati UTC. Üç iş:
 
 # 4) OddsPortal oranları (headful+xvfb, proxy YOK; domestic+Avrupa): 6 saatte bir
 30 */6 * * *  /opt/oddskeeper/run_oddsportal.sh
+
+# 5) Manuel tetik kontrolü (admin butonu): dakikada bir; bekleyen tetik varsa
+#    pipeline'ı bir kez çalıştırır (flock ile üst üste binmez). Scheduled 1-4
+#    işleri kendi sabit saatlerinde ETKİLENMEDEN devam eder.
+* * * * *  /opt/oddskeeper/run_trigger_check.sh
 ```
+`public.pipeline_triggers` tablosu gerekir (sql/2026-07-31_pipeline_triggers.sql).
 Wrapper'ları kopyala: `cp oddskeeper-web/pipeline/deploy/run_*.sh /opt/oddskeeper/ && chmod +x /opt/oddskeeper/run_*.sh`
 `.env`'e `API_FOOTBALL_KEY` ekli olmalı (bet365 işi için).
 

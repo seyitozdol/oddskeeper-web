@@ -1,15 +1,18 @@
 import UpcomingEventsPanel from "@/features/upcoming-events/panels/UpcomingEventsPanel";
+import RefreshNowButton from "@/features/upcoming-events/components/RefreshNowButton";
 import { getUpcomingEvents } from "@/features/upcoming-events/server/getUpcomingEvents";
 import { getLocale, getT } from "@/lib/i18n/server";
+import { getNavAccess } from "@/lib/nav-access-server";
 
 // Veri periyodik pipeline ile guncellendigi icin sayfa her istekte taze okur.
 export const dynamic = "force-dynamic";
 
 export default async function UpcomingEventsPage() {
-  const [events, t, locale] = await Promise.all([
+  const [events, t, locale, access] = await Promise.all([
     getUpcomingEvents(),
     getT(),
     getLocale(),
+    getNavAccess(),
   ]);
 
   const lastUpdated = events.reduce(
@@ -24,26 +27,29 @@ export default async function UpcomingEventsPage() {
           <h1 className="text-2xl font-semibold text-ink lg:text-3xl">
             {t("upcomingEvents.title")}
           </h1>
-          {lastUpdated ? (
-            <span className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-veil px-2.5 py-1 text-[12px] text-ink-2">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-              <span className="text-ink-3">
-                {t("upcomingEvents.lastUpdated")}:
+          <div className="flex items-center gap-2">
+            {lastUpdated ? (
+              <span className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-veil px-2.5 py-1 text-[12px] text-ink-2">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                <span className="text-ink-3">
+                  {t("upcomingEvents.lastUpdated")}:
+                </span>
+                <span className="font-medium tabular-nums text-ink-2">
+                  {new Intl.DateTimeFormat(
+                    locale === "tr" ? "tr-TR" : "en-GB",
+                    {
+                      timeZone: "Europe/Malta",
+                      day: "2-digit",
+                      month: "2-digit",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    }
+                  ).format(new Date(lastUpdated))}
+                </span>
               </span>
-              <span className="font-medium tabular-nums text-ink-2">
-                {new Intl.DateTimeFormat(
-                  locale === "tr" ? "tr-TR" : "en-GB",
-                  {
-                    timeZone: "Europe/Malta",
-                    day: "2-digit",
-                    month: "2-digit",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  }
-                ).format(new Date(lastUpdated))}
-              </span>
-            </span>
-          ) : null}
+            ) : null}
+            {access.isAdmin ? <RefreshNowButton /> : null}
+          </div>
         </div>
         <p className="mt-1 text-[12px] text-ink-3">
           {t("upcomingEvents.timeZoneNote")}
