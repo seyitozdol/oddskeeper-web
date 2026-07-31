@@ -30,12 +30,16 @@ function teamHref(sport: string, teamId: number | null): string | null {
 }
 
 // Aynı maç iki farklı SofaScore event_id ile gelebilir (özellikle hazırlık
-// maçları iki federasyon/kategori altında listelenir). Aynı takımlar + aynı
-// başlangıç anı tek satıra indirilir; oran bilgisi en zengin olan tutulur.
+// maçları iki federasyon/kategori altında listelenir). Bu ikinci kayıt SAATİ
+// de 30 dk kayık olabilir (ör. 19:00 vs 19:30), o yüzden anahtar tam başlangıç
+// anını DEĞİL, takım çifti + takvim gününü kullanır. İki ayrı bacak (ev-deplasman
+// rövanş) farklı gün + farklı ev/deplasman sırası olduğundan karışmaz. Oran
+// bilgisi en zengin olan kayıt tutulur.
 function dedupeKey(e: RawRow): string {
-  return `${e.home_team_id ?? e.home_team_name}|${
-    e.away_team_id ?? e.away_team_name
-  }|${e.start_ts}`;
+  const home = e.home_team_id ?? e.home_team_name;
+  const away = e.away_team_id ?? e.away_team_name;
+  const day = e.start_ts.slice(0, 10); // ISO gün (dk farkını yok sayar)
+  return `${home}|${away}|${day}`;
 }
 
 function dedupe(rows: RawRow[]): RawRow[] {
