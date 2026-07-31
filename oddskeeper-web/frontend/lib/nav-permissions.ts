@@ -60,7 +60,14 @@ export const NAV_PERMISSION_ITEMS: NavPermissionItem[] = [
     key: "player-market",
     labelKey: "nav.playerMarket",
     href: "/dashboard/player-market-prediction",
-    pathPrefixes: ["/dashboard/player-market-prediction"],
+    // 1. Lig player-market ekrani da (Oyuncu Katilim Araclari toggle'inin
+    // 1. Lig tarafi) bu izne baglidir. Yol tff-1-lig altinda olsa da bu daha
+    // ozgul prefix, navKeyForPath'te tff-1-lig prefix'ini yener; boylece
+    // tff-1-lig izni kapali kullanicilar da player-market izniyle girebilir.
+    pathPrefixes: [
+      "/dashboard/player-market-prediction",
+      "/dashboard/tff-1-lig/player-market",
+    ],
   },
   {
     key: "stats-analysis",
