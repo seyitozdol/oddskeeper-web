@@ -78,10 +78,10 @@ export const NAV_PERMISSION_ITEMS: NavPermissionItem[] = [
   {
     key: "league-1lig",
     labelKey: "nav.league1Lig",
-    href: "/dashboard/stats-analysis/football/league-stats/detail?competition=1.%20Lig&season=2025%2F2026&tab=overview",
-    // Query-param ile paylasilan Stats sayfasi; yol bazli kilitlenemez, sadece
-    // header gorunurlugu kontrol edilir.
-    pathPrefixes: [],
+    href: "/dashboard/stats-analysis/tff1/resmi?season=2026%2F2027&section=league",
+    // Temiz yol (Resmi deneyimi): proxy bu rotayi league-1lig iznine gore
+    // kilitler. TSL ile ayni mantik.
+    pathPrefixes: ["/dashboard/stats-analysis/tff1"],
   },
   {
     key: "league-tbl",
