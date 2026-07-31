@@ -9,6 +9,7 @@ import {
 import {
   loadResmiLig,
   loadResmiPlayerRankings,
+  loadResmiPlayers,
   loadResmiResults,
   loadResmiTeamRankings,
   loadResmiTeams,
@@ -21,9 +22,6 @@ import ResmiTeams from "../../../../../features/tsl/resmi/ResmiTeams";
 import ResmiPlayers from "../../../../../features/tsl/resmi/ResmiPlayers";
 import ResmiPlayerRankings from "../../../../../features/tsl/resmi/ResmiPlayerRankings";
 import ResmiTeamRankings from "../../../../../features/tsl/resmi/ResmiTeamRankings";
-import { getPlayerStatsList } from "../../../../../features/player-stats/server/getPlayerStatsList";
-import { getTslAdvancedStats } from "../../../../../features/player-stats/server/getTslAdvancedStats";
-import { getAllFootballTeamLogos } from "../../../../../lib/football-teams";
 
 export const metadata = {
   title: "TSL Resmi · Süper Lig",
@@ -62,14 +60,7 @@ export default async function ResmiPage({
   } else if (section === "teamRankings") {
     content = <ResmiTeamRankings data={await loadResmiTeamRankings(season, metric)} />;
   } else {
-    const [rows, advancedRows, teamLogos] = await Promise.all([
-      getPlayerStatsList(),
-      getTslAdvancedStats(),
-      getAllFootballTeamLogos(),
-    ]);
-    content = (
-      <ResmiPlayers rows={rows} advancedRows={advancedRows} teamLogos={teamLogos} season={season} />
-    );
+    content = <ResmiPlayers data={await loadResmiPlayers(season)} />;
   }
 
   return (

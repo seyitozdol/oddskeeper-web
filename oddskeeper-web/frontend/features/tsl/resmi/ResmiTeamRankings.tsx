@@ -1,4 +1,5 @@
 import { getT } from "@/lib/i18n/server";
+import { categoryLabel, metricLabel } from "@/lib/i18n/metricLabel";
 import MetricSelect from "@/components/rankings/MetricSelect";
 import SortableRankingTable, {
   type RankingColumn,
@@ -16,7 +17,13 @@ export default async function ResmiTeamRankings({
   data: ResmiTeamRankingsBundle;
 }) {
   const t = await getT();
-  const { catalog, metricKey, metricLabel, rows, metaById, teamSlugById, season } = data;
+  const { catalog, metricKey, metricLabel: dbMetricLabel, rows, metaById, teamSlugById, season } = data;
+  const options = catalog.map((c) => ({
+    key: c.key,
+    label: metricLabel(t, c.key, c.label),
+    category: categoryLabel(t, c.categoryKey, c.category),
+  }));
+  const title = metricLabel(t, metricKey, dbMetricLabel);
 
   const higher = rows[0]?.isHigherBetter ?? true;
   const ranked = rows
@@ -75,11 +82,11 @@ export default async function ResmiTeamRankings({
           <div className="text-[11px] uppercase tracking-[0.18em] text-ink-3">
             {t("tsl.sectionTeamRankings")} · {season}
           </div>
-          <h1 className="mt-1 text-2xl font-semibold text-ink">{metricLabel}</h1>
+          <h1 className="mt-1 text-2xl font-semibold text-ink">{title}</h1>
         </div>
-        {catalog.length ? (
+        {options.length ? (
           <MetricSelect
-            options={catalog}
+            options={options}
             selectedKey={metricKey}
             basePath={RESMI_BASE_PATH}
             baseParams={{ season, section: "teamRankings" }}
@@ -87,15 +94,9 @@ export default async function ResmiTeamRankings({
         ) : null}
       </div>
 
-      {tableRows.length ? (
-        <div className="rounded-2xl border border-line">
-          <SortableRankingTable columns={columns} rows={tableRows} initialSortIndex={0} initialSortDir="asc" />
-        </div>
-      ) : (
-        <p className="rounded-2xl border border-line bg-card py-16 text-center text-sm text-ink-3">
-          {t("tsl.noData")}
-        </p>
-      )}
+      <div className="rounded-2xl border border-line">
+        <SortableRankingTable columns={columns} rows={tableRows} initialSortIndex={0} initialSortDir="asc" />
+      </div>
     </section>
   );
 }

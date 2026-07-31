@@ -182,24 +182,30 @@ export function MatchRow({
   match,
   locale,
   returnTo,
+  teamSlugById,
 }: {
   match: TslMatch;
   locale: Locale;
   returnTo: string;
+  teamSlugById?: Record<string, string>;
 }) {
   const isFixture = match.homeScore < 0;
+  // Sonuç satırı tüm satırı maç detayına linkler; iç içe anchor olmasın diye
+  // takım linkini yalnız fikstür (dış link yok) satırında ver.
+  const homeSlug = isFixture ? teamSlugById?.[match.homeId] ?? null : null;
+  const awaySlug = isFixture ? teamSlugById?.[match.awayId] ?? null : null;
   const inner = (
     <div className="flex items-center gap-2 px-3 py-2 text-[12px] transition hover:bg-veil">
       <span className="w-10 shrink-0 text-[10px] text-ink-3">{formatDate(match.datetime, locale)}</span>
       <div className="flex flex-1 items-center gap-1.5 truncate">
         <TeamCrest logo={match.homeLogo} name={match.homeName} size="xs" />
-        <span className="truncate text-ink-2">{match.homeName}</span>
+        <TeamNameLink name={match.homeName} slug={homeSlug} className="truncate text-ink-2" />
       </div>
       <span className="shrink-0 rounded-md bg-veil px-2 py-0.5 font-bold tabular-nums text-ink">
         {isFixture ? "–" : `${match.homeScore}-${match.awayScore}`}
       </span>
       <div className="flex flex-1 items-center justify-end gap-1.5 truncate">
-        <span className="truncate text-right text-ink-2">{match.awayName}</span>
+        <TeamNameLink name={match.awayName} slug={awaySlug} className="truncate text-right text-ink-2" />
         <TeamCrest logo={match.awayLogo} name={match.awayName} size="xs" />
       </div>
     </div>

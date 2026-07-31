@@ -6,8 +6,8 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { useI18n } from "../../../lib/i18n/LanguageProvider";
 import {
+  RESMI_BASE_PATH,
   RESMI_SECTIONS,
-  TSL_BASE_PATH,
   TSL_SEASONS,
   type ResmiSection,
   type TslSeason,
@@ -47,8 +47,8 @@ export default function ResmiControlBar({
         {/* Sol: lig amblemi + isim + bayrak */}
         <div className="flex items-center gap-3">
           <Link
-            href={TSL_BASE_PATH}
-            title={t("tsl.backToDesigns")}
+            href={`${RESMI_BASE_PATH}?season=${encodeURIComponent(season)}&section=league`}
+            title={t("tsl.leagueName")}
             className="flex items-center gap-3"
           >
             <Image

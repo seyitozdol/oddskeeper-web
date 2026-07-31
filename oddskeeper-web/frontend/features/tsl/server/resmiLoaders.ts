@@ -1,5 +1,5 @@
 import { getFootballTeams } from "../../../lib/football-teams";
-import { slugFromLogo } from "../lib";
+import { normalizeSearch, slugFromLogo } from "../lib";
 import type {
   TslLeaderRow,
   TslMatch,
@@ -18,9 +18,11 @@ import {
 } from "./queries";
 import type { PlayerAsset } from "./resmi";
 import {
+  buildZeroStandings,
   clusterRounds,
   getPlayerAssets,
   getResmiLeaders,
+  getResmiPlayers,
   getResmiTransfers,
   getResmiUpcoming,
   getTeamAggression,
@@ -28,24 +30,10 @@ import {
   getTslTeamMeta,
   type MatchRound,
   type ResmiLeaderRow,
+  type ResmiPlayerRow,
   type ResmiTransfer,
   type TeamAggression,
 } from "./resmi";
-
-// Gecerli takim slug seti + isim->slug (yerel logodan tureyip football teams ile dogrulanir).
-async function buildSlugMaps(standings: TslStandingRow[]) {
-  const valid = new Set((await getFootballTeams()).map((t) => t.slug));
-  const byName: Record<string, string> = {};
-  const byId: Record<string, string> = {};
-  for (const s of standings) {
-    const slug = slugFromLogo(s.logo);
-    if (slug && valid.has(slug)) {
-      byName[s.teamName] = slug;
-      byId[s.teamId] = slug;
-    }
-  }
-  return { valid, byName, byId };
-}
 
 export type ResmiLigBundle = {
   season: string;
@@ -63,15 +51,15 @@ export async function loadResmiLig(
 ): Promise<ResmiLigBundle> {
   const meta = await getTslTeamMeta(season);
   const matches = await getTslMatches(season, meta);
-  const [standings, assets] = await Promise.all([
+  const [standingsReal, assets, upcoming] = await Promise.all([
     getTslStandings(season, meta, matches),
     getPlayerAssets(),
-  ]);
-  const { byName, byId } = await buildSlugMaps(standings);
-  const [leaders, upcoming] = await Promise.all([
-    getResmiLeaders(season, leaderMetric, assets, byName),
     getResmiUpcoming(season, meta),
   ]);
+  const { byName, byId } = await slugMapsFromMeta(meta);
+  // Sezon başlamadıysa fikstür takımlarından 0-0-0 puan durumu göster.
+  const standings = standingsReal.length ? standingsReal : buildZeroStandings(upcoming, meta);
+  const leaders = await getResmiLeaders(season, leaderMetric, assets, byName);
   const rounds = clusterRounds(matches);
   return {
     season,
@@ -94,10 +82,46 @@ export type ResmiResultsBundle = {
 export async function loadResmiResults(season: string): Promise<ResmiResultsBundle> {
   const meta = await getTslTeamMeta(season);
   const matches = await getTslMatches(season, meta);
-  const standings = await getTslStandings(season, meta, matches);
-  const { byId } = await buildSlugMaps(standings);
+  const [standingsReal, upcoming] = await Promise.all([
+    getTslStandings(season, meta, matches),
+    getResmiUpcoming(season, meta),
+  ]);
+  const standings = standingsReal.length ? standingsReal : buildZeroStandings(upcoming, meta);
+  const { byId } = await slugMapsFromMeta(meta);
   const rounds = clusterRounds(matches).reverse(); // en son hafta ustte
   return { season, standings, rounds, teamSlugById: byId };
+}
+
+// 26/27 gibi veri olmayan sezonda takım metrik tablosu 0 değerlerle (tanımlar
+// son tam sezondan alınır).
+async function buildZeroTeamMetrics(
+  teams: TslStandingRow[],
+  meta: Record<string, TslTeamMeta>
+): Promise<TslTeamMetric[]> {
+  const defsRaw = await getTslTeamMetrics("2025/2026", meta);
+  const defMap = new Map<string, TslTeamMetric>();
+  for (const d of defsRaw) if (!defMap.has(d.metricKey)) defMap.set(d.metricKey, d);
+  const defs = [...defMap.values()];
+  const out: TslTeamMetric[] = [];
+  for (const team of teams) {
+    for (const d of defs) {
+      out.push({
+        teamId: team.teamId,
+        teamName: team.teamName,
+        metricKey: d.metricKey,
+        metricLabel: d.metricLabel,
+        categoryKey: d.categoryKey,
+        total: 0,
+        perMatch: 0,
+        leagueAvg: 0,
+        leaguePct: 0,
+        leagueRank: null,
+        valueFormat: d.valueFormat,
+        isHigherBetter: d.isHigherBetter,
+      });
+    }
+  }
+  return out;
 }
 
 export type ResmiTeamsBundle = {
@@ -113,14 +137,41 @@ export type ResmiTeamsBundle = {
 export async function loadResmiTeams(season: string): Promise<ResmiTeamsBundle> {
   const meta = await getTslTeamMeta(season);
   const matches = await getTslMatches(season, meta);
-  const [standings, teamMetrics, aggression, transfers] = await Promise.all([
+  const [standingsReal, teamMetricsReal, aggression, transfers, upcoming] = await Promise.all([
     getTslStandings(season, meta, matches),
     getTslTeamMetrics(season, meta),
     getTeamAggression(season),
     getResmiTransfers(season),
+    getResmiUpcoming(season, meta),
   ]);
-  const { byId } = await buildSlugMaps(standings);
-  return { season, standings, meta, teamMetrics, aggression, transfers, teamSlugById: byId };
+  // Sezon başlamadıysa 0 değerli tablo + fikstür takımları.
+  const standings = standingsReal.length ? standingsReal : buildZeroStandings(upcoming, meta);
+  const teamMetrics = teamMetricsReal.length
+    ? teamMetricsReal
+    : await buildZeroTeamMetrics(standings, meta);
+  const { byId } = await slugMapsFromMeta(meta);
+
+  // Transfer hedef kulübünü (TSL takımı) normalize-isim eşleşmesiyle slug'a bağla.
+  const valid = new Set((await getFootballTeams()).map((tm) => tm.slug));
+  const normNameToSlug: Record<string, string> = {};
+  for (const m of Object.values(meta)) {
+    const slug = slugFromLogo(m.logo);
+    if (slug && valid.has(slug)) normNameToSlug[normalizeSearch(m.name)] = slug;
+  }
+  const transfersLinked = transfers.map((tr) => ({
+    ...tr,
+    toSlug: tr.toName ? normNameToSlug[normalizeSearch(tr.toName)] ?? null : null,
+  }));
+
+  return {
+    season,
+    standings,
+    meta,
+    teamMetrics,
+    aggression,
+    transfers: transfersLinked,
+    teamSlugById: byId,
+  };
 }
 
 // meta'dan (id->{name,logo}) slug haritalari (yerel logodan + football teams dogrulama)
@@ -136,6 +187,22 @@ async function slugMapsFromMeta(meta: Record<string, TslTeamMeta>) {
     }
   }
   return { byName, byId };
+}
+
+// ---- Players (sezon-duyarli tablo) ----
+
+export type ResmiPlayersBundle = {
+  season: string;
+  rows: ResmiPlayerRow[];
+  teamSlugById: Record<string, string>;
+};
+
+export async function loadResmiPlayers(season: string): Promise<ResmiPlayersBundle> {
+  const meta = await getTslTeamMeta(season);
+  const assets = await getPlayerAssets();
+  const [rows] = await Promise.all([getResmiPlayers(season, meta, assets)]);
+  const { byId } = await slugMapsFromMeta(meta);
+  return { season, rows, teamSlugById: byId };
 }
 
 // ---- Player Rankings (metrik siralamasi, resmi icinde) ----
@@ -154,7 +221,9 @@ export async function loadResmiPlayerRankings(
   season: string,
   requestedMetric?: string
 ): Promise<ResmiPlayerRankingsBundle> {
-  const catalog = await getTslPlayerCatalog(season);
+  // Sezon başlamadıysa katalog boş olur; dropdown kalsın diye son sezondan al.
+  let catalog = await getTslPlayerCatalog(season);
+  if (!catalog.length) catalog = await getTslPlayerCatalog("2025/2026");
   const metric =
     catalog.find((c) => c.metricKey === requestedMetric) ??
     catalog.find((c) => c.metricKey === "goals_total") ??
@@ -174,7 +243,7 @@ export async function loadResmiPlayerRankings(
 
 export type ResmiTeamRankingsBundle = {
   season: string;
-  catalog: { key: string; label: string; category: string }[];
+  catalog: { key: string; label: string; category: string; categoryKey: string | null }[];
   metricKey: string;
   metricLabel: string;
   rows: TslTeamLeaderRow[];
@@ -188,14 +257,19 @@ export async function loadResmiTeamRankings(
 ): Promise<ResmiTeamRankingsBundle> {
   const meta = await getTslTeamMeta(season);
   const all = await getTslTeamLeaderboard(season, meta);
-  // katalog: benzersiz metrikler
-  const catMap = new Map<string, { key: string; label: string; category: string }>();
-  for (const r of all) {
+  // Sezon başlamadıysa katalog/tanımlar için son sezona düş.
+  const refAll = all.length ? all : await getTslTeamLeaderboard("2025/2026", meta);
+  const catMap = new Map<
+    string,
+    { key: string; label: string; category: string; categoryKey: string | null }
+  >();
+  for (const r of refAll) {
     if (!catMap.has(r.metricKey)) {
       catMap.set(r.metricKey, {
         key: r.metricKey,
         label: r.metricLabel,
         category: r.categoryLabel ?? "",
+        categoryKey: r.categoryKey,
       });
     }
   }
@@ -205,7 +279,33 @@ export async function loadResmiTeamRankings(
     catalog.find((c) => c.key === "team_goals_for")?.key ??
     catalog[0]?.key ??
     "team_goals_for";
-  const rows = all.filter((r) => r.metricKey === metricKey);
+
+  let rows = all.filter((r) => r.metricKey === metricKey);
+  // Veri yoksa fikstür takımlarını 0 değerle göster (No data yerine).
+  if (!rows.length) {
+    const upcoming = await getResmiUpcoming(season, meta);
+    const ids = [...new Set(upcoming.flatMap((m) => [m.homeId, m.awayId]))].filter(Boolean);
+    const def = refAll.find((r) => r.metricKey === metricKey);
+    rows = ids
+      .map((id) => ({
+        rank: 0,
+        teamId: id,
+        teamName: meta[id]?.name ?? id,
+        metricKey,
+        metricLabel: def?.metricLabel ?? metricKey,
+        categoryKey: def?.categoryKey ?? null,
+        categoryLabel: def?.categoryLabel ?? null,
+        total: 0,
+        perMatch: 0,
+        leagueAvg: 0,
+        vsAvgPct: null,
+        valueFormat: def?.valueFormat ?? "count",
+        isHigherBetter: def?.isHigherBetter ?? true,
+      }))
+      .sort((a, b) => a.teamName.localeCompare(b.teamName, "tr"))
+      .map((r, i) => ({ ...r, rank: i + 1 }));
+  }
+
   const { byId } = await slugMapsFromMeta(meta);
   return {
     season,

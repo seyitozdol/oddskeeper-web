@@ -1,13 +1,12 @@
-import TslHub from "../../../../features/tsl/hub/TslHub";
+import { redirect } from "next/navigation";
+import { RESMI_DEFAULT_SEASON } from "../../../../features/tsl/constants";
 
-export const metadata = {
-  title: "TSL · Süper Lig",
-};
-
-export default function TslHubPage() {
-  return (
-    <section className="px-4 py-6 lg:px-8 lg:py-8">
-      <TslHub />
-    </section>
+// TSL artik dogrudan "Resmi" deneyimine gider; ara secim ekrani (sahne/radar/
+// panel) kaldirildi.
+export default function TslIndexPage() {
+  redirect(
+    `/dashboard/stats-analysis/tsl/resmi?season=${encodeURIComponent(
+      RESMI_DEFAULT_SEASON
+    )}&section=league`
   );
 }

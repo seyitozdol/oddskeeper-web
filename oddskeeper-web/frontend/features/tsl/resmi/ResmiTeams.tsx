@@ -1,4 +1,6 @@
+import Link from "next/link";
 import { getT } from "@/lib/i18n/server";
+import { getTeamDetailHref } from "@/lib/routes";
 import type { ResmiTeamsBundle } from "@/features/tsl/server/resmiLoaders";
 import ResmiTeamBoard, { type MetricLite, type TeamLite } from "./ResmiTeamBoard";
 import { PlayerFace, PlayerNameLink } from "./parts";
@@ -100,14 +102,21 @@ export default async function ResmiTeams({ data }: { data: ResmiTeamsBundle }) {
                       className="block truncate text-[12px] font-medium text-ink"
                     />
                     <div className="flex items-center gap-1 text-[10px] text-ink-3">
-                      <TransferClub name={tr.fromName} logo={tr.fromLogo} />
+                      <TransferClub name={tr.fromName} logo={tr.fromLogo} slug={null} />
                       <span className="text-ink-3">→</span>
-                      <TransferClub name={tr.toName} logo={tr.toLogo} />
+                      <TransferClub name={tr.toName} logo={tr.toLogo} slug={tr.toSlug} />
                     </div>
                   </div>
-                  <span className="shrink-0 text-right text-[12px] font-bold tabular-nums text-accent-ink">
-                    {tr.feeEur ? formatFee(tr.feeEur) : tr.feeText ?? "—"}
-                  </span>
+                  <div className="shrink-0 text-right">
+                    <span className="text-[12px] font-bold tabular-nums text-accent-ink">
+                      {tr.isLoan ? t("tsl.loan") : tr.feeEur ? formatFee(tr.feeEur) : tr.feeText ?? "—"}
+                    </span>
+                    {tr.isLoan ? (
+                      <div className="text-[9px] uppercase tracking-[0.1em] text-ink-3">
+                        {tr.feeEur ? formatFee(tr.feeEur) : ""}
+                      </div>
+                    ) : null}
+                  </div>
                 </div>
               ))}
             </div>
@@ -120,8 +129,17 @@ export default async function ResmiTeams({ data }: { data: ResmiTeamsBundle }) {
   );
 }
 
-function TransferClub({ name, logo }: { name: string | null; logo: string | null }) {
-  return (
+function TransferClub({
+  name,
+  logo,
+  slug,
+}: {
+  name: string | null;
+  logo: string | null;
+  slug: string | null;
+}) {
+  const href = slug ? getTeamDetailHref(slug) : null;
+  const inner = (
     <span className="inline-flex max-w-[90px] items-center gap-1 truncate">
       {logo ? (
         // eslint-disable-next-line @next/next/no-img-element
@@ -129,6 +147,13 @@ function TransferClub({ name, logo }: { name: string | null; logo: string | null
       ) : null}
       <span className="truncate">{name ?? "—"}</span>
     </span>
+  );
+  return href ? (
+    <Link href={href} className="transition hover:text-ink hover:underline">
+      {inner}
+    </Link>
+  ) : (
+    inner
   );
 }
 

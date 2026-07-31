@@ -22,8 +22,9 @@ type AppHeaderProps = {
 const FOOTBALL_LEAGUE_DETAIL_HREF =
   "/dashboard/stats-analysis/football/league-stats/detail?competition=S%C3%BCper%20Lig&season=2025%2F2026&tab=overview";
 
-// TSL kisayolu artik uc-tasarimli deneyim merkezine gider.
-const TSL_HUB_HREF = "/dashboard/stats-analysis/tsl";
+// TSL kisayolu dogrudan "Resmi" deneyimine gider (ara secim ekrani yok).
+const TSL_HUB_HREF =
+  "/dashboard/stats-analysis/tsl/resmi?season=2026%2F2027&section=league";
 
 const TFF1_LEAGUE_DETAIL_HREF =
   "/dashboard/stats-analysis/football/league-stats/detail?competition=1.%20Lig&season=2025%2F2026&tab=overview";

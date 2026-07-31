@@ -1,8 +1,44 @@
 import { createClient } from "../../../lib/supabase/server";
 import { TSL_COMPETITION } from "../constants";
 import { toNum } from "../lib";
-import type { TslMatch, TslTeamMeta } from "../types";
+import type { TslMatch, TslStandingRow, TslTeamMeta } from "../types";
 import { getTslMatches, getTslTeamMeta } from "./queries";
+
+// Sezon başlamadıysa (istatistik yok) fikstür takımlarından 0-0-0 puan durumu.
+export function buildZeroStandings(
+  fixtures: TslMatch[],
+  meta: Record<string, TslTeamMeta>
+): TslStandingRow[] {
+  const ids = new Set<string>();
+  for (const m of fixtures) {
+    if (m.homeId) ids.add(m.homeId);
+    if (m.awayId) ids.add(m.awayId);
+  }
+  const rows = [...ids].map((id) => ({
+    teamId: id,
+    teamName: meta[id]?.name ?? id,
+    logo: meta[id]?.logo ?? null,
+    played: 0,
+    wins: 0,
+    draws: 0,
+    losses: 0,
+    goalsFor: 0,
+    goalsAgainst: 0,
+    goalDiff: 0,
+    points: 0,
+    ppg: 0,
+    form: [] as TslStandingRow["form"],
+    attackLabel: null,
+    defenceLabel: null,
+    formLabel: null,
+    strongestLabel: null,
+    strongestPct: null,
+    weakestLabel: null,
+    weakestPct: null,
+  }));
+  rows.sort((a, b) => a.teamName.localeCompare(b.teamName, "tr"));
+  return rows.map((r, i) => ({ rank: i + 1, ...r }));
+}
 
 // ---- Oyuncu varliklari (foto / slug / uyruk) opta id bazinda ----
 
@@ -206,34 +242,171 @@ export type ResmiTransfer = {
   fromName: string | null;
   fromLogo: string | null;
   toName: string | null;
+  toSlug: string | null;
   toLogo: string | null;
   feeText: string | null;
   feeEur: number | null;
+  isLoan: boolean;
 };
+
+// TM oyuncu adini bizim oyuncu detayina (opta slug) ve fotografina (api-sports)
+// isimden eslesme ile bagla; eslesmezse bas harf/link yok.
+async function getPlayerNameAssetMap(): Promise<
+  Record<string, { slug: string | null; photo: string | null }>
+> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .schema("analytics")
+    .from("player_current_info_v1")
+    .select("player_slug, player_name, full_name, photo_url")
+    .limit(2000);
+  const out: Record<string, { slug: string | null; photo: string | null }> = {};
+  const { normalizeSearch } = await import("../lib");
+  for (const r of data ?? []) {
+    const asset = { slug: r.player_slug ?? null, photo: r.photo_url ?? null };
+    for (const nm of [r.full_name, r.player_name]) {
+      if (!nm) continue;
+      const key = normalizeSearch(nm);
+      if (key && !out[key]) out[key] = asset;
+    }
+  }
+  return out;
+}
 
 export async function getResmiTransfers(season: string): Promise<ResmiTransfer[]> {
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .schema("analytics")
-    .from("tsl_transfers_v1")
-    .select(
-      "player_name, player_slug, player_photo_url, from_team_name, from_team_logo, to_team_name, to_team_logo, fee_text, fee_eur"
-    )
-    .eq("season_label", season)
-    .order("fee_eur", { ascending: false, nullsFirst: false })
-    .limit(200);
+  const [{ data, error }, nameAssets] = await Promise.all([
+    supabase
+      .schema("analytics")
+      .from("tsl_transfers_v1")
+      .select(
+        "player_name, player_slug, player_photo_url, from_team_name, from_team_logo, to_team_name, to_team_logo, fee_text, fee_eur"
+      )
+      .eq("season_label", season)
+      .order("fee_eur", { ascending: false, nullsFirst: false })
+      .limit(200),
+    getPlayerNameAssetMap(),
+  ]);
   if (error || !data) return [];
-  return data.map((r) => ({
-    playerName: r.player_name,
-    playerSlug: r.player_slug ?? null,
-    photo: r.player_photo_url ?? null,
-    fromName: r.from_team_name ?? null,
-    fromLogo: r.from_team_logo ?? null,
-    toName: r.to_team_name ?? null,
-    toLogo: r.to_team_logo ?? null,
-    feeText: r.fee_text ?? null,
-    feeEur: toNum(r.fee_eur),
-  }));
+  const { normalizeSearch } = await import("../lib");
+  return data.map((r) => {
+    const matched = nameAssets[normalizeSearch(r.player_name ?? "")];
+    const feeText = r.fee_text ?? null;
+    return {
+      playerName: r.player_name,
+      playerSlug: r.player_slug ?? matched?.slug ?? null,
+      photo: r.player_photo_url ?? matched?.photo ?? null,
+      fromName: r.from_team_name ?? null,
+      fromLogo: r.from_team_logo ?? null,
+      toName: r.to_team_name ?? null,
+      toSlug: null,
+      toLogo: r.to_team_logo ?? null,
+      feeText,
+      feeEur: toNum(r.fee_eur),
+      isLoan: /loan|kiral/i.test(feeText ?? ""),
+    };
+  });
+}
+
+// ---- Sezon-duyarli oyuncu listesi (Players sekmesi) ----
+
+// Tabloda gosterilen tum metrik anahtarlari (detay mat'tan cekilir).
+export const RESMI_PLAYER_METRIC_KEYS = [
+  "appearances", "starts", "goals_total", "assists_total", "total_minutes",
+  "expected_goals_total", "expected_goals_on_target_total", "expected_assists_total",
+  "cards_yellow_total", "cards_red_total", "rating_avg", "key_passes_total",
+  "big_chances_created_total", "shots_total", "dribbles_won_total", "passes_total",
+  "accurate_pass_total", "pass_accuracy_pct", "long_balls_total", "tackles_total",
+  "interceptions_total", "clearances_total", "ball_recoveries_total", "duels_won_total",
+  "aerials_won_total", "km_covered_total", "sprints_total", "top_speed",
+];
+
+export type ResmiPlayerStat = { total: number | null; perMatch: number | null; per90: number | null };
+
+export type ResmiPlayerRow = {
+  playerId: string;
+  name: string;
+  positionCode: string | null;
+  teamId: string;
+  teamName: string | null;
+  teamLogo: string | null;
+  slug: string | null;
+  photo: string | null;
+  nationality: string | null;
+  inCurrentSquad: boolean;
+  metrics: Record<string, ResmiPlayerStat>;
+};
+
+export async function getResmiPlayers(
+  season: string,
+  meta: Record<string, TslTeamMeta>,
+  assets: Record<string, PlayerAsset>
+): Promise<ResmiPlayerRow[]> {
+  const supabase = await createClient();
+  const base = supabase
+    .schema("analytics")
+    .from("tsl_ss_player_detailed_metrics_global_mat")
+    .select(
+      "player_source_id, player_name, position_code, source_team_id, team_name, metric_key, total_value, per_match_value, per90_value",
+      { count: "exact", head: true }
+    )
+    .eq("competition", TSL_COMPETITION)
+    .eq("season_label", season)
+    .in("metric_key", RESMI_PLAYER_METRIC_KEYS);
+
+  const { count } = await base;
+  const total = count ?? 0;
+  if (!total) return [];
+
+  const PAGE = 1000;
+  const pages = Math.ceil(total / PAGE);
+  const chunks = await Promise.all(
+    Array.from({ length: pages }, (_, i) =>
+      supabase
+        .schema("analytics")
+        .from("tsl_ss_player_detailed_metrics_global_mat")
+        .select(
+          "player_source_id, player_name, position_code, source_team_id, team_name, metric_key, total_value, per_match_value, per90_value"
+        )
+        .eq("competition", TSL_COMPETITION)
+        .eq("season_label", season)
+        .in("metric_key", RESMI_PLAYER_METRIC_KEYS)
+        .range(i * PAGE, i * PAGE + PAGE - 1)
+    )
+  );
+
+  const byPlayer = new Map<string, ResmiPlayerRow>();
+  for (const ch of chunks) {
+    for (const r of ch.data ?? []) {
+      const id = String(r.player_source_id ?? "");
+      if (!id) continue;
+      let row = byPlayer.get(id);
+      if (!row) {
+        const teamId = String(r.source_team_id ?? "");
+        const a = assets[id];
+        row = {
+          playerId: id,
+          name: r.player_name ?? "—",
+          positionCode: r.position_code ?? null,
+          teamId,
+          teamName: meta[teamId]?.name ?? r.team_name ?? null,
+          teamLogo: meta[teamId]?.logo ?? null,
+          slug: a?.slug ?? null,
+          photo: a?.photo ?? null,
+          nationality: a?.nationality ?? null,
+          inCurrentSquad: !!a,
+          metrics: {},
+        };
+        byPlayer.set(id, row);
+      }
+      row.metrics[r.metric_key] = {
+        total: toNum(r.total_value),
+        perMatch: toNum(r.per_match_value),
+        per90: toNum(r.per90_value),
+      };
+    }
+  }
+  return [...byPlayer.values()];
 }
 
 // ---- Yardimci: meta'dan isim->slug (yerel logo yolundan) ----

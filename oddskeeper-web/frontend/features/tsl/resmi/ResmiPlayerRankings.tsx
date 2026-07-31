@@ -1,4 +1,5 @@
 import { getT } from "@/lib/i18n/server";
+import { categoryLabel, metricLabel } from "@/lib/i18n/metricLabel";
 import MetricSelect from "@/components/rankings/MetricSelect";
 import SortableRankingTable, {
   type RankingColumn,
@@ -19,9 +20,10 @@ export default async function ResmiPlayerRankings({
 
   const options = catalog.map((c) => ({
     key: c.metricKey,
-    label: c.metricLabel,
-    category: c.categoryLabel,
+    label: metricLabel(t, c.metricKey, c.metricLabel),
+    category: categoryLabel(t, c.categoryKey, c.categoryLabel),
   }));
+  const title = metricLabel(t, metricKey, metric?.metricLabel);
 
   // Siralama: her zaman TOPLAM degere gore (gol krali = toplam gol).
   const higher = metric?.isHigherBetter ?? true;
@@ -85,7 +87,7 @@ export default async function ResmiPlayerRankings({
           <div className="text-[11px] uppercase tracking-[0.18em] text-ink-3">
             {t("tsl.sectionPlayerRankings")} · {season}
           </div>
-          <h1 className="mt-1 text-2xl font-semibold text-ink">{metric?.metricLabel ?? metricKey}</h1>
+          <h1 className="mt-1 text-2xl font-semibold text-ink">{title}</h1>
         </div>
         {options.length ? (
           <MetricSelect
@@ -97,15 +99,9 @@ export default async function ResmiPlayerRankings({
         ) : null}
       </div>
 
-      {tableRows.length ? (
-        <div className="rounded-2xl border border-line">
-          <SortableRankingTable columns={columns} rows={tableRows} initialSortIndex={0} initialSortDir="asc" />
-        </div>
-      ) : (
-        <p className="rounded-2xl border border-line bg-card py-16 text-center text-sm text-ink-3">
-          {t("tsl.noData")}
-        </p>
-      )}
+      <div className="rounded-2xl border border-line">
+        <SortableRankingTable columns={columns} rows={tableRows} initialSortIndex={0} initialSortDir="asc" />
+      </div>
     </section>
   );
 }
