@@ -250,7 +250,7 @@ export async function getTslLeaderboard(
     .from("tsl_ss_player_leaderboard_rows_v1")
     .select(
       `metric_key, metric_label, player_source_id, player_name, position_code,
-       team_name, sample_matches, total_value, per_match_value, per90_value,
+       team_name, source_team_id, sample_matches, total_value, per_match_value, per90_value,
        league_avg, league_rank, vs_league_avg_pct, value_format, is_higher_better`
     )
     .eq("competition", TSL_COMPETITION)
@@ -268,6 +268,7 @@ export async function getTslLeaderboard(
     playerId: String(r.player_source_id ?? ""),
     playerName: r.player_name ?? "—",
     teamName: r.team_name ?? null,
+    teamId: r.source_team_id != null ? String(r.source_team_id) : null,
     positionCode: r.position_code ?? null,
     metricKey: r.metric_key,
     metricLabel: r.metric_label ?? r.metric_key,

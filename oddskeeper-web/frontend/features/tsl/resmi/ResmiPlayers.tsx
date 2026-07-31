@@ -3,10 +3,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import PlayerLink from "@/components/links/PlayerLink";
 import { useI18n } from "@/lib/i18n/LanguageProvider";
 import { metricLabel } from "@/lib/i18n/metricLabel";
-import { getTeamDetailHref } from "@/lib/routes";
 import { canonicalNationality, getCountryFlagUrl } from "@/lib/country-flags";
 import { normalizeSearch } from "@/features/tsl/lib";
 import type { ResmiPlayersBundle } from "@/features/tsl/server/resmiLoaders";
@@ -95,7 +93,7 @@ const POS_SHORT: Record<string, string> = { G: "KL", D: "DF", M: "OS", F: "FV" }
 
 export default function ResmiPlayers({ data }: { data: ResmiPlayersBundle }) {
   const { t } = useI18n();
-  const { rows, teamSlugById, season } = data;
+  const { rows, season } = data;
 
   const [search, setSearch] = useState("");
   const [position, setPosition] = useState("ALL");
@@ -250,15 +248,19 @@ export default function ResmiPlayers({ data }: { data: ResmiPlayersBundle }) {
                       <div className="flex items-center gap-2.5">
                         <Avatar photo={row.photo} name={row.name} />
                         <div className="flex items-center gap-1.5">
-                          <PlayerLink playerSlug={row.slug} className="truncate text-[13px] font-medium text-accent-ink hover:text-accent hover:underline" title={row.name}>
-                            {row.name}
-                          </PlayerLink>
+                          {row.playerHref ? (
+                            <Link href={row.playerHref} className="truncate text-[13px] font-medium text-accent-ink hover:text-accent hover:underline" title={row.name}>
+                              {row.name}
+                            </Link>
+                          ) : (
+                            <span className="truncate text-[13px] font-medium text-ink" title={row.name}>{row.name}</span>
+                          )}
                           <Flag nationality={row.nationality} />
                         </div>
                       </div>
                     </td>
                     <td className="whitespace-nowrap px-2 py-1.5">
-                      <TeamCell name={row.teamName} logo={row.teamLogo} slug={teamSlugById[row.teamId] ?? null} />
+                      <TeamCell name={row.teamName} logo={row.teamLogo} href={row.teamHref} />
                     </td>
                     <td className="px-2 py-1.5 text-center text-[12px] text-ink-2">{POS_SHORT[(row.positionCode ?? "").toUpperCase()] ?? row.positionCode ?? "—"}</td>
                     {cols.map((c) => (
@@ -315,8 +317,7 @@ function Flag({ nationality }: { nationality: string | null }) {
   return <Image src={url} alt={canonicalNationality(nationality) ?? nationality} width={16} height={12} className="h-3 w-4 shrink-0 rounded-[2px] object-cover" />;
 }
 
-function TeamCell({ name, logo, slug }: { name: string | null; logo: string | null; slug: string | null }) {
-  const href = slug ? getTeamDetailHref(slug) : null;
+function TeamCell({ name, logo, href }: { name: string | null; logo: string | null; href: string | null }) {
   const content = (
     <span className="inline-flex items-center gap-2">
       {logo ? (

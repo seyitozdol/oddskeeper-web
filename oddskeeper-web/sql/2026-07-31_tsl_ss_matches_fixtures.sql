@@ -81,3 +81,11 @@ grant select on analytics.tsl_player_advanced_season_mat to anon, authenticated;
 -- TSL mac detay sayfasi (ve mevcut tff1 mac sayfalari) oyuncu-mac logunu okur;
 -- mat'in hic grant'i yoktu.
 grant select on analytics.tff1_player_match_log_mat to anon, authenticated;
+
+-- 1. Lig (TFF1) Resmi deneyimi tff1_* view/mat'larini okur; cogu authenticated
+-- veya grantsizdi. Hepsini anon+authenticated'a ac.
+do $$ declare r record; begin
+  for r in select c.relname from pg_class c join pg_namespace n on n.oid=c.relnamespace
+    where n.nspname='analytics' and c.relname like 'tff1_%' and c.relkind in ('r','v','m')
+  loop execute format('grant select on analytics.%I to anon, authenticated', r.relname); end loop;
+end $$;

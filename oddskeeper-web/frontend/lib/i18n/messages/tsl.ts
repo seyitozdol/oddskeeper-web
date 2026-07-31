@@ -32,6 +32,7 @@ export const tsl = defineMessages({
       "The definitive league page: league badge, standings, top-scorer board, results, players and transfers.",
 
     leagueName: "Trendyol Süper Lig",
+    firstLigName: "Trendyol 1. Lig",
     sectionRanking: "Ranking",
     topKeyPass: "Key passes",
     upcoming: "Fixtures",
@@ -178,6 +179,7 @@ export const tsl = defineMessages({
       "Ligin ana sayfası: lig amblemi, puan durumu, gol krallığı, sonuçlar, oyuncular ve transferler.",
 
     leagueName: "Trendyol Süper Lig",
+    firstLigName: "Trendyol 1. Lig",
     sectionRanking: "Ranking",
     topKeyPass: "Kilit pas",
     upcoming: "Gelecek maçlar",

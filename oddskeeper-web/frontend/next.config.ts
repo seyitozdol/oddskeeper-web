@@ -29,6 +29,12 @@ const nextConfig: NextConfig = {
         hostname: "tmssl.akamaized.net",
         pathname: "/**",
       },
+      {
+        // FlashScore (1. Lig takim logolari + oyuncu fotograflari)
+        protocol: "https",
+        hostname: "static.flashscore.com",
+        pathname: "/**",
+      },
     ],
   },
 };

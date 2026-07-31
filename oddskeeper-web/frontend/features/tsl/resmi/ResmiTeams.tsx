@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getT } from "@/lib/i18n/server";
-import { getTeamDetailHref } from "@/lib/routes";
+import { getPlayerDetailHref } from "@/lib/routes";
 import type { ResmiTeamsBundle } from "@/features/tsl/server/resmiLoaders";
 import ResmiTeamBoard, { type MetricLite, type TeamLite } from "./ResmiTeamBoard";
 import { PlayerFace, PlayerNameLink } from "./parts";
@@ -14,7 +14,7 @@ const CATEGORY_LABELS: Record<string, string> = {
 
 export default async function ResmiTeams({ data }: { data: ResmiTeamsBundle }) {
   const t = await getT();
-  const { standings, teamMetrics, aggression, transfers, teamSlugById } = data;
+  const { standings, teamMetrics, aggression, transfers, teamHrefById } = data;
 
   // Sezon başlamadıysa (26/27) takım istatistiği yok ama transferler var.
   const hasBoard = standings.length > 0;
@@ -26,7 +26,7 @@ export default async function ResmiTeams({ data }: { data: ResmiTeamsBundle }) {
     id: s.teamId,
     name: s.teamName,
     logo: s.logo,
-    slug: teamSlugById[s.teamId] ?? null,
+    href: teamHrefById[s.teamId] ?? null,
   }));
   // Metrikleri metricKey bazinda grupla
   const metricMap = new Map<string, MetricLite>();
@@ -98,13 +98,13 @@ export default async function ResmiTeams({ data }: { data: ResmiTeamsBundle }) {
                   <div className="min-w-0 flex-1">
                     <PlayerNameLink
                       name={tr.playerName}
-                      slug={tr.playerSlug}
+                      href={tr.playerSlug ? getPlayerDetailHref(tr.playerSlug) : null}
                       className="block truncate text-[12px] font-medium text-ink"
                     />
                     <div className="flex items-center gap-1 text-[10px] text-ink-3">
-                      <TransferClub name={tr.fromName} logo={tr.fromLogo} slug={null} />
+                      <TransferClub name={tr.fromName} logo={tr.fromLogo} href={null} />
                       <span className="text-ink-3">→</span>
-                      <TransferClub name={tr.toName} logo={tr.toLogo} slug={tr.toSlug} />
+                      <TransferClub name={tr.toName} logo={tr.toLogo} href={tr.toHref} />
                     </div>
                   </div>
                   <div className="shrink-0 text-right">
@@ -132,13 +132,12 @@ export default async function ResmiTeams({ data }: { data: ResmiTeamsBundle }) {
 function TransferClub({
   name,
   logo,
-  slug,
+  href,
 }: {
   name: string | null;
   logo: string | null;
-  slug: string | null;
+  href: string | null;
 }) {
-  const href = slug ? getTeamDetailHref(slug) : null;
   const inner = (
     <span className="inline-flex max-w-[90px] items-center gap-1 truncate">
       {logo ? (

@@ -74,6 +74,7 @@ export type TslLeaderRow = {
   playerId: string;
   playerName: string;
   teamName: string | null;
+  teamId: string | null;
   positionCode: string | null;
   metricKey: string;
   metricLabel: string;

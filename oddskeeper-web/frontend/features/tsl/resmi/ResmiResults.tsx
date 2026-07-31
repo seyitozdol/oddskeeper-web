@@ -1,5 +1,4 @@
 import { getLocale, getT } from "@/lib/i18n/server";
-import { RESMI_BASE_PATH } from "@/features/tsl/constants";
 import { formatDate } from "@/features/tsl/lib";
 import type { ResmiResultsBundle } from "@/features/tsl/server/resmiLoaders";
 import { MatchRow, ResmiStandings } from "./parts";
@@ -7,7 +6,7 @@ import { MatchRow, ResmiStandings } from "./parts";
 export default async function ResmiResults({ data }: { data: ResmiResultsBundle }) {
   const t = await getT();
   const locale = await getLocale();
-  const { standings, rounds, teamSlugById } = data;
+  const { standings, rounds, teamHrefById, basePath, matchBase } = data;
 
   if (!standings.length) {
     return <p className="py-16 text-center text-sm text-ink-3">{t("tsl.noData")}</p>;
@@ -24,7 +23,7 @@ export default async function ResmiResults({ data }: { data: ResmiResultsBundle 
     form: t("tsl.form"),
     points: t("tsl.points"),
   };
-  const returnTo = `${RESMI_BASE_PATH}?season=${encodeURIComponent(data.season)}&section=ranking`;
+  const returnTo = `${basePath}?season=${encodeURIComponent(data.season)}&section=results`;
 
   return (
     <div className="grid gap-5 lg:grid-cols-[1fr_1fr]">
@@ -35,7 +34,7 @@ export default async function ResmiResults({ data }: { data: ResmiResultsBundle 
         </h2>
         <ResmiStandings
           standings={standings}
-          teamSlugById={teamSlugById}
+          teamHrefById={teamHrefById}
           compact={false}
           labels={labels}
         />
@@ -59,7 +58,7 @@ export default async function ResmiResults({ data }: { data: ResmiResultsBundle 
               </div>
               <div className="divide-y divide-line/60">
                 {r.matches.map((m) => (
-                  <MatchRow key={m.matchId} match={m} locale={locale} returnTo={returnTo} />
+                  <MatchRow key={m.matchId} match={m} locale={locale} returnTo={returnTo} matchBase={matchBase} teamHrefById={teamHrefById} />
                 ))}
               </div>
             </div>

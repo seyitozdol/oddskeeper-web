@@ -1,6 +1,5 @@
 import { getLocale, getT } from "@/lib/i18n/server";
 import { formatMetric } from "@/features/tsl/lib";
-import { RESMI_BASE_PATH } from "@/features/tsl/constants";
 import type { ResmiLigBundle } from "@/features/tsl/server/resmiLoaders";
 import LeaderTabs from "./LeaderTabs";
 import {
@@ -15,7 +14,7 @@ import {
 export default async function ResmiLig({ data }: { data: ResmiLigBundle }) {
   const t = await getT();
   const locale = await getLocale();
-  const { standings, leaders, leaderMetric, lastRound, upcoming, teamSlugById } = data;
+  const { standings, leaders, leaderMetric, lastRound, upcoming, teamHrefById, basePath, matchBase } = data;
 
   if (!standings.length && !upcoming.length) {
     return <p className="py-16 text-center text-sm text-ink-3">{t("tsl.noData")}</p>;
@@ -32,7 +31,7 @@ export default async function ResmiLig({ data }: { data: ResmiLigBundle }) {
     form: t("tsl.form"),
     points: t("tsl.points"),
   };
-  const returnTo = `${RESMI_BASE_PATH}?season=${encodeURIComponent(data.season)}&section=league`;
+  const returnTo = `${basePath}?season=${encodeURIComponent(data.season)}&section=league`;
 
   return (
     <div className="space-y-5">
@@ -42,7 +41,7 @@ export default async function ResmiLig({ data }: { data: ResmiLigBundle }) {
           <h2 className="mb-2 text-[13px] font-semibold uppercase tracking-[0.12em] text-ink-2">
             {t("tsl.standings")}
           </h2>
-          <ResmiStandings standings={standings} teamSlugById={teamSlugById} compact labels={labels} />
+          <ResmiStandings standings={standings} teamHrefById={teamHrefById} compact labels={labels} />
         </div>
 
         {/* Gol krallligi / liderler */}
@@ -64,14 +63,14 @@ export default async function ResmiLig({ data }: { data: ResmiLigBundle }) {
                   <div className="flex items-center gap-1.5">
                     <PlayerNameLink
                       name={p.playerName}
-                      slug={p.slug}
+                      href={p.playerHref}
                       className="truncate text-[13px] font-medium text-accent-ink hover:text-accent"
                     />
                     <Flag nationality={p.nationality} />
                   </div>
                   <TeamNameLink
                     name={p.teamName}
-                    slug={p.teamSlug}
+                    href={p.teamHref}
                     className="block truncate text-[11px] text-ink-3"
                   />
                 </div>
@@ -100,7 +99,7 @@ export default async function ResmiLig({ data }: { data: ResmiLigBundle }) {
               lastRound.matches
                 .slice()
                 .reverse()
-                .map((m) => <MatchRow key={m.matchId} match={m} locale={locale} returnTo={returnTo} teamSlugById={teamSlugById} />)
+                .map((m) => <MatchRow key={m.matchId} match={m} locale={locale} returnTo={returnTo} matchBase={matchBase} teamHrefById={teamHrefById} />)
             ) : (
               <p className="px-4 py-6 text-center text-[12px] text-ink-3">{t("tsl.noData")}</p>
             )}
@@ -115,7 +114,7 @@ export default async function ResmiLig({ data }: { data: ResmiLigBundle }) {
             {upcoming.length ? (
               upcoming
                 .slice(0, 10)
-                .map((m) => <MatchRow key={m.matchId} match={m} locale={locale} returnTo={returnTo} teamSlugById={teamSlugById} />)
+                .map((m) => <MatchRow key={m.matchId} match={m} locale={locale} returnTo={returnTo} matchBase={matchBase} teamHrefById={teamHrefById} />)
             ) : (
               <p className="px-4 py-6 text-center text-[12px] text-ink-3">{t("tsl.noUpcoming")}</p>
             )}

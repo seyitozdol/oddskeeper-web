@@ -5,13 +5,8 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { useI18n } from "../../../lib/i18n/LanguageProvider";
-import {
-  RESMI_BASE_PATH,
-  RESMI_SECTIONS,
-  TSL_SEASONS,
-  type ResmiSection,
-  type TslSeason,
-} from "../constants";
+import { RESMI_SECTIONS, type ResmiSection } from "../constants";
+import type { LeagueConfig } from "../leagues";
 
 const SECTION_KEY: Record<ResmiSection, string> = {
   league: "tsl.sectionLeague",
@@ -23,15 +18,18 @@ const SECTION_KEY: Record<ResmiSection, string> = {
 };
 
 export default function ResmiControlBar({
+  config,
   section,
   season,
 }: {
+  config: LeagueConfig;
   section: ResmiSection;
-  season: TslSeason;
+  season: string;
 }) {
   const { t } = useI18n();
   const pathname = usePathname();
   const params = useSearchParams();
+  const leagueName = t(config.nameKey);
 
   const buildQuery = (over: Record<string, string>) => {
     const next = new URLSearchParams(params.toString());
@@ -39,7 +37,7 @@ export default function ResmiControlBar({
     return next.toString();
   };
   const sectionHref = (s: ResmiSection) => `${pathname}?${buildQuery({ section: s })}`;
-  const seasonHref = (s: TslSeason) => `${pathname}?${buildQuery({ season: s })}`;
+  const seasonHref = (s: string) => `${pathname}?${buildQuery({ season: s })}`;
 
   return (
     <div className="sticky top-14 z-30 -mx-4 mb-6 border-b border-line bg-canvas/85 px-4 py-3 backdrop-blur-md lg:-mx-8 lg:px-8">
@@ -47,19 +45,19 @@ export default function ResmiControlBar({
         {/* Sol: lig amblemi + isim + bayrak */}
         <div className="flex items-center gap-3">
           <Link
-            href={`${RESMI_BASE_PATH}?season=${encodeURIComponent(season)}&section=league`}
-            title={t("tsl.leagueName")}
+            href={`${config.basePath}?season=${encodeURIComponent(season)}&section=league`}
+            title={leagueName}
             className="flex items-center gap-3"
           >
             <Image
-              src="/images/leagues/super-lig.png"
-              alt={t("tsl.leagueName")}
+              src={config.logo}
+              alt={leagueName}
               width={34}
               height={34}
               className="tsl-league-mark h-8 w-8 shrink-0 object-contain"
             />
             <span className="text-[15px] font-bold tracking-tight text-ink">
-              {t("tsl.leagueName")}
+              {leagueName}
             </span>
             <Image
               src="/images/flags/tr.png"
@@ -73,7 +71,7 @@ export default function ResmiControlBar({
 
         {/* Sag: sezon */}
         <div className="flex items-center gap-1 rounded-xl border border-line bg-card p-1">
-          {TSL_SEASONS.map((s, i) => {
+          {config.seasons.map((s, i) => {
             const active = s === season;
             return (
               <Link

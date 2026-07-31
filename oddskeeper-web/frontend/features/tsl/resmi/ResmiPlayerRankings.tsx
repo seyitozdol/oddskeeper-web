@@ -5,7 +5,6 @@ import SortableRankingTable, {
   type RankingColumn,
   type RankingRow,
 } from "@/components/rankings/SortableRankingTable";
-import { RESMI_BASE_PATH } from "@/features/tsl/constants";
 import { formatMetric } from "@/features/tsl/lib";
 import type { ResmiPlayerRankingsBundle } from "@/features/tsl/server/resmiLoaders";
 import { PlayerNameLink, TeamNameLink } from "./parts";
@@ -16,7 +15,7 @@ export default async function ResmiPlayerRankings({
   data: ResmiPlayerRankingsBundle;
 }) {
   const t = await getT();
-  const { catalog, metricKey, metric, rows, assets, teamSlugByName, season } = data;
+  const { catalog, metricKey, metric, rows, playerHrefById, teamHrefById, basePath, season } = data;
 
   const options = catalog.map((c) => ({
     key: c.metricKey,
@@ -45,17 +44,15 @@ export default async function ResmiPlayerRankings({
   ];
 
   const tableRows: RankingRow[] = ranked.map((r, i) => {
-    const slug = assets[r.playerId]?.slug ?? null;
-    const teamSlug = r.teamName ? teamSlugByName[r.teamName] ?? null : null;
     const cells = [
       <span key="rank" className="font-semibold">{i + 1}</span>,
       <PlayerNameLink
         key="player"
         name={r.playerName}
-        slug={slug}
+        href={playerHrefById[r.playerId] ?? null}
         className="font-medium text-accent-ink hover:text-accent"
       />,
-      <TeamNameLink key="team" name={r.teamName} slug={teamSlug} className="text-ink-2" />,
+      <TeamNameLink key="team" name={r.teamName} href={r.teamId ? teamHrefById[r.teamId] ?? null : null} className="text-ink-2" />,
       <span key="total" className="font-semibold text-ink">{formatMetric(r.total, r.valueFormat)}</span>,
       ...(showPer90 ? [<span key="per90">{formatMetric(r.per90, "decimal")}</span>] : []),
       ...(showVsAvg
@@ -93,7 +90,7 @@ export default async function ResmiPlayerRankings({
           <MetricSelect
             options={options}
             selectedKey={metricKey}
-            basePath={RESMI_BASE_PATH}
+            basePath={basePath}
             baseParams={{ season, section: "playerRankings" }}
           />
         ) : null}

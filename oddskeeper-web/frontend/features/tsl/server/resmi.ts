@@ -9,15 +9,17 @@ export function buildZeroStandings(
   fixtures: TslMatch[],
   meta: Record<string, TslTeamMeta>
 ): TslStandingRow[] {
-  const ids = new Set<string>();
+  // Fikstürlerden takım adı/logosu topla (logo tablosunda olmayan yeni takımlar
+  // için ad fikstürden gelir, id kalmaz).
+  const info = new Map<string, { name: string; logo: string | null }>();
   for (const m of fixtures) {
-    if (m.homeId) ids.add(m.homeId);
-    if (m.awayId) ids.add(m.awayId);
+    if (m.homeId && !info.has(m.homeId)) info.set(m.homeId, { name: m.homeName, logo: m.homeLogo });
+    if (m.awayId && !info.has(m.awayId)) info.set(m.awayId, { name: m.awayName, logo: m.awayLogo });
   }
-  const rows = [...ids].map((id) => ({
+  const rows = [...info.keys()].map((id) => ({
     teamId: id,
-    teamName: meta[id]?.name ?? id,
-    logo: meta[id]?.logo ?? null,
+    teamName: meta[id]?.name ?? info.get(id)?.name ?? id,
+    logo: meta[id]?.logo ?? info.get(id)?.logo ?? null,
     played: 0,
     wins: 0,
     draws: 0,
@@ -70,61 +72,20 @@ export async function getPlayerAssets(): Promise<Record<string, PlayerAsset>> {
 
 // ---- Lig liderleri (4 metrik, top 10, foto + link) ----
 
+// Lig liderleri satiri (loader provider.leaderboard'dan uretir; href'ler dolu).
 export type ResmiLeaderRow = {
   rank: number;
   playerId: string;
   playerName: string;
-  slug: string | null;
+  playerHref: string | null;
   photo: string | null;
   nationality: string | null;
   teamName: string | null;
-  teamSlug: string | null;
+  teamHref: string | null;
   total: number | null;
   perMatch: number | null;
   valueFormat: string;
 };
-
-export async function getResmiLeaders(
-  season: string,
-  metricKey: string,
-  assets: Record<string, PlayerAsset>,
-  teamSlugByName: Record<string, string>
-): Promise<ResmiLeaderRow[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .schema("analytics")
-    .from("tsl_ss_player_leaderboard_rows_v1")
-    .select(
-      "player_source_id, player_name, team_name, total_value, per_match_value, value_format"
-    )
-    .eq("competition", TSL_COMPETITION)
-    .eq("season_label", season)
-    .eq("metric_key", metricKey)
-    .order("total_value", { ascending: false, nullsFirst: false })
-    .limit(10);
-
-  if (error) {
-    console.error("resmi leaders error", metricKey, error.message);
-    return [];
-  }
-  return (data ?? []).map((r, i) => {
-    const id = String(r.player_source_id ?? "");
-    const a = assets[id];
-    return {
-      rank: i + 1,
-      playerId: id,
-      playerName: r.player_name ?? "—",
-      slug: a?.slug ?? null,
-      photo: a?.photo ?? null,
-      nationality: a?.nationality ?? null,
-      teamName: r.team_name ?? null,
-      teamSlug: r.team_name ? teamSlugByName[r.team_name] ?? null : null,
-      total: toNum(r.total_value),
-      perMatch: toNum(r.per_match_value),
-      valueFormat: r.value_format ?? "count",
-    };
-  });
-}
 
 // ---- Maclari haftalara ayir (football.matches'te round yok -> tarih kumeleme) ----
 
@@ -242,7 +203,7 @@ export type ResmiTransfer = {
   fromName: string | null;
   fromLogo: string | null;
   toName: string | null;
-  toSlug: string | null;
+  toHref: string | null;
   toLogo: string | null;
   feeText: string | null;
   feeEur: number | null;
@@ -299,7 +260,7 @@ export async function getResmiTransfers(season: string): Promise<ResmiTransfer[]
       fromName: r.from_team_name ?? null,
       fromLogo: r.from_team_logo ?? null,
       toName: r.to_team_name ?? null,
-      toSlug: null,
+      toHref: null,
       toLogo: r.to_team_logo ?? null,
       feeText,
       feeEur: toNum(r.fee_eur),
@@ -331,6 +292,8 @@ export type ResmiPlayerRow = {
   teamName: string | null;
   teamLogo: string | null;
   slug: string | null;
+  playerHref: string | null;
+  teamHref: string | null;
   photo: string | null;
   nationality: string | null;
   inCurrentSquad: boolean;
@@ -392,6 +355,8 @@ export async function getResmiPlayers(
           teamName: meta[teamId]?.name ?? r.team_name ?? null,
           teamLogo: meta[teamId]?.logo ?? null,
           slug: a?.slug ?? null,
+          playerHref: null,
+          teamHref: null,
           photo: a?.photo ?? null,
           nationality: a?.nationality ?? null,
           inCurrentSquad: !!a,

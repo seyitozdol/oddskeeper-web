@@ -5,7 +5,6 @@ import SortableRankingTable, {
   type RankingColumn,
   type RankingRow,
 } from "@/components/rankings/SortableRankingTable";
-import { RESMI_BASE_PATH } from "@/features/tsl/constants";
 import { formatMetric } from "@/features/tsl/lib";
 import type { ResmiTeamRankingsBundle } from "@/features/tsl/server/resmiLoaders";
 import TeamCrest from "@/features/tsl/shared/TeamCrest";
@@ -17,7 +16,7 @@ export default async function ResmiTeamRankings({
   data: ResmiTeamRankingsBundle;
 }) {
   const t = await getT();
-  const { catalog, metricKey, metricLabel: dbMetricLabel, rows, metaById, teamSlugById, season } = data;
+  const { catalog, metricKey, metricLabel: dbMetricLabel, rows, metaById, teamHrefById, basePath, season } = data;
   const options = catalog.map((c) => ({
     key: c.key,
     label: metricLabel(t, c.key, c.label),
@@ -45,12 +44,12 @@ export default async function ResmiTeamRankings({
   const tableRows: RankingRow[] = ranked.map((r, i) => {
     const id = r.teamId ?? "";
     const logo = metaById[id]?.logo ?? null;
-    const slug = teamSlugById[id] ?? null;
+    const href = teamHrefById[id] ?? null;
     const cells = [
       <span key="rank" className="font-semibold">{i + 1}</span>,
       <span key="team" className="inline-flex items-center gap-2">
         <TeamCrest logo={logo} name={r.teamName} size="sm" />
-        <TeamNameLink name={r.teamName} slug={slug} className="font-medium text-ink" />
+        <TeamNameLink name={r.teamName} href={href} className="font-medium text-ink" />
       </span>,
       <span key="total" className="font-semibold text-ink">{formatMetric(r.total, r.valueFormat)}</span>,
       ...(showPerMatch ? [<span key="perMatch">{formatMetric(r.perMatch, "decimal")}</span>] : []),
@@ -88,7 +87,7 @@ export default async function ResmiTeamRankings({
           <MetricSelect
             options={options}
             selectedKey={metricKey}
-            basePath={RESMI_BASE_PATH}
+            basePath={basePath}
             baseParams={{ season, section: "teamRankings" }}
           />
         ) : null}

@@ -26,8 +26,9 @@ const FOOTBALL_LEAGUE_DETAIL_HREF =
 const TSL_HUB_HREF =
   "/dashboard/stats-analysis/tsl/resmi?season=2026%2F2027&section=league";
 
-const TFF1_LEAGUE_DETAIL_HREF =
-  "/dashboard/stats-analysis/football/league-stats/detail?competition=1.%20Lig&season=2025%2F2026&tab=overview";
+// 1. Lig kisayolu da dogrudan "Resmi" deneyimine gider.
+const TFF1_RESMI_HREF =
+  "/dashboard/stats-analysis/tff1/resmi?season=2026%2F2027&section=league";
 
 // TBL (Türkiye Basketbol Ligi) icin ayri lig-detay sayfasi henuz yok; simdilik
 // basketbol istatistik gorunumune baglaniyor (icerik sonra degisecek).
@@ -41,6 +42,7 @@ const LEAGUE_DETAIL_PATH =
 // Simgeler inline SVG (ozgun, marka renkli lig amblemleri).
 const LEAGUE_ITEMS: {
   key: string;
+  navKey: NavKey;
   label: string;
   Icon: (props: { className?: string }) => ReactElement;
   href: string;
@@ -49,19 +51,21 @@ const LEAGUE_ITEMS: {
 }[] = [
   {
     key: "tsl",
+    navKey: "league-tsl",
     label: "TSL",
     Icon: TslMark,
     href: TSL_HUB_HREF,
   },
   {
     key: "1lig",
+    navKey: "league-1lig",
     label: "1.Lig",
     Icon: Lig1Mark,
-    href: TFF1_LEAGUE_DETAIL_HREF,
-    competition: "1. Lig",
+    href: TFF1_RESMI_HREF,
   },
   {
     key: "tbl",
+    navKey: "league-tbl",
     label: "TBL",
     Icon: TblMark,
     href: BASKETBALL_LEAGUE_HREF,
@@ -103,6 +107,9 @@ export default function AppHeader({
   const isLeagueActive = (item: (typeof LEAGUE_ITEMS)[number]) => {
     if (item.key === "tsl") {
       return pathname.startsWith("/dashboard/stats-analysis/tsl");
+    }
+    if (item.key === "1lig") {
+      return pathname.startsWith("/dashboard/stats-analysis/tff1");
     }
     if (item.competition != null) {
       return (
@@ -272,9 +279,9 @@ export default function AppHeader({
             </div>
             ) : null}
 
-            {can("stats-analysis") ? (
+            {LEAGUE_ITEMS.some((item) => can(item.navKey)) ? (
               <div className="flex items-center gap-1 border-l border-line pl-2">
-                {LEAGUE_ITEMS.map((item) => (
+                {LEAGUE_ITEMS.filter((item) => can(item.navKey)).map((item) => (
                   <Link
                     key={item.key}
                     href={item.href}
@@ -429,20 +436,18 @@ export default function AppHeader({
             </Link>
           ) : null}
 
-          {can("stats-analysis")
-            ? LEAGUE_ITEMS.map((item) => (
-                <Link
-                  key={item.key}
-                  href={item.href}
-                  className={`flex items-center gap-1.5 ${navLinkClass(
-                    isLeagueActive(item)
-                  )}`}
-                >
-                  <item.Icon className="h-4 w-4 shrink-0" />
-                  <span>{item.label}</span>
-                </Link>
-              ))
-            : null}
+          {LEAGUE_ITEMS.filter((item) => can(item.navKey)).map((item) => (
+            <Link
+              key={item.key}
+              href={item.href}
+              className={`flex items-center gap-1.5 ${navLinkClass(
+                isLeagueActive(item)
+              )}`}
+            >
+              <item.Icon className="h-4 w-4 shrink-0" />
+              <span>{item.label}</span>
+            </Link>
+          ))}
 
           {can("stats-analysis") ? (
             <>
@@ -579,52 +584,28 @@ function StatsMenuItem({
   );
 }
 
-// Ozgun lig amblemleri (resmi trademark logolar degil): TSL kirmizi + futbol
-// topu, 1.Lig lacivert + "1", TBL turuncu + basketbol topu.
+// Gercek lig amblemleri (SofaScore görselleri, repoda). TBL hala inline SVG.
 function TslMark({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
-      <circle cx="12" cy="12" r="11.5" fill="#E4032E" />
-      <circle
-        cx="12"
-        cy="12"
-        r="9.4"
-        fill="none"
-        stroke="#ffffff"
-        strokeOpacity="0.28"
-        strokeWidth="1"
-      />
-      <circle cx="12" cy="12" r="6.6" fill="#ffffff" />
-      <polygon
-        points="12,8.35 14.35,10.05 13.45,12.75 10.55,12.75 9.65,10.05"
-        fill="#E4032E"
-      />
-      <g stroke="#E4032E" strokeWidth="1.05" strokeLinecap="round">
-        <path d="M12 8.35V5.55" />
-        <path d="M14.35 10.05l2.05-1.2" />
-        <path d="M13.45 12.75l1.7 2.2" />
-        <path d="M10.55 12.75l-1.7 2.2" />
-        <path d="M9.65 10.05l-2.05-1.2" />
-      </g>
-    </svg>
+    <Image
+      src="/images/leagues/super-lig.png"
+      alt="TSL"
+      width={16}
+      height={16}
+      className={`${className ?? ""} object-contain`}
+    />
   );
 }
 
 function Lig1Mark({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
-      <circle cx="12" cy="12" r="11.5" fill="#0E2A56" />
-      <circle
-        cx="12"
-        cy="12"
-        r="9.4"
-        fill="none"
-        stroke="#ffffff"
-        strokeOpacity="0.28"
-        strokeWidth="1"
-      />
-      <path d="M13.7 6.4V17.6H11.3V9.3L8.9 10.1V8.2L12.2 6.4Z" fill="#ffffff" />
-    </svg>
+    <Image
+      src="/images/leagues/tff-1-lig.png"
+      alt="1.Lig"
+      width={16}
+      height={16}
+      className={`${className ?? ""} object-contain`}
+    />
   );
 }
 

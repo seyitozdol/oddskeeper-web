@@ -3,11 +3,10 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useI18n } from "@/lib/i18n/LanguageProvider";
-import { getTeamDetailHref } from "@/lib/routes";
 import { formatMetric } from "@/features/tsl/lib";
 import TeamCrest from "@/features/tsl/shared/TeamCrest";
 
-export type TeamLite = { id: string; name: string; logo: string | null; slug: string | null };
+export type TeamLite = { id: string; name: string; logo: string | null; href: string | null };
 export type MetricLite = {
   key: string;
   label: string;
@@ -122,7 +121,7 @@ export default function ResmiTeamBoard({
         <div className="divide-y divide-line/60">
           {ranked.map(({ tm, v, pm }, i) => {
             const pct = Math.max(4, Math.round((v / maxVal) * 100));
-            const href = tm.slug ? getTeamDetailHref(tm.slug) : null;
+            const href = tm.href;
             const aboveAvg = avgVal != null && (metric?.isHigherBetter ? v >= avgVal : v <= avgVal);
             return (
               <div key={tm.id} className="flex items-center gap-2.5 px-3 py-2">
