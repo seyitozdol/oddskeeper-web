@@ -96,6 +96,13 @@ export async function upsertMarketConfig(rows: (Partial<PmMarketConfig> & { mark
   if (error) { console.error("upsertMarketConfig", error.message); return false; }
   return true;
 }
+export async function deleteMarketConfig(market_group: string, market_key: string): Promise<boolean> {
+  const supabase = createClient();
+  const { error } = await supabase.schema("analytics").from("bb_pm_market_config")
+    .delete().eq("league", LEAGUE).eq("market_group", market_group).eq("market_key", market_key);
+  if (error) { console.error("deleteMarketConfig", error.message); return false; }
+  return true;
+}
 
 /* ---------------- fixtures (manual) ---------------- */
 export async function fetchPmFixtures(): Promise<PmFixture[]> {

@@ -9,7 +9,7 @@ import {
   fetchPmFixtures, insertFixture, updateFixture, deleteFixture, PmFixture,
   fetchPlayerIds, savePlayerIds,
   savePlayerMerges, PmMerge,
-  fetchMarketConfig, upsertMarketConfig, PmMarketConfig,
+  fetchMarketConfig, upsertMarketConfig, deleteMarketConfig, PmMarketConfig,
 } from "../pmQueries";
 import type {
   BktHomeAwaySplitRow, BktTeamMetricFormRow, BktPlayerWindowRow,
@@ -248,7 +248,10 @@ function ConfigTab({ config, reload, inputType, setInputType, locale, t }: {
 }) {
   const [edits, setEdits] = useState<Record<string, Partial<PmMarketConfig>>>({});
   const [saving, setSaving] = useState(false);
-  const [nm, setNm] = useState<{ base: string; side: string; template: string; std: string }>({ base: "points", side: "home", template: "", std: "" });
+  const [nm, setNm] = useState<{ name: string; base: string; side: string; template: string; std: string }>({ name: "", base: "manual", side: "home", template: "", std: "" });
+  // Dropdown: hali hazırda açık base'ler HARİÇ (data olup eklenmemiş / silinip geri eklenecek) + "manual" (data yok).
+  const usedBases = new Set(config.filter((c) => c.market_group === inputType && c.base_metric).map((c) => c.base_metric));
+  const availBases = Object.keys(METRIC_LABELS).filter((k) => !usedBases.has(k));
   const rk = (c: PmMarketConfig) => `${c.market_group}:${c.market_key}`;
   const patch = (c: PmMarketConfig, p: Partial<PmMarketConfig>) => setEdits((s) => ({ ...s, [rk(c)]: { ...s[rk(c)], ...p } }));
   const v = <K extends keyof PmMarketConfig>(c: PmMarketConfig, key: K): PmMarketConfig[K] =>
@@ -274,19 +277,22 @@ function ConfigTab({ config, reload, inputType, setInputType, locale, t }: {
     if (ok) { setEdits({}); reload(); }
   };
 
-  // Yeni market ekle (aktif tip için). base_metric = değer kaynağı; team'de side de gerekir.
+  // Yeni market ekle. base="manual" → data yok (dağıtılmaz, elle). İsim elle girilebilir.
   const addMarket = async () => {
     const isTeam = inputType === "team";
-    const baseLbl = metricLabel(nm.base, "en");
-    const key = isTeam ? `${nm.side}_custom_${nm.base}_${Date.now() % 100000}` : `custom_${nm.base}_${Date.now() % 100000}`;
-    const label = isTeam ? `${nm.side} ${baseLbl}` : baseLbl;
+    const manual = nm.base === "manual";
+    const base = manual ? null : nm.base;
+    const auto = manual ? "market" : metricLabel(nm.base, "en");
+    const label = nm.name.trim() || (isTeam && !manual ? `${nm.side} ${auto}` : auto);
+    const key = `${isTeam ? nm.side + "_" : ""}custom_${base ?? "x"}_${Date.now() % 1000000}`;
     const ok = await upsertMarketConfig([{
-      market_group: inputType, market_key: key, label, base_metric: nm.base,
+      market_group: inputType, market_key: key, label, base_metric: base,
       side: isTeam ? nm.side : null, template_id: nm.template.trim() || null,
       std: nm.std ? parseFloat(nm.std) : null, in_model: true, sort_order: 999,
     }]);
-    if (ok) { setNm({ base: "points", side: "home", template: "", std: "" }); reload(); }
+    if (ok) { setNm({ name: "", base: "manual", side: "home", template: "", std: "" }); reload(); }
   };
+  const removeMarket = async (c: PmMarketConfig) => { if (await deleteMarketConfig(c.market_group, c.market_key)) reload(); };
 
   const numCell = (c: PmMarketConfig, key: keyof PmMarketConfig, w = "w-12", nullable = false, ph = "") => (
     <input type="number" step="any" placeholder={ph}
@@ -313,12 +319,19 @@ function ConfigTab({ config, reload, inputType, setInputType, locale, t }: {
           <th className={`${th} text-right`}>{t("basketball.cfgCap")}</th>
           <th className={`${th} text-right`}>{t("basketball.cfgPayback")}</th>
           <th className={`${th} text-center`}>{t("basketball.cfgRound")}</th>
+          <th className={`${th} text-center`}></th>
         </tr></thead>
         <tbody>
-          {bySection(grp).map((c) => (
+          {bySection(grp).map((c) => {
+            const isCustom = c.market_key.includes("custom_");
+            return (
             <tr key={rk(c)} className="border-t border-line hover:bg-veil">
               <td className={`${td} text-center`}><input type="checkbox" checked={!!v(c, "in_model")} onChange={(e) => patch(c, { in_model: e.target.checked })} className="accent-[var(--accent)]" /></td>
-              <td className={`${td} text-ink whitespace-nowrap`}>{configLabel({ ...c, ...edits[rk(c)] }, locale)}</td>
+              <td className={`${td} text-ink whitespace-nowrap`}>
+                {isCustom
+                  ? <input value={(v(c, "label") ?? "").toString()} onChange={(e) => patch(c, { label: e.target.value })} className="w-24 rounded border border-line bg-field px-1 py-0 text-[11px] text-ink outline-none focus:border-line-strong" />
+                  : configLabel({ ...c, ...edits[rk(c)] }, locale)}
+              </td>
               <td className={td}><input value={(v(c, "template_id") ?? "").toString()} onChange={(e) => patch(c, { template_id: e.target.value || null })}
                 className="w-24 rounded border border-line bg-field px-1 py-0 text-[11px] text-ink outline-none focus:border-line-strong" placeholder="—" /></td>
               <td className={`${td} text-right`}>{numCell(c, "std", "w-12")}</td>
@@ -330,8 +343,10 @@ function ConfigTab({ config, reload, inputType, setInputType, locale, t }: {
               <td className={`${td} text-right`}>{numCell(c, "odds_cap", "w-12")}</td>
               <td className={`${td} text-right`}>{numCell(c, "payback", "w-14", true, t("basketball.cfgDefault"))}</td>
               <td className={`${td} text-center`}><input type="checkbox" checked={!!v(c, "round_odds")} onChange={(e) => patch(c, { round_odds: e.target.checked })} className="accent-[var(--accent)]" /></td>
+              <td className={`${td} text-center`}><button onClick={() => removeMarket(c)} title={t("basketball.remove")} className="text-[13px] text-neg hover:opacity-70">×</button></td>
             </tr>
-          ))}
+            );
+          })}
         </tbody>
       </table>
     </div>
@@ -352,11 +367,13 @@ function ConfigTab({ config, reload, inputType, setInputType, locale, t }: {
         <p className="text-[11px] text-ink-3">{t("basketball.cfgHint")}</p>
       </div>
 
-      {/* yeni market ekleme */}
+      {/* yeni market ekleme — isim elle; base "manual"=data yok (dağıtılmaz) */}
       <div className="mb-3 flex flex-wrap items-end gap-2 rounded-lg border border-line bg-card-2/40 px-3 py-2">
         <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-3">{t("basketball.cfgNewMarket")}</span>
+        <input value={nm.name} onChange={(e) => setNm((s) => ({ ...s, name: e.target.value }))} placeholder={t("basketball.cfgMarketName")} className={`${inp} w-28`} />
         <select value={nm.base} onChange={(e) => setNm((s) => ({ ...s, base: e.target.value }))} className={inp}>
-          {Object.keys(METRIC_LABELS).map((k) => <option key={k} value={k}>{metricLabel(k, locale)}</option>)}
+          <option value="manual">{t("basketball.cfgManualNoData")}</option>
+          {availBases.map((k) => <option key={k} value={k}>{metricLabel(k, locale)}</option>)}
         </select>
         {inputType === "team" && (
           <select value={nm.side} onChange={(e) => setNm((s) => ({ ...s, side: e.target.value }))} className={inp}>
