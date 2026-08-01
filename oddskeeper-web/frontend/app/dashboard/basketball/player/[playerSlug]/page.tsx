@@ -2,6 +2,7 @@ import Link from "next/link";
 import {
   getBasketballPlayer,
   getBasketballPlayerMatchLog,
+  getBasketballPlayerEuroSeasons,
 } from "@/features/basketball/server/getBasketballStats";
 import { TeamCrest, StatTile } from "@/features/basketball/components/ui";
 import { fmt, formatMatchDate, homeAwayLabel } from "@/features/basketball/lib";
@@ -13,9 +14,10 @@ export default async function BasketballPlayerPage({
   params: Promise<{ playerSlug: string }>;
 }) {
   const { playerSlug } = await params;
-  const [player, log, t, locale] = await Promise.all([
+  const [player, log, euroSeasons, t, locale] = await Promise.all([
     getBasketballPlayer(playerSlug),
     getBasketballPlayerMatchLog(playerSlug),
+    getBasketballPlayerEuroSeasons(playerSlug),
     getT(),
     getLocale(),
   ]);
@@ -92,6 +94,47 @@ export default async function BasketballPlayerPage({
           <StatTile label={t("basketball.pra")} value={fmt(player.pra_pg)} />
           <StatTile label="P+A" value={fmt(player.pa_pg)} />
         </div>
+
+        {/* European competitions (EuroLeague / EuroCup) — only if the player has data */}
+        {euroSeasons.length > 0 ? (
+          <>
+            <h2 className="mt-8 mb-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-3">{t("basketball.euroTitle")}</h2>
+            <p className="mb-3 text-[11px] text-ink-3">{t("basketball.euroHint")}</p>
+            <div className="space-y-4">
+              {euroSeasons.map((e) => (
+                <div key={`${e.competition}-${e.season_code}`} className="rounded-xl border border-line bg-veil/40 p-4">
+                  <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-ink">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={e.competition === "E" ? "/images/leagues/euroleague.svg" : "/images/leagues/eurocup.svg"}
+                      alt={e.competition_name}
+                      width={24}
+                      height={24}
+                      className="h-6 w-6 shrink-0"
+                    />
+                    <span className="text-ink">{e.competition_name}</span>
+                    <span className="text-ink-3">{e.season_label}</span>
+                    {e.team_name ? <span className="text-[12px] text-ink-3">· {e.team_name}</span> : null}
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 sm:grid-cols-5 lg:grid-cols-6">
+                    <StatTile label={t("basketball.games")} value={String(e.games)} />
+                    <StatTile label={t("basketball.min")} value={fmt(e.mpg)} />
+                    <StatTile label={t("basketball.ppg")} value={fmt(e.ppg)} tone="accent" />
+                    <StatTile label={t("basketball.rpg")} value={fmt(e.rpg)} />
+                    <StatTile label={t("basketball.apg")} value={fmt(e.apg)} />
+                    <StatTile label={t("basketball.spg")} value={fmt(e.spg)} />
+                    <StatTile label={t("basketball.bpg")} value={fmt(e.bpg)} />
+                    <StatTile label={t("basketball.threePg")} value={fmt(e.fg3m_pg)} />
+                    <StatTile label={t("basketball.valuation")} value={fmt(e.val_pg)} tone="accent" />
+                    <StatTile label={t("basketball.threePct")} value={fmt(e.fg3_pct)} />
+                    <StatTile label={t("basketball.ftPct")} value={fmt(e.ft_pct)} />
+                    <StatTile label={t("basketball.fgPct")} value={fmt(e.fg_pct)} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        ) : null}
 
         {/* Game log */}
         <h2 className="mt-8 mb-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-3">{t("basketball.gameLog")}</h2>

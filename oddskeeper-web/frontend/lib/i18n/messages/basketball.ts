@@ -72,6 +72,9 @@ export const basketball = defineMessages({
 
     // player profile
     perGame: "Per Game",
+    euroTitle: "European Competitions",
+    euroHint: "EuroLeague / EuroCup stats (not included in the BSL model).",
+    valuation: "VAL",
     totals: "Totals",
     advanced: "Advanced",
     gameLog: "Game Log",
@@ -258,6 +261,9 @@ export const basketball = defineMessages({
     score: "Skor",
 
     perGame: "Maç Başı",
+    euroTitle: "Avrupa Kupaları",
+    euroHint: "EuroLeague / EuroCup istatistikleri (BSL modeline dahil değildir).",
+    valuation: "VAL",
     totals: "Toplam",
     advanced: "İleri",
     gameLog: "Maç Geçmişi",

@@ -197,6 +197,34 @@ export type BktInputRow = {
   teamName: string;
 };
 
+export type BktEuroSeasonRow = {
+  bsl_player_slug: string;
+  competition: string;        // E | U
+  competition_name: string;   // EuroLeague | EuroCup
+  season_code: string;
+  season_label: string;
+  player_name: string;
+  team_code: string | null;
+  team_name: string | null;
+  games: number;
+  mpg: number | null;
+  ppg: number | null;
+  rpg: number | null;
+  orpg: number | null;
+  drpg: number | null;
+  apg: number | null;
+  spg: number | null;
+  bpg: number | null;
+  topg: number | null;
+  fg3m_pg: number | null;
+  val_pg: number | null;
+  points_total: number | null;
+  fg_pct: number | null;
+  fg2_pct: number | null;
+  fg3_pct: number | null;
+  ft_pct: number | null;
+};
+
 export type BktPlayerListRow = {
   player_slug: string;
   player_name: string;
