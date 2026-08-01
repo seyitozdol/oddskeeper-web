@@ -17,6 +17,7 @@ import type {
   BktFixtureRow,
   BktPlayerListRow,
   BktEuroSeasonRow,
+  BktEuroLogRow,
 } from "../types";
 
 const SEASON = "2025-2026";
@@ -311,6 +312,22 @@ export async function getBasketballPlayerEuroSeasons(playerSlug: string): Promis
     .returns<BktEuroSeasonRow[]>();
   if (error) {
     console.error("getBasketballPlayerEuroSeasons error:", error.message);
+    return [];
+  }
+  return data ?? [];
+}
+
+export async function getBasketballPlayerEuroLog(playerSlug: string): Promise<BktEuroLogRow[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .schema("analytics")
+    .from("bsl_player_euro_log_v1")
+    .select("*")
+    .eq("bsl_player_slug", playerSlug)
+    .order("game_date", { ascending: false })
+    .returns<BktEuroLogRow[]>();
+  if (error) {
+    console.error("getBasketballPlayerEuroLog error:", error.message);
     return [];
   }
   return data ?? [];

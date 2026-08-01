@@ -28,7 +28,8 @@ select
   round((sum(p.fg2m + p.fg3m)::numeric / nullif(sum(p.fg2a + p.fg3a), 0)) * 100, 1) as fg_pct,
   round((sum(p.fg2m)::numeric / nullif(sum(p.fg2a), 0)) * 100, 1)                   as fg2_pct,
   round((sum(p.fg3m)::numeric / nullif(sum(p.fg3a), 0)) * 100, 1)                   as fg3_pct,
-  round((sum(p.ftm)::numeric  / nullif(sum(p.fta), 0)) * 100, 1)                    as ft_pct
+  round((sum(p.ftm)::numeric  / nullif(sum(p.fta), 0)) * 100, 1)                    as ft_pct,
+  round((sum(p.points)::numeric / nullif(2*(sum(p.fg2a+p.fg3a) + 0.44*sum(p.fta)), 0)) * 100, 1) as ts_pct
 from euroleague.player_match_stats p
 group by p.competition, p.season_code, p.season_label, p.person_code;
 

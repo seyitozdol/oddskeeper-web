@@ -223,6 +223,33 @@ export type BktEuroSeasonRow = {
   fg2_pct: number | null;
   fg3_pct: number | null;
   ft_pct: number | null;
+  ts_pct: number | null;
+};
+
+export type BktEuroLogRow = {
+  bsl_player_slug: string;
+  competition: string;
+  competition_name: string;
+  season_code: string;
+  season_label: string;
+  game_code: number;
+  round: number | null;
+  phase_code: string | null;
+  game_date: string | null;
+  team_code: string | null;
+  team_name: string | null;
+  home_away: string | null;
+  opponent_code: string | null;
+  opponent_name: string | null;
+  minutes: number | null;
+  points: number | null;
+  fg3m: number | null;
+  treb: number | null;
+  assists: number | null;
+  steals: number | null;
+  blocks: number | null;
+  valuation: number | null;
+  plus_minus: number | null;
 };
 
 export type BktPlayerListRow = {
