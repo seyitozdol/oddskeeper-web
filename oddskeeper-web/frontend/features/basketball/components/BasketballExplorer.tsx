@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useI18n } from "@/lib/i18n/LanguageProvider";
-import { fmt, formatMatchDate } from "../lib";
+import { fmt, formatMatchDate, normalizePositionCode, positionLabel } from "../lib";
 import { TeamCrest } from "./ui";
 import MatchOdds from "./MatchOdds";
 import type { BktTeamSeasonRow, BktLeaderboardRow, BktMarketModelRow, BktGameRow, BktFixtureRow } from "../types";
@@ -242,7 +242,7 @@ const PLAYER_METRICS: PlayerMetric[] = [
 ];
 
 function PlayerLeaders({ rows, season }: { rows: BktLeaderboardRow[]; season: string }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [metricKey, setMetricKey] = useState("ppg");
   const [qualifiedOnly, setQualifiedOnly] = useState(true);
 
@@ -285,6 +285,7 @@ function PlayerLeaders({ rows, season }: { rows: BktLeaderboardRow[]; season: st
                 <Th>{t("basketball.rank")}</Th>
                 <Th>{t("basketball.player")}</Th>
                 <Th>{t("basketball.team")}</Th>
+                <Th>{t("basketball.position")}</Th>
                 <Th right>{t("basketball.games")}</Th>
                 <Th right>{t("basketball.min")}</Th>
                 <Th right>{t("basketball.ppg")}</Th>
@@ -309,6 +310,11 @@ function PlayerLeaders({ rows, season }: { rows: BktLeaderboardRow[]; season: st
                       <TeamCrest slug={r.team_slug} name={r.team_name} size={22} />
                       <span className="whitespace-nowrap text-[12px]">{r.team_name}</span>
                     </Link>
+                  </td>
+                  <td className="px-2 py-2">
+                    {normalizePositionCode(r.position) ? (
+                      <span title={positionLabel(r.position, locale)} className="inline-block rounded bg-veil px-1.5 py-0.5 text-[11px] font-semibold text-ink-2">{normalizePositionCode(r.position)}</span>
+                    ) : <span className="text-ink-3">-</span>}
                   </td>
                   <td className="px-2 py-2 text-right tabular-nums text-ink-2">{r.games}</td>
                   <td className="px-2 py-2 text-right tabular-nums text-ink-2">{fmt(r.mpg)}</td>

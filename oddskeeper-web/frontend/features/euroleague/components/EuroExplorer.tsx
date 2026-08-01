@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useI18n } from "@/lib/i18n/LanguageProvider";
-import { fmt, formatMatchDate } from "@/features/basketball/lib";
+import { fmt, formatMatchDate, normalizePositionCode, positionLabel } from "@/features/basketball/lib";
 import { normalizePlayerName } from "@/features/basketball/unified";
 import type { EuroTeamRow, EuroLeaderRow, EuroGameRow } from "../types";
 import type { EuroCompKey } from "../config";
@@ -238,7 +238,7 @@ const P_METRICS: PMetric[] = [
 ];
 
 function PlayerLeaders({ rows, comp, base, season }: { rows: EuroLeaderRow[]; comp: EuroCompKey; base: string; season: string }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [metricKey, setMetricKey] = useState("ppg");
   const [qualifiedOnly, setQualifiedOnly] = useState(true);
   const metric = P_METRICS.find((m) => m.key === metricKey) ?? P_METRICS[0];
@@ -268,7 +268,7 @@ function PlayerLeaders({ rows, comp, base, season }: { rows: EuroLeaderRow[]; co
           <table className="min-w-full border-collapse text-[13px]">
             <thead>
               <tr className="border-b border-line">
-                <Th>{t("basketball.rank")}</Th><Th>{t("basketball.player")}</Th><Th>{t("basketball.team")}</Th>
+                <Th>{t("basketball.rank")}</Th><Th>{t("basketball.player")}</Th><Th>{t("basketball.team")}</Th><Th>{t("basketball.position")}</Th>
                 <Th right>{t("basketball.games")}</Th><Th right>{t("basketball.min")}</Th><Th right>{t("basketball.ppg")}</Th>
                 <Th right>{t("basketball.rpg")}</Th><Th right>{t("basketball.apg")}</Th><Th right>{t("basketball.tsPct")}</Th>
                 <Th right>{t("basketball.valuation")}</Th><Th right>{t(metric.labelKey)}</Th>
@@ -285,6 +285,11 @@ function PlayerLeaders({ rows, comp, base, season }: { rows: EuroLeaderRow[]; co
                   </td>
                   <td className="px-2 py-2">
                     <Link href={`${base}/team/${r.team_code}?season=${season}`} className="text-ink-2 hover:text-accent-ink whitespace-nowrap text-[12px]">{teamDisplay(r)}</Link>
+                  </td>
+                  <td className="px-2 py-2">
+                    {normalizePositionCode(r.position) ? (
+                      <span title={positionLabel(r.position, locale)} className="inline-block rounded bg-veil px-1.5 py-0.5 text-[11px] font-semibold text-ink-2">{normalizePositionCode(r.position)}</span>
+                    ) : <span className="text-ink-3">-</span>}
                   </td>
                   <td className="px-2 py-2 text-right tabular-nums text-ink-2">{r.games}</td>
                   <td className="px-2 py-2 text-right tabular-nums text-ink-2">{fmt(r.mpg)}</td>

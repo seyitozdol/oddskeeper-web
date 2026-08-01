@@ -39,6 +39,7 @@ export function euroTeamToComp(t: EuroTeamRow, roster: EuroLeaderRow[], log: Eur
       href: r.bsl_player_slug
         ? `/dashboard/basketball/player/${r.bsl_player_slug}`
         : `/dashboard/euro/${key}/player/${r.person_code}`,
+      position: r.position ?? null,
       games: r.games, mpg: r.mpg, ppg: r.ppg, rpg: r.rpg, apg: r.apg, val: r.val_pg,
     })),
     results: log.map((m) => ({

@@ -4,12 +4,12 @@ import { useEffect, useState } from "react";
 import { useI18n } from "@/lib/i18n/LanguageProvider";
 import { fetchBasketballPlayerLog, fetchBasketballPlayerSeason, fetchEuroPlayerSeason, fetchEuroPlayerLog } from "../clientQueries";
 import { TeamCrest, StatTile } from "./ui";
-import { fmt } from "../lib";
+import { fmt, positionLabel, normalizePositionCode, formatHeight } from "../lib";
 import type { BktPlayerLogRow, BktPlayerSeasonRow } from "../types";
 
 // competition verilirse (E/U) EL/EC drawer'ı (el_player_* view'ları); yoksa BSL.
 export default function BasketballPlayerDrawer({ slug, competition, onClose }: { slug: string; competition?: "E" | "U"; onClose: () => void }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [season, setSeason] = useState<BktPlayerSeasonRow | null>(null);
   const [log, setLog] = useState<BktPlayerLogRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -34,7 +34,15 @@ export default function BasketballPlayerDrawer({ slug, competition, onClose }: {
             {season?.team_slug ? <TeamCrest slug={season.team_slug} name={season.team_name} size={36} url={season.crest_url} /> : null}
             <div>
               <h2 className="text-xl font-semibold text-ink">{season?.player_name ?? slug}</h2>
-              <p className="text-sm text-ink-3">{season?.team_name}{season?.jersey_no ? ` · #${season.jersey_no}` : ""}</p>
+              <p className="text-sm text-ink-3">
+                {season?.team_name}{season?.jersey_no ? ` · #${season.jersey_no}` : ""}
+                {normalizePositionCode(season?.position) ? (
+                  <span className="text-ink-2"> · {normalizePositionCode(season?.position)}
+                    <span className="text-ink-3"> {positionLabel(season?.position, locale)}</span>
+                  </span>
+                ) : ""}
+                {formatHeight(season?.height_cm) ? ` · ${formatHeight(season?.height_cm)}` : ""}
+              </p>
             </div>
           </div>
           <button onClick={onClose} className="rounded-md border border-line px-3 py-1 text-[12px] text-ink-2 hover:text-ink">{t("basketball.close")}</button>

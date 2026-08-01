@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useI18n } from "@/lib/i18n/LanguageProvider";
 import { StatTile, TeamCrest } from "./ui";
-import { fmt, formatMatchDate, homeAwayLabel } from "../lib";
+import { fmt, formatMatchDate, homeAwayLabel, normalizePositionCode, positionLabel } from "../lib";
 import type { TeamCompStats } from "../unified";
 
 // Birleşik takım profili: BSL yapısı + kulvar (BSL/EL/EC) toggle. Season averages +
@@ -78,6 +78,7 @@ export default function TeamProfileTabs({
         <table className="min-w-full border-collapse text-[13px]">
           <thead><tr className="border-b border-line text-[10px] uppercase tracking-[0.12em] text-ink-3">
             <th className="px-2 py-2 text-left">{t("basketball.player")}</th>
+            <th className="px-2 py-2 text-center">{t("basketball.position")}</th>
             <th className="px-2 py-2 text-right">{t("basketball.games")}</th><th className="px-2 py-2 text-right">{t("basketball.min")}</th>
             <th className="px-2 py-2 text-right">{t("basketball.ppg")}</th><th className="px-2 py-2 text-right">{t("basketball.rpg")}</th>
             <th className="px-2 py-2 text-right">{t("basketball.apg")}</th>
@@ -87,6 +88,11 @@ export default function TeamProfileTabs({
             {c.roster.map((p) => (
               <tr key={p.key} className="border-t border-line hover:bg-veil">
                 <td className="px-2 py-2"><Link href={p.href} className="font-medium text-ink hover:text-accent-ink whitespace-nowrap">{p.name}</Link></td>
+                <td className="px-2 py-2 text-center">
+                  {normalizePositionCode(p.position) ? (
+                    <span title={positionLabel(p.position, locale)} className="inline-block rounded bg-veil px-1.5 py-0.5 text-[11px] font-semibold text-ink-2">{normalizePositionCode(p.position)}</span>
+                  ) : <span className="text-ink-3">-</span>}
+                </td>
                 <td className="px-2 py-2 text-right tabular-nums text-ink-2">{p.games}</td>
                 <td className="px-2 py-2 text-right tabular-nums text-ink-2">{fmt(p.mpg)}</td>
                 <td className="px-2 py-2 text-right tabular-nums text-ink">{fmt(p.ppg)}</td>

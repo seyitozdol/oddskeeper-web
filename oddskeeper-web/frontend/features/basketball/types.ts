@@ -76,6 +76,8 @@ export type BktPlayerSeasonRow = {
   pra_pg: number | null;
   pa_pg: number | null;
   pr_pg: number | null;
+  position?: string | null;   // BSL: SofaScore ham pozisyon (G|GF|F|FC|C)
+  height_cm?: number | null;  // BSL: SofaScore boy
 };
 
 export type BktLeaderboardRow = BktPlayerSeasonRow & {

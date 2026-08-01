@@ -47,6 +47,8 @@ export default async function BasketballPlayerPage({
               jerseyNo={player.jersey_no}
               teamName={player.team_name}
               teamSlug={player.team_slug}
+              position={player.position}
+              height={player.height_cm}
               photoUrl={euroSeasons.find((s) => s.image_url)?.image_url ?? null}
               comps={comps}
             />

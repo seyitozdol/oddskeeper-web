@@ -5,13 +5,13 @@ import Link from "next/link";
 import Image from "next/image";
 import { useI18n } from "@/lib/i18n/LanguageProvider";
 import { StatTile, TeamCrest } from "./ui";
-import { fmt, formatMatchDate, homeAwayLabel } from "../lib";
+import { fmt, formatMatchDate, homeAwayLabel, positionLabel, normalizePositionCode, formatHeight } from "../lib";
 import type { PlayerCompStats } from "../unified";
 
 // Birleşik oyuncu profili: BSL yapısı + kulvar (BSL/EL/EC) toggle. Oyuncu birden
 // çok kulvarda oynadıysa toggle ile geçilir; tek kulvarda ise toggle gizli.
 export default function PlayerProfileTabs({
-  name, jerseyNo, teamName, teamSlug, crestUrl, photoUrl, comps,
+  name, jerseyNo, teamName, teamSlug, crestUrl, photoUrl, position, height, comps,
 }: {
   name: string;
   jerseyNo?: string | null;
@@ -19,9 +19,13 @@ export default function PlayerProfileTabs({
   teamSlug?: string | null;   // BSL yerel logo
   crestUrl?: string | null;   // EL/EC uzak crest
   photoUrl?: string | null;   // oyuncu fotografi (EL/EC image_url); hafif <img>, next/image degil
+  position?: string | null;   // ham pozisyon kodu (G|GF|F|FC|C)
+  height?: number | null;     // boy (cm)
   comps: PlayerCompStats[];
 }) {
   const { t, locale } = useI18n();
+  const posCode = normalizePositionCode(position);
+  const heightStr = formatHeight(height);
   const [active, setActive] = useState<string>(comps[0]?.key ?? "bsl");
   const c = comps.find((x) => x.key === active) ?? comps[0];
   if (!c) return null;
@@ -46,6 +50,24 @@ export default function PlayerProfileTabs({
         <div>
           <h1 className="text-2xl font-semibold text-ink">{name}</h1>
           <p className="mt-0.5 text-sm text-ink-2">{teamName}</p>
+          {posCode || heightStr ? (
+            <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+              {posCode ? (
+                <span
+                  title={positionLabel(position, locale)}
+                  className="inline-flex items-center gap-1 rounded-full bg-accent/12 px-2 py-0.5 text-[11px] font-semibold text-accent-ink"
+                >
+                  {posCode}
+                  <span className="font-normal text-ink-2">{positionLabel(position, locale)}</span>
+                </span>
+              ) : null}
+              {heightStr ? (
+                <span className="inline-flex items-center rounded-full bg-veil px-2 py-0.5 text-[11px] font-medium text-ink-2">
+                  {heightStr}
+                </span>
+              ) : null}
+            </div>
+          ) : null}
         </div>
       </div>
 

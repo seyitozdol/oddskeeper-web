@@ -42,6 +42,7 @@ export const basketball = defineMessages({
 
     // player columns
     player: "Player",
+    position: "Pos",
     games: "G",
     min: "MIN",
     rpg: "RPG",
@@ -282,6 +283,7 @@ export const basketball = defineMessages({
     pace: "Tempo",
 
     player: "Oyuncu",
+    position: "Poz",
     games: "M",
     min: "DK",
     rpg: "RIB",

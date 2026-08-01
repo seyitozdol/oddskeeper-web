@@ -54,6 +54,8 @@ export type EuroLeaderRow = {
   ts_pct: number | null;
   is_qualified: boolean;
   image_url: string | null;
+  position?: string | null;   // EuroLeague API: Guard/Forward/Center
+  height_cm?: number | null;
 };
 
 export type EuroPlayerLogRow = {

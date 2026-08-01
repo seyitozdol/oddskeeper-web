@@ -48,3 +48,41 @@ export function homeAwayLabel(ha: string | null | undefined, locale: Locale): st
   if (ha === "Away") return locale === "tr" ? "Dep" : "Away";
   return "";
 }
+
+// SofaScore ham pozisyon kodu (G|GF|F|FC|C) → uzun etiket. Kaynak: BSL players.position
+// (EL/EC position_name Guard/Forward/Center ile de uyumlu kısaltılır).
+const POS_LABEL: Record<string, { tr: string; en: string }> = {
+  G: { tr: "Oyun Kurucu", en: "Guard" },
+  GF: { tr: "Oyun Kurucu / Forvet", en: "Guard-Forward" },
+  F: { tr: "Forvet", en: "Forward" },
+  FG: { tr: "Forvet / Oyun Kurucu", en: "Forward-Guard" },
+  FC: { tr: "Forvet / Pivot", en: "Forward-Center" },
+  CF: { tr: "Pivot / Forvet", en: "Center-Forward" },
+  C: { tr: "Pivot", en: "Center" },
+};
+
+// Ham kodu normalize et: "Guard"→"G" vb. (EL/EC position_name geldiğinde de çalışır).
+export function normalizePositionCode(pos: string | null | undefined): string | null {
+  if (!pos) return null;
+  const p = pos.trim();
+  if (POS_LABEL[p.toUpperCase()]) return p.toUpperCase();
+  const low = p.toLowerCase();
+  if (low.startsWith("guard")) return "G";
+  if (low.startsWith("forward")) return "F";
+  if (low.startsWith("center") || low.startsWith("centre")) return "C";
+  return p.toUpperCase();
+}
+
+export function positionLabel(pos: string | null | undefined, locale: Locale): string {
+  const code = normalizePositionCode(pos);
+  if (!code) return "";
+  const entry = POS_LABEL[code];
+  if (!entry) return code;
+  return locale === "tr" ? entry.tr : entry.en;
+}
+
+// Boy: 206 → "2.06 m"
+export function formatHeight(cm: number | null | undefined): string {
+  if (cm == null || Number.isNaN(cm) || cm <= 0) return "";
+  return `${(cm / 100).toFixed(2)} m`;
+}

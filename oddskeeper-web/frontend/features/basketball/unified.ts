@@ -114,6 +114,7 @@ export type TeamRosterRow = {
   key: string;
   name: string;
   href: string;
+  position?: string | null;   // BSL ham pozisyon (G|GF|F|FC|C)
   games: number;
   mpg: number | null; ppg: number | null; rpg: number | null; apg: number | null; val: number | null;
 };
@@ -143,6 +144,7 @@ export function bslTeamToComp(t: BktTeamSeasonRow, log: BktTeamLogRow[], roster:
     hasVal: false,
     roster: roster.map((p) => ({
       key: p.player_slug, name: p.player_name, href: `/dashboard/basketball/player/${p.player_slug}`,
+      position: p.position ?? null,
       games: p.games, mpg: p.mpg, ppg: p.ppg, rpg: p.rpg, apg: p.apg, val: null,
     })),
     results: log.map((m) => ({
