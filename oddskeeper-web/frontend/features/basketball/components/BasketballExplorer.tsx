@@ -38,7 +38,7 @@ export default function BasketballExplorer({ standings, leaderboard, teamPoints,
 
   return (
     <div className="w-full">
-      <div className="mb-6 flex flex-wrap gap-1.5">
+      <div className="mb-6 flex flex-wrap items-center gap-1.5">
         {tabs.map((tb) => (
           <button
             key={tb.key}
@@ -52,6 +52,12 @@ export default function BasketballExplorer({ standings, leaderboard, teamPoints,
             {tb.label}
           </button>
         ))}
+        <Link
+          href="/dashboard/basketball/tools"
+          className="rounded-full border border-line px-4 py-1.5 text-xs font-semibold text-accent-ink transition hover:bg-veil"
+        >
+          {t("basketball.toolsNav")}
+        </Link>
       </div>
 
       {tab === "standings" && <StandingsTable rows={standings} />}

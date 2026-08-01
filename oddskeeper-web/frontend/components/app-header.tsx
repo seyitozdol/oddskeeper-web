@@ -64,7 +64,7 @@ const LEAGUE_ITEMS: {
   {
     key: "tbl",
     navKey: "league-tbl",
-    label: "TBL",
+    label: "BSL",
     Icon: TblMark,
     href: BASKETBALL_LEAGUE_HREF,
     sport: "basketball",
@@ -610,18 +610,16 @@ function Lig1Mark({ className }: { className?: string }) {
   );
 }
 
+// BSL amblemi: /images/leagues/bsl.svg (resmi BSL topu buraya konunca değişir)
 function TblMark({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
-      <circle cx="12" cy="12" r="11.5" fill="#EE7203" />
-      <circle cx="12" cy="12" r="6.9" fill="none" stroke="#ffffff" strokeWidth="1.5" />
-      <g stroke="#ffffff" strokeWidth="1.3" fill="none" strokeLinecap="round">
-        <path d="M12 5.1v13.8" />
-        <path d="M5.1 12h13.8" />
-        <path d="M7.15 7.1c2.35 1.85 2.35 8.05 0 9.8" />
-        <path d="M16.85 7.1c-2.35 1.85-2.35 8.05 0 9.8" />
-      </g>
-    </svg>
+    <Image
+      src="/images/leagues/bsl.svg"
+      alt="BSL"
+      width={16}
+      height={16}
+      className={`${className ?? ""} object-contain`}
+    />
   );
 }
 

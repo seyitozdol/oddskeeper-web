@@ -86,7 +86,7 @@ export const basketball = defineMessages({
     notFoundPlayer: "Player not found.",
 
     // odds engine
-    tabMatchOdds: "Match Odds",
+    tabMatchOdds: "PM Pts Model",
     odds: "Odds",
     oddsMean: "Projection",
     oddsStd: "Std Dev",
@@ -107,9 +107,9 @@ export const basketball = defineMessages({
     matchExpected: "Expected",
 
     // participation tools
-    toolsNav: "Odds Tools",
+    toolsNav: "Match-Player Tools",
     toolsKicker: "TBSL Tools",
-    toolsTitle: "Odds Tools — Match Builder",
+    toolsTitle: "Match-Player Tools",
     toolsSubtitle: "Match points → team metrics → player distribution → export",
     step1: "1 · Match Points",
     step2: "2 · Team Metrics",
@@ -256,7 +256,7 @@ export const basketball = defineMessages({
     notFoundPlayer: "Oyuncu bulunamadı.",
 
     // oran motoru
-    tabMatchOdds: "Maç Oranları",
+    tabMatchOdds: "PM Pts Model",
     odds: "Oranlar",
     oddsMean: "Beklenti",
     oddsStd: "Std Sapma",
@@ -277,9 +277,9 @@ export const basketball = defineMessages({
     matchExpected: "Beklenen",
 
     // katılım araçları
-    toolsNav: "Oran Araçları",
+    toolsNav: "Match-Player Tools",
     toolsKicker: "TBSL Araçları",
-    toolsTitle: "Oran Araçları — Maç Kurucu",
+    toolsTitle: "Match-Player Tools",
     toolsSubtitle: "Maç sayıları → takım metrikleri → oyuncu dağıtımı → çıktı",
     step1: "1 · Maç Sayıları",
     step2: "2 · Takım Metrikleri",
