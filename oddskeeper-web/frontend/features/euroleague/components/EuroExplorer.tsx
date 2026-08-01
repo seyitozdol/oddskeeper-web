@@ -36,11 +36,12 @@ function Crest({ url, name, size = 26 }: { url?: string | null; name?: string | 
 }
 
 export default function EuroExplorer({
-  comp, standings, leaderboard,
+  comp, standings, leaderboard, season,
 }: {
   comp: EuroCompKey;
   standings: EuroTeamRow[];
   leaderboard: EuroLeaderRow[];
+  season: string;
 }) {
   const { t } = useI18n();
   const [tab, setTab] = useState<Tab>("standings");
@@ -66,15 +67,15 @@ export default function EuroExplorer({
         </Link>
       </div>
 
-      {tab === "standings" && <Standings rows={standings} base={base} />}
-      {tab === "players" && <PlayerLeaders rows={leaderboard} comp={comp} base={base} />}
-      {tab === "teams" && <TeamLeaders rows={standings} base={base} />}
+      {tab === "standings" && <Standings rows={standings} base={base} season={season} />}
+      {tab === "players" && <PlayerLeaders rows={leaderboard} comp={comp} base={base} season={season} />}
+      {tab === "teams" && <TeamLeaders rows={standings} base={base} season={season} />}
     </div>
   );
 }
 
 /* ---------------- Standings ---------------- */
-function Standings({ rows, base }: { rows: EuroTeamRow[]; base: string }) {
+function Standings({ rows, base, season }: { rows: EuroTeamRow[]; base: string; season: string }) {
   const { t } = useI18n();
   if (rows.length === 0) return <p className="text-sm text-ink-3">{t("basketball.noData")}</p>;
   return (
@@ -94,7 +95,7 @@ function Standings({ rows, base }: { rows: EuroTeamRow[]; base: string }) {
             <tr key={r.team_code} className="border-t border-line hover:bg-veil">
               <td className="px-2 py-2 text-ink-3 tabular-nums">{r.standings_rank}</td>
               <td className="px-2 py-2">
-                <Link href={`${base}/team/${r.team_code}`} className="flex items-center gap-2 font-medium text-ink hover:text-accent-ink">
+                <Link href={`${base}/team/${r.team_code}?season=${season}`} className="flex items-center gap-2 font-medium text-ink hover:text-accent-ink">
                   <Crest url={r.crest_url} name={teamDisplay(r)} size={28} />
                   <span className="whitespace-nowrap">{teamDisplay(r)}</span>
                 </Link>
@@ -132,7 +133,7 @@ const P_METRICS: PMetric[] = [
   { key: "val_pg", labelKey: "basketball.valuation", get: (r) => r.val_pg },
 ];
 
-function PlayerLeaders({ rows, comp, base }: { rows: EuroLeaderRow[]; comp: EuroCompKey; base: string }) {
+function PlayerLeaders({ rows, comp, base, season }: { rows: EuroLeaderRow[]; comp: EuroCompKey; base: string; season: string }) {
   const { t } = useI18n();
   const [metricKey, setMetricKey] = useState("ppg");
   const [qualifiedOnly, setQualifiedOnly] = useState(true);
@@ -174,12 +175,12 @@ function PlayerLeaders({ rows, comp, base }: { rows: EuroLeaderRow[]; comp: Euro
                 <tr key={r.person_code} className="border-t border-line hover:bg-veil">
                   <td className="px-2 py-2 text-ink-3 tabular-nums">{i + 1}</td>
                   <td className="px-2 py-2">
-                    <Link href={`${base}/player/${r.person_code}`} className="font-medium text-ink hover:text-accent-ink whitespace-nowrap">
+                    <Link href={`${base}/player/${r.person_code}?season=${season}`} className="font-medium text-ink hover:text-accent-ink whitespace-nowrap">
                       {normalizePlayerName(r.player_name)}
                     </Link>
                   </td>
                   <td className="px-2 py-2">
-                    <Link href={`${base}/team/${r.team_code}`} className="text-ink-2 hover:text-accent-ink whitespace-nowrap text-[12px]">{teamDisplay(r)}</Link>
+                    <Link href={`${base}/team/${r.team_code}?season=${season}`} className="text-ink-2 hover:text-accent-ink whitespace-nowrap text-[12px]">{teamDisplay(r)}</Link>
                   </td>
                   <td className="px-2 py-2 text-right tabular-nums text-ink-2">{r.games}</td>
                   <td className="px-2 py-2 text-right tabular-nums text-ink-2">{fmt(r.mpg)}</td>
@@ -212,7 +213,7 @@ const T_METRICS: TMetric[] = [
   { key: "pace", labelKey: "basketball.pace", get: (r) => r.pace },
 ];
 
-function TeamLeaders({ rows, base }: { rows: EuroTeamRow[]; base: string }) {
+function TeamLeaders({ rows, base, season }: { rows: EuroTeamRow[]; base: string; season: string }) {
   const { t } = useI18n();
   const [metricKey, setMetricKey] = useState("net_rtg");
   const metric = T_METRICS.find((m) => m.key === metricKey) ?? T_METRICS[0];
@@ -240,7 +241,7 @@ function TeamLeaders({ rows, base }: { rows: EuroTeamRow[]; base: string }) {
               <tr key={r.team_code} className="border-t border-line hover:bg-veil">
                 <td className="px-2 py-2 text-ink-3 tabular-nums">{i + 1}</td>
                 <td className="px-2 py-2">
-                  <Link href={`${base}/team/${r.team_code}`} className="flex items-center gap-2 font-medium text-ink hover:text-accent-ink">
+                  <Link href={`${base}/team/${r.team_code}?season=${season}`} className="flex items-center gap-2 font-medium text-ink hover:text-accent-ink">
                     <Crest url={r.crest_url} name={teamDisplay(r)} size={28} />
                     <span className="whitespace-nowrap">{teamDisplay(r)}</span>
                   </Link>

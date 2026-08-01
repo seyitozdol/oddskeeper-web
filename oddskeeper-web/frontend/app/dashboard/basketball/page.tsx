@@ -34,7 +34,7 @@ export default async function BasketballPage({
           <SeasonToggle seasons={EURO_SEASONS} current={seasonLabel} />
         </div>
 
-        <BasketballExplorer standings={standings} leaderboard={leaderboard} teamPoints={teamPoints} initialTab={initialTab} />
+        <BasketballExplorer standings={standings} leaderboard={leaderboard} teamPoints={teamPoints} initialTab={initialTab} season={seasonLabel} />
       </div>
     </section>
   );

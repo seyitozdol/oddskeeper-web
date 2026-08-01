@@ -34,7 +34,7 @@ export default async function EuroPlayerPage({
 
   // BSL'de eşleşen (Türk) oyuncu ise birleşik BSL profiline yönlendir (kulvar toggle'lı).
   if (player.bsl_player_slug) {
-    redirect(`/dashboard/basketball/player/${player.bsl_player_slug}`);
+    redirect(`/dashboard/basketball/player/${player.bsl_player_slug}?season=${seasonLabel}`);
   }
 
   // Euro-only (Türk olmayan) oyuncu: aynı birleşik profil, tek kulvar.

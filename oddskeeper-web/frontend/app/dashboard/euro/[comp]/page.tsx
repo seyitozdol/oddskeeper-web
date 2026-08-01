@@ -37,7 +37,7 @@ export default async function EuroHubPage({
           <SeasonToggle seasons={EURO_SEASONS} current={seasonLabel} />
         </div>
 
-        <EuroExplorer comp={cfg.key} standings={standings} leaderboard={leaderboard} />
+        <EuroExplorer comp={cfg.key} standings={standings} leaderboard={leaderboard} season={seasonLabel} />
       </div>
     </section>
   );

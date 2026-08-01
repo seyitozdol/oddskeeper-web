@@ -15,6 +15,7 @@ type Props = {
   leaderboard: BktLeaderboardRow[];
   teamPoints: BktMarketModelRow[];
   initialTab?: Tab;
+  season: string;
 };
 
 function Th({ children, right }: { children: React.ReactNode; right?: boolean }) {
@@ -25,7 +26,7 @@ function Th({ children, right }: { children: React.ReactNode; right?: boolean })
   );
 }
 
-export default function BasketballExplorer({ standings, leaderboard, teamPoints, initialTab = "standings" }: Props) {
+export default function BasketballExplorer({ standings, leaderboard, teamPoints, initialTab = "standings", season }: Props) {
   const { t } = useI18n();
   const [tab, setTab] = useState<Tab>(initialTab);
 
@@ -60,16 +61,16 @@ export default function BasketballExplorer({ standings, leaderboard, teamPoints,
         </Link>
       </div>
 
-      {tab === "standings" && <StandingsTable rows={standings} />}
-      {tab === "players" && <PlayerLeaders rows={leaderboard} />}
-      {tab === "teams" && <TeamLeaders rows={standings} />}
+      {tab === "standings" && <StandingsTable rows={standings} season={season} />}
+      {tab === "players" && <PlayerLeaders rows={leaderboard} season={season} />}
+      {tab === "teams" && <TeamLeaders rows={standings} season={season} />}
       {tab === "match" && <MatchOdds standings={standings} teamPoints={teamPoints} />}
     </div>
   );
 }
 
 /* ---------------- Standings ---------------- */
-function StandingsTable({ rows }: { rows: BktTeamSeasonRow[] }) {
+function StandingsTable({ rows, season }: { rows: BktTeamSeasonRow[]; season: string }) {
   const { t } = useI18n();
   if (rows.length === 0) return <p className="text-sm text-ink-3">{t("basketball.noData")}</p>;
   return (
@@ -97,7 +98,7 @@ function StandingsTable({ rows }: { rows: BktTeamSeasonRow[] }) {
             <tr key={r.team_slug} className="border-t border-line hover:bg-veil">
               <td className="px-2 py-2 text-ink-3 tabular-nums">{r.standings_rank}</td>
               <td className="px-2 py-2">
-                <Link href={`/dashboard/basketball/team/${r.team_slug}`} className="flex items-center gap-2 font-medium text-ink hover:text-accent-ink">
+                <Link href={`/dashboard/basketball/team/${r.team_slug}?season=${season}`} className="flex items-center gap-2 font-medium text-ink hover:text-accent-ink">
                   <TeamCrest slug={r.team_slug} name={r.team_name} size={28} />
                   <span className="whitespace-nowrap">{r.team_name}</span>
                 </Link>
@@ -142,7 +143,7 @@ const PLAYER_METRICS: PlayerMetric[] = [
   { key: "usage_pct", labelKey: "basketball.metricUsage", get: (r) => r.usage_pct, digits: 1 },
 ];
 
-function PlayerLeaders({ rows }: { rows: BktLeaderboardRow[] }) {
+function PlayerLeaders({ rows, season }: { rows: BktLeaderboardRow[]; season: string }) {
   const { t } = useI18n();
   const [metricKey, setMetricKey] = useState("ppg");
   const [qualifiedOnly, setQualifiedOnly] = useState(true);
@@ -201,12 +202,12 @@ function PlayerLeaders({ rows }: { rows: BktLeaderboardRow[] }) {
                 <tr key={r.player_slug} className="border-t border-line hover:bg-veil">
                   <td className="px-2 py-2 text-ink-3 tabular-nums">{i + 1}</td>
                   <td className="px-2 py-2">
-                    <Link href={`/dashboard/basketball/player/${r.player_slug}`} className="font-medium text-ink hover:text-accent-ink whitespace-nowrap">
+                    <Link href={`/dashboard/basketball/player/${r.player_slug}?season=${season}`} className="font-medium text-ink hover:text-accent-ink whitespace-nowrap">
                       {r.player_name}
                     </Link>
                   </td>
                   <td className="px-2 py-2">
-                    <Link href={`/dashboard/basketball/team/${r.team_slug}`} className="flex items-center gap-1.5 text-ink-2 hover:text-accent-ink">
+                    <Link href={`/dashboard/basketball/team/${r.team_slug}?season=${season}`} className="flex items-center gap-1.5 text-ink-2 hover:text-accent-ink">
                       <TeamCrest slug={r.team_slug} name={r.team_name} size={22} />
                       <span className="whitespace-nowrap text-[12px]">{r.team_name}</span>
                     </Link>
@@ -244,7 +245,7 @@ const TEAM_METRICS: TeamMetric[] = [
   { key: "apg", labelKey: "basketball.apg", get: (r) => r.apg },
 ];
 
-function TeamLeaders({ rows }: { rows: BktTeamSeasonRow[] }) {
+function TeamLeaders({ rows, season }: { rows: BktTeamSeasonRow[]; season: string }) {
   const { t } = useI18n();
   const [metricKey, setMetricKey] = useState("net_rtg");
   const metric = TEAM_METRICS.find((m) => m.key === metricKey) ?? TEAM_METRICS[0];
@@ -286,7 +287,7 @@ function TeamLeaders({ rows }: { rows: BktTeamSeasonRow[] }) {
               <tr key={r.team_slug} className="border-t border-line hover:bg-veil">
                 <td className="px-2 py-2 text-ink-3 tabular-nums">{i + 1}</td>
                 <td className="px-2 py-2">
-                  <Link href={`/dashboard/basketball/team/${r.team_slug}`} className="flex items-center gap-2 font-medium text-ink hover:text-accent-ink">
+                  <Link href={`/dashboard/basketball/team/${r.team_slug}?season=${season}`} className="flex items-center gap-2 font-medium text-ink hover:text-accent-ink">
                     <TeamCrest slug={r.team_slug} name={r.team_name} size={28} />
                     <span className="whitespace-nowrap">{r.team_name}</span>
                   </Link>

@@ -33,7 +33,7 @@ export default async function EuroTeamPage({
 
   // Türk takımı ise birleşik BSL takım profiline yönlendir (kulvar toggle'lı).
   if (team.bsl_team_slug) {
-    redirect(`/dashboard/basketball/team/${team.bsl_team_slug}`);
+    redirect(`/dashboard/basketball/team/${team.bsl_team_slug}?season=${seasonLabel}`);
   }
 
   const [roster, log] = await Promise.all([

@@ -206,7 +206,7 @@ export async function getBasketballTeam(teamSlug: string, season: string = SEASO
   const supabase = await createClient();
   const { data, error } = await supabase
     .schema("analytics")
-    .from("bb_team_season_stats_v1")
+    .from("bb_team_standings_v1")
     .select("*")
     .eq("season_label", season)
     .eq("team_slug", teamSlug)
