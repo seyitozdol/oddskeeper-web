@@ -308,6 +308,18 @@ def run(args):
             if k % 20 == 0 or k == len(metas):
                 print(f"[el]  {k}/{len(metas)} yuklendi", flush=True)
         time.sleep(args.sleep)
+    # Oyuncu box-score yazildiysa tools window MATVIEW'i bayat kalir → tazele.
+    # (analytics.el_player_metric_window_v1 = matview; refresh EDILMEZSE EL/EC
+    #  Match-Player Tools eski/eksik veriyle calisir. Bkz sql/2026-08-01_euroleague_window_matview.sql)
+    if conn and n_players > 0:
+        try:
+            with conn.cursor() as cur:
+                cur.execute("refresh materialized view analytics.el_player_metric_window_v1")
+            conn.commit()
+            print("[el] tools window matview tazelendi (el_player_metric_window_v1)", flush=True)
+        except Exception as e:
+            print(f"[el] UYARI: window matview refresh hatasi {e!r} — ELLE tazele: "
+                  f"refresh materialized view analytics.el_player_metric_window_v1", flush=True)
     if conn:
         conn.close()
     print(f"\n[el] BITTI: {n_games} mac, {n_players} oyuncu-satiri "

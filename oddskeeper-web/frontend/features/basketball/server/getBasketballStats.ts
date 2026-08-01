@@ -73,13 +73,13 @@ export async function getBasketballTeamPointsModel(): Promise<BktMarketModelRow[
 }
 
 // ---- Katılım Araçları veri katmanı ----
-export async function getBasketballHomeAwaySplits(): Promise<BktHomeAwaySplitRow[]> {
+export async function getBasketballHomeAwaySplits(season: string = SEASON): Promise<BktHomeAwaySplitRow[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .schema("analytics")
     .from("bb_team_home_away_split_v1")
     .select("*")
-    .eq("season_label", SEASON)
+    .eq("season_label", season)
     .returns<BktHomeAwaySplitRow[]>();
   if (error) {
     console.error("getBasketballHomeAwaySplits error:", error.message);
@@ -88,13 +88,13 @@ export async function getBasketballHomeAwaySplits(): Promise<BktHomeAwaySplitRow
   return data ?? [];
 }
 
-export async function getBasketballTeamMetricForms(): Promise<BktTeamMetricFormRow[]> {
+export async function getBasketballTeamMetricForms(season: string = SEASON): Promise<BktTeamMetricFormRow[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .schema("analytics")
     .from("bb_team_metric_form_v1")
     .select("*")
-    .eq("season_label", SEASON)
+    .eq("season_label", season)
     .returns<BktTeamMetricFormRow[]>();
   if (error) {
     console.error("getBasketballTeamMetricForms error:", error.message);
@@ -126,7 +126,7 @@ export async function getBasketballPlayerShares(): Promise<BktPlayerShareRow[]> 
   }
 }
 
-export async function getBasketballPlayerWindows(): Promise<BktPlayerWindowRow[]> {
+export async function getBasketballPlayerWindows(season: string = SEASON): Promise<BktPlayerWindowRow[]> {
   const supabase = await createClient();
   const rows: BktPlayerWindowRow[] = [];
   for (let from = 0; ; from += PAGE_SIZE) {
@@ -134,7 +134,7 @@ export async function getBasketballPlayerWindows(): Promise<BktPlayerWindowRow[]
       .schema("analytics")
       .from("bb_player_metric_window_v1")
       .select("*")
-      .eq("season_label", SEASON)
+      .eq("season_label", season)
       .order("team_slug", { ascending: true })
       .order("market_key", { ascending: true })
       .order("season_avg", { ascending: false })
@@ -149,13 +149,13 @@ export async function getBasketballPlayerWindows(): Promise<BktPlayerWindowRow[]
   }
 }
 
-export async function getBasketballPlayerList(): Promise<BktPlayerListRow[]> {
+export async function getBasketballPlayerList(season: string = SEASON): Promise<BktPlayerListRow[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .schema("analytics")
     .from("bb_player_season_stats_v1")
     .select("player_slug,player_name,team_slug,team_name,games")
-    .eq("season_label", SEASON)
+    .eq("season_label", season)
     .order("team_name", { ascending: true })
     .order("player_name", { ascending: true })
     .returns<BktPlayerListRow[]>();
@@ -201,7 +201,7 @@ export async function getBasketballGames(season: string = SEASON): Promise<BktGa
   return data ?? [];
 }
 
-export async function getBasketballAllTeamMatchLogs(): Promise<BktTeamLogRow[]> {
+export async function getBasketballAllTeamMatchLogs(season: string = SEASON): Promise<BktTeamLogRow[]> {
   const supabase = await createClient();
   const rows: BktTeamLogRow[] = [];
   for (let from = 0; ; from += PAGE_SIZE) {
@@ -209,7 +209,7 @@ export async function getBasketballAllTeamMatchLogs(): Promise<BktTeamLogRow[]> 
       .schema("analytics")
       .from("bb_team_match_log_v1")
       .select("*")
-      .eq("season_label", SEASON)
+      .eq("season_label", season)
       .order("match_date", { ascending: false })
       .range(from, from + PAGE_SIZE - 1)
       .returns<BktTeamLogRow[]>();
