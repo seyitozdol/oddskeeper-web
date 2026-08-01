@@ -78,6 +78,7 @@ export type EuroPlayerLogRow = {
   blocks: number | null;
   valuation: number | null;
   plus_minus: number | null;
+  crest_url: string | null;
 };
 
 export type EuroTeamLogRow = {

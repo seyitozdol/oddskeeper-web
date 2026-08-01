@@ -14,33 +14,42 @@ import { bslTeamToComp } from "@/features/basketball/unified";
 import { euroTeamToComp } from "@/features/euroleague/unified";
 import TeamProfileTabs from "@/features/basketball/components/TeamProfileTabs";
 import BasketballOdds from "@/features/basketball/components/BasketballOdds";
+import { normalizeSeason, EURO_SEASONS } from "@/features/euroleague/config";
+import SeasonToggle from "@/components/SeasonToggle";
 import { getT } from "@/lib/i18n/server";
-
-const SEASON = "2025-2026";
 
 export default async function BasketballTeamPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ teamSlug: string }>;
+  searchParams: Promise<{ season?: string }>;
 }) {
-  const { teamSlug } = await params;
-  const [team, roster, log, model, euroTeams, t] = await Promise.all([
-    getBasketballTeam(teamSlug),
-    getBasketballTeamRoster(teamSlug),
-    getBasketballTeamMatchLog(teamSlug),
-    getBasketballTeamModel(teamSlug),
-    getEuroTeamsForBslSlug(teamSlug, SEASON),
-    getT(),
+  const [{ teamSlug }, { season }, t] = await Promise.all([params, searchParams, getT()]);
+  const seasonLabel = normalizeSeason(season);
+  const [team, roster, log, model, euroTeams] = await Promise.all([
+    getBasketballTeam(teamSlug, seasonLabel),
+    getBasketballTeamRoster(teamSlug, seasonLabel),
+    getBasketballTeamMatchLog(teamSlug, seasonLabel),
+    getBasketballTeamModel(teamSlug, seasonLabel),
+    getEuroTeamsForBslSlug(teamSlug, seasonLabel),
   ]);
+
+  const header = (
+    <div className="flex items-center justify-between gap-3">
+      <Link href="/dashboard/basketball" className="text-xs text-accent-ink hover:underline">
+        ← {t("basketball.backToLeague")}
+      </Link>
+      <SeasonToggle seasons={EURO_SEASONS} current={seasonLabel} />
+    </div>
+  );
 
   if (!team) {
     return (
       <section className="w-full">
         <div className="rounded-2xl border border-line bg-card p-8">
-          <Link href="/dashboard/basketball" className="text-xs text-accent-ink hover:underline">
-            ← {t("basketball.backToLeague")}
-          </Link>
-          <p className="mt-6 text-sm text-ink-3">{t("basketball.notFoundTeam")}</p>
+          {header}
+          <p className="mt-6 text-sm text-ink-3">{t("basketball.noData")}</p>
         </div>
       </section>
     );
@@ -63,9 +72,7 @@ export default async function BasketballTeamPage({
   return (
     <section className="w-full">
       <div className="rounded-2xl border border-line bg-card p-8">
-        <Link href="/dashboard/basketball" className="text-xs text-accent-ink hover:underline">
-          ← {t("basketball.backToLeague")}
-        </Link>
+        {header}
         <div className="mt-4">
           <TeamProfileTabs name={team.team_name} teamSlug={team.team_slug} comps={comps} />
         </div>

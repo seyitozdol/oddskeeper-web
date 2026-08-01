@@ -33,6 +33,9 @@ export type ProfileLogRow = {
   key: string;
   date: string | null;
   home_away: string | null;
+  team_name: string | null;
+  team_slug?: string | null;    // BSL yerel logo
+  team_crest?: string | null;   // EL/EC uzak crest
   opponent: string | null;
   opponent_slug?: string | null;
   minutes: number | null;
@@ -77,6 +80,7 @@ export function bslPlayerToComp(p: BktPlayerSeasonRow, log: BktPlayerLogRow[]): 
     hasAdvanced: true, hasVal: false,
     log: log.map((m) => ({
       key: m.match_key + m.match_date, date: m.match_date, home_away: m.home_away,
+      team_name: m.team_name, team_slug: m.team_slug,
       opponent: m.opponent_name, opponent_slug: m.opponent_slug,
       minutes: m.minutes, points: m.points, treb: m.treb, assists: m.assists,
       fg3m: m.fg3m, steals: m.steals, blocks: m.blocks, ts_pct: m.ts_pct, valuation: null,
@@ -97,6 +101,7 @@ export function euroSeasonToComp(s: BktEuroSeasonRow, logs: BktEuroLogRow[]): Pl
     hasAdvanced: false, hasVal: true,
     log: logs.filter((m) => m.competition === s.competition).map((m) => ({
       key: String(m.game_code), date: m.game_date, home_away: m.home_away,
+      team_name: m.team_name, team_crest: m.crest_url,
       opponent: m.opponent_name, opponent_slug: null,
       minutes: m.minutes, points: m.points, treb: m.treb, assists: m.assists,
       fg3m: m.fg3m, steals: m.steals, blocks: m.blocks, ts_pct: null, valuation: m.valuation,

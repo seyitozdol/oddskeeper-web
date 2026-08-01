@@ -202,13 +202,13 @@ export async function getBasketballAllTeamMatchLogs(): Promise<BktTeamLogRow[]> 
   }
 }
 
-export async function getBasketballTeam(teamSlug: string): Promise<BktTeamSeasonRow | null> {
+export async function getBasketballTeam(teamSlug: string, season: string = SEASON): Promise<BktTeamSeasonRow | null> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .schema("analytics")
     .from("bb_team_season_stats_v1")
     .select("*")
-    .eq("season_label", SEASON)
+    .eq("season_label", season)
     .eq("team_slug", teamSlug)
     .maybeSingle<BktTeamSeasonRow>();
   if (error) {
@@ -218,13 +218,13 @@ export async function getBasketballTeam(teamSlug: string): Promise<BktTeamSeason
   return data ?? null;
 }
 
-export async function getBasketballTeamRoster(teamSlug: string): Promise<BktPlayerSeasonRow[]> {
+export async function getBasketballTeamRoster(teamSlug: string, season: string = SEASON): Promise<BktPlayerSeasonRow[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .schema("analytics")
     .from("bb_player_season_stats_v1")
     .select("*")
-    .eq("season_label", SEASON)
+    .eq("season_label", season)
     .eq("team_slug", teamSlug)
     .order("ppg", { ascending: false })
     .returns<BktPlayerSeasonRow[]>();
@@ -235,13 +235,13 @@ export async function getBasketballTeamRoster(teamSlug: string): Promise<BktPlay
   return data ?? [];
 }
 
-export async function getBasketballTeamMatchLog(teamSlug: string): Promise<BktTeamLogRow[]> {
+export async function getBasketballTeamMatchLog(teamSlug: string, season: string = SEASON): Promise<BktTeamLogRow[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .schema("analytics")
     .from("bb_team_match_log_v1")
     .select("*")
-    .eq("season_label", SEASON)
+    .eq("season_label", season)
     .eq("team_slug", teamSlug)
     .order("match_date", { ascending: false })
     .returns<BktTeamLogRow[]>();
@@ -252,13 +252,13 @@ export async function getBasketballTeamMatchLog(teamSlug: string): Promise<BktTe
   return data ?? [];
 }
 
-export async function getBasketballPlayer(playerSlug: string): Promise<BktPlayerSeasonRow | null> {
+export async function getBasketballPlayer(playerSlug: string, season: string = SEASON): Promise<BktPlayerSeasonRow | null> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .schema("analytics")
     .from("bb_player_season_stats_v1")
     .select("*")
-    .eq("season_label", SEASON)
+    .eq("season_label", season)
     .eq("player_slug", playerSlug)
     .maybeSingle<BktPlayerSeasonRow>();
   if (error) {
@@ -284,13 +284,13 @@ export async function getBasketballPlayerModel(playerSlug: string): Promise<BktM
   return data ?? [];
 }
 
-export async function getBasketballTeamModel(teamSlug: string): Promise<BktMarketModelRow[]> {
+export async function getBasketballTeamModel(teamSlug: string, season: string = SEASON): Promise<BktMarketModelRow[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .schema("analytics")
     .from("bb_team_market_model_v1")
     .select("*")
-    .eq("season_label", SEASON)
+    .eq("season_label", season)
     .eq("team_slug", teamSlug)
     .returns<BktMarketModelRow[]>();
   if (error) {
@@ -300,13 +300,14 @@ export async function getBasketballTeamModel(teamSlug: string): Promise<BktMarke
   return data ?? [];
 }
 
-export async function getBasketballPlayerEuroSeasons(playerSlug: string): Promise<BktEuroSeasonRow[]> {
+export async function getBasketballPlayerEuroSeasons(playerSlug: string, season: string = SEASON): Promise<BktEuroSeasonRow[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .schema("analytics")
     .from("bsl_player_euro_seasons_v1")
     .select("*")
     .eq("bsl_player_slug", playerSlug)
+    .eq("season_label", season)
     .order("competition", { ascending: true })
     .order("season_code", { ascending: false })
     .returns<BktEuroSeasonRow[]>();
@@ -317,13 +318,14 @@ export async function getBasketballPlayerEuroSeasons(playerSlug: string): Promis
   return data ?? [];
 }
 
-export async function getBasketballPlayerEuroLog(playerSlug: string): Promise<BktEuroLogRow[]> {
+export async function getBasketballPlayerEuroLog(playerSlug: string, season: string = SEASON): Promise<BktEuroLogRow[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .schema("analytics")
     .from("bsl_player_euro_log_v1")
     .select("*")
     .eq("bsl_player_slug", playerSlug)
+    .eq("season_label", season)
     .order("game_date", { ascending: false })
     .returns<BktEuroLogRow[]>();
   if (error) {
@@ -333,13 +335,13 @@ export async function getBasketballPlayerEuroLog(playerSlug: string): Promise<Bk
   return data ?? [];
 }
 
-export async function getBasketballPlayerMatchLog(playerSlug: string): Promise<BktPlayerLogRow[]> {
+export async function getBasketballPlayerMatchLog(playerSlug: string, season: string = SEASON): Promise<BktPlayerLogRow[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .schema("analytics")
     .from("bb_player_match_log_v1")
     .select("*")
-    .eq("season_label", SEASON)
+    .eq("season_label", season)
     .eq("player_slug", playerSlug)
     .order("match_date", { ascending: false })
     .limit(300)

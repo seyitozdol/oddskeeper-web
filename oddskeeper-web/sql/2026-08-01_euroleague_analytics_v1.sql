@@ -44,8 +44,11 @@ select
   p.team_code, p.team_name, p.home_away, p.opponent_code, p.opponent_name,
   p.minutes, p.points, p.fg2m, p.fg2a, p.fg3m, p.fg3a, p.ftm, p.fta,
   p.oreb, p.dreb, p.treb, p.assists, p.steals, p.turnovers, p.blocks, p.blocks_against,
-  p.fouls_committed, p.fouls_drawn, p.valuation, p.plus_minus
-from euroleague.player_match_stats p;
+  p.fouls_committed, p.fouls_drawn, p.valuation, p.plus_minus,
+  tm.crest_url
+from euroleague.player_match_stats p
+left join euroleague.teams tm
+  on tm.competition=p.competition and tm.season_code=p.season_code and tm.team_code=p.team_code;
 
 -- ============================================================
 -- 3) BSL-bağlantılı: bir BSL oyuncusunun EL/EC sezonları + maç logu

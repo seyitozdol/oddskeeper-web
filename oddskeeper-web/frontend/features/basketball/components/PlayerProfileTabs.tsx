@@ -32,10 +32,8 @@ export default function PlayerProfileTabs({
         {teamSlug ? (
           <TeamCrest slug={teamSlug} name={teamName} size={52} />
         ) : crestUrl ? (
-          <span className="inline-flex shrink-0 items-center justify-center rounded bg-white ring-1 ring-black/5" style={{ width: 52, height: 52, padding: 3 }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={crestUrl} alt={teamName ?? ""} className="h-full w-full object-contain" />
-          </span>
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={crestUrl} alt={teamName ?? ""} className="object-contain" style={{ width: 52, height: 52 }} />
         ) : (
           <div className="flex items-center justify-center rounded-full bg-veil text-lg font-bold text-ink-2" style={{ width: 52, height: 52 }}>
             {jerseyNo ? `#${jerseyNo}` : name.slice(0, 1)}
@@ -111,7 +109,9 @@ export default function PlayerProfileTabs({
         <table className="min-w-full border-collapse text-[13px]">
           <thead>
             <tr className="border-b border-line text-[10px] uppercase tracking-[0.12em] text-ink-3">
-              <th className="px-2 py-2 text-left">{t("basketball.date")}</th><th className="px-2 py-2 text-left"></th>
+              <th className="px-2 py-2 text-left">{t("basketball.date")}</th>
+              <th className="px-2 py-2 text-center">{t("basketball.team")}</th>
+              <th className="px-2 py-2 text-left"></th>
               <th className="px-2 py-2 text-left">{t("basketball.opponent")}</th>
               <th className="px-2 py-2 text-right">{t("basketball.min")}</th><th className="px-2 py-2 text-right">PTS</th>
               <th className="px-2 py-2 text-right">REB</th><th className="px-2 py-2 text-right">AST</th><th className="px-2 py-2 text-right">3PM</th>
@@ -123,6 +123,16 @@ export default function PlayerProfileTabs({
             {c.log.map((m) => (
               <tr key={m.key} className="border-t border-line hover:bg-veil">
                 <td className="px-2 py-2 text-ink-3 whitespace-nowrap">{formatMatchDate(m.date ?? "", locale)}</td>
+                <td className="px-2 py-2">
+                  <span className="flex justify-center" title={m.team_name ?? ""}>
+                    {m.team_slug ? (
+                      <TeamCrest slug={m.team_slug} name={m.team_name} size={22} />
+                    ) : m.team_crest ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={m.team_crest} alt={m.team_name ?? ""} className="object-contain" style={{ width: 22, height: 22 }} />
+                    ) : null}
+                  </span>
+                </td>
                 <td className="px-2 py-2 text-ink-3">{homeAwayLabel(m.home_away, locale)}</td>
                 <td className="px-2 py-2 text-ink whitespace-nowrap">
                   {m.opponent_slug ? (

@@ -16,6 +16,7 @@ export function euroLeaderToComp(s: EuroLeaderRow, logs: EuroPlayerLogRow[]): Pl
     hasAdvanced: false, hasVal: true,
     log: logs.map((m) => ({
       key: String(m.game_code), date: m.game_date, home_away: m.home_away,
+      team_name: m.team_name, team_crest: m.crest_url,
       opponent: m.opponent_name, opponent_slug: null,
       minutes: m.minutes, points: m.points, treb: m.treb, assists: m.assists,
       fg3m: m.fg3m, steals: m.steals, blocks: m.blocks, ts_pct: null, valuation: m.valuation,

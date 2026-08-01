@@ -30,10 +30,8 @@ export default function TeamProfileTabs({
         {teamSlug ? (
           <TeamCrest slug={teamSlug} name={name} size={56} />
         ) : crestUrl ? (
-          <span className="inline-flex shrink-0 items-center justify-center rounded bg-white ring-1 ring-black/5" style={{ width: 56, height: 56, padding: 3 }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={crestUrl} alt={name} className="h-full w-full object-contain" />
-          </span>
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={crestUrl} alt={name} className="object-contain" style={{ width: 56, height: 56 }} />
         ) : null}
         <div>
           <h1 className="text-2xl font-semibold text-ink">{name}</h1>

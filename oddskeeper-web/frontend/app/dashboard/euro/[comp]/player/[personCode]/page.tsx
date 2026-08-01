@@ -4,7 +4,9 @@ import { getEuroPlayer, getEuroPlayerLog } from "@/features/euroleague/server";
 import { resolveEuroComp, normalizeSeason, seasonCodeFor } from "@/features/euroleague/config";
 import { euroLeaderToComp } from "@/features/euroleague/unified";
 import { normalizePlayerName } from "@/features/basketball/unified";
+import { EURO_SEASONS } from "@/features/euroleague/config";
 import PlayerProfileTabs from "@/features/basketball/components/PlayerProfileTabs";
+import SeasonToggle from "@/components/SeasonToggle";
 import { getT } from "@/lib/i18n/server";
 
 export default async function EuroPlayerPage({
@@ -42,7 +44,10 @@ export default async function EuroPlayerPage({
   return (
     <section className="w-full">
       <div className="rounded-2xl border border-line bg-card p-8">
-        <Link href={base} className="text-xs text-accent-ink hover:underline">← {cfg.name}</Link>
+        <div className="flex items-center justify-between gap-3">
+          <Link href={base} className="text-xs text-accent-ink hover:underline">← {cfg.name}</Link>
+          <SeasonToggle seasons={EURO_SEASONS} current={seasonLabel} />
+        </div>
         <div className="mt-4">
           <PlayerProfileTabs name={normalizePlayerName(player.player_name)} teamName={player.team_name} comps={comps} />
         </div>

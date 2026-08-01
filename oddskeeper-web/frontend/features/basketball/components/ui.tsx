@@ -22,16 +22,9 @@ export function TeamCrest({
       </span>
     );
   }
-  // Beyaz çip: koyu temada koyu logolar (Beşiktaş vb.) görünür olsun (logolar beyaz zemine göre tasarlı)
-  return (
-    <span
-      className="inline-flex shrink-0 items-center justify-center rounded bg-white ring-1 ring-black/5"
-      style={{ width: size, height: size, padding: size >= 40 ? 3 : 1 }}
-    >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={src} alt={name ?? ""} className="h-full w-full object-contain" />
-    </span>
-  );
+  // Düz logo (EL/EC ile aynı; beyaz çip yok).
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img src={src} alt={name ?? ""} className="shrink-0 object-contain" style={{ width: size, height: size }} />;
 }
 
 export function StatTile({
