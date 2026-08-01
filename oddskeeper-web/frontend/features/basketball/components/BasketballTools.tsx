@@ -316,11 +316,36 @@ function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effA
   const [side, setSide] = useState<"home" | "away">("home");
   const [mk, setMk] = useState("points");
   const [selPlayer, setSelPlayer] = useState<string | null>(null);
+  const [sort, setSort] = useState<{ key: string; dir: "asc" | "desc" }>({ key: "all", dir: "desc" });
   const slug = side === "home" ? homeSlug : awaySlug;
   const eff = side === "home" ? effHome : effAway;
   const met = PLAYER_MARKETS.find((m) => m.key === mk)!;
   const allList = winBy.get(slug)?.get(mk) ?? [];
-  const players = allList.filter((w) => w.avg_minutes >= 5 || w.season_avg >= 1);
+  const sortVal = (w: BktPlayerWindowRow): number | string => {
+    switch (sort.key) {
+      case "player": return w.player_name;
+      case "min": return w.avg_minutes ?? 0;
+      case "matches": return w.games ?? 0;
+      case "w5": return w.last5_avg ?? 0;
+      case "w10": return w.last10_avg ?? 0;
+      case "all": return w.season_avg ?? 0;
+      case "exp": return expRef(slug, mk, w, eff);
+      case "value": return playerValue(slug, mk, w, allList, eff);
+      default: return w.season_avg ?? 0;
+    }
+  };
+  const dir = sort.dir === "asc" ? 1 : -1;
+  const players = allList
+    .filter((w) => w.avg_minutes >= 5 || w.season_avg >= 1)
+    .slice()
+    .sort((a, b) => {
+      const va = sortVal(a), vb = sortVal(b);
+      if (typeof va === "string" || typeof vb === "string") return String(va).localeCompare(String(vb), "tr") * dir;
+      return (va - vb) * dir;
+    });
+  const toggleSort = (key: string) =>
+    setSort((s) => (s.key === key ? { key, dir: s.dir === "asc" ? "desc" : "asc" } : { key, dir: key === "player" ? "asc" : "desc" }));
+  const arrow = (key: string) => (sort.key === key ? (sort.dir === "asc" ? " ▲" : " ▼") : "");
   const target = teamTarget(slug, mk);
   const distributed = allList.filter((w) => isTicked(slug, mk, w)).reduce((a, w) => a + playerValue(slug, mk, w, allList, eff), 0);
 
@@ -344,44 +369,55 @@ function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effA
 
   return (
     <div>
-      <div className="mb-3 flex flex-wrap items-center gap-3">
-        <div className="flex gap-1.5">
-          {(["home", "away"] as const).map((sd) => (
-            <button key={sd} onClick={() => { setSide(sd); setSelPlayer(null); }} className={`rounded-full px-3 py-1 text-[11px] font-semibold ${side === sd ? "bg-accent text-white" : "bg-card-2 text-ink-3 hover:text-ink"}`}>{sd === "home" ? homeName : awayName}</button>
-          ))}
+      <div className="mb-3 space-y-2">
+        {/* takım seçimi + özet */}
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-3">{t("basketball.pickTeam")}</span>
+            <div className="flex gap-1.5">
+              {(["home", "away"] as const).map((sd) => (
+                <button key={sd} onClick={() => { setSide(sd); setSelPlayer(null); }} className={`rounded-md px-3.5 py-1 text-[12px] font-semibold transition-colors ${side === sd ? "bg-accent text-white shadow-sm" : "bg-card-2 text-ink-3 hover:text-ink"}`}>{sd === "home" ? homeName : awayName}</button>
+              ))}
+            </div>
+          </div>
+          <span className="ml-auto text-[12px] text-ink-3">
+            {met.distributable ? (
+              <>
+                {t("basketball.distTarget")}: <span className="font-semibold text-accent-ink">{fmt(target)}</span>
+                {" · "}{t("basketball.distSum")}: <span className={`font-semibold ${Math.abs(distributed - target) <= target * 0.03 ? "text-pos" : "text-neg"}`}>{fmt(distributed)}</span>
+              </>
+            ) : (
+              <span className="text-ink-2">{t("basketball.manualValues")}</span>
+            )}
+            {" · Std "}{met.std}
+          </span>
+          <button onClick={addCurrent} className="rounded-md border border-teal-500/30 bg-teal-500/10 px-3 py-1 text-[12px] font-semibold text-teal-300 hover:bg-teal-500/20">
+            {t("basketball.addToInput")}
+          </button>
         </div>
-        <div className="flex flex-wrap gap-1.5">
-          {PLAYER_MARKETS.map((m) => (
-            <button key={m.key} onClick={() => { setMk(m.key); setSelPlayer(null); }} className={`rounded-full px-3 py-1 text-[11px] font-semibold ${m.key === mk ? "bg-accent-soft text-accent-ink" : "bg-card-2 text-ink-3 hover:text-ink"}`}>{m.label}</button>
-          ))}
+        {/* market seçimi — ayrı kutu */}
+        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-line bg-card-2/40 px-2.5 py-2">
+          <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-3">{t("basketball.pickMarket")}</span>
+          <div className="flex flex-wrap gap-1.5">
+            {PLAYER_MARKETS.map((m) => (
+              <button key={m.key} onClick={() => { setMk(m.key); setSelPlayer(null); }} className={`rounded-full px-3 py-1 text-[11px] font-semibold transition-colors ${m.key === mk ? "bg-accent-soft text-accent-ink ring-1 ring-accent/40" : "bg-veil text-ink-3 hover:text-ink"}`}>{m.label}</button>
+            ))}
+          </div>
         </div>
-        <span className="ml-auto text-[12px] text-ink-3">
-          {met.distributable ? (
-            <>
-              {t("basketball.distTarget")}: <span className="font-semibold text-accent-ink">{fmt(target)}</span>
-              {" · "}{t("basketball.distSum")}: <span className={`font-semibold ${Math.abs(distributed - target) <= target * 0.03 ? "text-pos" : "text-neg"}`}>{fmt(distributed)}</span>
-            </>
-          ) : (
-            <span className="text-ink-2">{t("basketball.manualValues")}</span>
-          )}
-          {" · Std "}{met.std}
-        </span>
-        <button onClick={addCurrent} className="rounded-md border border-teal-500/30 bg-teal-500/10 px-3 py-1 text-[12px] font-semibold text-teal-300 hover:bg-teal-500/20">
-          {t("basketball.addToInput")}
-        </button>
       </div>
 
       <div className="overflow-x-auto">
         <table className="min-w-full border-collapse text-[13px]">
           <thead><tr className="border-b border-line text-[10px] uppercase tracking-[0.12em] text-ink-3">
             <th className="px-2 py-1.5 text-center">{t("basketball.colInclude")}</th>
-            <th className="px-2 py-1.5 text-left">{t("basketball.player")}</th>
-            <th className="px-2 py-1.5 text-right">{t("basketball.minutesShort")}</th>
-            <th className="px-2 py-1.5 text-right">{t("basketball.w5")}</th>
-            <th className="px-2 py-1.5 text-right">{t("basketball.w10")}</th>
-            <th className="px-2 py-1.5 text-right">{t("basketball.wAll")}</th>
-            <th className="px-2 py-1.5 text-right">{t("basketball.expShort")}</th>
-            <th className="px-2 py-1.5 text-right">{t("basketball.colValue")}</th>
+            <th className="px-2 py-1.5 text-left"><button onClick={() => toggleSort("player")} className="uppercase tracking-[0.12em] hover:text-ink">{t("basketball.player")}{arrow("player")}</button></th>
+            <th className="px-2 py-1.5 text-right"><button onClick={() => toggleSort("min")} className="uppercase tracking-[0.12em] hover:text-ink">{t("basketball.minutesShort")}{arrow("min")}</button></th>
+            <th className="px-2 py-1.5 text-right"><button onClick={() => toggleSort("matches")} className="uppercase tracking-[0.12em] hover:text-ink">{t("basketball.colMatches")}{arrow("matches")}</button></th>
+            <th className="px-2 py-1.5 text-right"><button onClick={() => toggleSort("w5")} className="uppercase tracking-[0.12em] hover:text-ink">{t("basketball.w5")}{arrow("w5")}</button></th>
+            <th className="px-2 py-1.5 text-right"><button onClick={() => toggleSort("w10")} className="uppercase tracking-[0.12em] hover:text-ink">{t("basketball.w10")}{arrow("w10")}</button></th>
+            <th className="px-2 py-1.5 text-right"><button onClick={() => toggleSort("all")} className="uppercase tracking-[0.12em] hover:text-ink">{t("basketball.wAll")}{arrow("all")}</button></th>
+            <th className="px-2 py-1.5 text-right"><button onClick={() => toggleSort("exp")} className="uppercase tracking-[0.12em] hover:text-ink">{t("basketball.expShort")}{arrow("exp")}</button></th>
+            <th className="px-2 py-1.5 text-right"><button onClick={() => toggleSort("value")} className="uppercase tracking-[0.12em] hover:text-ink">{t("basketball.colValue")}{arrow("value")}</button></th>
             <th className="px-2 py-1.5 text-right">{t("basketball.colLineShort")}</th>
           </tr></thead>
           <tbody>
@@ -395,6 +431,7 @@ function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effA
                   <td className="px-2 py-1 text-center"><input type="checkbox" checked={on} onChange={(e) => setTick(k, e.target.checked)} className="accent-[var(--accent)]" /></td>
                   <td className="px-2 py-1 whitespace-nowrap"><button onClick={() => setSelPlayer(w.player_slug === selPlayer ? null : w.player_slug)} className="text-ink hover:text-accent-ink">{w.player_name}</button></td>
                   <td className="px-2 py-1 text-right tabular-nums text-ink-3">{fmt(w.avg_minutes)}</td>
+                  <td className="px-2 py-1 text-right tabular-nums text-ink-3">{w.games}</td>
                   <td className="px-2 py-1 text-right tabular-nums text-ink-3">{fmt(w.last5_avg)}</td>
                   <td className="px-2 py-1 text-right tabular-nums text-ink-3">{fmt(w.last10_avg)}</td>
                   <td className="px-2 py-1 text-right tabular-nums text-ink-2">{fmt(w.season_avg)}</td>

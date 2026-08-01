@@ -1,12 +1,15 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useI18n } from "@/lib/i18n/LanguageProvider";
 import BasketballTools from "./BasketballTools";
+import { TEAM_MARKETS, teamStd } from "../marketConfig";
 import {
   fetchMarkets, upsertMarket, deleteMarket, PmMarket,
   fetchPmFixtures, insertFixture, updateFixture, deleteFixture, PmFixture,
   fetchPlayerIds, savePlayerIds,
+  savePlayerMerges, PmMerge,
 } from "../pmQueries";
 import type {
   BktHomeAwaySplitRow, BktTeamMetricFormRow, BktPlayerWindowRow,
@@ -21,7 +24,7 @@ type Props = {
   players: BktPlayerListRow[];
 };
 
-type Tab = "model" | "players" | "markets" | "fixtures" | "input";
+type Tab = "model" | "players" | "markets" | "std" | "fixtures" | "input";
 
 const btnSave = "rounded-md border border-teal-500/30 bg-teal-500/10 px-3 py-1.5 text-[12px] font-semibold text-teal-300 hover:bg-teal-500/20";
 const btnGhost = "rounded-md border border-line px-3 py-1.5 text-[12px] font-semibold text-ink-2 hover:text-ink";
@@ -44,6 +47,7 @@ export default function BasketballParticipantTools({ splits, forms, windows, tea
     { id: "model", label: t("basketball.tabModel") },
     { id: "players", label: t("basketball.tabPlayerList") },
     { id: "markets", label: t("basketball.tabMarketList") },
+    { id: "std", label: t("basketball.tabStdList") },
     { id: "fixtures", label: t("basketball.tabFixtures") },
     { id: "input", label: `${t("basketball.tabInput")}${inputRows.length ? ` (${inputRows.length})` : ""}` },
   ];
@@ -63,6 +67,7 @@ export default function BasketballParticipantTools({ splits, forms, windows, tea
       )}
       {tab === "players" && <PlayerListTab players={players} playerIds={playerIds} onSaved={setPlayerIds} t={t} />}
       {tab === "markets" && <MarketListTab markets={markets} reload={reloadMarkets} t={t} />}
+      {tab === "std" && <TeamStdListTab t={t} />}
       {tab === "fixtures" && <FixturesTab fixtures={fixtures} teams={teams} reload={reloadFixtures} t={t} />}
       {tab === "input" && <InputTab rows={inputRows} setRows={setInputRows} t={t} />}
     </div>
@@ -70,9 +75,56 @@ export default function BasketballParticipantTools({ splits, forms, windows, tea
 }
 
 /* ---------- Player List ---------- */
+// İsim normalize: Türkçe harfleri katla + aksanları sök → mükerrer isim tespiti için.
+function foldName(s: string): string {
+  return s
+    .replace(/İ/g, "i").replace(/I/g, "i").replace(/ı/g, "i")
+    .replace(/[Şş]/g, "s").replace(/[Ğğ]/g, "g").replace(/[Çç]/g, "c")
+    .replace(/[Öö]/g, "o").replace(/[Üü]/g, "u")
+    .normalize("NFKD").replace(/[̀-ͯ]/g, "")
+    .toLowerCase().replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
+}
+function findDuplicatePlayers(players: BktPlayerListRow[]): BktPlayerListRow[][] {
+  const groups = new Map<string, BktPlayerListRow[]>();
+  for (const p of players) {
+    const toks = foldName(p.player_name).split(" ").filter(Boolean);
+    if (toks.length === 0) continue;
+    const key = `${toks[0]}|${toks[toks.length - 1]}`;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)!.push(p);
+  }
+  const out: BktPlayerListRow[][] = [];
+  for (const arr of groups.values()) {
+    const distinct = new Map(arr.map((p) => [p.player_slug, p]));
+    if (distinct.size > 1) out.push([...distinct.values()]);
+  }
+  return out;
+}
+
 function PlayerListTab({ players, playerIds, onSaved, t }: { players: BktPlayerListRow[]; playerIds: Record<string, string>; onSaved: (m: Record<string, string>) => void; t: (k: string) => string }) {
+  const router = useRouter();
   const [edits, setEdits] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+  const [canon, setCanon] = useState<Record<string, string>>({});
+  const [merging, setMerging] = useState<string | null>(null);
+  const dupGroups = useMemo(() => findDuplicatePlayers(players), [players]);
+  const dupSlugs = useMemo(() => new Set(dupGroups.flat().map((p) => p.player_slug)), [dupGroups]);
+  const groupKey = (g: BktPlayerListRow[]) => g.map((p) => p.player_slug).sort().join("|");
+  const canonSlug = (g: BktPlayerListRow[]) =>
+    canon[groupKey(g)] ?? [...g].sort((a, b) => b.games - a.games)[0].player_slug;
+  const mergeGroup = async (g: BktPlayerListRow[]) => {
+    const key = groupKey(g);
+    const keepSlug = canonSlug(g);
+    const keepName = g.find((p) => p.player_slug === keepSlug)?.player_name ?? null;
+    const rows: PmMerge[] = g
+      .filter((p) => p.player_slug !== keepSlug)
+      .map((p) => ({ alias_slug: p.player_slug, canonical_slug: keepSlug, canonical_name: keepName }));
+    if (rows.length === 0) return;
+    setMerging(key);
+    const ok = await savePlayerMerges(rows);
+    setMerging(null);
+    if (ok) router.refresh();
+  };
   const val = (slug: string) => edits[slug] ?? playerIds[slug] ?? "";
   const save = async () => {
     setSaving(true);
@@ -86,6 +138,34 @@ function PlayerListTab({ players, playerIds, onSaved, t }: { players: BktPlayerL
         <button onClick={save} disabled={saving || Object.keys(edits).length === 0} className={`${btnSave} disabled:opacity-50`}>{t("basketball.save")}</button>
         <span className="text-[11px] text-ink-3">{players.length}</span>
       </div>
+      {dupGroups.length > 0 && (
+        <div className="mb-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2.5">
+          <div className="text-[12px] font-semibold text-amber-300">⚠ {t("basketball.dupTitle")} ({dupGroups.length})</div>
+          <div className="mt-0.5 text-[11px] text-ink-3">{t("basketball.dupHint")}</div>
+          <ul className="mt-2 space-y-1.5">
+            {dupGroups.map((g) => {
+              const key = groupKey(g);
+              const keep = canonSlug(g);
+              return (
+                <li key={key} className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px]">
+                  {g.map((p) => (
+                    <label key={p.player_slug} className="flex cursor-pointer items-center gap-1.5 whitespace-nowrap">
+                      <input type="radio" name={`canon-${key}`} checked={keep === p.player_slug}
+                        onChange={() => setCanon((s) => ({ ...s, [key]: p.player_slug }))} className="accent-[var(--accent)]" />
+                      <span className={keep === p.player_slug ? "font-semibold text-ink" : "text-ink-2"}>{p.player_name}</span>
+                      <span className="text-ink-3">({p.team_name ?? "—"}, {p.games})</span>
+                    </label>
+                  ))}
+                  <button onClick={() => mergeGroup(g)} disabled={merging === key}
+                    className="rounded-md border border-amber-500/40 bg-amber-500/15 px-2.5 py-0.5 text-[11px] font-semibold text-amber-200 hover:bg-amber-500/25 disabled:opacity-50">
+                    {merging === key ? t("basketball.merging") : t("basketball.merge")}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
       <div className="max-h-[70vh] overflow-auto">
         <table className="min-w-full border-collapse text-[13px]">
           <thead className="sticky top-0 bg-card-2"><tr className="text-[10px] uppercase tracking-[0.1em] text-ink-3">
@@ -94,8 +174,8 @@ function PlayerListTab({ players, playerIds, onSaved, t }: { players: BktPlayerL
           </tr></thead>
           <tbody>
             {players.map((p) => (
-              <tr key={p.player_slug} className="border-t border-line hover:bg-veil">
-                <td className="px-2 py-1 text-ink whitespace-nowrap">{p.player_name}</td>
+              <tr key={p.player_slug} className={`border-t border-line hover:bg-veil ${dupSlugs.has(p.player_slug) ? "bg-amber-500/5" : ""}`}>
+                <td className="px-2 py-1 text-ink whitespace-nowrap">{dupSlugs.has(p.player_slug) && <span className="mr-1 text-amber-400" title={t("basketball.dupTitle")}>⚠</span>}{p.player_name}</td>
                 <td className="px-2 py-1 text-ink-2 whitespace-nowrap">{p.team_name}</td>
                 <td className="px-2 py-1 text-right tabular-nums text-ink-3">{p.games}</td>
                 <td className="px-2 py-1"><input value={val(p.player_slug)} onChange={(e) => setEdits((s) => ({ ...s, [p.player_slug]: e.target.value }))}
@@ -150,6 +230,29 @@ function MarketListTab({ markets, reload, t }: { markets: PmMarket[]; reload: ()
               <td className="px-2 py-1"><select value={rowVal(m, "market_type")} onChange={(e) => patch(m.market_key, { market_type: e.target.value })} className="rounded border border-line bg-field px-1.5 py-0.5 text-[12px] text-ink outline-none">
                 <option value="static">{t("basketball.typeStatic")}</option><option value="participant">{t("basketball.typeParticipant")}</option></select></td>
               <td className="px-2 py-1 text-right">{m.is_custom ? <button onClick={async () => { await deleteMarket(m.market_key); reload(); }} className="text-[12px] text-neg hover:underline">×</button> : null}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+/* ---------- Team Std List ---------- */
+function TeamStdListTab({ t }: { t: (k: string) => string }) {
+  return (
+    <div>
+      <p className="mb-3 text-[11px] text-ink-3">{t("basketball.stdListHint")}</p>
+      <table className="min-w-full border-collapse text-[13px]">
+        <thead><tr className="border-b border-line text-[10px] uppercase tracking-[0.1em] text-ink-3">
+          <th className="px-2 py-1.5 text-left">{t("basketball.colMarket")}</th>
+          <th className="px-2 py-1.5 text-right">{t("basketball.colStd")}</th>
+        </tr></thead>
+        <tbody>
+          {TEAM_MARKETS.map((m) => (
+            <tr key={m.key} className="border-t border-line hover:bg-veil">
+              <td className="px-2 py-1 text-ink whitespace-nowrap">{m.label}</td>
+              <td className="px-2 py-1 text-right tabular-nums text-ink-2">{teamStd(m.key).toFixed(2)}</td>
             </tr>
           ))}
         </tbody>

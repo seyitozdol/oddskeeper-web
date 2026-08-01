@@ -87,6 +87,38 @@ export async function deleteFixture(id: number): Promise<boolean> {
   return true;
 }
 
+/* ---------------- player merges (mükerrer → kanonik) ---------------- */
+export type PmMerge = {
+  alias_slug: string;
+  canonical_slug: string;
+  canonical_name: string | null;
+};
+export async function fetchPlayerMerges(): Promise<PmMerge[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .schema("analytics").from("bb_pm_player_merges")
+    .select("alias_slug,canonical_slug,canonical_name").eq("league", LEAGUE)
+    .returns<PmMerge[]>();
+  if (error) { console.error("fetchPlayerMerges", error.message); return []; }
+  return data ?? [];
+}
+export async function savePlayerMerges(rows: PmMerge[]): Promise<boolean> {
+  if (rows.length === 0) return true;
+  const supabase = createClient();
+  const payload = rows.map((r) => ({ league: LEAGUE, ...r, updated_at: new Date().toISOString() }));
+  const { error } = await supabase.schema("analytics").from("bb_pm_player_merges")
+    .upsert(payload, { onConflict: "league,alias_slug" });
+  if (error) { console.error("savePlayerMerges", error.message); return false; }
+  return true;
+}
+export async function deletePlayerMerge(alias_slug: string): Promise<boolean> {
+  const supabase = createClient();
+  const { error } = await supabase.schema("analytics").from("bb_pm_player_merges")
+    .delete().eq("league", LEAGUE).eq("alias_slug", alias_slug);
+  if (error) { console.error("deletePlayerMerge", error.message); return false; }
+  return true;
+}
+
 /* ---------------- player external ids ---------------- */
 export async function fetchPlayerIds(): Promise<Record<string, string>> {
   const supabase = createClient();
