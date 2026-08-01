@@ -3,17 +3,19 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useI18n } from "@/lib/i18n/LanguageProvider";
-import { fmt } from "../lib";
+import { fmt, formatMatchDate } from "../lib";
 import { TeamCrest } from "./ui";
 import MatchOdds from "./MatchOdds";
-import type { BktTeamSeasonRow, BktLeaderboardRow, BktMarketModelRow } from "../types";
+import type { BktTeamSeasonRow, BktLeaderboardRow, BktMarketModelRow, BktGameRow, BktFixtureRow } from "../types";
 
-type Tab = "standings" | "players" | "teams" | "match";
+type Tab = "standings" | "results" | "fixtures" | "players" | "teams" | "match";
 
 type Props = {
   standings: BktTeamSeasonRow[];
   leaderboard: BktLeaderboardRow[];
   teamPoints: BktMarketModelRow[];
+  games: BktGameRow[];
+  fixtures: BktFixtureRow[];
   initialTab?: Tab;
   season: string;
 };
@@ -26,12 +28,14 @@ function Th({ children, right }: { children: React.ReactNode; right?: boolean })
   );
 }
 
-export default function BasketballExplorer({ standings, leaderboard, teamPoints, initialTab = "standings", season }: Props) {
+export default function BasketballExplorer({ standings, leaderboard, teamPoints, games, fixtures, initialTab = "standings", season }: Props) {
   const { t } = useI18n();
   const [tab, setTab] = useState<Tab>(initialTab);
 
   const tabs: { key: Tab; label: string }[] = [
     { key: "standings", label: t("basketball.tabStandings") },
+    { key: "results", label: t("basketball.tabResults") },
+    { key: "fixtures", label: t("basketball.tabFixtures") },
     { key: "players", label: t("basketball.tabPlayers") },
     { key: "teams", label: t("basketball.tabTeams") },
     { key: "match", label: t("basketball.tabMatchOdds") },
@@ -62,9 +66,103 @@ export default function BasketballExplorer({ standings, leaderboard, teamPoints,
       </div>
 
       {tab === "standings" && <StandingsTable rows={standings} season={season} />}
+      {tab === "results" && <Results rows={games} season={season} />}
+      {tab === "fixtures" && <Fixtures rows={fixtures} season={season} />}
       {tab === "players" && <PlayerLeaders rows={leaderboard} season={season} />}
       {tab === "teams" && <TeamLeaders rows={standings} season={season} />}
       {tab === "match" && <MatchOdds standings={standings} teamPoints={teamPoints} />}
+    </div>
+  );
+}
+
+/* ---------------- Results (oynanmis maclar, tur desc) ---------------- */
+function Results({ rows, season }: { rows: BktGameRow[]; season: string }) {
+  const { t, locale } = useI18n();
+  if (rows.length === 0) return <p className="text-sm text-ink-3">{t("basketball.noResults")}</p>;
+  return (
+    <div className="overflow-x-auto">
+      <table className="min-w-full border-collapse text-[12px]">
+        <thead>
+          <tr className="border-b border-line text-[9px] uppercase tracking-[0.1em] text-ink-3">
+            <th className="px-2 py-1 text-left">{t("basketball.week")}</th>
+            <th className="px-2 py-1 text-left">{t("basketball.date")}</th>
+            <th className="px-2 py-1 text-right">{t("basketball.home")}</th>
+            <th className="px-2 py-1 text-center">{t("basketball.score")}</th>
+            <th className="px-2 py-1 text-left">{t("basketball.away")}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((g, idx) => {
+            const hs = g.home_score, as = g.away_score;
+            const done = hs != null && as != null;
+            const homeWin = done && (hs as number) > (as as number);
+            const awayWin = done && (as as number) > (hs as number);
+            return (
+              <tr key={`${g.match_key}-${idx}`} className="border-t border-line hover:bg-veil">
+                <td className="px-2 py-1.5 tabular-nums text-ink-3">{g.week ?? "-"}</td>
+                <td className="whitespace-nowrap px-2 py-1.5 text-[11px] text-ink-3">{formatMatchDate(g.match_date, locale)}</td>
+                <td className="px-2 py-1.5 text-right">
+                  <Link href={`/dashboard/basketball/team/${g.home_team_slug}?season=${season}`} className="inline-flex items-center justify-end gap-1.5 hover:text-accent-ink">
+                    <span className={`whitespace-nowrap ${homeWin ? "font-semibold text-ink" : "text-ink-2"}`}>{g.home_team_name}</span>
+                    <TeamCrest slug={g.home_team_slug} name={g.home_team_name} size={20} />
+                  </Link>
+                </td>
+                <td className="px-2 py-1.5 text-center tabular-nums font-semibold text-ink">{hs}<span className="px-1 text-ink-3">-</span>{as}</td>
+                <td className="px-2 py-1.5 text-left">
+                  <Link href={g.away_team_slug ? `/dashboard/basketball/team/${g.away_team_slug}?season=${season}` : "#"} className="inline-flex items-center gap-1.5 hover:text-accent-ink">
+                    <TeamCrest slug={g.away_team_slug} name={g.away_team_name} size={20} />
+                    <span className={`whitespace-nowrap ${awayWin ? "font-semibold text-ink" : "text-ink-2"}`}>{g.away_team_name}</span>
+                  </Link>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+/* ---------------- Fixtures (yaklasan maclar) ---------------- */
+function Fixtures({ rows, season }: { rows: BktFixtureRow[]; season: string }) {
+  const { t } = useI18n();
+  const sorted = useMemo(
+    () => [...rows].sort((a, b) => (a.week ?? 0) - (b.week ?? 0) || a.fixture_id - b.fixture_id),
+    [rows],
+  );
+  if (sorted.length === 0) return <p className="text-sm text-ink-3">{t("basketball.noFixtures")}</p>;
+  return (
+    <div className="overflow-x-auto">
+      <table className="min-w-full border-collapse text-[12px]">
+        <thead>
+          <tr className="border-b border-line text-[9px] uppercase tracking-[0.1em] text-ink-3">
+            <th className="px-2 py-1 text-left">{t("basketball.week")}</th>
+            <th className="px-2 py-1 text-right">{t("basketball.home")}</th>
+            <th className="px-2 py-1 text-center"></th>
+            <th className="px-2 py-1 text-left">{t("basketball.away")}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {sorted.map((f) => (
+            <tr key={f.fixture_id} className="border-t border-line hover:bg-veil">
+              <td className="px-2 py-1.5 tabular-nums text-ink-3">{f.week ?? "-"}</td>
+              <td className="px-2 py-1.5 text-right">
+                <Link href={f.home_team_slug ? `/dashboard/basketball/team/${f.home_team_slug}?season=${season}` : "#"} className="inline-flex items-center justify-end gap-1.5 hover:text-accent-ink">
+                  <span className="whitespace-nowrap text-ink-2">{f.home_team_name}</span>
+                  <TeamCrest slug={f.home_team_slug} name={f.home_team_name} size={20} />
+                </Link>
+              </td>
+              <td className="px-2 py-1.5 text-center text-[11px] text-ink-3">vs</td>
+              <td className="px-2 py-1.5 text-left">
+                <Link href={f.away_team_slug ? `/dashboard/basketball/team/${f.away_team_slug}?season=${season}` : "#"} className="inline-flex items-center gap-1.5 hover:text-accent-ink">
+                  <TeamCrest slug={f.away_team_slug} name={f.away_team_name} size={20} />
+                  <span className="whitespace-nowrap text-ink-2">{f.away_team_name}</span>
+                </Link>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

@@ -53,6 +53,7 @@ export type EuroLeaderRow = {
   ft_pct: number | null;
   ts_pct: number | null;
   is_qualified: boolean;
+  image_url: string | null;
 };
 
 export type EuroPlayerLogRow = {
@@ -81,6 +82,31 @@ export type EuroPlayerLogRow = {
   valuation: number | null;
   plus_minus: number | null;
   crest_url: string | null;
+};
+
+// Mac listesi (el_games_v1) — hub Fixtures/Results sekmeleri. Bir satir = bir mac.
+export type EuroGameRow = {
+  competition: string;
+  competition_name: string;
+  season_code: string;
+  season_label: string;
+  game_code: number;
+  round: number | null;
+  phase_code: string | null;
+  phase_name: string | null;
+  game_date: string | null;
+  played: boolean;
+  phase_order: number;
+  home_team_code: string;
+  home_team_name: string | null;
+  home_crest: string | null;
+  home_bsl_slug: string | null;
+  away_team_code: string;
+  away_team_name: string | null;
+  away_crest: string | null;
+  away_bsl_slug: string | null;
+  home_score: number | null;
+  away_score: number | null;
 };
 
 export type EuroTeamLogRow = {

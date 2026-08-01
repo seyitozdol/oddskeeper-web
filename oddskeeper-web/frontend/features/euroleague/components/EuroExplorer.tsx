@@ -3,12 +3,30 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useI18n } from "@/lib/i18n/LanguageProvider";
-import { fmt } from "@/features/basketball/lib";
+import { fmt, formatMatchDate } from "@/features/basketball/lib";
 import { normalizePlayerName } from "@/features/basketball/unified";
-import type { EuroTeamRow, EuroLeaderRow } from "../types";
+import type { EuroTeamRow, EuroLeaderRow, EuroGameRow } from "../types";
 import type { EuroCompKey } from "../config";
 
-type Tab = "standings" | "players" | "teams";
+type Tab = "standings" | "results" | "fixtures" | "players" | "teams";
+
+// EL/EC faz kodu → i18n etiketi.
+const PHASE_KEY: Record<string, string> = {
+  RS: "phaseRS", PI: "phasePI", PO: "phasePO", FF: "phaseFF",
+  "8F": "phase8F", "4F": "phase4F", "2F": "phase2F", Final: "phaseFinal",
+};
+
+// Ardisik ayni-anahtarli satirlari gruplar (sirali giris varsayar).
+function groupBy<T>(items: T[], keyOf: (x: T) => string): { key: string; items: T[] }[] {
+  const out: { key: string; items: T[] }[] = [];
+  for (const it of items) {
+    const k = keyOf(it);
+    const last = out[out.length - 1];
+    if (last && last.key === k) last.items.push(it);
+    else out.push({ key: k, items: [it] });
+  }
+  return out;
+}
 
 // Türk takımı ise BSL adı (Beşiktaş), değilse euro adı.
 const teamDisplay = (r: { bsl_team_name?: string | null; team_name?: string | null }) =>
@@ -36,11 +54,12 @@ function Crest({ url, name, size = 26 }: { url?: string | null; name?: string | 
 }
 
 export default function EuroExplorer({
-  comp, standings, leaderboard, season,
+  comp, standings, leaderboard, games, season,
 }: {
   comp: EuroCompKey;
   standings: EuroTeamRow[];
   leaderboard: EuroLeaderRow[];
+  games: EuroGameRow[];
   season: string;
 }) {
   const { t } = useI18n();
@@ -49,6 +68,8 @@ export default function EuroExplorer({
 
   const tabs: { key: Tab; label: string }[] = [
     { key: "standings", label: t("basketball.tabStandings") },
+    { key: "results", label: t("basketball.tabResults") },
+    { key: "fixtures", label: t("basketball.tabFixtures") },
     { key: "players", label: t("basketball.tabPlayers") },
     { key: "teams", label: t("basketball.tabTeams") },
   ];
@@ -68,8 +89,91 @@ export default function EuroExplorer({
       </div>
 
       {tab === "standings" && <Standings rows={standings} base={base} season={season} />}
+      {tab === "results" && <Games games={games} base={base} season={season} mode="results" />}
+      {tab === "fixtures" && <Games games={games} base={base} season={season} mode="fixtures" />}
       {tab === "players" && <PlayerLeaders rows={leaderboard} comp={comp} base={base} season={season} />}
       {tab === "teams" && <TeamLeaders rows={standings} base={base} season={season} />}
+    </div>
+  );
+}
+
+/* ---------------- Fixtures / Results ---------------- */
+// Bir mac satiri: [Ev adi+logo] [skor/tarih] [Dep logo+adi]. Kazanan koyu.
+function GameRow({ g, base, season, showScore }: { g: EuroGameRow; base: string; season: string; showScore: boolean }) {
+  const { locale } = useI18n();
+  const hs = g.home_score, as = g.away_score;
+  const done = showScore && hs != null && as != null;
+  const homeWin = done && (hs as number) > (as as number);
+  const awayWin = done && (as as number) > (hs as number);
+  const homeName = g.home_team_name ?? g.home_team_code;
+  const awayName = g.away_team_name ?? g.away_team_code;
+  return (
+    <tr className="border-t border-line hover:bg-veil">
+      <td className="whitespace-nowrap px-2 py-1.5 text-[11px] text-ink-3">{formatMatchDate(g.game_date, locale)}</td>
+      <td className="px-2 py-1.5 text-right">
+        <Link href={`${base}/team/${g.home_team_code}?season=${season}`} className="inline-flex items-center justify-end gap-1.5 hover:text-accent-ink">
+          <span className={`whitespace-nowrap ${homeWin ? "font-semibold text-ink" : "text-ink-2"}`}>{homeName}</span>
+          <Crest url={g.home_crest} name={homeName} size={20} />
+        </Link>
+      </td>
+      <td className="px-2 py-1.5 text-center tabular-nums">
+        {done ? (
+          <span className="font-semibold text-ink">{hs}<span className="px-1 text-ink-3">-</span>{as}</span>
+        ) : (
+          <span className="text-[11px] text-ink-3">{showScore ? "-" : "vs"}</span>
+        )}
+      </td>
+      <td className="px-2 py-1.5 text-left">
+        <Link href={`${base}/team/${g.away_team_code}?season=${season}`} className="inline-flex items-center gap-1.5 hover:text-accent-ink">
+          <Crest url={g.away_crest} name={awayName} size={20} />
+          <span className={`whitespace-nowrap ${awayWin ? "font-semibold text-ink" : "text-ink-2"}`}>{awayName}</span>
+        </Link>
+      </td>
+    </tr>
+  );
+}
+
+function Games({ games, base, season, mode }: { games: EuroGameRow[]; base: string; season: string; mode: "results" | "fixtures" }) {
+  const { t } = useI18n();
+  const rows = useMemo(() => {
+    if (mode === "results") {
+      return games.filter((g) => g.played).sort((a, b) => {
+        const d = (b.game_date ?? "").localeCompare(a.game_date ?? "");
+        return d !== 0 ? d : b.phase_order - a.phase_order;
+      });
+    }
+    return games.filter((g) => !g.played).sort((a, b) => (a.game_date ?? "").localeCompare(b.game_date ?? ""));
+  }, [games, mode]);
+
+  if (rows.length === 0) {
+    return <p className="text-sm text-ink-3">{t(mode === "results" ? "basketball.noResults" : "basketball.noFixtures")}</p>;
+  }
+
+  // Results: faza gore grupla. Fixtures: tura gore grupla.
+  const groups = mode === "results"
+    ? groupBy(rows, (g) => g.phase_code ?? "RS")
+    : groupBy(rows, (g) => `R${g.round ?? 0}`);
+
+  return (
+    <div>
+      {groups.map((gp) => {
+        const first = gp.items[0];
+        const label = mode === "results"
+          ? t(`basketball.${PHASE_KEY[first.phase_code ?? "RS"] ?? "phaseRS"}`)
+          : `${t("basketball.round")} ${first.round ?? "-"}`;
+        return (
+          <div key={gp.key} className="mb-6">
+            <h3 className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-3">{label}</h3>
+            <table className="min-w-full border-collapse">
+              <tbody>
+                {gp.items.map((g) => (
+                  <GameRow key={g.game_code} g={g} base={base} season={season} showScore={mode === "results"} />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        );
+      })}
     </div>
   );
 }

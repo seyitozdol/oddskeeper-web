@@ -1,4 +1,4 @@
-import { getBasketballStandings, getBasketballPlayerLeaderboard, getBasketballTeamPointsModel } from "@/features/basketball/server/getBasketballStats";
+import { getBasketballStandings, getBasketballPlayerLeaderboard, getBasketballTeamPointsModel, getBasketballGames, getBasketballFixtures } from "@/features/basketball/server/getBasketballStats";
 import BasketballExplorer from "@/features/basketball/components/BasketballExplorer";
 import { normalizeSeason, EURO_SEASONS } from "@/features/euroleague/config";
 import SeasonToggle from "@/components/SeasonToggle";
@@ -11,14 +11,16 @@ export default async function BasketballPage({
 }) {
   const { tab, season } = await searchParams;
   const seasonLabel = normalizeSeason(season);
-  const [standings, leaderboard, teamPoints, t] = await Promise.all([
+  const [standings, leaderboard, teamPoints, games, fixtures, t] = await Promise.all([
     getBasketballStandings(seasonLabel),
     getBasketballPlayerLeaderboard(seasonLabel),
     getBasketballTeamPointsModel(),
+    getBasketballGames(seasonLabel),
+    getBasketballFixtures(),
     getT(),
   ]);
   const initialTab =
-    tab === "players" || tab === "teams" || tab === "match" ? tab : "standings";
+    tab === "results" || tab === "fixtures" || tab === "players" || tab === "teams" || tab === "match" ? tab : "standings";
 
   return (
     <section className="w-full">
@@ -34,7 +36,7 @@ export default async function BasketballPage({
           <SeasonToggle seasons={EURO_SEASONS} current={seasonLabel} />
         </div>
 
-        <BasketballExplorer standings={standings} leaderboard={leaderboard} teamPoints={teamPoints} initialTab={initialTab} season={seasonLabel} />
+        <BasketballExplorer standings={standings} leaderboard={leaderboard} teamPoints={teamPoints} games={games} fixtures={fixtures} initialTab={initialTab} season={seasonLabel} />
       </div>
     </section>
   );

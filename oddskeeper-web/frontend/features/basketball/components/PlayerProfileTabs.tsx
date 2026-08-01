@@ -11,13 +11,14 @@ import type { PlayerCompStats } from "../unified";
 // Birleşik oyuncu profili: BSL yapısı + kulvar (BSL/EL/EC) toggle. Oyuncu birden
 // çok kulvarda oynadıysa toggle ile geçilir; tek kulvarda ise toggle gizli.
 export default function PlayerProfileTabs({
-  name, jerseyNo, teamName, teamSlug, crestUrl, comps,
+  name, jerseyNo, teamName, teamSlug, crestUrl, photoUrl, comps,
 }: {
   name: string;
   jerseyNo?: string | null;
   teamName?: string | null;
   teamSlug?: string | null;   // BSL yerel logo
   crestUrl?: string | null;   // EL/EC uzak crest
+  photoUrl?: string | null;   // oyuncu fotografi (EL/EC image_url); hafif <img>, next/image degil
   comps: PlayerCompStats[];
 }) {
   const { t, locale } = useI18n();
@@ -27,9 +28,12 @@ export default function PlayerProfileTabs({
 
   return (
     <div>
-      {/* Header (tutarlı) */}
+      {/* Header (tutarlı) — oyuncu fotografi varsa foto, yoksa takim logosu, o da yoksa forma/harf */}
       <div className="flex items-center gap-4">
-        {teamSlug ? (
+        {photoUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={photoUrl} alt={name} loading="lazy" className="rounded-xl bg-veil object-cover object-top" style={{ width: 52, height: 52 }} />
+        ) : teamSlug ? (
           <TeamCrest slug={teamSlug} name={teamName} size={52} />
         ) : crestUrl ? (
           // eslint-disable-next-line @next/next/no-img-element

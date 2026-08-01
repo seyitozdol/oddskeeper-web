@@ -15,6 +15,7 @@ import type {
   BktPlayerShareRow,
   BktPlayerWindowRow,
   BktFixtureRow,
+  BktGameRow,
   BktPlayerListRow,
   BktEuroSeasonRow,
   BktEuroLogRow,
@@ -179,6 +180,25 @@ export async function getBasketballFixtures(): Promise<BktFixtureRow[]> {
   }
   // yalnız iki takımı dolu olanlar (Excel Fixture'da boş satırlar var)
   return (data ?? []).filter((f) => f.home_team_slug && f.away_team_slug);
+}
+
+// Mac-seviyesi liste (bir satir = bir mac). Hub Results sekmesi.
+// BSL tarihleri birkac macta bozuk → week desc birincil sira (playoff turlari ustte).
+export async function getBasketballGames(season: string = SEASON): Promise<BktGameRow[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .schema("analytics")
+    .from("bb_games_v1")
+    .select("*")
+    .eq("season_label", season)
+    .order("week", { ascending: false })
+    .order("match_date", { ascending: false })
+    .returns<BktGameRow[]>();
+  if (error) {
+    console.error("getBasketballGames error:", error.message);
+    return [];
+  }
+  return data ?? [];
 }
 
 export async function getBasketballAllTeamMatchLogs(): Promise<BktTeamLogRow[]> {

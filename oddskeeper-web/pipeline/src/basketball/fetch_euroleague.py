@@ -71,6 +71,38 @@ def team_stat_cols(t: dict) -> dict:
     return c
 
 
+def _team_dim(club, comp, scode, slabel):
+    return {"competition": comp, "season_code": scode, "season_label": slabel,
+            "team_code": club["code"], "team_name": club.get("name"),
+            "abbr_name": club.get("abbreviatedName"), "editorial_name": club.get("editorialName"),
+            "crest_url": (club.get("images") or {}).get("crest")}
+
+
+def schedule_rows(meta: dict, comp: str, scode: str, slabel: str):
+    """Program (fikstur) satiri: meta'dan game_row + team_dims (stats CAGRISI YOK).
+
+    Oynanmamis maclarda skor NULL; oynanmislarda meta'daki score kullanilir.
+    """
+    home = meta["local"]["club"]
+    away = meta["road"]["club"]
+    played = bool(meta.get("played"))
+
+    def score(side):
+        return i(meta.get(side, {}).get("score")) if played else None
+
+    game_row = {
+        "competition": comp, "season_code": scode, "season_label": slabel,
+        "game_code": meta["gameCode"], "identifier": meta.get("identifier"),
+        "round": meta.get("round"), "phase_code": (meta.get("phaseType") or {}).get("code"),
+        "phase_name": (meta.get("phaseType") or {}).get("name"),
+        "game_date": to_date(meta.get("date") or meta.get("utcDate")), "played": played,
+        "home_team_code": home["code"], "home_team_name": home.get("name"),
+        "away_team_code": away["code"], "away_team_name": away.get("name"),
+        "home_score": score("local"), "away_score": score("road"),
+    }
+    return game_row, [_team_dim(home, comp, scode, slabel), _team_dim(away, comp, scode, slabel)]
+
+
 def normalize(meta: dict, stats: dict, comp: str, scode: str, slabel: str):
     gc = meta["gameCode"]
     home = meta["local"]["club"]
@@ -207,6 +239,34 @@ def run(args):
     print(f"[el] competition={comp} season={scode} label={slabel} dry_run={args.dry_run}", flush=True)
 
     games = api_get(f"{API}/{comp}/seasons/{scode}/games")["data"]
+
+    if args.schedule:
+        print(f"[el] SCHEDULE modu: {len(games)} mac (oynanmamis dahil) game_row+team yazilacak", flush=True)
+        conn = None if args.dry_run else psycopg2.connect(os.environ["DATABASE_URL"])
+        n = 0
+        for meta in games:
+            gr, tdims = schedule_rows(meta, comp, scode, slabel)
+            if args.dry_run:
+                if n < 5:
+                    print(f"  R{gr['round']} {gr['phase_code']} {gr['game_date']} "
+                          f"{gr['home_team_name']} {gr['home_score']}-{gr['away_score']} "
+                          f"{gr['away_team_name']} played={gr['played']}", flush=True)
+            else:
+                with conn.cursor() as cur:
+                    _upsert(cur, "euroleague.teams", TEAM_DIM_COLS, tdims,
+                            "competition,season_code,team_code",
+                            [c for c in TEAM_DIM_COLS if c not in ("competition", "season_code", "team_code")])
+                    _upsert(cur, "euroleague.games", GAME_COLS, [gr],
+                            "competition,season_code,game_code",
+                            [c for c in GAME_COLS if c not in ("competition", "season_code", "game_code")])
+                conn.commit()
+            n += 1
+        if conn:
+            conn.close()
+        print(f"[el] SCHEDULE BITTI: {n} mac programi yazildi "
+              f"({'DRY-RUN' if args.dry_run else 'DB'}).", flush=True)
+        return
+
     if args.game:
         metas = [g for g in games if g.get("gameCode") == args.game]
     else:
@@ -262,6 +322,8 @@ def main():
     ap.add_argument("--phase", help="yalniz bu faz (RS/PO/FF)")
     ap.add_argument("--game", type=int, help="tek mac (gameCode) - test")
     ap.add_argument("--limit", type=int, help="ilk N mac - test")
+    ap.add_argument("--schedule", action="store_true",
+                    help="tum programi (oynanmamis dahil) game_row+team olarak yaz, stats CEKME")
     ap.add_argument("--sleep", type=float, default=0.15, help="istekler arasi sn")
     ap.add_argument("--dry-run", action="store_true")
     run(ap.parse_args())

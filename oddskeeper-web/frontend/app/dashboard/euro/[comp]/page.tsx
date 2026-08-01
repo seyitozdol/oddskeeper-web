@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { getEuroStandings, getEuroLeaderboard } from "@/features/euroleague/server";
+import { getEuroStandings, getEuroLeaderboard, getEuroGames } from "@/features/euroleague/server";
 import { resolveEuroComp, normalizeSeason, seasonCodeFor, EURO_SEASONS } from "@/features/euroleague/config";
 import EuroExplorer from "@/features/euroleague/components/EuroExplorer";
 import SeasonToggle from "@/components/SeasonToggle";
@@ -17,9 +17,10 @@ export default async function EuroHubPage({
 
   const seasonLabel = normalizeSeason(season);
   const seasonCode = seasonCodeFor(cfg.code, seasonLabel);
-  const [standings, leaderboard] = await Promise.all([
+  const [standings, leaderboard, games] = await Promise.all([
     getEuroStandings(cfg.code, seasonCode),
     getEuroLeaderboard(cfg.code, seasonCode),
+    getEuroGames(cfg.code, seasonCode),
   ]);
 
   return (
@@ -37,7 +38,7 @@ export default async function EuroHubPage({
           <SeasonToggle seasons={EURO_SEASONS} current={seasonLabel} />
         </div>
 
-        <EuroExplorer comp={cfg.key} standings={standings} leaderboard={leaderboard} season={seasonLabel} />
+        <EuroExplorer comp={cfg.key} standings={standings} leaderboard={leaderboard} games={games} season={seasonLabel} />
       </div>
     </section>
   );

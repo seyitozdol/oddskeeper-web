@@ -224,6 +224,7 @@ export type BktEuroSeasonRow = {
   fg3_pct: number | null;
   ft_pct: number | null;
   ts_pct: number | null;
+  image_url: string | null;
 };
 
 export type BktEuroLogRow = {
@@ -287,6 +288,21 @@ export type BktFixtureRow = {
   home_team_name: string | null;
   away_team_slug: string | null;
   away_team_name: string | null;
+};
+
+// Mac listesi (bb_games_v1) — hub Results sekmesi. Bir satir = bir mac (ev perspektifi).
+export type BktGameRow = {
+  season_label: string;
+  competition: string | null;
+  match_key: string;
+  match_date: string | null;
+  week: number | null;
+  home_team_slug: string;
+  home_team_name: string;
+  away_team_slug: string | null;
+  away_team_name: string | null;
+  home_score: number | null;
+  away_score: number | null;
 };
 
 export type BktTeamLogRow = {

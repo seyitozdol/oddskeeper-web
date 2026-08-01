@@ -2,7 +2,7 @@
 // competition code (E/U) + season_code (E2025 vb.) ile filtrelenir.
 
 import { createClient } from "@/lib/supabase/server";
-import type { EuroTeamRow, EuroLeaderRow, EuroPlayerLogRow, EuroTeamLogRow } from "./types";
+import type { EuroTeamRow, EuroLeaderRow, EuroPlayerLogRow, EuroTeamLogRow, EuroGameRow } from "./types";
 
 export async function getEuroStandings(code: "E" | "U", seasonCode: string): Promise<EuroTeamRow[]> {
   const supabase = await createClient();
@@ -39,6 +39,18 @@ export async function getEuroTeamsForBslSlug(bslTeamSlug: string, seasonLabel: s
     .eq("bsl_team_slug", bslTeamSlug).eq("season_label", seasonLabel)
     .returns<EuroTeamRow[]>();
   if (error) { console.error("getEuroTeamsForBslSlug", error.message); return []; }
+  return data ?? [];
+}
+
+// Turnuvanin tum maclari (oynanmis + program). Component played'e gore Results/Fixtures ayirir.
+export async function getEuroGames(code: "E" | "U", seasonCode: string): Promise<EuroGameRow[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .schema("analytics").from("el_games_v1").select("*")
+    .eq("competition", code).eq("season_code", seasonCode)
+    .order("game_date", { ascending: true })
+    .returns<EuroGameRow[]>();
+  if (error) { console.error("getEuroGames", error.message); return []; }
   return data ?? [];
 }
 
