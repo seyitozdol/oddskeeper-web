@@ -45,11 +45,13 @@ select
   rank() over (partition by agg.competition, agg.season_code
                order by wins desc, (tot_points-tot_opp) desc)      as standings_rank,
   tm.crest_url,
-  lnk.bsl_team_slug
+  lnk.bsl_team_slug,
+  bt.team_name as bsl_team_name
 from agg
 left join euroleague.teams tm
   on tm.competition=agg.competition and tm.season_code=agg.season_code and tm.team_code=agg.team_code
-left join euroleague.team_bsl_link lnk on lnk.team_code=agg.team_code;
+left join euroleague.team_bsl_link lnk on lnk.team_code=agg.team_code
+left join basketball.teams bt on bt.team_slug=lnk.bsl_team_slug;
 
 -- Takim mac logu (takim detay sayfasi icin)
 create or replace view analytics.el_team_game_log_v1 as
@@ -109,10 +111,13 @@ select
   round((a.tot_fg3m::numeric/nullif(a.tot_fg3a,0))*100,1) as fg3_pct,
   round((a.tot_ftm::numeric/nullif(a.tot_fta,0))*100,1)   as ft_pct,
   round((a.tot_pts::numeric/nullif(2*(a.tot_fga+0.44*a.tot_fta),0))*100,1) as ts_pct,
-  ((a.tot_sec/60.0)/nullif(a.games,0) >= 10 and a.games >= greatest(5, 0.30*mx.mg)) as is_qualified
+  ((a.tot_sec/60.0)/nullif(a.games,0) >= 10 and a.games >= greatest(5, 0.30*mx.mg)) as is_qualified,
+  bt.team_name as bsl_team_name
 from agg a
 join mx on mx.competition=a.competition and mx.season_code=a.season_code
-left join lnk l on l.person_code=a.person_code;
+left join lnk l on l.person_code=a.person_code
+left join euroleague.team_bsl_link tl on tl.team_code=a.team_code
+left join basketball.teams bt on bt.team_slug=tl.bsl_team_slug;
 
 grant select on analytics.el_team_season_v1, analytics.el_player_leaderboard_v1,
   analytics.el_team_game_log_v1 to anon, authenticated;

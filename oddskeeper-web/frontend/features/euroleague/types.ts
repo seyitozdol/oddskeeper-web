@@ -25,6 +25,7 @@ export type EuroTeamRow = {
   standings_rank: number;
   crest_url?: string | null;
   bsl_team_slug?: string | null;
+  bsl_team_name?: string | null;
 };
 
 export type EuroLeaderRow = {
@@ -35,6 +36,7 @@ export type EuroLeaderRow = {
   player_name: string;
   team_code: string | null;
   team_name: string | null;
+  bsl_team_name: string | null;
   bsl_player_slug: string | null;
   games: number;
   mpg: number | null;

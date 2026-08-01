@@ -4,10 +4,15 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useI18n } from "@/lib/i18n/LanguageProvider";
 import { fmt } from "@/features/basketball/lib";
+import { normalizePlayerName } from "@/features/basketball/unified";
 import type { EuroTeamRow, EuroLeaderRow } from "../types";
 import type { EuroCompKey } from "../config";
 
 type Tab = "standings" | "players" | "teams";
+
+// Türk takımı ise BSL adı (Beşiktaş), değilse euro adı.
+const teamDisplay = (r: { bsl_team_name?: string | null; team_name?: string | null }) =>
+  r.bsl_team_name || r.team_name || "";
 
 function Th({ children, right }: { children: React.ReactNode; right?: boolean }) {
   return (
@@ -90,8 +95,8 @@ function Standings({ rows, base }: { rows: EuroTeamRow[]; base: string }) {
               <td className="px-2 py-2 text-ink-3 tabular-nums">{r.standings_rank}</td>
               <td className="px-2 py-2">
                 <Link href={`${base}/team/${r.team_code}`} className="flex items-center gap-2 font-medium text-ink hover:text-accent-ink">
-                  <Crest url={r.crest_url} name={r.team_name} size={28} />
-                  <span className="whitespace-nowrap">{r.team_name}</span>
+                  <Crest url={r.crest_url} name={teamDisplay(r)} size={28} />
+                  <span className="whitespace-nowrap">{teamDisplay(r)}</span>
                 </Link>
               </td>
               <td className="px-2 py-2 text-right tabular-nums text-ink-2">{r.games}</td>
@@ -170,11 +175,11 @@ function PlayerLeaders({ rows, comp, base }: { rows: EuroLeaderRow[]; comp: Euro
                   <td className="px-2 py-2 text-ink-3 tabular-nums">{i + 1}</td>
                   <td className="px-2 py-2">
                     <Link href={`${base}/player/${r.person_code}`} className="font-medium text-ink hover:text-accent-ink whitespace-nowrap">
-                      {r.player_name}
+                      {normalizePlayerName(r.player_name)}
                     </Link>
                   </td>
                   <td className="px-2 py-2">
-                    <Link href={`${base}/team/${r.team_code}`} className="text-ink-2 hover:text-accent-ink whitespace-nowrap text-[12px]">{r.team_name}</Link>
+                    <Link href={`${base}/team/${r.team_code}`} className="text-ink-2 hover:text-accent-ink whitespace-nowrap text-[12px]">{teamDisplay(r)}</Link>
                   </td>
                   <td className="px-2 py-2 text-right tabular-nums text-ink-2">{r.games}</td>
                   <td className="px-2 py-2 text-right tabular-nums text-ink-2">{fmt(r.mpg)}</td>
@@ -236,8 +241,8 @@ function TeamLeaders({ rows, base }: { rows: EuroTeamRow[]; base: string }) {
                 <td className="px-2 py-2 text-ink-3 tabular-nums">{i + 1}</td>
                 <td className="px-2 py-2">
                   <Link href={`${base}/team/${r.team_code}`} className="flex items-center gap-2 font-medium text-ink hover:text-accent-ink">
-                    <Crest url={r.crest_url} name={r.team_name} size={28} />
-                    <span className="whitespace-nowrap">{r.team_name}</span>
+                    <Crest url={r.crest_url} name={teamDisplay(r)} size={28} />
+                    <span className="whitespace-nowrap">{teamDisplay(r)}</span>
                   </Link>
                 </td>
                 <td className="px-2 py-2 text-right font-semibold tabular-nums text-accent-ink">{fmt(metric.get(r), 1)}</td>
