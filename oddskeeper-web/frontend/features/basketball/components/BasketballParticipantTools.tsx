@@ -22,6 +22,8 @@ type Props = {
   windows: BktPlayerWindowRow[];
   teamLogs: BktTeamLogRow[];
   players: BktPlayerListRow[];
+  league?: string;          // 'basketball' (BSL) | 'euroleague' | 'eurocup'
+  toolsBase?: string;       // takım/oyuncu profil linkleri için kök (örn /dashboard/euro/euroleague)
 };
 
 type Tab = "model" | "players" | "fixtures" | "config" | "input";
@@ -30,7 +32,7 @@ type InputType = "player" | "team";
 const btnSave = "rounded-md border border-teal-500/30 bg-teal-500/10 px-3 py-1.5 text-[12px] font-semibold text-teal-300 hover:bg-teal-500/20";
 const btnGhost = "rounded-md border border-line px-3 py-1.5 text-[12px] font-semibold text-ink-2 hover:text-ink";
 
-export default function BasketballParticipantTools({ splits, forms, windows, teamLogs, players }: Props) {
+export default function BasketballParticipantTools({ splits, forms, windows, teamLogs, players, league = "basketball" }: Props) {
   const { t, locale } = useI18n();
   const [tab, setTab] = useState<Tab>("model");
   const [fixtures, setFixtures] = useState<PmFixture[]>([]);
@@ -39,9 +41,9 @@ export default function BasketballParticipantTools({ splits, forms, windows, tea
   const [inputType, setInputType] = useState<InputType>("player");
   const [inputRows, setInputRows] = useState<BktInputRow[]>([]);
 
-  const reloadFixtures = () => fetchPmFixtures().then(setFixtures);
-  const reloadConfig = () => fetchMarketConfig().then(setConfig);
-  useEffect(() => { reloadFixtures(); reloadConfig(); fetchPlayerIds().then(setPlayerIds); }, []);
+  const reloadFixtures = () => fetchPmFixtures(league).then(setFixtures);
+  const reloadConfig = () => fetchMarketConfig(league).then(setConfig);
+  useEffect(() => { reloadFixtures(); reloadConfig(); fetchPlayerIds(league).then(setPlayerIds); }, [league]);
 
   const teams = useMemo(() => [...splits].map((s) => ({ slug: s.team_slug, name: s.team_name })).sort((a, b) => a.name.localeCompare(b.name, "tr")), [splits]);
 
@@ -67,9 +69,9 @@ export default function BasketballParticipantTools({ splits, forms, windows, tea
         <BasketballTools pmFixtures={fixtures} splits={splits} forms={forms} windows={windows} teamLogs={teamLogs}
           playerIds={playerIds} config={config} inputRows={inputRows} onAdd={(rows) => setInputRows((p) => [...p, ...rows])} />
       </div>
-      {tab === "players" && <PlayerListTab players={players} playerIds={playerIds} onSaved={setPlayerIds} t={t} />}
-      {tab === "fixtures" && <FixturesTab fixtures={fixtures} teams={teams} reload={reloadFixtures} t={t} />}
-      {tab === "config" && <ConfigTab config={config} reload={reloadConfig} inputType={inputType} setInputType={setInputType} locale={locale} t={t} />}
+      {tab === "players" && <PlayerListTab players={players} playerIds={playerIds} onSaved={setPlayerIds} league={league} t={t} />}
+      {tab === "fixtures" && <FixturesTab fixtures={fixtures} teams={teams} reload={reloadFixtures} league={league} t={t} />}
+      {tab === "config" && <ConfigTab config={config} reload={reloadConfig} inputType={inputType} setInputType={setInputType} league={league} locale={locale} t={t} />}
       {tab === "input" && <InputTab allRows={inputRows} setRows={setInputRows} initialType={inputType} t={t} />}
     </div>
   );
@@ -102,7 +104,7 @@ function findDuplicatePlayers(players: BktPlayerListRow[]): BktPlayerListRow[][]
   return out;
 }
 
-function PlayerListTab({ players, playerIds, onSaved, t }: { players: BktPlayerListRow[]; playerIds: Record<string, string>; onSaved: (m: Record<string, string>) => void; t: (k: string) => string }) {
+function PlayerListTab({ players, playerIds, onSaved, league, t }: { players: BktPlayerListRow[]; playerIds: Record<string, string>; onSaved: (m: Record<string, string>) => void; league: string; t: (k: string) => string }) {
   const router = useRouter();
   const [edits, setEdits] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
@@ -122,14 +124,14 @@ function PlayerListTab({ players, playerIds, onSaved, t }: { players: BktPlayerL
       .map((p) => ({ alias_slug: p.player_slug, canonical_slug: keepSlug, canonical_name: keepName }));
     if (rows.length === 0) return;
     setMerging(key);
-    const ok = await savePlayerMerges(rows);
+    const ok = await savePlayerMerges(rows, league);
     setMerging(null);
     if (ok) router.refresh();
   };
   const val = (slug: string) => edits[slug] ?? playerIds[slug] ?? "";
   const save = async () => {
     setSaving(true);
-    const ok = await savePlayerIds(edits);
+    const ok = await savePlayerIds(edits, league);
     setSaving(false);
     if (ok) { const merged = { ...playerIds, ...edits }; onSaved(merged); setEdits({}); }
   };
@@ -191,7 +193,7 @@ function PlayerListTab({ players, playerIds, onSaved, t }: { players: BktPlayerL
 }
 
 /* ---------- Fixtures ---------- */
-function FixturesTab({ fixtures, teams, reload, t }: { fixtures: PmFixture[]; teams: { slug: string; name: string }[]; reload: () => void; t: (k: string) => string }) {
+function FixturesTab({ fixtures, teams, reload, league, t }: { fixtures: PmFixture[]; teams: { slug: string; name: string }[]; reload: () => void; league: string; t: (k: string) => string }) {
   const [h, setH] = useState(teams[0]?.slug ?? "");
   const [a, setA] = useState(teams[1]?.slug ?? "");
   const [ext, setExt] = useState("");
@@ -200,7 +202,7 @@ function FixturesTab({ fixtures, teams, reload, t }: { fixtures: PmFixture[]; te
   const add = async () => {
     if (!h || !a || h === a) return;
     const hn = teams.find((x) => x.slug === h)?.name ?? h, an = teams.find((x) => x.slug === a)?.name ?? a;
-    await insertFixture({ home_team_slug: h, away_team_slug: a, home_team_name: hn, away_team_name: an, external_id: ext.trim() || null, match_date: null, note: null });
+    await insertFixture({ home_team_slug: h, away_team_slug: a, home_team_name: hn, away_team_name: an, external_id: ext.trim() || null, match_date: null, note: null }, league);
     setExt(""); reload();
   };
   const extVal = (f: PmFixture) => extEdits[f.id] ?? f.external_id ?? "";
@@ -241,10 +243,10 @@ function FixturesTab({ fixtures, teams, reload, t }: { fixtures: PmFixture[]; te
 }
 
 /* ---------- Config (line üretim kuralları) ---------- */
-function ConfigTab({ config, reload, inputType, setInputType, locale, t }: {
+function ConfigTab({ config, reload, inputType, setInputType, league, locale, t }: {
   config: PmMarketConfig[]; reload: () => void;
   inputType: "player" | "team"; setInputType: (t: "player" | "team") => void;
-  locale: string; t: (k: string) => string;
+  league: string; locale: string; t: (k: string) => string;
 }) {
   const [edits, setEdits] = useState<Record<string, Partial<PmMarketConfig>>>({});
   const [saving, setSaving] = useState(false);
@@ -272,7 +274,7 @@ function ConfigTab({ config, reload, inputType, setInputType, locale, t }: {
     });
     if (rows.length === 0) return;
     setSaving(true);
-    const ok = await upsertMarketConfig(rows);
+    const ok = await upsertMarketConfig(rows, league);
     setSaving(false);
     if (ok) { setEdits({}); reload(); }
   };
@@ -294,7 +296,7 @@ function ConfigTab({ config, reload, inputType, setInputType, locale, t }: {
   };
   const removeMarket = async (c: PmMarketConfig) => {
     if (!window.confirm(t("basketball.confirmDelete"))) return;
-    if (await deleteMarketConfig(c.market_group, c.market_key)) reload();
+    if (await deleteMarketConfig(c.market_group, c.market_key, league)) reload();
   };
 
   const numCell = (c: PmMarketConfig, key: keyof PmMarketConfig, w = "w-12", nullable = false, ph = "") => (
