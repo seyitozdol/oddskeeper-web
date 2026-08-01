@@ -10,10 +10,11 @@ import {
   fetchPlayerIds, savePlayerIds,
   savePlayerMerges, PmMerge,
   fetchMarketConfig, upsertMarketConfig, deleteMarketConfig, PmMarketConfig,
+  fetchModelConfig, saveModelConfig, PmModelConfig,
 } from "../pmQueries";
 import type {
   BktHomeAwaySplitRow, BktTeamMetricFormRow, BktPlayerWindowRow,
-  BktTeamLogRow, BktPlayerListRow, BktInputRow,
+  BktTeamLogRow, BktPlayerListRow, BktInputRow, BktPlayerRoleRow,
 } from "../types";
 
 type Props = {
@@ -22,6 +23,7 @@ type Props = {
   windows: BktPlayerWindowRow[];
   teamLogs: BktTeamLogRow[];
   players: BktPlayerListRow[];
+  roles?: BktPlayerRoleRow[];   // BSL oyuncu rol+pozisyon (Player Dist etiketi); EL/EC'de yok
   league?: string;          // 'basketball' (BSL) | 'euroleague' | 'eurocup'
   toolsBase?: string;       // takım/oyuncu profil linkleri için kök (örn /dashboard/euro/euroleague)
 };
@@ -32,7 +34,7 @@ type InputType = "player" | "team";
 const btnSave = "rounded-md border border-teal-500/30 bg-teal-500/10 px-3 py-1.5 text-[12px] font-semibold text-teal-300 hover:bg-teal-500/20";
 const btnGhost = "rounded-md border border-line px-3 py-1.5 text-[12px] font-semibold text-ink-2 hover:text-ink";
 
-export default function BasketballParticipantTools({ splits, forms, windows, teamLogs, players, league = "basketball" }: Props) {
+export default function BasketballParticipantTools({ splits, forms, windows, teamLogs, players, roles = [], league = "basketball" }: Props) {
   const { t, locale } = useI18n();
   const [tab, setTab] = useState<Tab>("model");
   const [fixtures, setFixtures] = useState<PmFixture[]>([]);
@@ -67,7 +69,7 @@ export default function BasketballParticipantTools({ splits, forms, windows, tea
       {/* Model her zaman mount kalır → sekme değişince fixture/takım seçimi kaybolmaz */}
       <div className={tab === "model" ? "" : "hidden"}>
         <BasketballTools pmFixtures={fixtures} splits={splits} forms={forms} windows={windows} teamLogs={teamLogs}
-          playerIds={playerIds} config={config} inputRows={inputRows}
+          playerIds={playerIds} config={config} inputRows={inputRows} roles={roles}
           competition={league === "euroleague" ? "E" : league === "eurocup" ? "U" : undefined}
           onAdd={(rows) => setInputRows((p) => [...p, ...rows])} />
       </div>
@@ -244,6 +246,43 @@ function FixturesTab({ fixtures, teams, reload, league, t }: { fixtures: PmFixtu
   );
 }
 
+/* ---------- Rol eşikleri (model_config) editörü — Player Dist etiketi kuralı ---------- */
+function RoleThresholdEditor({ t }: { t: (k: string) => string }) {
+  const [rows, setRows] = useState<PmModelConfig[]>([]);
+  const [edits, setEdits] = useState<Record<string, number>>({});
+  const [saving, setSaving] = useState(false);
+  useEffect(() => { fetchModelConfig().then((r) => setRows(r.filter((x) => x.key.startsWith("role_")))); }, []);
+  const val = (k: string, v: number) => edits[k] ?? v;
+  const save = async () => {
+    const payload = Object.entries(edits).map(([key, value]) => ({ key, value }));
+    if (payload.length === 0) return;
+    setSaving(true);
+    const ok = await saveModelConfig(payload);
+    setSaving(false);
+    if (ok) { setRows((rs) => rs.map((r) => (edits[r.key] != null ? { ...r, value: edits[r.key] } : r))); setEdits({}); }
+  };
+  if (rows.length === 0) return null;
+  return (
+    <div className="mb-4 rounded-lg border border-line bg-card-2/40 px-3 py-2.5">
+      <div className="mb-1 flex items-center gap-3">
+        <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-3">{t("basketball.cfgRoleTitle")}</span>
+        <button onClick={save} disabled={saving || Object.keys(edits).length === 0} className={`${btnSave} disabled:opacity-50`}>{t("basketball.save")}</button>
+      </div>
+      <p className="mb-2 text-[11px] text-ink-3">{t("basketball.cfgRoleHint")}</p>
+      <div className="flex flex-wrap gap-x-5 gap-y-1.5">
+        {rows.map((r) => (
+          <label key={r.key} className="flex items-center gap-1.5 text-[11px] text-ink-2" title={r.note ?? r.key}>
+            <span className="text-ink-3">{r.note ?? r.key}</span>
+            <input type="number" step="any" value={val(r.key, r.value)}
+              onChange={(e) => setEdits((s) => ({ ...s, [r.key]: parseFloat(e.target.value) }))}
+              className="w-16 rounded border border-line bg-field px-1 py-0.5 text-right text-[11px] text-ink outline-none focus:border-line-strong" />
+          </label>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /* ---------- Config (line üretim kuralları) ---------- */
 function ConfigTab({ config, reload, inputType, setInputType, league, locale, t }: {
   config: PmMarketConfig[]; reload: () => void;
@@ -373,6 +412,8 @@ function ConfigTab({ config, reload, inputType, setInputType, league, locale, t 
         <button onClick={save} disabled={saving || Object.keys(edits).length === 0} className={`${btnSave} disabled:opacity-50`}>{t("basketball.save")}</button>
         <p className="text-[11px] text-ink-3">{t("basketball.cfgHint")}</p>
       </div>
+
+      {league === "basketball" ? <RoleThresholdEditor t={t} /> : null}
 
       {/* yeni market ekleme — isim elle; base "manual"=data yok (dağıtılmaz) */}
       <div className="mb-3 flex flex-wrap items-end gap-2 rounded-lg border border-line bg-card-2/40 px-3 py-2">

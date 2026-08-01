@@ -170,6 +170,30 @@ export async function deletePlayerMerge(alias_slug: string, league = "basketball
   return true;
 }
 
+/* ---------------- model config (rol eşikleri vb.) ---------------- */
+export type PmModelConfig = { key: string; value: number; note: string | null };
+
+export async function fetchModelConfig(): Promise<PmModelConfig[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .schema("analytics").from("bb_model_config")
+    .select("key,value,note").order("key", { ascending: true })
+    .returns<PmModelConfig[]>();
+  if (error) { console.error("fetchModelConfig", error.message); return []; }
+  return data ?? [];
+}
+// Sadece mevcut anahtarların value'sunu günceller (view auto-updatable, insert gerekmez).
+export async function saveModelConfig(rows: { key: string; value: number }[]): Promise<boolean> {
+  if (rows.length === 0) return true;
+  const supabase = createClient();
+  for (const r of rows) {
+    const { error } = await supabase.schema("analytics").from("bb_model_config")
+      .update({ value: r.value }).eq("key", r.key);
+    if (error) { console.error("saveModelConfig", error.message); return false; }
+  }
+  return true;
+}
+
 /* ---------------- player external ids ---------------- */
 export async function fetchPlayerIds(league = "basketball"): Promise<Record<string, string>> {
   const supabase = createClient();

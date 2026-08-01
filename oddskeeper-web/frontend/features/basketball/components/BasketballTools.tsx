@@ -4,13 +4,13 @@ import { useMemo, useState } from "react";
 import { useI18n } from "@/lib/i18n/LanguageProvider";
 import { buildLadder, buildConfiguredLines, moneyline, type LineConfig } from "../odds";
 import { PLAYER_MARKETS, TEAM_MARKETS, teamStd, playerStd, metricLabel, isDistributable } from "../marketConfig";
-import { formatMatchDate } from "../lib";
+import { formatMatchDate, normalizePositionCode, positionLabel, roleLabelKey, roleBadgeClass } from "../lib";
 import { TeamCrest } from "./ui";
 import BasketballPlayerDrawer from "./BasketballPlayerDrawer";
 import type { PmFixture, PmMarketConfig } from "../pmQueries";
 import type {
   BktHomeAwaySplitRow, BktTeamMetricFormRow, BktPlayerWindowRow,
-  BktTeamLogRow, BktInputRow,
+  BktTeamLogRow, BktInputRow, BktPlayerRoleRow,
 } from "../types";
 
 type Props = {
@@ -22,6 +22,7 @@ type Props = {
   playerIds: Record<string, string>;
   config: PmMarketConfig[];
   inputRows: BktInputRow[];
+  roles?: BktPlayerRoleRow[];   // BSL oyuncu rol+pozisyon (Player Dist etiketi)
   competition?: "E" | "U";   // EL/EC ise drawer euro veriye bağlanır
   onAdd: (rows: BktInputRow[]) => void;
 };
@@ -69,8 +70,11 @@ function NumInput({ value, onChange, step = 0.1, w = "w-16", warn = false }: { v
   );
 }
 
-export default function BasketballTools({ pmFixtures, splits, forms, windows, teamLogs, playerIds, config, inputRows, competition, onAdd }: Props) {
+export default function BasketballTools({ pmFixtures, splits, forms, windows, teamLogs, playerIds, config, inputRows, roles = [], competition, onAdd }: Props) {
   const { t, locale } = useI18n();
+  // rol+pozisyon aramas: "team_slug:player_slug" → satır (Player Dist etiketi).
+  const roleBy = useMemo(() => new Map(roles.map((r) => [`${r.team_slug}:${r.player_slug}`, r])), [roles]);
+  const euroTeamSlugs = useMemo(() => new Set(roles.filter((r) => r.euro_team).map((r) => r.team_slug)), [roles]);
   // Input'ta zaten olan satır anahtarları (mükerrer engelleme) + oyuncu+market seti (uyarı).
   const existingKeys = useMemo(() => new Set(inputRows.map(rowKey)), [inputRows]);
   const existingPlayerMkt = useMemo(() => new Set(inputRows.filter((r) => r.kind === "player").map((r) => `${r.template}|${r.participant}`)), [inputRows]);
@@ -335,7 +339,8 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
               playerValue={playerValue} setVal={(k, v) => setPlayerVal((p) => ({ ...p, [k]: v }))} expRef={expRef}
               teamTarget={(slug, mk) => teamTrader(slug, mk, slug === homeSlug ? effHome : effAway)}
               onAdd={onAdd} playerIds={playerIds} playerCfg={playerCfg} playerMarkets={playerMarkets}
-              existingKeys={existingKeys} existingPlayerMkt={existingPlayerMkt} onReset={resetPlayer} competition={competition} fixExtId={fixExtId} locale={locale} t={t} />
+              existingKeys={existingKeys} existingPlayerMkt={existingPlayerMkt} onReset={resetPlayer} competition={competition} fixExtId={fixExtId}
+              roleBy={roleBy} euroTeamSlugs={euroTeamSlugs} locale={locale} t={t} />
           )}
         </>
       ) : (<p className="text-sm text-ink-3">{t("basketball.matchPickTeams")}</p>)}
@@ -479,7 +484,7 @@ function TeamRecent({ name, logs, locale, t }: { name: string; logs: BktTeamLogR
 }
 
 /* ---------- Player distribution panel ---------- */
-function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effAway, winBy, isTicked, setTick, playerValue, setVal, expRef, teamTarget, onAdd, playerIds, playerCfg, playerMarkets, existingKeys, existingPlayerMkt, onReset, competition, fixExtId, locale, t }: {
+function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effAway, winBy, isTicked, setTick, playerValue, setVal, expRef, teamTarget, onAdd, playerIds, playerCfg, playerMarkets, existingKeys, existingPlayerMkt, onReset, competition, fixExtId, roleBy, euroTeamSlugs, locale, t }: {
   homeSlug: string; awaySlug: string; homeName: string; awayName: string; effHome: number; effAway: number;
   winBy: Map<string, Map<string, BktPlayerWindowRow[]>>;
   isTicked: (s: string, mk: string, w: BktPlayerWindowRow) => boolean;
@@ -497,6 +502,8 @@ function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effA
   onReset: () => void;
   competition?: "E" | "U";
   fixExtId: string;
+  roleBy: Map<string, BktPlayerRoleRow>;
+  euroTeamSlugs: Set<string>;
   locale: "tr" | "en";
   t: (k: string) => string;
 }) {
@@ -512,9 +519,13 @@ function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effA
   const met = playerMarkets.find((m) => m.key === mk) ?? playerMarkets[0];
   const allList = winBy.get(slug)?.get(met?.base ?? mk) ?? [];
   if (!met) return null;
+  const roleOf = (w: BktPlayerWindowRow) => roleBy.get(`${slug}:${w.player_slug}`);
+  const ROLE_ORDER: Record<string, number> = { starter: 0, rotation: 1, limited: 2, garbage: 3, departed: 4 };
   const sortVal = (w: BktPlayerWindowRow): number | string => {
     switch (sort.key) {
       case "player": return w.player_name;
+      case "pos": return normalizePositionCode(roleOf(w)?.position) ?? "zzz";
+      case "role": return ROLE_ORDER[roleOf(w)?.role ?? ""] ?? 9;
       case "min": return w.avg_minutes ?? 0;
       case "matches": return w.games ?? 0;
       case "w5": return w.last5_avg ?? 0;
@@ -582,6 +593,11 @@ function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effA
                 <button key={sd} onClick={() => { setSide(sd); setSelPlayer(null); }} className={`rounded-md px-3.5 py-1 text-[12px] font-semibold transition-colors ${side === sd ? "bg-accent text-white shadow-sm" : "bg-card-2 text-ink-3 hover:text-ink"}`}>{sd === "home" ? homeName : awayName}</button>
               ))}
             </div>
+            {euroTeamSlugs.has(slug) ? (
+              <span title={t("basketball.euroTeamNote")} className="inline-flex cursor-help items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-semibold text-amber-300">
+                ⚠ {t("basketball.euroTeamBadge")}
+              </span>
+            ) : null}
           </div>
           <span className="ml-auto text-[12px] text-ink-3">
             {met.distributable ? (
@@ -622,12 +638,14 @@ function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effA
           <thead><tr className="border-b border-line text-[10px] uppercase tracking-[0.12em] text-ink-3">
             <th className="px-2 py-1.5 text-center"><input type="checkbox" title={t("basketball.tickAll")} checked={players.length > 0 && players.every((w) => isTicked(slug, mk, w))} onChange={(e) => players.forEach((w) => setTick(`${slug}:${mk}:${w.player_slug}`, e.target.checked))} className="accent-[var(--accent)]" /></th>
             <th className="px-2 py-1.5 text-left"><button onClick={() => toggleSort("player")} className="uppercase tracking-[0.12em] hover:text-ink">{t("basketball.player")}{arrow("player")}</button></th>
-            <th className="px-2 py-1.5 text-right"><button onClick={() => toggleSort("min")} className="uppercase tracking-[0.12em] hover:text-ink">{t("basketball.minutesShort")}{arrow("min")}</button></th>
+            <th className="px-2 py-1.5 text-center" title={t("basketball.posInfo")}><button onClick={() => toggleSort("pos")} className="uppercase tracking-[0.12em] hover:text-ink">{t("basketball.position")}{arrow("pos")}</button></th>
+            <th className="px-2 py-1.5 text-left" title={t("basketball.roleInfo")}><button onClick={() => toggleSort("role")} className="uppercase tracking-[0.12em] hover:text-ink">{t("basketball.colRole")}{arrow("role")}</button></th>
+            <th className="px-2 py-1.5 text-right" title={t("basketball.minInfo")}><button onClick={() => toggleSort("min")} className="uppercase tracking-[0.12em] hover:text-ink">{t("basketball.colAvgMin")}{arrow("min")}</button></th>
             <th className="px-2 py-1.5 text-right"><button onClick={() => toggleSort("matches")} className="uppercase tracking-[0.12em] hover:text-ink">{t("basketball.colMatches")}{arrow("matches")}</button></th>
-            <th className="px-2 py-1.5 text-right"><button onClick={() => toggleSort("w5")} className="uppercase tracking-[0.12em] hover:text-ink">{t("basketball.w5")}{arrow("w5")}</button></th>
-            <th className="px-2 py-1.5 text-right"><button onClick={() => toggleSort("w10")} className="uppercase tracking-[0.12em] hover:text-ink">{t("basketball.w10")}{arrow("w10")}</button></th>
-            <th className="px-2 py-1.5 text-right"><button onClick={() => toggleSort("all")} className="uppercase tracking-[0.12em] hover:text-ink">{t("basketball.wAll")}{arrow("all")}</button></th>
-            <th className="px-2 py-1.5 text-right"><button onClick={() => toggleSort("exp")} className="uppercase tracking-[0.12em] hover:text-ink">{t("basketball.expShort")}{arrow("exp")}</button></th>
+            <th className="px-2 py-1.5 text-right" title={t("basketball.w5Info")}><button onClick={() => toggleSort("w5")} className="uppercase tracking-[0.12em] hover:text-ink">{t("basketball.w5")}{arrow("w5")}</button></th>
+            <th className="px-2 py-1.5 text-right" title={t("basketball.w10Info")}><button onClick={() => toggleSort("w10")} className="uppercase tracking-[0.12em] hover:text-ink">{t("basketball.w10")}{arrow("w10")}</button></th>
+            <th className="px-2 py-1.5 text-right" title={t("basketball.allInfo")}><button onClick={() => toggleSort("all")} className="uppercase tracking-[0.12em] hover:text-ink">{t("basketball.wAll")}{arrow("all")}</button></th>
+            <th className="px-2 py-1.5 text-right" title={t("basketball.expInfo")}><button onClick={() => toggleSort("exp")} className="uppercase tracking-[0.12em] hover:text-ink">{t("basketball.expShort")}{arrow("exp")}</button></th>
             <th className="px-2 py-1.5 text-right"><button onClick={() => toggleSort("value")} className="uppercase tracking-[0.12em] hover:text-ink">{t("basketball.colValue")}{arrow("value")}</button></th>
             <th className="px-2 py-1.5 text-right">{t("basketball.colLineShort")}</th>
           </tr></thead>
@@ -643,6 +661,16 @@ function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effA
                   <td className="px-2 py-1 whitespace-nowrap">
                     <button onClick={() => setSelPlayer(w.player_slug === selPlayer ? null : w.player_slug)} className="text-ink hover:text-accent-ink">{w.player_name}</button>
                     {alreadyIn(w) ? <span title={t("basketball.alreadyAdded")} className="ml-1.5 text-[11px] font-bold text-amber-400">⚠</span> : null}
+                  </td>
+                  <td className="px-2 py-1 text-center">
+                    {normalizePositionCode(roleOf(w)?.position) ? (
+                      <span title={positionLabel(roleOf(w)?.position, locale)} className="inline-block rounded bg-veil px-1.5 py-0.5 text-[10px] font-semibold text-ink-2">{normalizePositionCode(roleOf(w)?.position)}</span>
+                    ) : <span className="text-ink-3">-</span>}
+                  </td>
+                  <td className="px-2 py-1 whitespace-nowrap">
+                    {roleLabelKey(roleOf(w)?.role) ? (
+                      <span className={`inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold ${roleBadgeClass(roleOf(w)?.role)}`}>{t(roleLabelKey(roleOf(w)?.role) as string)}</span>
+                    ) : <span className="text-ink-3">-</span>}
                   </td>
                   <td className="px-2 py-1 text-right tabular-nums text-ink-3">{fmt(w.avg_minutes)}</td>
                   <td className="px-2 py-1 text-right tabular-nums text-ink-3">{w.games}</td>

@@ -5,6 +5,7 @@ import {
   getBasketballPlayerWindows,
   getBasketballAllTeamMatchLogs,
   getBasketballPlayerList,
+  getBasketballPlayerRoles,
 } from "@/features/basketball/server/getBasketballStats";
 import BasketballParticipantTools from "@/features/basketball/components/BasketballParticipantTools";
 import BasketballScrapeButton from "@/features/basketball/components/BasketballScrapeButton";
@@ -20,12 +21,13 @@ const TOOLS_SEASON = "2025-2026";
 export default async function BasketballToolsPage({ searchParams }: { searchParams: Promise<{ season?: string }> }) {
   const { season } = await searchParams;
   const seasonLabel = (EURO_SEASONS as readonly string[]).includes(season ?? "") ? (season as string) : TOOLS_SEASON;
-  const [splits, forms, windows, teamLogs, players, t, access] = await Promise.all([
+  const [splits, forms, windows, teamLogs, players, roles, t, access] = await Promise.all([
     getBasketballHomeAwaySplits(seasonLabel),
     getBasketballTeamMetricForms(seasonLabel),
     getBasketballPlayerWindows(seasonLabel),
     getBasketballAllTeamMatchLogs(seasonLabel),
     getBasketballPlayerList(seasonLabel),
+    getBasketballPlayerRoles(seasonLabel),
     getT(),
     getNavAccess(),
   ]);
@@ -44,7 +46,7 @@ export default async function BasketballToolsPage({ searchParams }: { searchPara
           </div>
         </div>
 
-        <BasketballParticipantTools splits={splits} forms={forms} windows={windows} teamLogs={teamLogs} players={players} />
+        <BasketballParticipantTools splits={splits} forms={forms} windows={windows} teamLogs={teamLogs} players={players} roles={roles} />
       </div>
     </section>
   );

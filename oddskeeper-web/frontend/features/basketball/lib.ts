@@ -86,3 +86,26 @@ export function formatHeight(cm: number | null | undefined): string {
   if (cm == null || Number.isNaN(cm) || cm <= 0) return "";
   return `${(cm / 100).toFixed(2)} m`;
 }
+
+// Oyuncu rol etiketi (bb_player_role_v1.role) → i18n anahtarı + renk sınıfı.
+export type PlayerRole = "starter" | "rotation" | "limited" | "garbage" | "departed";
+export function roleLabelKey(role: string | null | undefined): string | null {
+  switch (role) {
+    case "starter": return "basketball.roleStarter";
+    case "rotation": return "basketball.roleRotation";
+    case "limited": return "basketball.roleLimited";
+    case "garbage": return "basketball.roleGarbage";
+    case "departed": return "basketball.roleDeparted";
+    default: return null;
+  }
+}
+export function roleBadgeClass(role: string | null | undefined): string {
+  switch (role) {
+    case "starter":  return "bg-pos/15 text-pos";
+    case "rotation": return "bg-accent/15 text-accent-ink";
+    case "limited":  return "bg-veil text-ink-2";
+    case "garbage":  return "bg-veil text-ink-3";
+    case "departed": return "bg-neg/12 text-neg";
+    default:         return "bg-veil text-ink-3";
+  }
+}

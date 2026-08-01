@@ -267,6 +267,18 @@ export type BktPlayerListRow = {
   games: number;
 };
 
+export type BktPlayerRoleRow = {
+  season_label: string;
+  team_slug: string;
+  player_slug: string;
+  player_name: string;
+  position: string | null;
+  games: number;
+  avg_minutes: number;
+  euro_team: boolean;
+  role: string;   // starter | rotation | limited | garbage | departed
+};
+
 export type BktPlayerWindowRow = {
   player_slug: string;
   player_name: string;
