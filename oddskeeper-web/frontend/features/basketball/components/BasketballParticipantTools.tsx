@@ -292,7 +292,10 @@ function ConfigTab({ config, reload, inputType, setInputType, locale, t }: {
     }]);
     if (ok) { setNm({ name: "", base: "manual", side: "home", template: "", std: "" }); reload(); }
   };
-  const removeMarket = async (c: PmMarketConfig) => { if (await deleteMarketConfig(c.market_group, c.market_key)) reload(); };
+  const removeMarket = async (c: PmMarketConfig) => {
+    if (!window.confirm(t("basketball.confirmDelete"))) return;
+    if (await deleteMarketConfig(c.market_group, c.market_key)) reload();
+  };
 
   const numCell = (c: PmMarketConfig, key: keyof PmMarketConfig, w = "w-12", nullable = false, ph = "") => (
     <input type="number" step="any" placeholder={ph}

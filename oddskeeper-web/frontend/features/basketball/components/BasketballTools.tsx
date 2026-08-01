@@ -37,6 +37,16 @@ const DEFAULT_LINE_CFG: LineConfig = {
 // Input mükerrer kontrolü: aynı tip+template+katılımcı+taraf+line = aynı satır.
 const rowKey = (r: BktInputRow) => `${r.kind}|${r.template}|${r.participant}|${r.side}|${r.line}`;
 
+// Futbol tarzı özet: kaç market gönderildi / atlandı (neden).
+function addStatusMsg(t: (k: string) => string, sent: number, dup: number, noTpl: number, zero: number): string {
+  if (sent + dup + noTpl + zero === 0) return t("basketball.statNone");
+  const parts = [t("basketball.statSent").replace("{n}", String(sent))];
+  if (dup) parts.push(t("basketball.statDup").replace("{n}", String(dup)));
+  if (noTpl) parts.push(t("basketball.statNoTpl").replace("{n}", String(noTpl)));
+  if (zero) parts.push(t("basketball.statZero").replace("{n}", String(zero)));
+  return parts.join(" · ");
+}
+
 function fmt(v: number | null | undefined, d = 1) {
   if (v == null || Number.isNaN(v)) return "-";
   return Number(v).toFixed(d);
@@ -64,6 +74,7 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
   const existingKeys = useMemo(() => new Set(inputRows.map(rowKey)), [inputRows]);
   const existingPlayerMkt = useMemo(() => new Set(inputRows.filter((r) => r.kind === "player").map((r) => `${r.template}|${r.participant}`)), [inputRows]);
   const [totalOverride, setTotalOverride] = useState<Record<string, number>>({});
+  const [teamStatus, setTeamStatus] = useState<string>("");
   // market_key → config (oyuncu / takım ayrı). Takım key'i "{side}_{metric}".
   const playerCfg = useMemo(() => new Map(config.filter((c) => c.market_group === "player").map((c) => [c.market_key, c])), [config]);
   const teamCfg = useMemo(() => config.filter((c) => c.market_group === "team"), [config]);
@@ -216,25 +227,29 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
   const addTeams = () => {
     if (!home || !away) return;
     const rows: BktInputRow[] = [];
+    let sent = 0, dup = 0, noTpl = 0, zero = 0;
     for (const cfg of teamCfg) {
       const base = cfg.base_metric ?? "";
-      if (!cfg.in_model || !cfg.template_id) continue;
+      if (!cfg.in_model) continue; // model dışı → sessiz atla
       const isPct = base === "fgmadepct" || base === "ftpct";
-      let value: number, sideNum: number, teamName: string, ok: boolean;
-      if (cfg.side === "away") { ok = isTeamTicked(`${awaySlug}:${base}`); value = teamTrader(awaySlug, base, effAway); sideNum = 2; teamName = away.team_name; }
+      let value: number, sideNum: number, teamName: string, ticked: boolean;
+      if (cfg.side === "away") { ticked = isTeamTicked(`${awaySlug}:${base}`); value = teamTrader(awaySlug, base, effAway); sideNum = 2; teamName = away.team_name; }
       else if (cfg.side === "total") {
-        // toplam: total tikli + HER İKİ takım da tikli (değer var) + pct değil (güvenlik)
-        ok = !isPct && isTeamTicked(`total:${base}`) && isTeamTicked(`${homeSlug}:${base}`) && isTeamTicked(`${awaySlug}:${base}`);
+        ticked = !isPct && isTeamTicked(`total:${base}`) && isTeamTicked(`${homeSlug}:${base}`) && isTeamTicked(`${awaySlug}:${base}`);
         value = totalValue(base); sideNum = 0; teamName = `${home.team_name} + ${away.team_name}`;
-      } else { ok = isTeamTicked(`${homeSlug}:${base}`); value = teamTrader(homeSlug, base, effHome); sideNum = 1; teamName = home.team_name; }
-      if (!ok || !(value > 0)) continue; // 0/negatif/NaN değer gönderme (bug guard)
+      } else { ticked = isTeamTicked(`${homeSlug}:${base}`); value = teamTrader(homeSlug, base, effHome); sideNum = 1; teamName = home.team_name; }
+      if (!ticked) continue;                                          // tiksiz → sessiz
+      if (!cfg.template_id) { noTpl++; continue; }                    // şablon yok → say + atla
+      if (existingTeamTpl.has(cfg.template_id)) { dup++; continue; }  // template Input'ta → say + atla
+      if (!(value > 0)) { zero++; continue; }                        // 0/negatif → say + atla
       const std = (cfg.std ?? teamStd(base)) as number;
       for (const r of buildConfiguredLines(value, std, cfg, TEAM_PAYBACK)) {
         rows.push({ kind: "team", fixtureExtId: fixExtId, template: cfg.template_id, participant: "", side: sideNum, line: r.line, over: r.overPrice, under: r.underPrice, marketLabel: cfg.label ?? cfg.market_key, playerName: "", teamName });
       }
+      sent++;
     }
-    const fresh = rows.filter((r) => !existingKeys.has(rowKey(r)));
-    if (fresh.length) onAdd(fresh);
+    if (rows.length) onAdd(rows);
+    setTeamStatus(addStatusMsg(t, sent, dup, noTpl, zero));
   };
 
   return (
@@ -290,6 +305,7 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
             <div>
               <div className="mb-3 flex items-center gap-3">
                 <span className="text-[11px] text-ink-3">{t("basketball.addTeamHint")}</span>
+                {teamStatus ? <span className="rounded-md bg-veil px-2 py-1 text-[11px] font-semibold text-ink-2">{teamStatus}</span> : null}
                 <button onClick={resetTeam} className="ml-auto rounded-md border border-line px-3 py-2 text-[12px] font-semibold text-ink-2 hover:text-ink">{t("basketball.reset")}</button>
                 <button onClick={addTeams} className="rounded-lg bg-accent px-5 py-2.5 text-[14px] font-semibold text-white shadow-sm hover:opacity-90">{t("basketball.addToInput")}</button>
               </div>
@@ -486,6 +502,7 @@ function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effA
   const [mk, setMk] = useState(playerMarkets[0]?.key ?? "points");
   const [selPlayer, setSelPlayer] = useState<string | null>(null);
   const [preview, setPreview] = useState<BktPlayerWindowRow | null>(null); // göz → line önizleme drawer
+  const [playerStatus, setPlayerStatus] = useState<string>("");
   const [sort, setSort] = useState<{ key: string; dir: "asc" | "desc" }>({ key: "all", dir: "desc" });
   const slug = side === "home" ? homeSlug : awaySlug;
   const eff = side === "home" ? effHome : effAway;
@@ -535,16 +552,19 @@ function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effA
     const rows: BktInputRow[] = [];
     const sideNum = side === "home" ? 1 : 2;
     const teamNm = side === "home" ? homeName : awayName;
+    let sent = 0, dup = 0, noTpl = 0, zero = 0;
     for (const w of allList) {
       if (!isTicked(slug, mk, w)) continue;
-      if (alreadyIn(w)) continue;                                       // aynı oyuncu+market zaten Input'ta → tekrar gönderme
-      if (!(playerValue(slug, mk, w, allList, eff, distribute) > 0)) continue; // 0/negatif değer gönderme
+      if (!(tplCur ?? met.tpl)) { noTpl++; continue; }                  // şablon yok
+      if (alreadyIn(w)) { dup++; continue; }                            // oyuncu+market zaten Input'ta
+      if (!(playerValue(slug, mk, w, allList, eff, distribute) > 0)) { zero++; continue; } // 0/negatif
       for (const r of ladderFor(w)) {
         rows.push({ kind: "player", fixtureExtId: fixExtId, template: tplCur ?? met.tpl, participant: participantOf(w), side: sideNum, line: r.line, over: r.overPrice, under: r.underPrice, marketLabel: met.label, playerName: w.player_name, teamName: teamNm });
       }
+      sent++;
     }
-    const fresh = rows.filter((r) => !existingKeys.has(rowKey(r)));
-    if (fresh.length) onAdd(fresh);
+    if (rows.length) onAdd(rows);
+    setPlayerStatus(addStatusMsg(t, sent, dup, noTpl, zero));
   };
 
   return (
@@ -577,6 +597,7 @@ function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effA
             {t("basketball.distribute")}
             <span title={t("basketball.distributeInfo")} className="inline-flex h-4 w-4 cursor-help items-center justify-center rounded-full border border-current text-[10px] font-bold leading-none">i</span>
           </label>
+          {playerStatus ? <span className="rounded-md bg-veil px-2 py-1 text-[11px] font-semibold text-ink-2">{playerStatus}</span> : null}
           <button onClick={onReset} className="rounded-md border border-line px-3 py-2 text-[12px] font-semibold text-ink-2 hover:text-ink">{t("basketball.reset")}</button>
           <button onClick={addCurrent} className="rounded-lg bg-accent px-5 py-2.5 text-[14px] font-semibold text-white shadow-sm hover:opacity-90">
             {t("basketball.addToInput")}
