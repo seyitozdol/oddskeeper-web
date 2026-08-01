@@ -67,6 +67,73 @@ export function buildLadder(
   return rows;
 }
 
+// ---- Config sekmesi kurallarıyla line üretimi (bb_pm_market_config) ----
+export type LineConfig = {
+  lines: number;        // toplam çizgi
+  under_lines: number;  // alttan kaç çizgide Under açık
+  payback: number | null;
+  round_odds: boolean;
+  max_lines: number;
+  odds_cap: number;
+  skip_after: number;   // skip'ten önce ardışık çizgi (>=lines => skip yok)
+  skip_step: number;    // skip sonrası adım
+};
+
+export type ConfiguredLine = {
+  line: number;
+  overProb: number;
+  overPrice: number;
+  underPrice: number | null; // null = Under kapalı (Over-only)
+  isMid: boolean;
+};
+
+// Geometri: ana çizgi (mean'e en yakın x.5) merkezli `skip_after` ardışık çizgi,
+// sonra `skip_step` ile YUKARI devam. Örn main=15.5, skip_after=3, step=2 →
+// 14.5 15.5 16.5 18.5 20.5 22.5. Under alttan ilk `under_lines` çizgide açık.
+export function buildConfiguredLines(
+  mean: number, std: number, cfg: LineConfig, defaultPayback: number
+): ConfiguredLine[] {
+  const payback = cfg.payback ?? defaultPayback;
+  const cap = cfg.odds_cap > 0 ? cfg.odds_cap : PRICE_CAP;
+  const total = Math.max(1, Math.min(cfg.lines || 1, cfg.max_lines || cfg.lines || 1));
+  const main = Math.floor(mean) + 0.5;
+  const consecutive = Math.max(1, Math.min(cfg.skip_after || total, total));
+  const kBelow = Math.floor((consecutive - 1) / 2);
+  const step = cfg.skip_step > 0 ? cfg.skip_step : 1;
+
+  let start = main - kBelow;
+  if (start < 0.5) start = 0.5;                       // düşük mean'de negatife inme
+  const vals: number[] = [];
+  for (let i = 0; i < consecutive; i++) vals.push(start + i);
+  const top = vals[vals.length - 1];
+  for (let j = 1; vals.length < total; j++) vals.push(top + j * step);
+
+  const priceOf = (prob: number): number => {
+    if (prob <= 0) return cap;
+    const raw = payback / prob;
+    // round_odds kapalı = standart 2 ondalık. Açık: >=2.00 oranları 1 ondalığa yuvarla
+    // (2.83→2.8), 2.00 ALTINDA yuvarlama YOK (2 ondalık kalır).
+    const r = cfg.round_odds
+      ? (raw >= 2 ? Math.round(raw * 10) / 10 : Math.round(raw * 100) / 100)
+      : Math.round(raw * 100) / 100;
+    return Math.min(cap, r);
+  };
+
+  const rows: ConfiguredLine[] = vals.map((line, idx) => {
+    const overProb = 1 - normalCdf(line, mean, std);
+    return {
+      line, overProb,
+      overPrice: priceOf(overProb),
+      underPrice: idx < cfg.under_lines ? priceOf(1 - overProb) : null,
+      isMid: false,
+    };
+  });
+  let bestIdx = 0, bestDist = Infinity;
+  rows.forEach((r, i) => { const d = Math.abs(r.line - mean); if (d < bestDist) { bestDist = d; bestIdx = i; } });
+  if (rows[bestIdx]) rows[bestIdx].isMid = true;
+  return rows;
+}
+
 // Excel handikap/ML/total için: iki takım xG (mean) + std → toplam ve fark dağılımı.
 // Toplam ~ Normal(muH+muA, sqrt(sH^2+sA^2)); fark ~ Normal(muH-muA, sqrt(sH^2+sA^2)).
 export function matchTotalsLadder(

@@ -185,13 +185,14 @@ export type BktPlayerShareRow = {
 };
 
 export type BktInputRow = {
+  kind: "player" | "team";   // çıktı formatını belirler (player: participant kolonlu)
   fixtureExtId: string;
   template: string;
   participant: string;
   side: number;        // 1 home, 2 away
   line: number;
   over: number;
-  under: number;
+  under: number | null; // null = Under kapalı (Over-only)
   marketLabel: string;
   playerName: string;
   teamName: string;

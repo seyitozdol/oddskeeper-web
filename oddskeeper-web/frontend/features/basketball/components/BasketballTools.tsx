@@ -2,11 +2,11 @@
 
 import { useMemo, useState } from "react";
 import { useI18n } from "@/lib/i18n/LanguageProvider";
-import { buildLadder, moneyline } from "../odds";
+import { buildLadder, buildConfiguredLines, moneyline, type LineConfig } from "../odds";
 import { PLAYER_MARKETS, TEAM_MARKETS, teamStd } from "../marketConfig";
 import { TeamCrest } from "./ui";
 import BasketballPlayerDrawer from "./BasketballPlayerDrawer";
-import type { PmFixture } from "../pmQueries";
+import type { PmFixture, PmMarketConfig } from "../pmQueries";
 import type {
   BktHomeAwaySplitRow, BktTeamMetricFormRow, BktPlayerWindowRow,
   BktTeamLogRow, BktInputRow,
@@ -19,10 +19,18 @@ type Props = {
   windows: BktPlayerWindowRow[];
   teamLogs: BktTeamLogRow[];
   playerIds: Record<string, string>;
+  config: PmMarketConfig[];
   onAdd: (rows: BktInputRow[]) => void;
 };
 
 const PROP_PAYBACK = 0.915;
+const TEAM_PAYBACK = 0.96;
+
+// Config satırı yoksa kullanılacak varsayılan line kuralı (mevcut mid±2 davranışı).
+const DEFAULT_LINE_CFG: LineConfig = {
+  lines: 5, under_lines: 5, payback: null, round_odds: false,
+  max_lines: 15, odds_cap: 999, skip_after: 5, skip_step: 2,
+};
 
 function fmt(v: number | null | undefined, d = 1) {
   if (v == null || Number.isNaN(v)) return "-";
@@ -42,8 +50,11 @@ function NumInput({ value, onChange, step = 0.1, w = "w-16" }: { value: number; 
   );
 }
 
-export default function BasketballTools({ pmFixtures, splits, forms, windows, teamLogs, playerIds, onAdd }: Props) {
+export default function BasketballTools({ pmFixtures, splits, forms, windows, teamLogs, playerIds, config, onAdd }: Props) {
   const { t } = useI18n();
+  // market_key → config (oyuncu / takım ayrı). Takım key'i "{side}_{metric}".
+  const playerCfg = useMemo(() => new Map(config.filter((c) => c.market_group === "player").map((c) => [c.market_key, c])), [config]);
+  const teamCfg = useMemo(() => new Map(config.filter((c) => c.market_group === "team").map((c) => [c.market_key, c])), [config]);
   const teams = useMemo(() => [...splits].sort((a, b) => a.team_name.localeCompare(b.team_name, "tr")), [splits]);
   const splitBy = useMemo(() => new Map(splits.map((s) => [s.team_slug, s])), [splits]);
   const formBy = useMemo(() => {
@@ -157,6 +168,28 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
     download(`basketbol_takim_${homeSlug}_${awaySlug}.csv`, rows.map((r) => r.join(",")).join("\n"));
   };
 
+  // Takım metriklerini Config kurallarıyla Input'a ekle (home/away/total, template'i olanlar).
+  const addTeams = () => {
+    if (!home || !away) return;
+    const rows: BktInputRow[] = [];
+    const emit = (side: "home" | "away" | "total", metricKey: string, value: number, teamName: string, sideNum: number) => {
+      const cfg = teamCfg.get(`${side}_${metricKey}`);
+      if (!cfg || !cfg.in_model || !cfg.template_id) return; // template yoksa/model dışıysa atla
+      const std = (cfg.std ?? teamStd(metricKey)) as number;
+      for (const r of buildConfiguredLines(value, std, cfg, TEAM_PAYBACK)) {
+        rows.push({ kind: "team", fixtureExtId: fixExtId, template: cfg.template_id!, participant: "", side: sideNum, line: r.line, over: r.overPrice, under: r.underPrice, marketLabel: `${side} ${metricKey}`, playerName: "", teamName });
+      }
+    };
+    for (const met of TEAM_MARKETS) {
+      const hv = teamTrader(homeSlug, met.key, effHome);
+      const av = teamTrader(awaySlug, met.key, effAway);
+      emit("home", met.key, hv, home.team_name, 1);
+      emit("away", met.key, av, away.team_name, 2);
+      emit("total", met.key, hv + av, `${home.team_name} + ${away.team_name}`, 0);
+    }
+    if (rows.length) onAdd(rows);
+  };
+
   return (
     <div className="space-y-6">
       {/* seçim satırı */}
@@ -207,18 +240,24 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
           </div>
 
           {tab === "team" ? (
-            <div className="grid gap-6 lg:grid-cols-2">
-              {[{ slug: homeSlug, eff: effHome, s: home }, { slug: awaySlug, eff: effAway, s: away }].map(({ slug, eff, s }) => (
-                <TeamPanel key={slug} slug={slug} name={s.team_name} eff={eff} formBy={formBy} teamTrader={teamTrader}
-                  setTrader={(mk, v) => setTraderMetric((p) => ({ ...p, [`${slug}:${mk}`]: v }))} teamModel={teamModel} logs={logsBy.get(slug) ?? []} t={t} />
-              ))}
+            <div>
+              <div className="mb-3 flex items-center gap-3">
+                <button onClick={addTeams} className={`rounded-md border border-teal-500/30 bg-teal-500/10 px-3 py-1.5 text-[12px] font-semibold text-teal-300 hover:bg-teal-500/20`}>{t("basketball.addToInput")}</button>
+                <span className="text-[11px] text-ink-3">{t("basketball.addTeamHint")}</span>
+              </div>
+              <div className="grid gap-6 lg:grid-cols-2">
+                {[{ slug: homeSlug, eff: effHome, s: home }, { slug: awaySlug, eff: effAway, s: away }].map(({ slug, eff, s }) => (
+                  <TeamPanel key={slug} slug={slug} name={s.team_name} eff={eff} formBy={formBy} teamTrader={teamTrader}
+                    setTrader={(mk, v) => setTraderMetric((p) => ({ ...p, [`${slug}:${mk}`]: v }))} teamModel={teamModel} logs={logsBy.get(slug) ?? []} t={t} />
+                ))}
+              </div>
             </div>
           ) : (
             <PlayerDistPanel homeSlug={homeSlug} awaySlug={awaySlug} homeName={home.team_name} awayName={away.team_name}
               effHome={effHome} effAway={effAway} winBy={winBy} isTicked={isTicked} setTick={(k, v) => setTicks((p) => ({ ...p, [k]: v }))}
               playerValue={playerValue} setVal={(k, v) => setPlayerVal((p) => ({ ...p, [k]: v }))} expRef={expRef}
               teamTarget={(slug, mk) => teamTrader(slug, mk, slug === homeSlug ? effHome : effAway)}
-              onAdd={onAdd} playerIds={playerIds} fixExtId={fixExtId} t={t} />
+              onAdd={onAdd} playerIds={playerIds} playerCfg={playerCfg} fixExtId={fixExtId} t={t} />
           )}
 
           {/* export */}
@@ -299,7 +338,7 @@ function TeamPanel({ slug, name, eff, formBy, teamTrader, setTrader, teamModel, 
 }
 
 /* ---------- Player distribution panel ---------- */
-function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effAway, winBy, isTicked, setTick, playerValue, setVal, expRef, teamTarget, onAdd, playerIds, fixExtId, t }: {
+function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effAway, winBy, isTicked, setTick, playerValue, setVal, expRef, teamTarget, onAdd, playerIds, playerCfg, fixExtId, t }: {
   homeSlug: string; awaySlug: string; homeName: string; awayName: string; effHome: number; effAway: number;
   winBy: Map<string, Map<string, BktPlayerWindowRow[]>>;
   isTicked: (s: string, mk: string, w: BktPlayerWindowRow) => boolean;
@@ -310,6 +349,7 @@ function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effA
   teamTarget: (s: string, mk: string) => number;
   onAdd: (rows: BktInputRow[]) => void;
   playerIds: Record<string, string>;
+  playerCfg: Map<string, PmMarketConfig>;
   fixExtId: string;
   t: (k: string) => string;
 }) {
@@ -349,19 +389,20 @@ function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effA
   const target = teamTarget(slug, mk);
   const distributed = allList.filter((w) => isTicked(slug, mk, w)).reduce((a, w) => a + playerValue(slug, mk, w, allList, eff), 0);
 
-  // Ekle: bu takım+market'in tikli oyuncularının mid±2 çizgilerini Input'a gönder
+  // Ekle: bu takım+market'in tikli oyuncularının Config kurallarıyla üretilen çizgilerini Input'a gönder
   const addCurrent = () => {
     const rows: BktInputRow[] = [];
     const sideNum = side === "home" ? 1 : 2;
     const teamNm = side === "home" ? homeName : awayName;
+    const cfg = playerCfg.get(mk);
+    const std = (cfg?.std ?? met.std) as number;
+    const tpl = cfg?.template_id ?? met.tpl;
+    const lineCfg: LineConfig = cfg ?? DEFAULT_LINE_CFG;
     for (const w of allList) {
       if (!isTicked(slug, mk, w)) continue;
       const val = playerValue(slug, mk, w, allList, eff);
-      const ladder = buildLadder(val, met.std, PROP_PAYBACK);
-      const midIdx = Math.max(0, ladder.findIndex((r) => r.isMid));
-      for (let i = Math.max(0, midIdx - 2); i <= Math.min(ladder.length - 1, midIdx + 2); i++) {
-        const r = ladder[i];
-        rows.push({ fixtureExtId: fixExtId, template: met.tpl, participant: playerIds[w.player_slug] || w.player_slug, side: sideNum, line: r.line, over: r.overPrice, under: r.underPrice, marketLabel: met.label, playerName: w.player_name, teamName: teamNm });
+      for (const r of buildConfiguredLines(val, std, lineCfg, PROP_PAYBACK)) {
+        rows.push({ kind: "player", fixtureExtId: fixExtId, template: tpl ?? met.tpl, participant: playerIds[w.player_slug] || w.player_slug, side: sideNum, line: r.line, over: r.overPrice, under: r.underPrice, marketLabel: met.label, playerName: w.player_name, teamName: teamNm });
       }
     }
     if (rows.length) onAdd(rows);

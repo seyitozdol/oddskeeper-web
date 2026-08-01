@@ -54,6 +54,49 @@ export async function deleteMarket(market_key: string): Promise<boolean> {
   return true;
 }
 
+/* ---------------- market config (Config sekmesi: line kurallari) ---------------- */
+export type PmMarketConfig = {
+  market_group: string;   // 'player' | 'team'
+  market_key: string;
+  label: string | null;
+  base_metric: string | null;
+  side: string | null;    // 'home'|'away'|'total'|null
+  template_id: string | null;
+  std: number | null;
+  lines: number;
+  under_lines: number;
+  payback: number | null; // null = grup varsayilani
+  round_odds: boolean;
+  max_lines: number;
+  odds_cap: number;
+  skip_after: number;
+  skip_step: number;
+  in_model: boolean;
+  sort_order: number | null;
+};
+
+const CFG_COLS = "market_group,market_key,label,base_metric,side,template_id,std,lines,under_lines,payback,round_odds,max_lines,odds_cap,skip_after,skip_step,in_model,sort_order";
+
+export async function fetchMarketConfig(): Promise<PmMarketConfig[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .schema("analytics").from("bb_pm_market_config")
+    .select(CFG_COLS).eq("league", LEAGUE)
+    .order("sort_order", { ascending: true })
+    .returns<PmMarketConfig[]>();
+  if (error) { console.error("fetchMarketConfig", error.message); return []; }
+  return data ?? [];
+}
+export async function upsertMarketConfig(rows: (Partial<PmMarketConfig> & { market_group: string; market_key: string })[]): Promise<boolean> {
+  if (rows.length === 0) return true;
+  const supabase = createClient();
+  const payload = rows.map((r) => ({ league: LEAGUE, ...r, updated_at: new Date().toISOString() }));
+  const { error } = await supabase.schema("analytics").from("bb_pm_market_config")
+    .upsert(payload, { onConflict: "league,market_group,market_key" });
+  if (error) { console.error("upsertMarketConfig", error.message); return false; }
+  return true;
+}
+
 /* ---------------- fixtures (manual) ---------------- */
 export async function fetchPmFixtures(): Promise<PmFixture[]> {
   const supabase = createClient();
