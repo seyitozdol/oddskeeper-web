@@ -17,14 +17,18 @@ function Th({ children, right }: { children: React.ReactNode; right?: boolean })
   );
 }
 
-// Uzak crest logosu (EL/EC CDN); yoksa kod baş harfleri.
+// Uzak crest logosu (EL/EC CDN) — BSL TeamCrest ile aynı beyaz çip stili (tutarlılık).
 function Crest({ url, name, size = 26 }: { url?: string | null; name?: string | null; size?: number }) {
   if (url) {
-    // eslint-disable-next-line @next/next/no-img-element
-    return <img src={url} alt={name ?? ""} width={size} height={size} className="shrink-0 rounded-sm object-contain" style={{ width: size, height: size }} />;
+    return (
+      <span className="inline-flex shrink-0 items-center justify-center rounded bg-white ring-1 ring-black/5" style={{ width: size, height: size, padding: size >= 40 ? 3 : 1 }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={url} alt={name ?? ""} className="h-full w-full object-contain" />
+      </span>
+    );
   }
   return (
-    <span className="flex shrink-0 items-center justify-center rounded-sm bg-veil text-[10px] font-bold text-ink-3" style={{ width: size, height: size }}>
+    <span className="inline-flex shrink-0 items-center justify-center rounded bg-veil text-[9px] font-semibold text-ink-2" style={{ width: size, height: size }}>
       {(name ?? "").slice(0, 3).toUpperCase()}
     </span>
   );

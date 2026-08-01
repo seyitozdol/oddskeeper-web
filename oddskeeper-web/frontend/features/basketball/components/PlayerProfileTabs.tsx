@@ -32,8 +32,10 @@ export default function PlayerProfileTabs({
         {teamSlug ? (
           <TeamCrest slug={teamSlug} name={teamName} size={52} />
         ) : crestUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={crestUrl} alt={teamName ?? ""} width={52} height={52} className="h-13 w-13 object-contain" style={{ width: 52, height: 52 }} />
+          <span className="inline-flex shrink-0 items-center justify-center rounded bg-white ring-1 ring-black/5" style={{ width: 52, height: 52, padding: 3 }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={crestUrl} alt={teamName ?? ""} className="h-full w-full object-contain" />
+          </span>
         ) : (
           <div className="flex items-center justify-center rounded-full bg-veil text-lg font-bold text-ink-2" style={{ width: 52, height: 52 }}>
             {jerseyNo ? `#${jerseyNo}` : name.slice(0, 1)}
