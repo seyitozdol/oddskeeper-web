@@ -64,3 +64,52 @@ export const TEAM_MARKETS: { key: string; label: string }[] = [
   { key: "blocks", label: "Blok" },
   { key: "turnovers", label: "Top Kaybı" },
 ];
+
+// Locale-duyarlı metrik + taraf etiketleri (TR/EN). Config + Model ekranları kullanır.
+export const METRIC_LABELS: Record<string, { tr: string; en: string }> = {
+  points: { tr: "Sayı", en: "Points" },
+  rebounds: { tr: "Ribaund", en: "Rebounds" },
+  oreb: { tr: "Hücum Ribaund", en: "Off. Rebounds" },
+  dreb: { tr: "Savunma Ribaund", en: "Def. Rebounds" },
+  assists: { tr: "Asist", en: "Assists" },
+  threes: { tr: "3 Sayı", en: "3 Pointers" },
+  twos: { tr: "2 Sayı", en: "2 Pointers" },
+  ftm: { tr: "Serbest Atış", en: "Free Throws" },
+  steals: { tr: "Top Çalma", en: "Steals" },
+  blocks: { tr: "Blok", en: "Blocks" },
+  turnovers: { tr: "Top Kaybı", en: "Turnovers" },
+  pr: { tr: "Sayı+Ribaund", en: "Pts+Reb" },
+  pa: { tr: "Sayı+Asist", en: "Pts+Ast" },
+  pra: { tr: "Sayı+Rib+Asist", en: "Pts+Reb+Ast" },
+  fgmadepct: { tr: "İsabet %", en: "FG %" },
+  ftpct: { tr: "Serbest %", en: "FT %" },
+};
+export const SIDE_LABELS: Record<string, { tr: string; en: string }> = {
+  home: { tr: "Ev", en: "Home" }, away: { tr: "Dep", en: "Away" }, total: { tr: "Toplam", en: "Total" },
+};
+export function metricLabel(key: string, locale: string, fallback?: string): string {
+  const m = METRIC_LABELS[key];
+  return m ? (locale === "tr" ? m.tr : m.en) : (fallback ?? key);
+}
+export function sideLabel(side: string | null | undefined, locale: string): string {
+  const s = side ? SIDE_LABELS[side] : undefined;
+  return s ? (locale === "tr" ? s.tr : s.en) : "";
+}
+// Config satırı görünen adı (custom market'te DB label'ına düşer).
+export function configLabel(
+  c: { market_group: string; base_metric: string | null; side: string | null; label: string | null; market_key: string },
+  locale: string
+): string {
+  if (c.base_metric && METRIC_LABELS[c.base_metric]) {
+    const ml = metricLabel(c.base_metric, locale);
+    if (c.market_group === "team" && c.side) return `${sideLabel(c.side, locale)} ${ml}`.trim();
+    return ml;
+  }
+  return c.label ?? c.market_key;
+}
+
+// Kombine + yüzde marketleri takım toplamından DAĞITILMAZ (oyuncunun kendi ort.)
+const NON_DISTRIBUTABLE = new Set(["pr", "pa", "pra", "fgmadepct", "ftpct"]);
+export function isDistributable(baseMetric: string | null | undefined): boolean {
+  return !NON_DISTRIBUTABLE.has(baseMetric ?? "");
+}

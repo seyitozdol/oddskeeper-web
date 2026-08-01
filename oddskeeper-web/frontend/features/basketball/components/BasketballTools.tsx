@@ -3,7 +3,8 @@
 import { useMemo, useState } from "react";
 import { useI18n } from "@/lib/i18n/LanguageProvider";
 import { buildLadder, buildConfiguredLines, moneyline, type LineConfig } from "../odds";
-import { PLAYER_MARKETS, TEAM_MARKETS, teamStd } from "../marketConfig";
+import { PLAYER_MARKETS, TEAM_MARKETS, teamStd, playerStd, metricLabel, isDistributable } from "../marketConfig";
+import { formatMatchDate } from "../lib";
 import { TeamCrest } from "./ui";
 import BasketballPlayerDrawer from "./BasketballPlayerDrawer";
 import type { PmFixture, PmMarketConfig } from "../pmQueries";
@@ -51,10 +52,22 @@ function NumInput({ value, onChange, step = 0.1, w = "w-16" }: { value: number; 
 }
 
 export default function BasketballTools({ pmFixtures, splits, forms, windows, teamLogs, playerIds, config, onAdd }: Props) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   // market_key → config (oyuncu / takım ayrı). Takım key'i "{side}_{metric}".
   const playerCfg = useMemo(() => new Map(config.filter((c) => c.market_group === "player").map((c) => [c.market_key, c])), [config]);
-  const teamCfg = useMemo(() => new Map(config.filter((c) => c.market_group === "team").map((c) => [c.market_key, c])), [config]);
+  const teamCfg = useMemo(() => config.filter((c) => c.market_group === "team"), [config]);
+  // Oyuncu market listesi CONFIG'ten (standart 14 + custom). base_metric = veri anahtarı.
+  const playerMarkets = useMemo(() => {
+    const rows = config.filter((c) => c.market_group === "player");
+    if (rows.length === 0) return PLAYER_MARKETS.map((m) => ({ key: m.key, base: m.key, label: m.label, std: m.std, tpl: m.tpl, distributable: m.distributable }));
+    return [...rows].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)).map((c) => ({
+      key: c.market_key, base: c.base_metric ?? c.market_key, label: metricLabel(c.base_metric ?? c.market_key, locale, c.label ?? c.market_key),
+      std: (c.std ?? playerStd(c.market_key)) as number, tpl: c.template_id ?? "", distributable: isDistributable(c.base_metric ?? c.market_key),
+    }));
+  }, [config, locale]);
+  const playerMarketBy = useMemo(() => new Map(playerMarkets.map((m) => [m.key, m])), [playerMarkets]);
+  const [teamTicks, setTeamTicks] = useState<Record<string, boolean>>({});
+  const isTeamTicked = (metricKey: string) => teamTicks[metricKey] !== false; // varsayılan açık
   const teams = useMemo(() => [...splits].sort((a, b) => a.team_name.localeCompare(b.team_name, "tr")), [splits]);
   const splitBy = useMemo(() => new Map(splits.map((s) => [s.team_slug, s])), [splits]);
   const formBy = useMemo(() => {
@@ -129,63 +142,29 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
     const k = `${slug}:${mk}:${w.player_slug}`;
     if (playerVal[k] != null) return playerVal[k];
     if (!isTicked(slug, mk, w)) return 0;
-    const market = PLAYER_MARKETS.find((m) => m.key === mk);
     // kombine + yüzde marketleri dağıtılmaz: oyuncunun kendi ortalaması (elle düzeltilir)
-    if (!market?.distributable) return Math.round((w.season_avg ?? 0) * 10) / 10;
+    if (!(playerMarketBy.get(mk)?.distributable ?? true)) return Math.round((w.season_avg ?? 0) * 10) / 10;
     const target = teamTrader(slug, mk, effPts);
     return Math.round((target * w.total / tickedTotal(slug, mk, list)) * 10) / 10;
   };
 
-  // Export
-  const exportPlayers = () => {
-    const rows = [["Team", "Player", "Market", "Template", "Line", "Over", "Under", "Value", "Std"]];
-    for (const slug of [homeSlug, awaySlug]) {
-      const effPts = slug === homeSlug ? effHome : effAway;
-      for (const met of PLAYER_MARKETS) {
-        const list = winBy.get(slug)?.get(met.key) ?? [];
-        for (const w of list) {
-          if (!isTicked(slug, met.key, w)) continue;
-          const val = playerValue(slug, met.key, w, list, effPts);
-          const mid = buildLadder(val, met.std, PROP_PAYBACK).find((r) => r.isMid)!;
-          rows.push([w.team_name, w.player_name, met.label, met.tpl, mid.line.toFixed(1), mid.overPrice.toFixed(2), mid.underPrice.toFixed(2), val.toFixed(1), met.std.toFixed(2)]);
-        }
-      }
-    }
-    download(`basketbol_oyuncu_${homeSlug}_${awaySlug}.csv`, rows.map((r) => r.join(",")).join("\n"));
-  };
-  const exportTeams = () => {
-    const rows = [["Team", "Side", "Market", "Line", "Over", "Under", "Value", "Std"]];
-    for (const slug of [homeSlug, awaySlug]) {
-      const effPts = slug === homeSlug ? effHome : effAway;
-      const side = slug === homeSlug ? "Home" : "Away";
-      const name = splitBy.get(slug)?.team_name ?? slug;
-      for (const met of TEAM_MARKETS) {
-        const val = teamTrader(slug, met.key, effPts);
-        const mid = buildLadder(val, teamStd(met.key), 0.96).find((r) => r.isMid)!;
-        rows.push([name, side, met.label, mid.line.toFixed(1), mid.overPrice.toFixed(2), mid.underPrice.toFixed(2), val.toFixed(1), teamStd(met.key).toFixed(2)]);
-      }
-    }
-    download(`basketbol_takim_${homeSlug}_${awaySlug}.csv`, rows.map((r) => r.join(",")).join("\n"));
-  };
-
-  // Takım metriklerini Config kurallarıyla Input'a ekle (home/away/total, template'i olanlar).
+  // Takım metriklerini Config kurallarıyla Input'a ekle. teamCfg config satırlarını gezer
+  // (custom dahil); tikli olmayan metrik + template'siz/model-dışı satır atlanır.
   const addTeams = () => {
     if (!home || !away) return;
     const rows: BktInputRow[] = [];
-    const emit = (side: "home" | "away" | "total", metricKey: string, value: number, teamName: string, sideNum: number) => {
-      const cfg = teamCfg.get(`${side}_${metricKey}`);
-      if (!cfg || !cfg.in_model || !cfg.template_id) return; // template yoksa/model dışıysa atla
-      const std = (cfg.std ?? teamStd(metricKey)) as number;
+    for (const cfg of teamCfg) {
+      const base = cfg.base_metric ?? "";
+      if (!cfg.in_model || !cfg.template_id || !isTeamTicked(base)) continue;
+      const std = (cfg.std ?? teamStd(base)) as number;
+      const hv = teamTrader(homeSlug, base, effHome);
+      const av = teamTrader(awaySlug, base, effAway);
+      const value = cfg.side === "away" ? av : cfg.side === "total" ? hv + av : hv;
+      const sideNum = cfg.side === "away" ? 2 : cfg.side === "total" ? 0 : 1;
+      const teamName = cfg.side === "away" ? away.team_name : cfg.side === "total" ? `${home.team_name} + ${away.team_name}` : home.team_name;
       for (const r of buildConfiguredLines(value, std, cfg, TEAM_PAYBACK)) {
-        rows.push({ kind: "team", fixtureExtId: fixExtId, template: cfg.template_id!, participant: "", side: sideNum, line: r.line, over: r.overPrice, under: r.underPrice, marketLabel: `${side} ${metricKey}`, playerName: "", teamName });
+        rows.push({ kind: "team", fixtureExtId: fixExtId, template: cfg.template_id, participant: "", side: sideNum, line: r.line, over: r.overPrice, under: r.underPrice, marketLabel: cfg.label ?? cfg.market_key, playerName: "", teamName });
       }
-    };
-    for (const met of TEAM_MARKETS) {
-      const hv = teamTrader(homeSlug, met.key, effHome);
-      const av = teamTrader(awaySlug, met.key, effAway);
-      emit("home", met.key, hv, home.team_name, 1);
-      emit("away", met.key, av, away.team_name, 2);
-      emit("total", met.key, hv + av, `${home.team_name} + ${away.team_name}`, 0);
     }
     if (rows.length) onAdd(rows);
   };
@@ -242,13 +221,14 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
           {tab === "team" ? (
             <div>
               <div className="mb-3 flex items-center gap-3">
-                <button onClick={addTeams} className={`rounded-md border border-teal-500/30 bg-teal-500/10 px-3 py-1.5 text-[12px] font-semibold text-teal-300 hover:bg-teal-500/20`}>{t("basketball.addToInput")}</button>
                 <span className="text-[11px] text-ink-3">{t("basketball.addTeamHint")}</span>
+                <button onClick={addTeams} className="ml-auto rounded-lg bg-accent px-5 py-2.5 text-[14px] font-semibold text-white shadow-sm hover:opacity-90">{t("basketball.addToInput")}</button>
               </div>
               <div className="grid gap-6 lg:grid-cols-2">
                 {[{ slug: homeSlug, eff: effHome, s: home }, { slug: awaySlug, eff: effAway, s: away }].map(({ slug, eff, s }) => (
                   <TeamPanel key={slug} slug={slug} name={s.team_name} eff={eff} formBy={formBy} teamTrader={teamTrader}
-                    setTrader={(mk, v) => setTraderMetric((p) => ({ ...p, [`${slug}:${mk}`]: v }))} teamModel={teamModel} logs={logsBy.get(slug) ?? []} t={t} />
+                    setTrader={(mk, v) => setTraderMetric((p) => ({ ...p, [`${slug}:${mk}`]: v }))} teamModel={teamModel} logs={logsBy.get(slug) ?? []}
+                    isTeamTicked={isTeamTicked} setTeamTick={(mk, v) => setTeamTicks((p) => ({ ...p, [mk]: v }))} locale={locale} t={t} />
                 ))}
               </div>
             </div>
@@ -257,14 +237,8 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
               effHome={effHome} effAway={effAway} winBy={winBy} isTicked={isTicked} setTick={(k, v) => setTicks((p) => ({ ...p, [k]: v }))}
               playerValue={playerValue} setVal={(k, v) => setPlayerVal((p) => ({ ...p, [k]: v }))} expRef={expRef}
               teamTarget={(slug, mk) => teamTrader(slug, mk, slug === homeSlug ? effHome : effAway)}
-              onAdd={onAdd} playerIds={playerIds} playerCfg={playerCfg} fixExtId={fixExtId} t={t} />
+              onAdd={onAdd} playerIds={playerIds} playerCfg={playerCfg} playerMarkets={playerMarkets} fixExtId={fixExtId} t={t} />
           )}
-
-          {/* export */}
-          <div className="flex flex-wrap gap-3 border-t border-line pt-4">
-            <button onClick={exportPlayers} className="rounded-md bg-accent px-4 py-2 text-[13px] font-semibold text-white hover:opacity-90">{t("basketball.exportPlayers")}</button>
-            <button onClick={exportTeams} className="rounded-md border border-line px-4 py-2 text-[13px] font-semibold text-ink-2 hover:text-ink">{t("basketball.exportTeams")}</button>
-          </div>
         </>
       ) : (<p className="text-sm text-ink-3">{t("basketball.matchPickTeams")}</p>)}
     </div>
@@ -272,54 +246,65 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
 }
 
 /* ---------- Team panel: metrik tablosu + son maçlar ---------- */
-function TeamPanel({ slug, name, eff, formBy, teamTrader, setTrader, teamModel, logs, t }: {
+function TeamPanel({ slug, name, eff, formBy, teamTrader, setTrader, teamModel, logs, isTeamTicked, setTeamTick, locale, t }: {
   slug: string; name: string; eff: number;
   formBy: Map<string, Map<string, BktTeamMetricFormRow>>;
   teamTrader: (s: string, mk: string, e: number) => number;
   setTrader: (mk: string, v: number) => void;
   teamModel: (s: string, mk: string, e: number) => number;
-  logs: BktTeamLogRow[]; t: (k: string) => string;
+  logs: BktTeamLogRow[];
+  isTeamTicked: (mk: string) => boolean;
+  setTeamTick: (mk: string, v: boolean) => void;
+  locale: "tr" | "en";
+  t: (k: string) => string;
 }) {
+  // Tüm sezon maçları, en yeni üstte (week desc → tarih desc; BSL tarihleri bazen bozuk).
+  const sortedLogs = [...logs].sort((a, b) => (b.week ?? 0) - (a.week ?? 0) || String(b.match_date ?? "").localeCompare(String(a.match_date ?? "")));
   return (
     <div>
       <div className="mb-2 flex items-center gap-2 text-[12px] font-medium text-ink"><TeamCrest slug={slug} name={name} size={24} />{name}</div>
-      <table className="min-w-full border-collapse text-[13px]">
-        <thead><tr className="border-b border-line text-[10px] uppercase tracking-[0.12em] text-ink-3">
-          <th className="px-2 py-1.5 text-left">{t("basketball.colMarket")}</th>
-          <th className="px-2 py-1.5 text-right">{t("basketball.colAvg")}</th>
-          <th className="px-2 py-1.5 text-right">{t("basketball.colLast10")}</th>
-          <th className="px-2 py-1.5 text-right">{t("basketball.colModel")}</th>
-          <th className="px-2 py-1.5 text-right">{t("basketball.colStd")}</th>
-          <th className="px-2 py-1.5 text-right">{t("basketball.colTrader")}</th>
+      <table className="min-w-full border-collapse text-[12px]">
+        <thead><tr className="border-b border-line text-[9px] uppercase tracking-[0.1em] text-ink-3">
+          <th className="px-1.5 py-1 text-center"></th>
+          <th className="px-1.5 py-1 text-left">{t("basketball.colMarket")}</th>
+          <th className="px-1.5 py-1 text-right">{t("basketball.colAvg")}</th>
+          <th className="px-1.5 py-1 text-right">{t("basketball.colLast10")}</th>
+          <th className="px-1.5 py-1 text-right">{t("basketball.colModel")}</th>
+          <th className="px-1.5 py-1 text-right">{t("basketball.colStd")}</th>
+          <th className="px-1.5 py-1 text-right">{t("basketball.colTrader")}</th>
         </tr></thead>
         <tbody>
           {TEAM_MARKETS.map((met) => {
             const f = formBy.get(slug)?.get(met.key);
+            const on = isTeamTicked(met.key);
             return (
-              <tr key={met.key} className="border-t border-line">
-                <td className="px-2 py-1 text-ink">{met.label}</td>
-                <td className="px-2 py-1 text-right tabular-nums text-ink-3">{fmt(f?.season_avg)}</td>
-                <td className="px-2 py-1 text-right tabular-nums text-ink-3">{fmt(f?.last10_avg)}</td>
-                <td className="px-2 py-1 text-right tabular-nums text-ink-2">{fmt(teamModel(slug, met.key, eff))}</td>
-                <td className="px-2 py-1 text-right tabular-nums text-ink-3">{teamStd(met.key).toFixed(2)}</td>
-                <td className="px-2 py-1 text-right"><NumInput value={Math.round(teamTrader(slug, met.key, eff) * 10) / 10} onChange={(v) => setTrader(met.key, v)} /></td>
+              <tr key={met.key} className={`border-t border-line ${on ? "" : "opacity-45"}`}>
+                <td className="px-1.5 py-0.5 text-center"><input type="checkbox" checked={on} onChange={(e) => setTeamTick(met.key, e.target.checked)} className="accent-[var(--accent)]" /></td>
+                <td className="px-1.5 py-0.5 text-ink whitespace-nowrap">{metricLabel(met.key, locale, met.label)}</td>
+                <td className="px-1.5 py-0.5 text-right tabular-nums text-ink-3">{fmt(f?.season_avg)}</td>
+                <td className="px-1.5 py-0.5 text-right tabular-nums text-ink-3">{fmt(f?.last10_avg)}</td>
+                <td className="px-1.5 py-0.5 text-right tabular-nums text-ink-2">{fmt(teamModel(slug, met.key, eff))}</td>
+                <td className="px-1.5 py-0.5 text-right tabular-nums text-ink-3">{teamStd(met.key).toFixed(2)}</td>
+                <td className="px-1.5 py-0.5 text-right"><NumInput value={Math.round(teamTrader(slug, met.key, eff) * 10) / 10} onChange={(v) => setTrader(met.key, v)} w="w-14" /></td>
               </tr>
             );
           })}
         </tbody>
       </table>
-      {/* son maçlar */}
+      {/* sezon maçları (en yeni üstte, tarihli) */}
       <div className="mt-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-3">{t("basketball.recentMatches")}</div>
-      <div className="mt-1 overflow-x-auto">
+      <div className="mt-1 max-h-72 overflow-auto">
         <table className="min-w-full border-collapse text-[12px]">
-          <thead><tr className="text-[9px] uppercase tracking-[0.1em] text-ink-3">
+          <thead className="sticky top-0 bg-card-2"><tr className="text-[9px] uppercase tracking-[0.1em] text-ink-3">
+            <th className="px-1.5 py-1 text-left">{t("basketball.date")}</th>
             <th className="px-1.5 py-1 text-left">{t("basketball.opponent")}</th>
             <th className="px-1.5 py-1 text-right">Sayı</th><th className="px-1.5 py-1 text-right">Rib</th><th className="px-1.5 py-1 text-right">As</th>
             <th className="px-1.5 py-1 text-right">3S</th><th className="px-1.5 py-1 text-right">TÇ</th><th className="px-1.5 py-1 text-right">Blk</th><th className="px-1.5 py-1 text-right">TK</th>
           </tr></thead>
           <tbody>
-            {logs.slice(0, 10).map((m) => (
-              <tr key={m.match_key + m.match_date} className="border-t border-line">
+            {sortedLogs.map((m, i) => (
+              <tr key={`${m.match_key}-${m.match_date}-${i}`} className="border-t border-line">
+                <td className="px-1.5 py-0.5 text-ink-3 whitespace-nowrap">{formatMatchDate(m.match_date, locale)}</td>
                 <td className="px-1.5 py-0.5 text-ink-2 whitespace-nowrap">{m.opponent_name} <span className={m.result === "W" ? "text-pos" : "text-neg"}>{m.result}</span></td>
                 <td className="px-1.5 py-0.5 text-right tabular-nums text-ink">{m.points}</td>
                 <td className="px-1.5 py-0.5 text-right tabular-nums text-ink-2">{m.treb}</td>
@@ -338,7 +323,7 @@ function TeamPanel({ slug, name, eff, formBy, teamTrader, setTrader, teamModel, 
 }
 
 /* ---------- Player distribution panel ---------- */
-function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effAway, winBy, isTicked, setTick, playerValue, setVal, expRef, teamTarget, onAdd, playerIds, playerCfg, fixExtId, t }: {
+function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effAway, winBy, isTicked, setTick, playerValue, setVal, expRef, teamTarget, onAdd, playerIds, playerCfg, playerMarkets, fixExtId, t }: {
   homeSlug: string; awaySlug: string; homeName: string; awayName: string; effHome: number; effAway: number;
   winBy: Map<string, Map<string, BktPlayerWindowRow[]>>;
   isTicked: (s: string, mk: string, w: BktPlayerWindowRow) => boolean;
@@ -350,17 +335,19 @@ function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effA
   onAdd: (rows: BktInputRow[]) => void;
   playerIds: Record<string, string>;
   playerCfg: Map<string, PmMarketConfig>;
+  playerMarkets: { key: string; base: string; label: string; std: number; tpl: string; distributable: boolean }[];
   fixExtId: string;
   t: (k: string) => string;
 }) {
   const [side, setSide] = useState<"home" | "away">("home");
-  const [mk, setMk] = useState("points");
+  const [mk, setMk] = useState(playerMarkets[0]?.key ?? "points");
   const [selPlayer, setSelPlayer] = useState<string | null>(null);
   const [sort, setSort] = useState<{ key: string; dir: "asc" | "desc" }>({ key: "all", dir: "desc" });
   const slug = side === "home" ? homeSlug : awaySlug;
   const eff = side === "home" ? effHome : effAway;
-  const met = PLAYER_MARKETS.find((m) => m.key === mk)!;
-  const allList = winBy.get(slug)?.get(mk) ?? [];
+  const met = playerMarkets.find((m) => m.key === mk) ?? playerMarkets[0];
+  const allList = winBy.get(slug)?.get(met?.base ?? mk) ?? [];
+  if (!met) return null;
   const sortVal = (w: BktPlayerWindowRow): number | string => {
     switch (sort.key) {
       case "player": return w.player_name;
@@ -432,7 +419,7 @@ function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effA
             )}
             {" · Std "}{met.std}
           </span>
-          <button onClick={addCurrent} className="rounded-md border border-teal-500/30 bg-teal-500/10 px-3 py-1 text-[12px] font-semibold text-teal-300 hover:bg-teal-500/20">
+          <button onClick={addCurrent} className="ml-auto rounded-lg bg-accent px-5 py-2.5 text-[14px] font-semibold text-white shadow-sm hover:opacity-90">
             {t("basketball.addToInput")}
           </button>
         </div>
@@ -440,7 +427,7 @@ function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effA
         <div className="flex flex-wrap items-center gap-2 rounded-lg border border-line bg-card-2/40 px-2.5 py-2">
           <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-3">{t("basketball.pickMarket")}</span>
           <div className="flex flex-wrap gap-1.5">
-            {PLAYER_MARKETS.map((m) => (
+            {playerMarkets.map((m) => (
               <button key={m.key} onClick={() => { setMk(m.key); setSelPlayer(null); }} className={`rounded-full px-3 py-1 text-[11px] font-semibold transition-colors ${m.key === mk ? "bg-accent-soft text-accent-ink ring-1 ring-accent/40" : "bg-veil text-ink-3 hover:text-ink"}`}>{m.label}</button>
             ))}
           </div>

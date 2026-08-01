@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useI18n } from "@/lib/i18n/LanguageProvider";
 import BasketballTools from "./BasketballTools";
-import { TEAM_MARKETS, teamStd } from "../marketConfig";
+import { configLabel, METRIC_LABELS, metricLabel } from "../marketConfig";
 import {
   fetchPmFixtures, insertFixture, updateFixture, deleteFixture, PmFixture,
   fetchPlayerIds, savePlayerIds,
@@ -24,14 +24,14 @@ type Props = {
   players: BktPlayerListRow[];
 };
 
-type Tab = "model" | "players" | "std" | "fixtures" | "config" | "input";
+type Tab = "model" | "players" | "fixtures" | "config" | "input";
 type InputType = "player" | "team";
 
 const btnSave = "rounded-md border border-teal-500/30 bg-teal-500/10 px-3 py-1.5 text-[12px] font-semibold text-teal-300 hover:bg-teal-500/20";
 const btnGhost = "rounded-md border border-line px-3 py-1.5 text-[12px] font-semibold text-ink-2 hover:text-ink";
 
 export default function BasketballParticipantTools({ splits, forms, windows, teamLogs, players }: Props) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [tab, setTab] = useState<Tab>("model");
   const [fixtures, setFixtures] = useState<PmFixture[]>([]);
   const [playerIds, setPlayerIds] = useState<Record<string, string>>({});
@@ -45,14 +45,12 @@ export default function BasketballParticipantTools({ splits, forms, windows, tea
 
   const teams = useMemo(() => [...splits].map((s) => ({ slug: s.team_slug, name: s.team_name })).sort((a, b) => a.name.localeCompare(b.name, "tr")), [splits]);
 
-  const shownRows = inputRows.filter((r) => r.kind === inputType);
   const TABS: { id: Tab; label: string }[] = [
     { id: "model", label: t("basketball.tabModel") },
     { id: "players", label: t("basketball.tabPlayerList") },
-    { id: "std", label: t("basketball.tabStdList") },
     { id: "fixtures", label: t("basketball.tabFixtures") },
     { id: "config", label: t("basketball.tabConfig") },
-    { id: "input", label: `${t("basketball.tabInput")}${shownRows.length ? ` (${shownRows.length})` : ""}` },
+    { id: "input", label: `${t("basketball.tabInput")}${inputRows.length ? ` (${inputRows.length})` : ""}` },
   ];
 
   return (
@@ -69,10 +67,9 @@ export default function BasketballParticipantTools({ splits, forms, windows, tea
           playerIds={playerIds} config={config} onAdd={(rows) => setInputRows((p) => [...p, ...rows])} />
       )}
       {tab === "players" && <PlayerListTab players={players} playerIds={playerIds} onSaved={setPlayerIds} t={t} />}
-      {tab === "std" && <TeamStdListTab t={t} />}
       {tab === "fixtures" && <FixturesTab fixtures={fixtures} teams={teams} reload={reloadFixtures} t={t} />}
-      {tab === "config" && <ConfigTab config={config} reload={reloadConfig} inputType={inputType} setInputType={setInputType} t={t} />}
-      {tab === "input" && <InputTab rows={shownRows} allRows={inputRows} setRows={setInputRows} inputType={inputType} t={t} />}
+      {tab === "config" && <ConfigTab config={config} reload={reloadConfig} inputType={inputType} setInputType={setInputType} locale={locale} t={t} />}
+      {tab === "input" && <InputTab allRows={inputRows} setRows={setInputRows} initialType={inputType} t={t} />}
     </div>
   );
 }
@@ -192,29 +189,6 @@ function PlayerListTab({ players, playerIds, onSaved, t }: { players: BktPlayerL
   );
 }
 
-/* ---------- Team Std List ---------- */
-function TeamStdListTab({ t }: { t: (k: string) => string }) {
-  return (
-    <div>
-      <p className="mb-3 text-[11px] text-ink-3">{t("basketball.stdListHint")}</p>
-      <table className="min-w-full border-collapse text-[13px]">
-        <thead><tr className="border-b border-line text-[10px] uppercase tracking-[0.1em] text-ink-3">
-          <th className="px-2 py-1.5 text-left">{t("basketball.colMarket")}</th>
-          <th className="px-2 py-1.5 text-right">{t("basketball.colStd")}</th>
-        </tr></thead>
-        <tbody>
-          {TEAM_MARKETS.map((m) => (
-            <tr key={m.key} className="border-t border-line hover:bg-veil">
-              <td className="px-2 py-1 text-ink whitespace-nowrap">{m.label}</td>
-              <td className="px-2 py-1 text-right tabular-nums text-ink-2">{teamStd(m.key).toFixed(2)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
 /* ---------- Fixtures ---------- */
 function FixturesTab({ fixtures, teams, reload, t }: { fixtures: PmFixture[]; teams: { slug: string; name: string }[]; reload: () => void; t: (k: string) => string }) {
   const [h, setH] = useState(teams[0]?.slug ?? "");
@@ -259,19 +233,19 @@ function FixturesTab({ fixtures, teams, reload, t }: { fixtures: PmFixture[]; te
 }
 
 /* ---------- Config (line üretim kuralları) ---------- */
-function ConfigTab({ config, reload, inputType, setInputType, t }: {
+function ConfigTab({ config, reload, inputType, setInputType, locale, t }: {
   config: PmMarketConfig[]; reload: () => void;
   inputType: "player" | "team"; setInputType: (t: "player" | "team") => void;
-  t: (k: string) => string;
+  locale: string; t: (k: string) => string;
 }) {
   const [edits, setEdits] = useState<Record<string, Partial<PmMarketConfig>>>({});
   const [saving, setSaving] = useState(false);
+  const [nm, setNm] = useState<{ base: string; side: string; template: string; std: string }>({ base: "points", side: "home", template: "", std: "" });
   const rk = (c: PmMarketConfig) => `${c.market_group}:${c.market_key}`;
   const patch = (c: PmMarketConfig, p: Partial<PmMarketConfig>) => setEdits((s) => ({ ...s, [rk(c)]: { ...s[rk(c)], ...p } }));
   const v = <K extends keyof PmMarketConfig>(c: PmMarketConfig, key: K): PmMarketConfig[K] =>
     (edits[rk(c)]?.[key] ?? c[key]) as PmMarketConfig[K];
 
-  // template'e göre sıralı (boş template en sona), sonra sort_order
   const bySection = (grp: string) =>
     config.filter((c) => c.market_group === grp).sort((a, b) => {
       const ta = (v(a, "template_id") ?? "").toString(), tb = (v(b, "template_id") ?? "").toString();
@@ -292,49 +266,62 @@ function ConfigTab({ config, reload, inputType, setInputType, t }: {
     if (ok) { setEdits({}); reload(); }
   };
 
+  // Yeni market ekle (aktif tip için). base_metric = değer kaynağı; team'de side de gerekir.
+  const addMarket = async () => {
+    const isTeam = inputType === "team";
+    const baseLbl = metricLabel(nm.base, "en");
+    const key = isTeam ? `${nm.side}_custom_${nm.base}_${Date.now() % 100000}` : `custom_${nm.base}_${Date.now() % 100000}`;
+    const label = isTeam ? `${nm.side} ${baseLbl}` : baseLbl;
+    const ok = await upsertMarketConfig([{
+      market_group: inputType, market_key: key, label, base_metric: nm.base,
+      side: isTeam ? nm.side : null, template_id: nm.template.trim() || null,
+      std: nm.std ? parseFloat(nm.std) : null, in_model: true, sort_order: 999,
+    }]);
+    if (ok) { setNm({ base: "points", side: "home", template: "", std: "" }); reload(); }
+  };
+
   const numCell = (c: PmMarketConfig, key: keyof PmMarketConfig, w = "w-12", nullable = false, ph = "") => (
     <input type="number" step="any" placeholder={ph}
       value={(v(c, key) as number | null) ?? ""}
       onChange={(e) => patch(c, { [key]: e.target.value === "" ? (nullable ? null : 0) : parseFloat(e.target.value) } as Partial<PmMarketConfig>)}
-      className={`${w} rounded border border-line bg-field px-1.5 py-0.5 text-right text-[12px] text-ink outline-none focus:border-line-strong`} />
+      className={`${w} rounded border border-line bg-field px-1 py-0 text-right text-[11px] text-ink outline-none focus:border-line-strong`} />
   );
 
+  const th = "px-1.5 py-1 text-[9px] uppercase tracking-[0.1em] text-ink-3";
+  const td = "px-1.5 py-0.5";
   const Section = ({ grp }: { grp: string }) => (
-    <div className="mb-6 overflow-x-auto">
-      <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-3">
-        {t(grp === "player" ? "basketball.cfgSectionPlayer" : "basketball.cfgSectionTeam")}
-      </h3>
-      <table className="min-w-full border-collapse text-[12px]">
-        <thead><tr className="border-b border-line text-[9px] uppercase tracking-[0.1em] text-ink-3">
-          <th className="px-1.5 py-1 text-center">{t("basketball.colModelFlag")}</th>
-          <th className="px-1.5 py-1 text-left">{t("basketball.colMarket")}</th>
-          <th className="px-1.5 py-1 text-left">{t("basketball.marketTemplate")}</th>
-          <th className="px-1.5 py-1 text-right">{t("basketball.colStd")}</th>
-          <th className="px-1.5 py-1 text-right">{t("basketball.cfgLines")}</th>
-          <th className="px-1.5 py-1 text-right">{t("basketball.cfgUnder")}</th>
-          <th className="px-1.5 py-1 text-right">{t("basketball.cfgSkipAfter")}</th>
-          <th className="px-1.5 py-1 text-right">{t("basketball.cfgSkipStep")}</th>
-          <th className="px-1.5 py-1 text-right">{t("basketball.cfgMaxLines")}</th>
-          <th className="px-1.5 py-1 text-right">{t("basketball.cfgCap")}</th>
-          <th className="px-1.5 py-1 text-right">{t("basketball.cfgPayback")}</th>
-          <th className="px-1.5 py-1 text-center">{t("basketball.cfgRound")}</th>
+    <div className="overflow-x-auto">
+      <table className="min-w-full border-collapse text-[11px]">
+        <thead><tr className="border-b border-line">
+          <th className={`${th} text-center`}>{t("basketball.colModelFlag")}</th>
+          <th className={`${th} text-left`}>{t("basketball.colMarket")}</th>
+          <th className={`${th} text-left`}>{t("basketball.marketTemplate")}</th>
+          <th className={`${th} text-right`}>{t("basketball.colStd")}</th>
+          <th className={`${th} text-right`}>{t("basketball.cfgLines")}</th>
+          <th className={`${th} text-right`}>{t("basketball.cfgUnder")}</th>
+          <th className={`${th} text-right`}>{t("basketball.cfgSkipAfter")}</th>
+          <th className={`${th} text-right`}>{t("basketball.cfgSkipStep")}</th>
+          <th className={`${th} text-right`}>{t("basketball.cfgMaxLines")}</th>
+          <th className={`${th} text-right`}>{t("basketball.cfgCap")}</th>
+          <th className={`${th} text-right`}>{t("basketball.cfgPayback")}</th>
+          <th className={`${th} text-center`}>{t("basketball.cfgRound")}</th>
         </tr></thead>
         <tbody>
           {bySection(grp).map((c) => (
             <tr key={rk(c)} className="border-t border-line hover:bg-veil">
-              <td className="px-1.5 py-1 text-center"><input type="checkbox" checked={!!v(c, "in_model")} onChange={(e) => patch(c, { in_model: e.target.checked })} className="accent-[var(--accent)]" /></td>
-              <td className="px-1.5 py-1 text-ink whitespace-nowrap">{c.label}</td>
-              <td className="px-1.5 py-1"><input value={(v(c, "template_id") ?? "").toString()} onChange={(e) => patch(c, { template_id: e.target.value || null })}
-                className="w-28 rounded border border-line bg-field px-1.5 py-0.5 text-[12px] text-ink outline-none focus:border-line-strong" placeholder="—" /></td>
-              <td className="px-1.5 py-1 text-right">{numCell(c, "std", "w-14")}</td>
-              <td className="px-1.5 py-1 text-right">{numCell(c, "lines")}</td>
-              <td className="px-1.5 py-1 text-right">{numCell(c, "under_lines")}</td>
-              <td className="px-1.5 py-1 text-right">{numCell(c, "skip_after")}</td>
-              <td className="px-1.5 py-1 text-right">{numCell(c, "skip_step")}</td>
-              <td className="px-1.5 py-1 text-right">{numCell(c, "max_lines")}</td>
-              <td className="px-1.5 py-1 text-right">{numCell(c, "odds_cap", "w-14")}</td>
-              <td className="px-1.5 py-1 text-right">{numCell(c, "payback", "w-16", true, t("basketball.cfgDefault"))}</td>
-              <td className="px-1.5 py-1 text-center"><input type="checkbox" checked={!!v(c, "round_odds")} onChange={(e) => patch(c, { round_odds: e.target.checked })} className="accent-[var(--accent)]" /></td>
+              <td className={`${td} text-center`}><input type="checkbox" checked={!!v(c, "in_model")} onChange={(e) => patch(c, { in_model: e.target.checked })} className="accent-[var(--accent)]" /></td>
+              <td className={`${td} text-ink whitespace-nowrap`}>{configLabel({ ...c, ...edits[rk(c)] }, locale)}</td>
+              <td className={td}><input value={(v(c, "template_id") ?? "").toString()} onChange={(e) => patch(c, { template_id: e.target.value || null })}
+                className="w-24 rounded border border-line bg-field px-1 py-0 text-[11px] text-ink outline-none focus:border-line-strong" placeholder="—" /></td>
+              <td className={`${td} text-right`}>{numCell(c, "std", "w-12")}</td>
+              <td className={`${td} text-right`}>{numCell(c, "lines", "w-10")}</td>
+              <td className={`${td} text-right`}>{numCell(c, "under_lines", "w-10")}</td>
+              <td className={`${td} text-right`}>{numCell(c, "skip_after", "w-10")}</td>
+              <td className={`${td} text-right`}>{numCell(c, "skip_step", "w-10")}</td>
+              <td className={`${td} text-right`}>{numCell(c, "max_lines", "w-10")}</td>
+              <td className={`${td} text-right`}>{numCell(c, "odds_cap", "w-12")}</td>
+              <td className={`${td} text-right`}>{numCell(c, "payback", "w-14", true, t("basketball.cfgDefault"))}</td>
+              <td className={`${td} text-center`}><input type="checkbox" checked={!!v(c, "round_odds")} onChange={(e) => patch(c, { round_odds: e.target.checked })} className="accent-[var(--accent)]" /></td>
             </tr>
           ))}
         </tbody>
@@ -342,13 +329,13 @@ function ConfigTab({ config, reload, inputType, setInputType, t }: {
     </div>
   );
 
+  const inp = "rounded border border-line bg-field px-2 py-1 text-[12px] text-ink outline-none focus:border-line-strong";
   return (
     <div>
       <div className="mb-3 flex flex-wrap items-center gap-3">
         <label className="flex items-center gap-2 text-[12px] text-ink-2">
           <span className="text-[10px] uppercase tracking-[0.14em] text-ink-3">{t("basketball.colType")}</span>
-          <select value={inputType} onChange={(e) => setInputType(e.target.value as "player" | "team")}
-            className="rounded-md border border-line bg-field px-2 py-1 text-[13px] text-ink outline-none focus:border-line-strong">
+          <select value={inputType} onChange={(e) => setInputType(e.target.value as "player" | "team")} className={inp}>
             <option value="player">Player</option>
             <option value="team">Team</option>
           </select>
@@ -356,6 +343,23 @@ function ConfigTab({ config, reload, inputType, setInputType, t }: {
         <button onClick={save} disabled={saving || Object.keys(edits).length === 0} className={`${btnSave} disabled:opacity-50`}>{t("basketball.save")}</button>
         <p className="text-[11px] text-ink-3">{t("basketball.cfgHint")}</p>
       </div>
+
+      {/* yeni market ekleme */}
+      <div className="mb-3 flex flex-wrap items-end gap-2 rounded-lg border border-line bg-card-2/40 px-3 py-2">
+        <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-3">{t("basketball.cfgNewMarket")}</span>
+        <select value={nm.base} onChange={(e) => setNm((s) => ({ ...s, base: e.target.value }))} className={inp}>
+          {Object.keys(METRIC_LABELS).map((k) => <option key={k} value={k}>{metricLabel(k, locale)}</option>)}
+        </select>
+        {inputType === "team" && (
+          <select value={nm.side} onChange={(e) => setNm((s) => ({ ...s, side: e.target.value }))} className={inp}>
+            <option value="home">Home</option><option value="away">Away</option><option value="total">Total</option>
+          </select>
+        )}
+        <input value={nm.template} onChange={(e) => setNm((s) => ({ ...s, template: e.target.value }))} placeholder={t("basketball.marketTemplate")} className={`${inp} w-32`} />
+        <input value={nm.std} onChange={(e) => setNm((s) => ({ ...s, std: e.target.value }))} placeholder={t("basketball.colStd")} className={`${inp} w-16`} />
+        <button onClick={addMarket} className={btnGhost}>{t("basketball.add")}</button>
+      </div>
+
       <Section grp={inputType} />
     </div>
   );
@@ -367,11 +371,13 @@ function ConfigTab({ config, reload, inputType, setInputType, t }: {
 const PLAYER_IN_HEADERS = ["Fixture ID", "Market Template", "Market Participant", "Market Participant Sort Order", "Line", "Market Status", "Selection_1_Name", "Selection_1_Price", "Selection_2_Name", "Selection_2_Price"];
 const TEAM_IN_HEADERS = ["Fixture ID", "Market Template", "Line", "Market Status", "Selection_1_Name", "Selection_1_Price", "Selection_2_Name", "Selection_2_Price"];
 
-function InputTab({ rows, allRows, setRows, inputType, t }: {
-  rows: BktInputRow[]; allRows: BktInputRow[]; setRows: (r: BktInputRow[]) => void;
-  inputType: "player" | "team"; t: (k: string) => string;
+function InputTab({ allRows, setRows, initialType, t }: {
+  allRows: BktInputRow[]; setRows: (r: BktInputRow[]) => void;
+  initialType: "player" | "team"; t: (k: string) => string;
 }) {
-  const isTeam = inputType === "team";
+  const [type, setType] = useState<"player" | "team">(initialType);
+  const isTeam = type === "team";
+  const rows = allRows.filter((r) => r.kind === type);
   const rowName = (r: BktInputRow) => (r.kind === "team" ? r.teamName : r.playerName);
   const exportXlsx = async () => {
     const XLSX = await import("xlsx");
@@ -382,17 +388,23 @@ function InputTab({ rows, allRows, setRows, inputType, t }: {
     const ws = XLSX.utils.aoa_to_sheet(aoa);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "input");
-    XLSX.writeFile(wb, `basketbol_input_${inputType}.xlsx`);
+    XLSX.writeFile(wb, `basketbol_input_${type}.xlsx`);
   };
   // Temizle sadece aktif tipteki satırları siler; sil belirli satırı allRows'tan çıkarır.
-  const clear = () => setRows(allRows.filter((r) => r.kind !== inputType));
+  const clear = () => setRows(allRows.filter((r) => r.kind !== type));
   const removeRow = (r: BktInputRow) => setRows(allRows.filter((x) => x !== r));
+  const cnt = (k: "player" | "team") => allRows.filter((r) => r.kind === k).length;
   return (
     <div>
-      <div className="mb-3 flex items-center gap-3">
-        <button onClick={exportXlsx} disabled={rows.length === 0} className={`${btnSave} disabled:opacity-50`}>{t("basketball.printXlsx")}</button>
+      <div className="mb-3 flex flex-wrap items-center gap-1.5">
+        {(["player", "team"] as const).map((k) => (
+          <button key={k} onClick={() => setType(k)}
+            className={`rounded-full px-4 py-1.5 text-xs font-semibold transition ${type === k ? "bg-accent text-white" : "bg-card-2 text-ink-2 hover:text-ink"}`}>
+            {k === "team" ? "Team" : "Player"}{cnt(k) ? ` (${cnt(k)})` : ""}
+          </button>
+        ))}
+        <button onClick={exportXlsx} disabled={rows.length === 0} className={`ml-3 ${btnSave} disabled:opacity-50`}>{t("basketball.printXlsx")}</button>
         <button onClick={clear} disabled={rows.length === 0} className={`${btnGhost} disabled:opacity-50`}>{t("basketball.clear")}</button>
-        <span className="text-[11px] text-ink-3">{inputType === "team" ? "Team" : "Player"} · {t("basketball.inputCount").replace("{n}", String(rows.length))}</span>
       </div>
       {rows.length === 0 ? (
         <p className="text-sm text-ink-3">{t("basketball.inputEmpty")}</p>
