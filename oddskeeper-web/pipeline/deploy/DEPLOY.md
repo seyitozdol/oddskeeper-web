@@ -57,6 +57,12 @@ Sunucu saati UTC. Üç iş:
 #    pipeline'ı bir kez çalıştırır (flock ile üst üste binmez). Scheduled 1-4
 #    işleri kendi sabit saatlerinde ETKİLENMEDEN devam eder.
 * * * * *  /opt/oddskeeper/run_trigger_check.sh
+
+# 6) TBF basketbol box-score (headful+xvfb+TR proxy → basketball.*): HAZIR AMA KAPALI.
+#    BSL yeni sezon BAŞLAMADI. Sezon başlayınca: run_tbf_basketball.sh içindeki
+#    TBF_LEAGUE_ID/TBF_SEASON_ID/TBF_SEASON_LABEL'i yeni sezona göre güncelle,
+#    sonra bu satırı aç (günde bir yeter; maçlar haftalık, idempotent upsert).
+# 0 6 * * *   /opt/oddskeeper/run_tbf_basketball.sh
 ```
 `public.pipeline_triggers` tablosu gerekir (sql/2026-07-31_pipeline_triggers.sql).
 Wrapper'ları kopyala: `cp oddskeeper-web/pipeline/deploy/run_*.sh /opt/oddskeeper/ && chmod +x /opt/oddskeeper/run_*.sh`

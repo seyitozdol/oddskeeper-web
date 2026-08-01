@@ -19,14 +19,20 @@ from dotenv import load_dotenv
 ROOT = Path(__file__).resolve().parents[2]  # pipeline/
 load_dotenv(ROOT / ".env")
 
-# Sirayla calistirilacak wrapper'lar. Once maclar (upcoming), sonra hafif oran
-# kaynaklari, en son agir Bets10 (kendi kilidi var).
-WRAPPERS = [
-    "/opt/oddskeeper/run_upcoming_events.sh",
-    "/opt/oddskeeper/run_bet365_odds.sh",
-    "/opt/oddskeeper/run_oddsportal.sh",
-    "/opt/oddskeeper/run_odds_capture.sh",
-]
+# kind -> sirayla calistirilacak wrapper'lar.
+#  'all'            = futbol/oran zinciri (maclar, hafif oran kaynaklari, agir Bets10 son).
+#  'tbf_basketball' = yalniz TBF basketbol scraper'i (headful+xvfb+TR proxy).
+KIND_WRAPPERS = {
+    "all": [
+        "/opt/oddskeeper/run_upcoming_events.sh",
+        "/opt/oddskeeper/run_bet365_odds.sh",
+        "/opt/oddskeeper/run_oddsportal.sh",
+        "/opt/oddskeeper/run_odds_capture.sh",
+    ],
+    "tbf_basketball": [
+        "/opt/oddskeeper/run_tbf_basketball.sh",
+    ],
+}
 PER_JOB_TIMEOUT = 1500  # sn (agir Bets10 dahil)
 
 
@@ -43,17 +49,18 @@ def main() -> None:
             where status='pending' order by requested_at
             limit 1 for update skip locked
         )
-        returning id, requested_by
+        returning id, requested_by, kind
         """
     )
     row = cur.fetchone()
     if not row:
         return  # bekleyen tetik yok
-    tid, by = row
-    print(f"[trigger {tid}] claimed (by {by})", flush=True)
+    tid, by, kind = row
+    wrappers = KIND_WRAPPERS.get(kind or "all", KIND_WRAPPERS["all"])
+    print(f"[trigger {tid}] claimed (by {by}, kind={kind})", flush=True)
 
     notes, any_ok = [], False
-    for w in WRAPPERS:
+    for w in wrappers:
         name = os.path.basename(w)
         if not os.path.exists(w):
             notes.append(f"{name}:yok")
