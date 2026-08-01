@@ -22,6 +22,7 @@ type Props = {
   playerIds: Record<string, string>;
   config: PmMarketConfig[];
   inputRows: BktInputRow[];
+  competition?: "E" | "U";   // EL/EC ise drawer euro veriye bağlanır
   onAdd: (rows: BktInputRow[]) => void;
 };
 
@@ -68,7 +69,7 @@ function NumInput({ value, onChange, step = 0.1, w = "w-16", warn = false }: { v
   );
 }
 
-export default function BasketballTools({ pmFixtures, splits, forms, windows, teamLogs, playerIds, config, inputRows, onAdd }: Props) {
+export default function BasketballTools({ pmFixtures, splits, forms, windows, teamLogs, playerIds, config, inputRows, competition, onAdd }: Props) {
   const { t, locale } = useI18n();
   // Input'ta zaten olan satır anahtarları (mükerrer engelleme) + oyuncu+market seti (uyarı).
   const existingKeys = useMemo(() => new Set(inputRows.map(rowKey)), [inputRows]);
@@ -286,11 +287,11 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
         <>
           {/* maç sayıları özeti */}
           <div className="flex flex-wrap items-center gap-4 rounded-lg border border-line bg-veil px-4 py-3 text-sm">
-            <div className="flex items-center gap-2"><TeamCrest slug={homeSlug} name={home.team_name} size={30} />
+            <div className="flex items-center gap-2"><TeamCrest slug={homeSlug} name={home.team_name} size={30} url={home.crest_url} />
               <NumInput value={effHome} onChange={(v) => setPtsOv((p) => ({ ...p, h: v }))} /></div>
             <span className="text-ink-3">–</span>
             <div className="flex items-center gap-2"><NumInput value={effAway} onChange={(v) => setPtsOv((p) => ({ ...p, a: v }))} />
-              <TeamCrest slug={awaySlug} name={away.team_name} size={30} /></div>
+              <TeamCrest slug={awaySlug} name={away.team_name} size={30} url={away.crest_url} /></div>
             <div><span className="text-ink-3">{t("basketball.matchTotal")}: </span><span className="font-semibold text-accent-ink">{fmt(effHome + effAway)}</span></div>
             <div><span className="text-ink-3">{t("basketball.matchMoneyline")}: </span><span className="font-semibold text-ink">{ml.homePrice.toFixed(2)} / {ml.awayPrice.toFixed(2)}</span></div>
           </div>
@@ -313,7 +314,7 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
               {/* Home | Away | Total yan yana (compact) */}
               <div className="grid gap-4 lg:grid-cols-3">
                 {[{ slug: homeSlug, side: "home", eff: effHome, s: home }, { slug: awaySlug, side: "away", eff: effAway, s: away }].map(({ slug, side, eff, s }) => (
-                  <TeamMetricTable key={slug} slug={slug} side={side} name={s.team_name} eff={eff} formBy={formBy} teamTrader={teamTrader}
+                  <TeamMetricTable key={slug} slug={slug} side={side} name={s.team_name} crestUrl={s.crest_url} eff={eff} formBy={formBy} teamTrader={teamTrader}
                     setTrader={(mk, v) => setTraderMetric((p) => ({ ...p, [`${slug}:${mk}`]: v }))} teamModel={teamModel} last10w={teamLast10Weighted}
                     valueWarn={teamValueWarn} inInput={teamInInput} isTeamTicked={isTeamTicked} setTeamTick={(key, v) => setTeamTicks((p) => ({ ...p, [key]: v }))}
                     setAll={(on) => setTeamAll(slug, on)} locale={locale} t={t} />
@@ -334,7 +335,7 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
               playerValue={playerValue} setVal={(k, v) => setPlayerVal((p) => ({ ...p, [k]: v }))} expRef={expRef}
               teamTarget={(slug, mk) => teamTrader(slug, mk, slug === homeSlug ? effHome : effAway)}
               onAdd={onAdd} playerIds={playerIds} playerCfg={playerCfg} playerMarkets={playerMarkets}
-              existingKeys={existingKeys} existingPlayerMkt={existingPlayerMkt} onReset={resetPlayer} fixExtId={fixExtId} locale={locale} t={t} />
+              existingKeys={existingKeys} existingPlayerMkt={existingPlayerMkt} onReset={resetPlayer} competition={competition} fixExtId={fixExtId} locale={locale} t={t} />
           )}
         </>
       ) : (<p className="text-sm text-ink-3">{t("basketball.matchPickTeams")}</p>)}
@@ -350,8 +351,8 @@ function TickAllHead({ allOn, setAll }: { allOn: boolean; setAll: (on: boolean) 
 const MODEL_INFO_KEY = "basketball.modelInfo";
 
 /* ---------- Team metrik tablosu (compact; Home / Away) ---------- */
-function TeamMetricTable({ slug, side, name, eff, formBy, teamTrader, setTrader, teamModel, last10w, valueWarn, inInput, isTeamTicked, setTeamTick, setAll, locale, t }: {
-  slug: string; side: string; name: string; eff: number;
+function TeamMetricTable({ slug, side, name, crestUrl, eff, formBy, teamTrader, setTrader, teamModel, last10w, valueWarn, inInput, isTeamTicked, setTeamTick, setAll, locale, t }: {
+  slug: string; side: string; name: string; crestUrl?: string | null; eff: number;
   formBy: Map<string, Map<string, BktTeamMetricFormRow>>;
   teamTrader: (s: string, mk: string, e: number) => number;
   setTrader: (mk: string, v: number) => void;
@@ -366,7 +367,7 @@ function TeamMetricTable({ slug, side, name, eff, formBy, teamTrader, setTrader,
   const allOn = TEAM_MARKETS.every((m) => isTeamTicked(`${slug}:${m.key}`));
   return (
     <div className="overflow-x-auto">
-      <div className="mb-2 flex items-center gap-2 text-[12px] font-medium text-ink"><TeamCrest slug={slug} name={name} size={22} /><span className="truncate">{name}</span></div>
+      <div className="mb-2 flex items-center gap-2 text-[12px] font-medium text-ink"><TeamCrest slug={slug} name={name} size={22} url={crestUrl} /><span className="truncate">{name}</span></div>
       <table className="min-w-full border-collapse text-[11px]">
         <thead><tr className="border-b border-line text-[9px] uppercase tracking-[0.1em] text-ink-3">
           <th className="px-1 py-1 text-center"><TickAllHead allOn={allOn} setAll={setAll} /></th>
@@ -478,7 +479,7 @@ function TeamRecent({ name, logs, locale, t }: { name: string; logs: BktTeamLogR
 }
 
 /* ---------- Player distribution panel ---------- */
-function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effAway, winBy, isTicked, setTick, playerValue, setVal, expRef, teamTarget, onAdd, playerIds, playerCfg, playerMarkets, existingKeys, existingPlayerMkt, onReset, fixExtId, locale, t }: {
+function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effAway, winBy, isTicked, setTick, playerValue, setVal, expRef, teamTarget, onAdd, playerIds, playerCfg, playerMarkets, existingKeys, existingPlayerMkt, onReset, competition, fixExtId, locale, t }: {
   homeSlug: string; awaySlug: string; homeName: string; awayName: string; effHome: number; effAway: number;
   winBy: Map<string, Map<string, BktPlayerWindowRow[]>>;
   isTicked: (s: string, mk: string, w: BktPlayerWindowRow) => boolean;
@@ -494,6 +495,7 @@ function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effA
   existingKeys: Set<string>;
   existingPlayerMkt: Set<string>;
   onReset: () => void;
+  competition?: "E" | "U";
   fixExtId: string;
   locale: "tr" | "en";
   t: (k: string) => string;
@@ -667,7 +669,7 @@ function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effA
       </div>
 
       <p className="mt-3 text-[11px] text-ink-3">{t("basketball.selectPlayerHint")}</p>
-      {selPlayer ? <BasketballPlayerDrawer key={selPlayer} slug={selPlayer} onClose={() => setSelPlayer(null)} /> : null}
+      {selPlayer ? <BasketballPlayerDrawer key={selPlayer} slug={selPlayer} competition={competition} onClose={() => setSelPlayer(null)} /> : null}
 
       {/* Göz → Config kurallarına göre üretilen line'lar + oranlar */}
       {preview ? (

@@ -155,6 +155,7 @@ export type BktHomeAwaySplitRow = {
   home_pf_std: number | null;
   away_pf_std: number | null;
   pf_std: number | null;
+  crest_url?: string | null;   // EL/EC: CDN logo (BSL'de yok → yerel slug logosu)
 };
 
 export type BktTeamMetricFormRow = {

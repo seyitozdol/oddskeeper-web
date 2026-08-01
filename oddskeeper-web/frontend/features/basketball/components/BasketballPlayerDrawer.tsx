@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { useI18n } from "@/lib/i18n/LanguageProvider";
-import { fetchBasketballPlayerLog, fetchBasketballPlayerSeason } from "../clientQueries";
+import { fetchBasketballPlayerLog, fetchBasketballPlayerSeason, fetchEuroPlayerSeason, fetchEuroPlayerLog } from "../clientQueries";
 import { TeamCrest, StatTile } from "./ui";
 import { fmt } from "../lib";
 import type { BktPlayerLogRow, BktPlayerSeasonRow } from "../types";
 
-export default function BasketballPlayerDrawer({ slug, onClose }: { slug: string; onClose: () => void }) {
+// competition verilirse (E/U) EL/EC drawer'ı (el_player_* view'ları); yoksa BSL.
+export default function BasketballPlayerDrawer({ slug, competition, onClose }: { slug: string; competition?: "E" | "U"; onClose: () => void }) {
   const { t } = useI18n();
   const [season, setSeason] = useState<BktPlayerSeasonRow | null>(null);
   const [log, setLog] = useState<BktPlayerLogRow[]>([]);
@@ -15,12 +16,14 @@ export default function BasketballPlayerDrawer({ slug, onClose }: { slug: string
 
   useEffect(() => {
     let alive = true;
-    Promise.all([fetchBasketballPlayerSeason(slug), fetchBasketballPlayerLog(slug, 60)]).then(([s, l]) => {
+    const seasonP = competition ? fetchEuroPlayerSeason(slug, competition) : fetchBasketballPlayerSeason(slug);
+    const logP = competition ? fetchEuroPlayerLog(slug, competition) : fetchBasketballPlayerLog(slug, 60);
+    Promise.all([seasonP, logP]).then(([s, l]) => {
       if (!alive) return;
       setSeason(s); setLog(l); setLoading(false);
     });
     return () => { alive = false; };
-  }, [slug]);
+  }, [slug, competition]);
 
   return (
     <div className="fixed inset-0 z-[90]">

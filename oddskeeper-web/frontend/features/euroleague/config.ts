@@ -19,7 +19,7 @@ export const EURO_COMPS: Record<EuroCompKey, EuroCompConfig> = {
 // Desteklenen sezonlar (toggle). seasonLabel -> her turnuva icin season_code onekli.
 export const EURO_SEASONS = ["2025-2026", "2026-2027"] as const;
 export type EuroSeasonLabel = (typeof EURO_SEASONS)[number];
-export const DEFAULT_EURO_SEASON: EuroSeasonLabel = "2025-2026";
+export const DEFAULT_EURO_SEASON: EuroSeasonLabel = "2026-2027";
 
 export function seasonCodeFor(code: "E" | "U", seasonLabel: string): string {
   const year = seasonLabel.slice(0, 4); // "2025-2026" -> "2025"

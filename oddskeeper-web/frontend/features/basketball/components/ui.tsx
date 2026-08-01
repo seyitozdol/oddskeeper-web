@@ -6,12 +6,14 @@ export function TeamCrest({
   slug,
   name,
   size = 20,
+  url,
 }: {
   slug: string | null | undefined;
   name: string | null | undefined;
   size?: number;
+  url?: string | null;   // verilirse yerel slug logosu yerine bu URL (EL/EC CDN crest)
 }) {
-  const src = teamLogoPath(slug);
+  const src = url || teamLogoPath(slug);
   if (!src) {
     return (
       <span
