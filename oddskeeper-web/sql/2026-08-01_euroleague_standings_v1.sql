@@ -26,31 +26,34 @@ with agg as (
   from euroleague.team_match_stats
   group by competition, season_code, season_label, team_code
 )
+-- Takim-merkezli: euroleague.teams'ten LEFT JOIN agg → oynanmamis sezonda (2026-2027)
+-- takimlar 0 games/wins ile gorunur (standings 0-deger).
 select
-  agg.competition, agg.season_code, agg.season_label, agg.team_code, agg.team_name,
-  games, wins, losses,
-  round((wins::numeric/nullif(games,0))*100,1)                       as win_pct,
-  round(tot_points::numeric/nullif(games,0),1)                      as ppg,
-  round(tot_opp::numeric/nullif(games,0),1)                         as oppg,
-  round((tot_points-tot_opp)::numeric/nullif(games,0),1)           as point_diff,
-  round(tot_treb::numeric/nullif(games,0),1)                       as rpg,
-  round(tot_ast::numeric/nullif(games,0),1)                        as apg,
-  round((tot_fgm::numeric/nullif(tot_fga,0))*100,1)                as fg_pct,
-  round((tot_fg3m::numeric/nullif(tot_fg3a,0))*100,1)              as fg3_pct,
-  round(((tot_fgm+0.5*tot_fg3m)::numeric/nullif(tot_fga,0))*100,1) as efg_pct,
-  round(tot_poss::numeric/nullif(games,0),1)                       as pace,
-  round((100*tot_points/nullif(tot_poss,0))::numeric,1)            as off_rtg,
-  round((100*tot_opp/nullif(tot_poss,0))::numeric,1)               as def_rtg,
-  round((100*(tot_points-tot_opp)/nullif(tot_poss,0))::numeric,1)  as net_rtg,
-  rank() over (partition by agg.competition, agg.season_code
-               order by wins desc, (tot_points-tot_opp) desc)      as standings_rank,
-  tm.crest_url,
+  t.competition, t.season_code, t.season_label, t.team_code, t.team_name,
+  coalesce(agg.games,0)  as games,
+  coalesce(agg.wins,0)   as wins,
+  coalesce(agg.losses,0) as losses,
+  round((agg.wins::numeric/nullif(agg.games,0))*100,1)                           as win_pct,
+  round(agg.tot_points::numeric/nullif(agg.games,0),1)                          as ppg,
+  round(agg.tot_opp::numeric/nullif(agg.games,0),1)                             as oppg,
+  round((agg.tot_points-agg.tot_opp)::numeric/nullif(agg.games,0),1)           as point_diff,
+  round(agg.tot_treb::numeric/nullif(agg.games,0),1)                           as rpg,
+  round(agg.tot_ast::numeric/nullif(agg.games,0),1)                            as apg,
+  round((agg.tot_fgm::numeric/nullif(agg.tot_fga,0))*100,1)                    as fg_pct,
+  round((agg.tot_fg3m::numeric/nullif(agg.tot_fg3a,0))*100,1)                  as fg3_pct,
+  round(((agg.tot_fgm+0.5*agg.tot_fg3m)::numeric/nullif(agg.tot_fga,0))*100,1) as efg_pct,
+  round(agg.tot_poss::numeric/nullif(agg.games,0),1)                           as pace,
+  round((100*agg.tot_points/nullif(agg.tot_poss,0))::numeric,1)                as off_rtg,
+  round((100*agg.tot_opp/nullif(agg.tot_poss,0))::numeric,1)                   as def_rtg,
+  round((100*(agg.tot_points-agg.tot_opp)/nullif(agg.tot_poss,0))::numeric,1)  as net_rtg,
+  rank() over (partition by t.competition, t.season_code
+               order by coalesce(agg.wins,0) desc, coalesce(agg.tot_points-agg.tot_opp,0) desc) as standings_rank,
+  t.crest_url,
   lnk.bsl_team_slug,
   bt.team_name as bsl_team_name
-from agg
-left join euroleague.teams tm
-  on tm.competition=agg.competition and tm.season_code=agg.season_code and tm.team_code=agg.team_code
-left join euroleague.team_bsl_link lnk on lnk.team_code=agg.team_code
+from euroleague.teams t
+left join agg on agg.competition=t.competition and agg.season_code=t.season_code and agg.team_code=t.team_code
+left join euroleague.team_bsl_link lnk on lnk.team_code=t.team_code
 left join basketball.teams bt on bt.team_slug=lnk.bsl_team_slug;
 
 -- Takim mac logu (takim detay sayfasi icin)

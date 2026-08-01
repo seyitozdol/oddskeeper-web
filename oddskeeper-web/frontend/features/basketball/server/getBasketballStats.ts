@@ -23,13 +23,13 @@ import type {
 const SEASON = "2025-2026";
 const PAGE_SIZE = 1000;
 
-export async function getBasketballStandings(): Promise<BktTeamSeasonRow[]> {
+export async function getBasketballStandings(season: string = SEASON): Promise<BktTeamSeasonRow[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .schema("analytics")
-    .from("bb_team_season_stats_v1")
+    .from("bb_team_standings_v1")
     .select("*")
-    .eq("season_label", SEASON)
+    .eq("season_label", season)
     .order("standings_rank", { ascending: true })
     .returns<BktTeamSeasonRow[]>();
   if (error) {
@@ -39,13 +39,13 @@ export async function getBasketballStandings(): Promise<BktTeamSeasonRow[]> {
   return data ?? [];
 }
 
-export async function getBasketballPlayerLeaderboard(): Promise<BktLeaderboardRow[]> {
+export async function getBasketballPlayerLeaderboard(season: string = SEASON): Promise<BktLeaderboardRow[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .schema("analytics")
     .from("bb_player_leaderboard_v1")
     .select("*")
-    .eq("season_label", SEASON)
+    .eq("season_label", season)
     .order("ppg", { ascending: false })
     .returns<BktLeaderboardRow[]>();
   if (error) {
