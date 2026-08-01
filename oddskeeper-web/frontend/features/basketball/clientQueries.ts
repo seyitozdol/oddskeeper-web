@@ -49,9 +49,19 @@ export async function fetchEuroPlayerSeason(personCode: string, comp: "E" | "U",
   if (error) { console.error("fetchEuroPlayerSeason", error.message); return null; }
   if (!data) return null;
   const n = (k: string) => (data[k] as number | null) ?? null;
+  const teamCode = String(data.team_code ?? "");
+  // takım CDN logosu (el_team_home_away_split_v1'de crest_url var; yerel slug logosu EL code'da yok)
+  let crestUrl: string | null = null;
+  if (teamCode) {
+    const { data: tr } = await supabase
+      .schema("analytics").from("el_team_home_away_split_v1").select("crest_url")
+      .eq("competition", comp).eq("season_label", season).eq("team_slug", teamCode)
+      .maybeSingle<{ crest_url: string | null }>();
+    crestUrl = tr?.crest_url ?? null;
+  }
   return {
     player_slug: personCode, player_name: normalizePlayerName(String(data.player_name ?? personCode)),
-    team_slug: String(data.team_code ?? ""), team_name: (data.team_name as string) ?? null, jersey_no: null,
+    team_slug: teamCode, team_name: (data.team_name as string) ?? null, jersey_no: null, crest_url: crestUrl,
     games: (data.games as number) ?? 0, mpg: n("mpg"), ppg: n("ppg"), rpg: n("rpg"), apg: n("apg"),
     spg: n("spg"), bpg: n("bpg"), fg_pct: n("fg_pct"), fg3_pct: n("fg3_pct"), ft_pct: n("ft_pct"),
     ts_pct: n("ts_pct"), usage_pct: null,

@@ -31,7 +31,7 @@ export default function BasketballPlayerDrawer({ slug, competition, onClose }: {
       <div className="absolute right-0 top-0 h-full w-full max-w-[720px] overflow-y-auto border-l border-line bg-card p-6 shadow-2xl">
         <div className="mb-4 flex items-start justify-between gap-3">
           <div className="flex items-center gap-3">
-            {season?.team_slug ? <TeamCrest slug={season.team_slug} name={season.team_name} size={36} /> : null}
+            {season?.team_slug ? <TeamCrest slug={season.team_slug} name={season.team_name} size={36} url={season.crest_url} /> : null}
             <div>
               <h2 className="text-xl font-semibold text-ink">{season?.player_name ?? slug}</h2>
               <p className="text-sm text-ink-3">{season?.team_name}{season?.jersey_no ? ` · #${season.jersey_no}` : ""}</p>

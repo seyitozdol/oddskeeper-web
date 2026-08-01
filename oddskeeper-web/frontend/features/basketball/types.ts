@@ -39,6 +39,7 @@ export type BktPlayerSeasonRow = {
   team_slug: string | null;
   team_name: string | null;
   jersey_no: string | null;
+  crest_url?: string | null;   // EL/EC drawer: CDN takım logosu (yerel slug yok)
   games: number;
   minutes_total: number | null;
   mpg: number | null;
