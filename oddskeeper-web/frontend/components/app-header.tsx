@@ -36,40 +36,36 @@ const BASKETBALL_LEAGUE_HREF = "/dashboard/basketball";
 const LEAGUE_DETAIL_PATH =
   "/dashboard/stats-analysis/football/league-stats/detail";
 
-// Header'daki lig kisayollari: her biri ilgili "league details" sayfasina gider.
-// Simgeler inline SVG (ozgun, marka renkli lig amblemleri).
-const LEAGUE_ITEMS: {
+// Header'daki lig kisayollari: iki grup — Football (TSL, 1.Lig) ve Basketball
+// (BSL, EuroLeague, EuroCup). Simgeler inline SVG mark ya da public logo (logoSrc).
+type LeagueItem = {
   key: string;
   navKey: NavKey;
   label: string;
-  Icon: (props: { className?: string }) => ReactElement;
   href: string;
+  group: "football" | "basketball";
+  Icon?: (props: { className?: string }) => ReactElement;
+  logoSrc?: string;
   competition?: string;
   sport?: string;
-}[] = [
-  {
-    key: "tsl",
-    navKey: "league-tsl",
-    label: "TSL",
-    Icon: TslMark,
-    href: TSL_HUB_HREF,
-  },
-  {
-    key: "1lig",
-    navKey: "league-1lig",
-    label: "1.Lig",
-    Icon: Lig1Mark,
-    href: TFF1_RESMI_HREF,
-  },
-  {
-    key: "tbl",
-    navKey: "league-tbl",
-    label: "BSL",
-    Icon: TblMark,
-    href: BASKETBALL_LEAGUE_HREF,
-    sport: "basketball",
-  },
+};
+
+const LEAGUE_ITEMS: LeagueItem[] = [
+  { key: "tsl", navKey: "league-tsl", label: "TSL", Icon: TslMark, href: TSL_HUB_HREF, group: "football" },
+  { key: "1lig", navKey: "league-1lig", label: "1.Lig", Icon: Lig1Mark, href: TFF1_RESMI_HREF, group: "football" },
+  { key: "tbl", navKey: "league-tbl", label: "BSL", Icon: TblMark, href: BASKETBALL_LEAGUE_HREF, group: "basketball", sport: "basketball" },
+  { key: "euroleague", navKey: "league-tbl", label: "EL", logoSrc: "/images/leagues/euroleague.svg", href: "/dashboard/euro/euroleague", group: "basketball", sport: "basketball" },
+  { key: "eurocup", navKey: "league-tbl", label: "EC", logoSrc: "/images/leagues/eurocup.svg", href: "/dashboard/euro/eurocup", group: "basketball", sport: "basketball" },
 ];
+
+// Lig kisayolu markasi (inline SVG ya da public logo).
+function LeagueMark({ item }: { item: LeagueItem }) {
+  if (item.logoSrc) {
+    return <Image src={item.logoSrc} alt={item.label} width={16} height={16} className="h-4 w-4 shrink-0 object-contain" />;
+  }
+  if (item.Icon) return <item.Icon className="h-4 w-4 shrink-0" />;
+  return null;
+}
 
 const LOCALE_LABEL_KEYS: Record<Locale, string> = {
   en: "nav.english",
@@ -111,6 +107,12 @@ export default function AppHeader({
     }
     if (item.key === "tbl") {
       return pathname.startsWith("/dashboard/basketball");
+    }
+    if (item.key === "euroleague") {
+      return pathname.startsWith("/dashboard/euro/euroleague");
+    }
+    if (item.key === "eurocup") {
+      return pathname.startsWith("/dashboard/euro/eurocup");
     }
     if (item.competition != null) {
       return (
@@ -266,6 +268,10 @@ export default function AppHeader({
                     leagueHref={FOOTBALL_LEAGUE_DETAIL_HREF}
                     playerRankingsHref="/dashboard/stats-analysis/football/player-stats/metric"
                     teamRankingsHref="/dashboard/stats-analysis/football/team-stats/metric"
+                    leagues={[
+                      { href: TSL_HUB_HREF, label: "TSL" },
+                      { href: TFF1_RESMI_HREF, label: "1.Lig" },
+                    ]}
                   />
 
                   <StatsMenuItem
@@ -274,28 +280,35 @@ export default function AppHeader({
                     iconSrc="/icons/basketball.svg"
                     playerHref="/dashboard/basketball?tab=players"
                     teamHref="/dashboard/basketball"
+                    leagues={[
+                      { href: BASKETBALL_LEAGUE_HREF, label: "BSL" },
+                      { href: "/dashboard/euro/euroleague", label: "EuroLeague", logoSrc: "/images/leagues/euroleague.svg" },
+                      { href: "/dashboard/euro/eurocup", label: "EuroCup", logoSrc: "/images/leagues/eurocup.svg" },
+                    ]}
                   />
                 </div>
               </div>
             </div>
             ) : null}
 
-            {LEAGUE_ITEMS.some((item) => can(item.navKey)) ? (
-              <div className="flex items-center gap-1 border-l border-line pl-2">
-                {LEAGUE_ITEMS.filter((item) => can(item.navKey)).map((item) => (
-                  <Link
-                    key={item.key}
-                    href={item.href}
-                    className={`flex items-center gap-1.5 ${navLinkClass(
-                      isLeagueActive(item)
-                    )}`}
-                  >
-                    <item.Icon className="h-4 w-4 shrink-0" />
-                    <span>{item.label}</span>
-                  </Link>
-                ))}
-              </div>
-            ) : null}
+            {(["football", "basketball"] as const).map((grp) => {
+              const items = LEAGUE_ITEMS.filter((item) => item.group === grp && can(item.navKey));
+              if (items.length === 0) return null;
+              return (
+                <div key={grp} className="flex items-center gap-1 border-l border-line pl-2">
+                  {items.map((item) => (
+                    <Link
+                      key={item.key}
+                      href={item.href}
+                      className={`flex items-center gap-1.5 ${navLinkClass(isLeagueActive(item))}`}
+                    >
+                      <LeagueMark item={item} />
+                      <span>{item.label}</span>
+                    </Link>
+                  ))}
+                </div>
+              );
+            })}
 
             {can("tff-1-lig") ? (
               <Link
@@ -445,7 +458,7 @@ export default function AppHeader({
                 isLeagueActive(item)
               )}`}
             >
-              <item.Icon className="h-4 w-4 shrink-0" />
+              <LeagueMark item={item} />
               <span>{item.label}</span>
             </Link>
           ))}
@@ -528,6 +541,7 @@ type StatsMenuItemProps = {
   leagueHref?: string;
   playerRankingsHref?: string;
   teamRankingsHref?: string;
+  leagues?: { href: string; label: string; logoSrc?: string }[];
 };
 
 function StatsMenuItem({
@@ -539,6 +553,7 @@ function StatsMenuItem({
   leagueHref,
   playerRankingsHref,
   teamRankingsHref,
+  leagues,
 }: StatsMenuItemProps) {
   const { t } = useI18n();
 
@@ -569,6 +584,23 @@ function StatsMenuItem({
           <span className="ml-2 text-[11px] text-ink-3">{subtitle}</span>
         </div>
       </div>
+
+      {leagues && leagues.length > 0 ? (
+        <div className="mb-1 flex flex-wrap gap-1">
+          {leagues.map((lg) => (
+            <Link
+              key={lg.href}
+              href={lg.href}
+              className="flex items-center gap-1.5 rounded-md border border-line bg-card-2 px-2.5 py-1 text-[12px] font-medium text-ink transition hover:border-line-strong hover:bg-veil"
+            >
+              {lg.logoSrc ? (
+                <Image src={lg.logoSrc} alt={lg.label} width={14} height={14} className="h-3.5 w-3.5 object-contain" />
+              ) : null}
+              {lg.label}
+            </Link>
+          ))}
+        </div>
+      ) : null}
 
       <div className="flex flex-wrap gap-1">
         {links.map((link) => (
