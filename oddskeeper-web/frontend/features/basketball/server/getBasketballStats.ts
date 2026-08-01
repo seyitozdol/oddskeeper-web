@@ -304,22 +304,6 @@ export async function getBasketballPlayerModel(playerSlug: string): Promise<BktM
   return data ?? [];
 }
 
-export async function getBasketballTeamModel(teamSlug: string, season: string = SEASON): Promise<BktMarketModelRow[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .schema("analytics")
-    .from("bb_team_market_model_v1")
-    .select("*")
-    .eq("season_label", season)
-    .eq("team_slug", teamSlug)
-    .returns<BktMarketModelRow[]>();
-  if (error) {
-    console.error("getBasketballTeamModel error:", error.message);
-    return [];
-  }
-  return data ?? [];
-}
-
 export async function getBasketballPlayerEuroSeasons(playerSlug: string, season: string = SEASON): Promise<BktEuroSeasonRow[]> {
   const supabase = await createClient();
   const { data, error } = await supabase

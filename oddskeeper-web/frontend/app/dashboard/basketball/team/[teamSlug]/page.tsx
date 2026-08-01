@@ -3,7 +3,6 @@ import {
   getBasketballTeam,
   getBasketballTeamRoster,
   getBasketballTeamMatchLog,
-  getBasketballTeamModel,
 } from "@/features/basketball/server/getBasketballStats";
 import {
   getEuroTeamsForBslSlug,
@@ -13,7 +12,6 @@ import {
 import { bslTeamToComp } from "@/features/basketball/unified";
 import { euroTeamToComp } from "@/features/euroleague/unified";
 import TeamProfileTabs from "@/features/basketball/components/TeamProfileTabs";
-import BasketballOdds from "@/features/basketball/components/BasketballOdds";
 import { normalizeSeason, EURO_SEASONS } from "@/features/euroleague/config";
 import SeasonToggle from "@/components/SeasonToggle";
 import { getT } from "@/lib/i18n/server";
@@ -27,11 +25,10 @@ export default async function BasketballTeamPage({
 }) {
   const [{ teamSlug }, { season }, t] = await Promise.all([params, searchParams, getT()]);
   const seasonLabel = normalizeSeason(season);
-  const [team, roster, log, model, euroTeams] = await Promise.all([
+  const [team, roster, log, euroTeams] = await Promise.all([
     getBasketballTeam(teamSlug, seasonLabel),
     getBasketballTeamRoster(teamSlug, seasonLabel),
     getBasketballTeamMatchLog(teamSlug, seasonLabel),
-    getBasketballTeamModel(teamSlug, seasonLabel),
     getEuroTeamsForBslSlug(teamSlug, seasonLabel),
   ]);
 
@@ -76,13 +73,6 @@ export default async function BasketballTeamPage({
         <div className="mt-4">
           <TeamProfileTabs name={team.team_name} teamSlug={team.team_slug} comps={comps} />
         </div>
-
-        {model.length > 0 ? (
-          <>
-            <h2 className="mt-8 mb-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-3">{t("basketball.odds")}</h2>
-            <BasketballOdds models={model} defaultPayback={0.915} />
-          </>
-        ) : null}
       </div>
     </section>
   );
