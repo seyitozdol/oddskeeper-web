@@ -34,9 +34,9 @@ import base64
 import json
 import os
 import secrets
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from urllib.parse import unquote, urlsplit
+from urllib.parse import parse_qsl, unquote, urlencode, urlsplit, urlunsplit
 
 from dotenv import dotenv_values
 from playwright.sync_api import sync_playwright
@@ -61,8 +61,10 @@ KEEP_URL_HINTS = ("events-table", "event-market", "route-data", "widgets/event",
 TAB = "?tab=liveAndUpcoming"
 # Kapsam (kullanici tanimi): Turk futbol takimlarinin Avrupa maclari + TSL + 1.Lig,
 # basketbol BSL + TBL, kadin/erkek milli takim maclari. Her competition Bets10'da
-# ayri bir sayfa; events-table/v2 o competition'in tum maclarini verir. Yanlis/bos
-# sayfalar harness'te sessizce atlanir. Slug deseni: /spor-bahisleri/<spor>/<bolge>/<lig>.
+# ayri bir sayfa. DIKKAT: events-table/v2 sayfa acilinca yalnizca EN YAKIN mac
+# gununu ceker (competition'in TUMUNU DEGIL); ileri haftalar icin widen_url ile
+# genis-pencere tekrar cagrisi yapilir. Yanlis/bos sayfalar sessizce atlanir.
+# Slug deseni: /spor-bahisleri/<spor>/<bolge>/<lig>.
 # NOT (2026-07-30): basketbol (BSL ~Ekim) + milli takimlar su an SEZON DISI, sayfalari
 # bos doner; sezon baslayinca otomatik dolar. Futbol competition'lari aktif.
 BETS10_PAGES = [
@@ -99,6 +101,17 @@ SITES: dict[str, dict] = {
 
 MAX_BODY = 800_000        # tek yanit/frame ust siniri (char/byte)
 MAX_TOTAL_MB = 60         # dump ust siniri, kacak onlemi
+
+# GELECEK HAFTA SORUNU: events-table/v2 widget'i sayfa acilinca yalnizca EN YAKIN
+# mac gununu gun-gun ceker (startsOnOrAfter/startsBefore penceresi dar). Boylece
+# sadece "bir sonraki hafta" yakalanir; TSL'de 2. ve 3. hafta oranlari sitede
+# GIRILI olsa bile hic istenmez (2026-07-31 dogrulandi). Cozum: sayfanin kendi
+# events-table istegini (competitionIds + gercek header'lariyla birlikte) yakalayip
+# GENIS bir gelecek penceresiyle bir kez daha cagirmak. Ayni yanit 1/2/3. haftayi
+# birden dondurur (tek istekte >=60 gun 200 donuyor) ve oranlari (selections) icerir.
+HORIZON_DAYS = 45         # simdiden itibaren kac gun ileri istenecek (~6 hafta;
+                          # API tek istekte >=60 gun 200 donuyor). SofaScore tracker'da
+                          # kaydi olan maclar eslesir; ufku genis tutmak zararsiz.
 
 
 def proxy_config(session_id: str, country: str | None) -> dict | None:
@@ -226,9 +239,46 @@ def match_hrefs(page) -> list[str]:
         return []
 
 
+def widen_url(url: str, horizon_days: int) -> str:
+    """events-table/v2 istegindeki tarih penceresini simdiden +horizon gune genisletir.
+
+    startsOnOrAfter/startsBefore param'larini gunceller, digerlerini (categoryIds,
+    competitionIds, maxMarketCount...) oldugu gibi birakir. Pencereyi kaldiran degil,
+    ileri tasiyan yaklasim: boylece competition'in tum yaklasan haftalari tek yanitta.
+    """
+    now = datetime.now(timezone.utc)
+    start = now.strftime("%Y-%m-%dT%H:%M:%SZ")
+    end = (now + timedelta(days=horizon_days)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    sp = urlsplit(url)
+    # eventPhase'i de cikarip Prematch'e SABITLE. Nedeni (2026-08-01, Kasimpasa-Hull
+    # City yakalanamadi): CANLI mac olan competition'larda (or. yaz hazirlik maclari,
+    # ayni anda onlarca mac live) sayfa events-table'i eventPhase=Live ile atesliyor.
+    # Boyle bir istegi ileri tarih penceresiyle genisletmek "gelecekteki canli maclar"
+    # = 0 dondurur; yaklasan (prematch) maclar HIC istenmez. Tracker her zaman yaklasan
+    # oranlari istedigi icin tekrar cagriyi kosulsuz Prematch yapiyoruz.
+    q = [(k, v) for k, v in parse_qsl(sp.query, keep_blank_values=True)
+         if k not in ("startsOnOrAfter", "startsBefore", "eventPhase")]
+    q += [("eventPhase", "Prematch"),
+          ("startsOnOrAfter", start), ("startsBefore", end)]
+    return urlunsplit((sp.scheme, sp.netloc, sp.path, urlencode(q), sp.fragment))
+
+
+def widen_key(url: str) -> str:
+    """Ayni competition icin mukerrer genis-pencere istegini engellemek uzere,
+    tarih param'lari cikarilmis normalize anahtar."""
+    sp = urlsplit(url)
+    # eventPhase de haric: ayni competition icin sayfa hem Live hem Prematch istegi
+    # atesleyebilir; ikisi de artik Prematch'e sabitlenip genisletildigi icin ayni
+    # anahtara dusmeli (mukerrer genis-pencere cagrisini onler).
+    q = [(k, v) for k, v in sorted(parse_qsl(sp.query, keep_blank_values=True))
+         if k not in ("startsOnOrAfter", "startsBefore", "pageNumber", "eventPhase")]
+    return sp.path + "?" + urlencode(q)
+
+
 def capture(site: str, headed: bool, out_dir: Path, only, per_league: int,
             detail_wait_ms: int, list_wait_ms: int,
-            use_proxy: bool, chromium_path: str | None, country: str | None) -> Path:
+            use_proxy: bool, chromium_path: str | None, country: str | None,
+            horizon_days: int = HORIZON_DAYS) -> Path:
     cfg = SITES[site]
     session_id = secrets.token_hex(6)  # sticky: kosu boyunca sabit
     # Varsayilan DIREKT (VPS IP). --proxy verilirse PROXY_URL uzerinden.
@@ -265,10 +315,22 @@ def capture(site: str, headed: bool, out_dir: Path, only, per_league: int,
         page.on("websocket", on_ws)
         page.on("response", on_response)
 
+        # events-table isteklerinin gercek header'lari + url'i (genis-pencere
+        # tekrar cagrisi icin). Header'lar dinamik x-sb-* / sessiontoken iceriyor;
+        # dogrudan uretmek yerine sayfanin kendi istegindekini yeniden kullaniyoruz.
+        et_reqs: list[dict] = []
+
+        def on_request(req):
+            if "events-table" in req.url:
+                et_reqs.append({"url": req.url, "headers": dict(req.headers)})
+
+        page.on("request", on_request)
+
         base = resolve_domain(page, cfg)
 
         for label, path in pages:
             visited: set[str] = set()
+            et_before = len(et_reqs)
             try:
                 page.goto(base + path, timeout=45000, wait_until="commit")
             except Exception as ex:
@@ -277,6 +339,39 @@ def capture(site: str, headed: bool, out_dir: Path, only, per_league: int,
             page.wait_for_timeout(list_wait_ms)
             store["pages"].append({"label": label, "url": page.url})
             print(f"[{label}] ws={len(store['sockets'])} xhr={len(store['responses'])}", flush=True)
+
+            # GENIS PENCERE TEKRARI: bu sayfanin events-table istegini ileri tarih
+            # penceresiyle bir kez daha cagir; boylece sadece sonraki hafta degil
+            # tum yaklasan haftalar (2./3. hafta oranlari dahil) yakalanir. Yanit
+            # store["responses"]'a eklenir; parse_bets10_network ayni sekilde ayristirir.
+            widened = 0
+            seen_keys: set[str] = set()
+            for r in et_reqs[et_before:]:
+                key = widen_key(r["url"])
+                if key in seen_keys:
+                    continue
+                seen_keys.add(key)
+                url = widen_url(r["url"], horizon_days)
+                try:
+                    resp = page.request.get(
+                        url, headers=r["headers"], timeout=40000
+                    )
+                    if resp.status != 200:
+                        print(f"  [genis-pencere {resp.status}] {label}", flush=True)
+                        continue
+                    body = resp.json()
+                except Exception as ex:
+                    print(f"  [genis-pencere hata] {label}: {type(ex).__name__}", flush=True)
+                    continue
+                store["responses"].append({
+                    "json": body, "url": url, "status": 200,
+                    "kind": "xhr", "at": datetime.now(timezone.utc).isoformat(),
+                })
+                widened += 1
+            if widened:
+                ev = sum(len((rr.get("json") or {}).get("data", {}).get("events") or [])
+                         for rr in store["responses"][-widened:])
+                print(f"  genis-pencere: {widened} competition, ~{ev} mac (+{horizon_days}g)", flush=True)
 
             hrefs = [h for h in match_hrefs(page) if h not in visited][:per_league]
             for h in hrefs:
@@ -314,18 +409,21 @@ def main() -> None:
     ap.add_argument("--headed", action="store_true", help="yerelde gorunur tarayici")
     ap.add_argument("--out", default=str(DEFAULT_OUT))
     ap.add_argument("--pages", nargs="*")
-    # events-table/v2 competition sayfasinda tum maclarin 1X2+Alt/Ust'unu verdigi
-    # icin detay taramasi VARSAYILAN KAPALI (per-league 0). Daha cok market icin >0.
+    # events-table/v2 (genis-pencere tekrariyla) yaklasan tum haftalarin
+    # 1X2+Alt/Ust'unu verdigi icin detay taramasi VARSAYILAN KAPALI (per-league 0).
+    # Daha cok market (detay sayfasindaki tum bahisler) icin >0.
     ap.add_argument("--per-league", type=int, default=0)
     ap.add_argument("--detail-wait-ms", type=int, default=14000)
     ap.add_argument("--list-wait-ms", type=int, default=22000)  # oran tablosu ~20s'de doluyor
     ap.add_argument("--proxy", action="store_true", help="PROXY_URL uzerinden geç (varsayilan direkt)")
     ap.add_argument("--cc", default=None, help="proxy ulke hedefleme (Bets10 icin: tr)")
     ap.add_argument("--chromium-path", default=None, help="sistem chromium yolu, ör. /usr/bin/chromium")
+    ap.add_argument("--horizon-days", type=int, default=HORIZON_DAYS,
+                    help="events-table genis-pencere tekrarinda kac gun ileri (2./3. hafta icin)")
     args = ap.parse_args()
     capture(args.site, args.headed, Path(args.out), args.pages,
             args.per_league, args.detail_wait_ms, args.list_wait_ms,
-            args.proxy, args.chromium_path, args.cc)
+            args.proxy, args.chromium_path, args.cc, args.horizon_days)
 
 
 if __name__ == "__main__":
