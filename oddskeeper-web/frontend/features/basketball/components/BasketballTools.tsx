@@ -138,12 +138,15 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
     const factor = teamAvg > 0 ? teamTrader(slug, mk, effPts) / teamAvg : 1;
     return Math.round(w.season_avg * factor * 10) / 10;
   };
-  const playerValue = (slug: string, mk: string, w: BktPlayerWindowRow, list: BktPlayerWindowRow[], effPts: number) => {
+  const playerValue = (slug: string, mk: string, w: BktPlayerWindowRow, list: BktPlayerWindowRow[], effPts: number, distribute: boolean) => {
     const k = `${slug}:${mk}:${w.player_slug}`;
-    if (playerVal[k] != null) return playerVal[k];
+    if (playerVal[k] != null) return playerVal[k];                              // elle override
     if (!isTicked(slug, mk, w)) return 0;
     // kombine + yüzde marketleri dağıtılmaz: oyuncunun kendi ortalaması (elle düzeltilir)
     if (!(playerMarketBy.get(mk)?.distributable ?? true)) return Math.round((w.season_avg ?? 0) * 10) / 10;
+    // Dağıt kapalı (varsayılan): oyuncunun rakip-ayarlı beklentisi (toplama zorlanmaz).
+    if (!distribute) return expRef(slug, mk, w, effPts);
+    // Dağıt açık: takım hedefi tikli oyunculara tarihsel paya göre dağıtılır (topla=hedef).
     const target = teamTrader(slug, mk, effPts);
     return Math.round((target * w.total / tickedTotal(slug, mk, list)) * 10) / 10;
   };
@@ -155,13 +158,19 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
     const rows: BktInputRow[] = [];
     for (const cfg of teamCfg) {
       const base = cfg.base_metric ?? "";
-      if (!cfg.in_model || !cfg.template_id || !isTeamTicked(base)) continue;
-      const std = (cfg.std ?? teamStd(base)) as number;
+      if (!cfg.in_model || !cfg.template_id) continue;
+      const isPct = base === "fgmadepct" || base === "ftpct";
       const hv = teamTrader(homeSlug, base, effHome);
       const av = teamTrader(awaySlug, base, effAway);
-      const value = cfg.side === "away" ? av : cfg.side === "total" ? hv + av : hv;
-      const sideNum = cfg.side === "away" ? 2 : cfg.side === "total" ? 0 : 1;
-      const teamName = cfg.side === "away" ? away.team_name : cfg.side === "total" ? `${home.team_name} + ${away.team_name}` : home.team_name;
+      let value: number, sideNum: number, teamName: string, ok: boolean;
+      if (cfg.side === "away") { ok = isTeamTicked(`${awaySlug}:${base}`); value = av; sideNum = 2; teamName = away.team_name; }
+      else if (cfg.side === "total") {
+        // toplam: total tikli + HER İKİ takım da tikli (değer var) + pct değil (güvenlik)
+        ok = !isPct && isTeamTicked(`total:${base}`) && isTeamTicked(`${homeSlug}:${base}`) && isTeamTicked(`${awaySlug}:${base}`);
+        value = hv + av; sideNum = 0; teamName = `${home.team_name} + ${away.team_name}`;
+      } else { ok = isTeamTicked(`${homeSlug}:${base}`); value = hv; sideNum = 1; teamName = home.team_name; }
+      if (!ok) continue;
+      const std = (cfg.std ?? teamStd(base)) as number;
       for (const r of buildConfiguredLines(value, std, cfg, TEAM_PAYBACK)) {
         rows.push({ kind: "team", fixtureExtId: fixExtId, template: cfg.template_id, participant: "", side: sideNum, line: r.line, over: r.overPrice, under: r.underPrice, marketLabel: cfg.label ?? cfg.market_key, playerName: "", teamName });
       }
@@ -228,9 +237,12 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
                 {[{ slug: homeSlug, eff: effHome, s: home }, { slug: awaySlug, eff: effAway, s: away }].map(({ slug, eff, s }) => (
                   <TeamPanel key={slug} slug={slug} name={s.team_name} eff={eff} formBy={formBy} teamTrader={teamTrader}
                     setTrader={(mk, v) => setTraderMetric((p) => ({ ...p, [`${slug}:${mk}`]: v }))} teamModel={teamModel} logs={logsBy.get(slug) ?? []}
-                    isTeamTicked={isTeamTicked} setTeamTick={(mk, v) => setTeamTicks((p) => ({ ...p, [mk]: v }))} locale={locale} t={t} />
+                    isTeamTicked={isTeamTicked} setTeamTick={(key, v) => setTeamTicks((p) => ({ ...p, [key]: v }))} locale={locale} t={t} />
                 ))}
               </div>
+              {/* Toplam (home + away); iki takımda da metrik tikliyse yazılır, pct hariç */}
+              <TeamTotalPanel homeSlug={homeSlug} awaySlug={awaySlug} effHome={effHome} effAway={effAway} teamTrader={teamTrader}
+                isTeamTicked={isTeamTicked} setTeamTick={(key, v) => setTeamTicks((p) => ({ ...p, [key]: v }))} locale={locale} t={t} />
             </div>
           ) : (
             <PlayerDistPanel homeSlug={homeSlug} awaySlug={awaySlug} homeName={home.team_name} awayName={away.team_name}
@@ -276,16 +288,17 @@ function TeamPanel({ slug, name, eff, formBy, teamTrader, setTrader, teamModel, 
         <tbody>
           {TEAM_MARKETS.map((met) => {
             const f = formBy.get(slug)?.get(met.key);
-            const on = isTeamTicked(met.key);
+            const key = `${slug}:${met.key}`;
+            const on = isTeamTicked(key);
             return (
               <tr key={met.key} className={`border-t border-line ${on ? "" : "opacity-45"}`}>
-                <td className="px-1.5 py-0.5 text-center"><input type="checkbox" checked={on} onChange={(e) => setTeamTick(met.key, e.target.checked)} className="accent-[var(--accent)]" /></td>
+                <td className="px-1.5 py-0.5 text-center"><input type="checkbox" checked={on} onChange={(e) => setTeamTick(key, e.target.checked)} className="accent-[var(--accent)]" /></td>
                 <td className="px-1.5 py-0.5 text-ink whitespace-nowrap">{metricLabel(met.key, locale, met.label)}</td>
                 <td className="px-1.5 py-0.5 text-right tabular-nums text-ink-3">{fmt(f?.season_avg)}</td>
                 <td className="px-1.5 py-0.5 text-right tabular-nums text-ink-3">{fmt(f?.last10_avg)}</td>
                 <td className="px-1.5 py-0.5 text-right tabular-nums text-ink-2">{fmt(teamModel(slug, met.key, eff))}</td>
                 <td className="px-1.5 py-0.5 text-right tabular-nums text-ink-3">{teamStd(met.key).toFixed(2)}</td>
-                <td className="px-1.5 py-0.5 text-right"><NumInput value={Math.round(teamTrader(slug, met.key, eff) * 10) / 10} onChange={(v) => setTrader(met.key, v)} w="w-14" /></td>
+                <td className="px-1.5 py-0.5 text-right"><NumInput value={Math.round(teamTrader(slug, met.key, eff) * 10) / 10} onChange={(v) => setTrader(met.key, v)} w="w-20" /></td>
               </tr>
             );
           })}
@@ -322,13 +335,50 @@ function TeamPanel({ slug, name, eff, formBy, teamTrader, setTrader, teamModel, 
   );
 }
 
+/* ---------- Takım toplamı (home + away) ---------- */
+function TeamTotalPanel({ homeSlug, awaySlug, effHome, effAway, teamTrader, isTeamTicked, setTeamTick, locale, t }: {
+  homeSlug: string; awaySlug: string; effHome: number; effAway: number;
+  teamTrader: (s: string, mk: string, e: number) => number;
+  isTeamTicked: (key: string) => boolean; setTeamTick: (key: string, v: boolean) => void;
+  locale: "tr" | "en"; t: (k: string) => string;
+}) {
+  return (
+    <div className="mt-6 lg:max-w-md">
+      <div className="mb-2 text-[12px] font-medium text-ink">{t("basketball.totalSection")}</div>
+      <div className="overflow-x-auto">
+        <table className="min-w-full border-collapse text-[12px]">
+          <thead><tr className="border-b border-line text-[9px] uppercase tracking-[0.1em] text-ink-3">
+            <th className="px-1.5 py-1 text-center"></th>
+            <th className="px-1.5 py-1 text-left">{t("basketball.colMarket")}</th>
+            <th className="px-1.5 py-1 text-right">{t("basketball.colTrader")}</th>
+          </tr></thead>
+          <tbody>
+            {TEAM_MARKETS.map((met) => {
+              const key = `total:${met.key}`;
+              const on = isTeamTicked(key);
+              const total = teamTrader(homeSlug, met.key, effHome) + teamTrader(awaySlug, met.key, effAway);
+              return (
+                <tr key={met.key} className={`border-t border-line ${on ? "" : "opacity-45"}`}>
+                  <td className="px-1.5 py-0.5 text-center"><input type="checkbox" checked={on} onChange={(e) => setTeamTick(key, e.target.checked)} className="accent-[var(--accent)]" /></td>
+                  <td className="px-1.5 py-0.5 text-ink whitespace-nowrap">{metricLabel(met.key, locale, met.label)}</td>
+                  <td className="px-1.5 py-0.5 text-right tabular-nums text-ink">{fmt(Math.round(total * 10) / 10)}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 /* ---------- Player distribution panel ---------- */
 function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effAway, winBy, isTicked, setTick, playerValue, setVal, expRef, teamTarget, onAdd, playerIds, playerCfg, playerMarkets, fixExtId, t }: {
   homeSlug: string; awaySlug: string; homeName: string; awayName: string; effHome: number; effAway: number;
   winBy: Map<string, Map<string, BktPlayerWindowRow[]>>;
   isTicked: (s: string, mk: string, w: BktPlayerWindowRow) => boolean;
   setTick: (k: string, v: boolean) => void;
-  playerValue: (s: string, mk: string, w: BktPlayerWindowRow, list: BktPlayerWindowRow[], e: number) => number;
+  playerValue: (s: string, mk: string, w: BktPlayerWindowRow, list: BktPlayerWindowRow[], e: number, distribute: boolean) => number;
   setVal: (k: string, v: number) => void;
   expRef: (s: string, mk: string, w: BktPlayerWindowRow, e: number) => number;
   teamTarget: (s: string, mk: string) => number;
@@ -340,6 +390,7 @@ function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effA
   t: (k: string) => string;
 }) {
   const [side, setSide] = useState<"home" | "away">("home");
+  const [distribute, setDistribute] = useState(false); // futbol gibi: varsayılan kapalı
   const [mk, setMk] = useState(playerMarkets[0]?.key ?? "points");
   const [selPlayer, setSelPlayer] = useState<string | null>(null);
   const [sort, setSort] = useState<{ key: string; dir: "asc" | "desc" }>({ key: "all", dir: "desc" });
@@ -357,7 +408,7 @@ function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effA
       case "w10": return w.last10_avg ?? 0;
       case "all": return w.season_avg ?? 0;
       case "exp": return expRef(slug, mk, w, eff);
-      case "value": return playerValue(slug, mk, w, allList, eff);
+      case "value": return playerValue(slug, mk, w, allList, eff, distribute);
       default: return w.season_avg ?? 0;
     }
   };
@@ -374,7 +425,7 @@ function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effA
     setSort((s) => (s.key === key ? { key, dir: s.dir === "asc" ? "desc" : "asc" } : { key, dir: key === "player" ? "asc" : "desc" }));
   const arrow = (key: string) => (sort.key === key ? (sort.dir === "asc" ? " ▲" : " ▼") : "");
   const target = teamTarget(slug, mk);
-  const distributed = allList.filter((w) => isTicked(slug, mk, w)).reduce((a, w) => a + playerValue(slug, mk, w, allList, eff), 0);
+  const distributed = allList.filter((w) => isTicked(slug, mk, w)).reduce((a, w) => a + playerValue(slug, mk, w, allList, eff, distribute), 0);
 
   // Ekle: bu takım+market'in tikli oyuncularının Config kurallarıyla üretilen çizgilerini Input'a gönder
   const addCurrent = () => {
@@ -387,7 +438,7 @@ function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effA
     const lineCfg: LineConfig = cfg ?? DEFAULT_LINE_CFG;
     for (const w of allList) {
       if (!isTicked(slug, mk, w)) continue;
-      const val = playerValue(slug, mk, w, allList, eff);
+      const val = playerValue(slug, mk, w, allList, eff, distribute);
       for (const r of buildConfiguredLines(val, std, lineCfg, PROP_PAYBACK)) {
         rows.push({ kind: "player", fixtureExtId: fixExtId, template: tpl ?? met.tpl, participant: playerIds[w.player_slug] || w.player_slug, side: sideNum, line: r.line, over: r.overPrice, under: r.underPrice, marketLabel: met.label, playerName: w.player_name, teamName: teamNm });
       }
@@ -431,6 +482,10 @@ function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effA
               <button key={m.key} onClick={() => { setMk(m.key); setSelPlayer(null); }} className={`rounded-full px-3 py-1 text-[11px] font-semibold transition-colors ${m.key === mk ? "bg-accent-soft text-accent-ink ring-1 ring-accent/40" : "bg-veil text-ink-3 hover:text-ink"}`}>{m.label}</button>
             ))}
           </div>
+          <label className="ml-auto flex cursor-pointer items-center gap-1.5 whitespace-nowrap text-[11px] font-semibold text-ink-2">
+            <input type="checkbox" checked={distribute} onChange={(e) => setDistribute(e.target.checked)} className="accent-[var(--accent)]" />
+            {t("basketball.distribute")}
+          </label>
         </div>
       </div>
 
@@ -452,7 +507,7 @@ function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effA
             {players.map((w) => {
               const on = isTicked(slug, mk, w);
               const k = `${slug}:${mk}:${w.player_slug}`;
-              const val = playerValue(slug, mk, w, allList, eff);
+              const val = playerValue(slug, mk, w, allList, eff, distribute);
               const mid = on ? buildLadder(val, met.std, PROP_PAYBACK).find((r) => r.isMid) : null;
               return (
                 <tr key={w.player_slug} className={`border-t border-line ${on ? "" : "opacity-45"} ${selPlayer === w.player_slug ? "bg-veil" : ""}`}>

@@ -62,10 +62,11 @@ export default function BasketballParticipantTools({ splits, forms, windows, tea
         ))}
       </div>
 
-      {tab === "model" && (
+      {/* Model her zaman mount kalır → sekme değişince fixture/takım seçimi kaybolmaz */}
+      <div className={tab === "model" ? "" : "hidden"}>
         <BasketballTools pmFixtures={fixtures} splits={splits} forms={forms} windows={windows} teamLogs={teamLogs}
           playerIds={playerIds} config={config} onAdd={(rows) => setInputRows((p) => [...p, ...rows])} />
-      )}
+      </div>
       {tab === "players" && <PlayerListTab players={players} playerIds={playerIds} onSaved={setPlayerIds} t={t} />}
       {tab === "fixtures" && <FixturesTab fixtures={fixtures} teams={teams} reload={reloadFixtures} t={t} />}
       {tab === "config" && <ConfigTab config={config} reload={reloadConfig} inputType={inputType} setInputType={setInputType} locale={locale} t={t} />}
@@ -194,12 +195,20 @@ function FixturesTab({ fixtures, teams, reload, t }: { fixtures: PmFixture[]; te
   const [h, setH] = useState(teams[0]?.slug ?? "");
   const [a, setA] = useState(teams[1]?.slug ?? "");
   const [ext, setExt] = useState("");
-  const [date, setDate] = useState("");
+  // external_id düzenlemeleri: local edit state; Kaydet DB'ye yazar + reload (sekme değişince kaybolmaz).
+  const [extEdits, setExtEdits] = useState<Record<number, string>>({});
   const add = async () => {
     if (!h || !a || h === a) return;
     const hn = teams.find((x) => x.slug === h)?.name ?? h, an = teams.find((x) => x.slug === a)?.name ?? a;
-    await insertFixture({ home_team_slug: h, away_team_slug: a, home_team_name: hn, away_team_name: an, external_id: ext.trim() || null, match_date: date || null, note: null });
-    setExt(""); setDate(""); reload();
+    await insertFixture({ home_team_slug: h, away_team_slug: a, home_team_name: hn, away_team_name: an, external_id: ext.trim() || null, match_date: null, note: null });
+    setExt(""); reload();
+  };
+  const extVal = (f: PmFixture) => extEdits[f.id] ?? f.external_id ?? "";
+  const saveExt = async () => {
+    const entries = Object.entries(extEdits);
+    if (entries.length === 0) return;
+    for (const [id, v] of entries) await updateFixture(Number(id), { external_id: v.trim() || null });
+    setExtEdits({}); reload();
   };
   return (
     <div>
@@ -208,24 +217,23 @@ function FixturesTab({ fixtures, teams, reload, t }: { fixtures: PmFixture[]; te
         <span className="pb-2 text-ink-3">vs</span>
         <select value={a} onChange={(e) => setA(e.target.value)} className="rounded-md border border-line bg-field px-2 py-1.5 text-[13px] text-ink">{teams.map((x) => <option key={x.slug} value={x.slug}>{x.name}</option>)}</select>
         <input placeholder={t("basketball.extId")} value={ext} onChange={(e) => setExt(e.target.value)} className="w-28 rounded-md border border-line bg-field px-2 py-1.5 text-[13px] text-ink" />
-        <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="rounded-md border border-line bg-field px-2 py-1.5 text-[13px] text-ink" />
         <button onClick={add} className={btnSave}>{t("basketball.addFixture")}</button>
+        <button onClick={saveExt} disabled={Object.keys(extEdits).length === 0} className={`${btnGhost} disabled:opacity-50`}>{t("basketball.save")}</button>
       </div>
       <table className="min-w-full border-collapse text-[13px]">
         <thead><tr className="border-b border-line text-[10px] uppercase tracking-[0.1em] text-ink-3">
           <th className="px-2 py-1.5 text-left">{t("basketball.fixHome")}</th><th className="px-2 py-1.5 text-left">{t("basketball.fixAway")}</th>
-          <th className="px-2 py-1.5 text-left">{t("basketball.extId")}</th><th className="px-2 py-1.5 text-left">{t("basketball.fixDate")}</th><th className="px-2 py-1.5"></th>
+          <th className="px-2 py-1.5 text-left">{t("basketball.extId")}</th><th className="px-2 py-1.5"></th>
         </tr></thead>
         <tbody>
           {fixtures.map((f) => (
             <tr key={f.id} className="border-t border-line hover:bg-veil">
               <td className="px-2 py-1 text-ink">{f.home_team_name}</td><td className="px-2 py-1 text-ink">{f.away_team_name}</td>
-              <td className="px-2 py-1"><input defaultValue={f.external_id ?? ""} onBlur={(e) => updateFixture(f.id, { external_id: e.target.value.trim() || null })} className="w-28 rounded border border-line bg-field px-2 py-0.5 text-[12px] text-ink outline-none" /></td>
-              <td className="px-2 py-1 text-ink-3">{f.match_date ?? ""}</td>
+              <td className="px-2 py-1"><input value={extVal(f)} onChange={(e) => setExtEdits((s) => ({ ...s, [f.id]: e.target.value }))} className="w-28 rounded border border-line bg-field px-2 py-0.5 text-[12px] text-ink outline-none focus:border-line-strong" /></td>
               <td className="px-2 py-1 text-right"><button onClick={async () => { await deleteFixture(f.id); reload(); }} className="text-[12px] text-neg hover:underline">×</button></td>
             </tr>
           ))}
-          {fixtures.length === 0 ? <tr><td colSpan={5} className="px-2 py-3 text-[12px] text-ink-3">—</td></tr> : null}
+          {fixtures.length === 0 ? <tr><td colSpan={4} className="px-2 py-3 text-[12px] text-ink-3">—</td></tr> : null}
         </tbody>
       </table>
     </div>
