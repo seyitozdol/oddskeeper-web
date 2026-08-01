@@ -21,6 +21,7 @@ type Props = {
   teamLogs: BktTeamLogRow[];
   playerIds: Record<string, string>;
   config: PmMarketConfig[];
+  inputRows: BktInputRow[];
   onAdd: (rows: BktInputRow[]) => void;
 };
 
@@ -32,6 +33,9 @@ const DEFAULT_LINE_CFG: LineConfig = {
   lines: 5, under_lines: 5, payback: null, round_odds: false,
   max_lines: 15, odds_cap: 999, skip_after: 5, skip_step: 2,
 };
+
+// Input mükerrer kontrolü: aynı tip+template+katılımcı+taraf+line = aynı satır.
+const rowKey = (r: BktInputRow) => `${r.kind}|${r.template}|${r.participant}|${r.side}|${r.line}`;
 
 function fmt(v: number | null | undefined, d = 1) {
   if (v == null || Number.isNaN(v)) return "-";
@@ -51,8 +55,12 @@ function NumInput({ value, onChange, step = 0.1, w = "w-16" }: { value: number; 
   );
 }
 
-export default function BasketballTools({ pmFixtures, splits, forms, windows, teamLogs, playerIds, config, onAdd }: Props) {
+export default function BasketballTools({ pmFixtures, splits, forms, windows, teamLogs, playerIds, config, inputRows, onAdd }: Props) {
   const { t, locale } = useI18n();
+  // Input'ta zaten olan satır anahtarları (mükerrer engelleme) + oyuncu+market seti (uyarı).
+  const existingKeys = useMemo(() => new Set(inputRows.map(rowKey)), [inputRows]);
+  const existingPlayerMkt = useMemo(() => new Set(inputRows.filter((r) => r.kind === "player").map((r) => `${r.template}|${r.participant}`)), [inputRows]);
+  const [totalOverride, setTotalOverride] = useState<Record<string, number>>({});
   // market_key → config (oyuncu / takım ayrı). Takım key'i "{side}_{metric}".
   const playerCfg = useMemo(() => new Map(config.filter((c) => c.market_group === "player").map((c) => [c.market_key, c])), [config]);
   const teamCfg = useMemo(() => config.filter((c) => c.market_group === "team"), [config]);
@@ -153,6 +161,7 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
 
   // Takım metriklerini Config kurallarıyla Input'a ekle. teamCfg config satırlarını gezer
   // (custom dahil); tikli olmayan metrik + template'siz/model-dışı satır atlanır.
+  const totalValue = (base: string) => totalOverride[base] ?? (teamTrader(homeSlug, base, effHome) + teamTrader(awaySlug, base, effAway));
   const addTeams = () => {
     if (!home || !away) return;
     const rows: BktInputRow[] = [];
@@ -160,22 +169,21 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
       const base = cfg.base_metric ?? "";
       if (!cfg.in_model || !cfg.template_id) continue;
       const isPct = base === "fgmadepct" || base === "ftpct";
-      const hv = teamTrader(homeSlug, base, effHome);
-      const av = teamTrader(awaySlug, base, effAway);
       let value: number, sideNum: number, teamName: string, ok: boolean;
-      if (cfg.side === "away") { ok = isTeamTicked(`${awaySlug}:${base}`); value = av; sideNum = 2; teamName = away.team_name; }
+      if (cfg.side === "away") { ok = isTeamTicked(`${awaySlug}:${base}`); value = teamTrader(awaySlug, base, effAway); sideNum = 2; teamName = away.team_name; }
       else if (cfg.side === "total") {
         // toplam: total tikli + HER İKİ takım da tikli (değer var) + pct değil (güvenlik)
         ok = !isPct && isTeamTicked(`total:${base}`) && isTeamTicked(`${homeSlug}:${base}`) && isTeamTicked(`${awaySlug}:${base}`);
-        value = hv + av; sideNum = 0; teamName = `${home.team_name} + ${away.team_name}`;
-      } else { ok = isTeamTicked(`${homeSlug}:${base}`); value = hv; sideNum = 1; teamName = home.team_name; }
+        value = totalValue(base); sideNum = 0; teamName = `${home.team_name} + ${away.team_name}`;
+      } else { ok = isTeamTicked(`${homeSlug}:${base}`); value = teamTrader(homeSlug, base, effHome); sideNum = 1; teamName = home.team_name; }
       if (!ok) continue;
       const std = (cfg.std ?? teamStd(base)) as number;
       for (const r of buildConfiguredLines(value, std, cfg, TEAM_PAYBACK)) {
         rows.push({ kind: "team", fixtureExtId: fixExtId, template: cfg.template_id, participant: "", side: sideNum, line: r.line, over: r.overPrice, under: r.underPrice, marketLabel: cfg.label ?? cfg.market_key, playerName: "", teamName });
       }
     }
-    if (rows.length) onAdd(rows);
+    const fresh = rows.filter((r) => !existingKeys.has(rowKey(r)));
+    if (fresh.length) onAdd(fresh);
   };
 
   return (
@@ -233,23 +241,30 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
                 <span className="text-[11px] text-ink-3">{t("basketball.addTeamHint")}</span>
                 <button onClick={addTeams} className="ml-auto rounded-lg bg-accent px-5 py-2.5 text-[14px] font-semibold text-white shadow-sm hover:opacity-90">{t("basketball.addToInput")}</button>
               </div>
-              <div className="grid gap-6 lg:grid-cols-2">
+              {/* Home | Away | Total yan yana (compact) */}
+              <div className="grid gap-4 lg:grid-cols-3">
                 {[{ slug: homeSlug, eff: effHome, s: home }, { slug: awaySlug, eff: effAway, s: away }].map(({ slug, eff, s }) => (
-                  <TeamPanel key={slug} slug={slug} name={s.team_name} eff={eff} formBy={formBy} teamTrader={teamTrader}
-                    setTrader={(mk, v) => setTraderMetric((p) => ({ ...p, [`${slug}:${mk}`]: v }))} teamModel={teamModel} logs={logsBy.get(slug) ?? []}
+                  <TeamMetricTable key={slug} slug={slug} name={s.team_name} eff={eff} formBy={formBy} teamTrader={teamTrader}
+                    setTrader={(mk, v) => setTraderMetric((p) => ({ ...p, [`${slug}:${mk}`]: v }))} teamModel={teamModel}
                     isTeamTicked={isTeamTicked} setTeamTick={(key, v) => setTeamTicks((p) => ({ ...p, [key]: v }))} locale={locale} t={t} />
                 ))}
+                <TotalMetricTable totalValue={totalValue} setTotalOverride={(mk, v) => setTotalOverride((p) => ({ ...p, [mk]: v }))}
+                  isTeamTicked={isTeamTicked} setTeamTick={(key, v) => setTeamTicks((p) => ({ ...p, [key]: v }))} locale={locale} t={t} />
               </div>
-              {/* Toplam (home + away); iki takımda da metrik tikliyse yazılır, pct hariç */}
-              <TeamTotalPanel homeSlug={homeSlug} awaySlug={awaySlug} effHome={effHome} effAway={effAway} teamTrader={teamTrader}
-                isTeamTicked={isTeamTicked} setTeamTick={(key, v) => setTeamTicks((p) => ({ ...p, [key]: v }))} locale={locale} t={t} />
+              {/* sezon maçları (home / away) */}
+              <div className="mt-6 grid gap-6 lg:grid-cols-2">
+                {[{ slug: homeSlug, s: home }, { slug: awaySlug, s: away }].map(({ slug, s }) => (
+                  <TeamRecent key={slug} name={s.team_name} logs={logsBy.get(slug) ?? []} locale={locale} t={t} />
+                ))}
+              </div>
             </div>
           ) : (
             <PlayerDistPanel homeSlug={homeSlug} awaySlug={awaySlug} homeName={home.team_name} awayName={away.team_name}
               effHome={effHome} effAway={effAway} winBy={winBy} isTicked={isTicked} setTick={(k, v) => setTicks((p) => ({ ...p, [k]: v }))}
               playerValue={playerValue} setVal={(k, v) => setPlayerVal((p) => ({ ...p, [k]: v }))} expRef={expRef}
               teamTarget={(slug, mk) => teamTrader(slug, mk, slug === homeSlug ? effHome : effAway)}
-              onAdd={onAdd} playerIds={playerIds} playerCfg={playerCfg} playerMarkets={playerMarkets} fixExtId={fixExtId} t={t} />
+              onAdd={onAdd} playerIds={playerIds} playerCfg={playerCfg} playerMarkets={playerMarkets}
+              existingKeys={existingKeys} existingPlayerMkt={existingPlayerMkt} fixExtId={fixExtId} locale={locale} t={t} />
           )}
         </>
       ) : (<p className="text-sm text-ink-3">{t("basketball.matchPickTeams")}</p>)}
@@ -257,33 +272,26 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
   );
 }
 
-/* ---------- Team panel: metrik tablosu + son maçlar ---------- */
-function TeamPanel({ slug, name, eff, formBy, teamTrader, setTrader, teamModel, logs, isTeamTicked, setTeamTick, locale, t }: {
+/* ---------- Team metrik tablosu (compact; Home / Away) ---------- */
+function TeamMetricTable({ slug, name, eff, formBy, teamTrader, setTrader, teamModel, isTeamTicked, setTeamTick, locale, t }: {
   slug: string; name: string; eff: number;
   formBy: Map<string, Map<string, BktTeamMetricFormRow>>;
   teamTrader: (s: string, mk: string, e: number) => number;
   setTrader: (mk: string, v: number) => void;
   teamModel: (s: string, mk: string, e: number) => number;
-  logs: BktTeamLogRow[];
-  isTeamTicked: (mk: string) => boolean;
-  setTeamTick: (mk: string, v: boolean) => void;
-  locale: "tr" | "en";
-  t: (k: string) => string;
+  isTeamTicked: (key: string) => boolean; setTeamTick: (key: string, v: boolean) => void;
+  locale: "tr" | "en"; t: (k: string) => string;
 }) {
-  // Tüm sezon maçları, en yeni üstte (week desc → tarih desc; BSL tarihleri bazen bozuk).
-  const sortedLogs = [...logs].sort((a, b) => (b.week ?? 0) - (a.week ?? 0) || String(b.match_date ?? "").localeCompare(String(a.match_date ?? "")));
   return (
-    <div>
-      <div className="mb-2 flex items-center gap-2 text-[12px] font-medium text-ink"><TeamCrest slug={slug} name={name} size={24} />{name}</div>
-      <table className="min-w-full border-collapse text-[12px]">
+    <div className="overflow-x-auto">
+      <div className="mb-2 flex items-center gap-2 text-[12px] font-medium text-ink"><TeamCrest slug={slug} name={name} size={22} /><span className="truncate">{name}</span></div>
+      <table className="min-w-full border-collapse text-[11px]">
         <thead><tr className="border-b border-line text-[9px] uppercase tracking-[0.1em] text-ink-3">
-          <th className="px-1.5 py-1 text-center"></th>
-          <th className="px-1.5 py-1 text-left">{t("basketball.colMarket")}</th>
-          <th className="px-1.5 py-1 text-right">{t("basketball.colAvg")}</th>
-          <th className="px-1.5 py-1 text-right">{t("basketball.colLast10")}</th>
-          <th className="px-1.5 py-1 text-right">{t("basketball.colModel")}</th>
-          <th className="px-1.5 py-1 text-right">{t("basketball.colStd")}</th>
-          <th className="px-1.5 py-1 text-right">{t("basketball.colTrader")}</th>
+          <th className="px-1 py-1 text-center"></th>
+          <th className="px-1 py-1 text-left">{t("basketball.colMarket")}</th>
+          <th className="px-1 py-1 text-right">{t("basketball.colAvg")}</th>
+          <th className="px-1 py-1 text-right">{t("basketball.colModel")}</th>
+          <th className="px-1 py-1 text-right">{t("basketball.colTrader")}</th>
         </tr></thead>
         <tbody>
           {TEAM_MARKETS.map((met) => {
@@ -292,21 +300,60 @@ function TeamPanel({ slug, name, eff, formBy, teamTrader, setTrader, teamModel, 
             const on = isTeamTicked(key);
             return (
               <tr key={met.key} className={`border-t border-line ${on ? "" : "opacity-45"}`}>
-                <td className="px-1.5 py-0.5 text-center"><input type="checkbox" checked={on} onChange={(e) => setTeamTick(key, e.target.checked)} className="accent-[var(--accent)]" /></td>
-                <td className="px-1.5 py-0.5 text-ink whitespace-nowrap">{metricLabel(met.key, locale, met.label)}</td>
-                <td className="px-1.5 py-0.5 text-right tabular-nums text-ink-3">{fmt(f?.season_avg)}</td>
-                <td className="px-1.5 py-0.5 text-right tabular-nums text-ink-3">{fmt(f?.last10_avg)}</td>
-                <td className="px-1.5 py-0.5 text-right tabular-nums text-ink-2">{fmt(teamModel(slug, met.key, eff))}</td>
-                <td className="px-1.5 py-0.5 text-right tabular-nums text-ink-3">{teamStd(met.key).toFixed(2)}</td>
-                <td className="px-1.5 py-0.5 text-right"><NumInput value={Math.round(teamTrader(slug, met.key, eff) * 10) / 10} onChange={(v) => setTrader(met.key, v)} w="w-20" /></td>
+                <td className="px-1 py-0.5 text-center"><input type="checkbox" checked={on} onChange={(e) => setTeamTick(key, e.target.checked)} className="accent-[var(--accent)]" /></td>
+                <td className="px-1 py-0.5 text-ink whitespace-nowrap">{metricLabel(met.key, locale, met.label)}</td>
+                <td className="px-1 py-0.5 text-right tabular-nums text-ink-3">{fmt(f?.season_avg)}</td>
+                <td className="px-1 py-0.5 text-right tabular-nums text-ink-2">{fmt(teamModel(slug, met.key, eff))}</td>
+                <td className="px-1 py-0.5 text-right"><NumInput value={Math.round(teamTrader(slug, met.key, eff) * 10) / 10} onChange={(v) => setTrader(met.key, v)} w="w-16" /></td>
               </tr>
             );
           })}
         </tbody>
       </table>
-      {/* sezon maçları (en yeni üstte, tarihli) */}
-      <div className="mt-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-3">{t("basketball.recentMatches")}</div>
-      <div className="mt-1 max-h-72 overflow-auto">
+    </div>
+  );
+}
+
+/* ---------- Toplam (home + away) tablosu — DÜZENLENEBİLİR ---------- */
+function TotalMetricTable({ totalValue, setTotalOverride, isTeamTicked, setTeamTick, locale, t }: {
+  totalValue: (mk: string) => number; setTotalOverride: (mk: string, v: number) => void;
+  isTeamTicked: (key: string) => boolean; setTeamTick: (key: string, v: boolean) => void;
+  locale: "tr" | "en"; t: (k: string) => string;
+}) {
+  return (
+    <div className="overflow-x-auto">
+      <div className="mb-2 text-[12px] font-medium text-ink">{t("basketball.totalSection")}</div>
+      <table className="min-w-full border-collapse text-[11px]">
+        <thead><tr className="border-b border-line text-[9px] uppercase tracking-[0.1em] text-ink-3">
+          <th className="px-1 py-1 text-center"></th>
+          <th className="px-1 py-1 text-left">{t("basketball.colMarket")}</th>
+          <th className="px-1 py-1 text-right">{t("basketball.colTrader")}</th>
+        </tr></thead>
+        <tbody>
+          {TEAM_MARKETS.map((met) => {
+            const key = `total:${met.key}`;
+            const on = isTeamTicked(key);
+            return (
+              <tr key={met.key} className={`border-t border-line ${on ? "" : "opacity-45"}`}>
+                <td className="px-1 py-0.5 text-center"><input type="checkbox" checked={on} onChange={(e) => setTeamTick(key, e.target.checked)} className="accent-[var(--accent)]" /></td>
+                <td className="px-1 py-0.5 text-ink whitespace-nowrap">{metricLabel(met.key, locale, met.label)}</td>
+                <td className="px-1 py-0.5 text-right"><NumInput value={Math.round(totalValue(met.key) * 10) / 10} onChange={(v) => setTotalOverride(met.key, v)} w="w-16" /></td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+/* ---------- Takım sezon maçları ---------- */
+function TeamRecent({ name, logs, locale, t }: { name: string; logs: BktTeamLogRow[]; locale: "tr" | "en"; t: (k: string) => string }) {
+  const sortedLogs = [...logs].sort((a, b) => (b.week ?? 0) - (a.week ?? 0) || String(b.match_date ?? "").localeCompare(String(a.match_date ?? "")));
+  return (
+    <div>
+      <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-3">{name} · {t("basketball.recentMatches")}</div>
+      <div className="max-h-72 overflow-auto">
         <table className="min-w-full border-collapse text-[12px]">
           <thead className="sticky top-0 bg-card-2"><tr className="text-[9px] uppercase tracking-[0.1em] text-ink-3">
             <th className="px-1.5 py-1 text-left">{t("basketball.date")}</th>
@@ -335,45 +382,8 @@ function TeamPanel({ slug, name, eff, formBy, teamTrader, setTrader, teamModel, 
   );
 }
 
-/* ---------- Takım toplamı (home + away) ---------- */
-function TeamTotalPanel({ homeSlug, awaySlug, effHome, effAway, teamTrader, isTeamTicked, setTeamTick, locale, t }: {
-  homeSlug: string; awaySlug: string; effHome: number; effAway: number;
-  teamTrader: (s: string, mk: string, e: number) => number;
-  isTeamTicked: (key: string) => boolean; setTeamTick: (key: string, v: boolean) => void;
-  locale: "tr" | "en"; t: (k: string) => string;
-}) {
-  return (
-    <div className="mt-6 lg:max-w-md">
-      <div className="mb-2 text-[12px] font-medium text-ink">{t("basketball.totalSection")}</div>
-      <div className="overflow-x-auto">
-        <table className="min-w-full border-collapse text-[12px]">
-          <thead><tr className="border-b border-line text-[9px] uppercase tracking-[0.1em] text-ink-3">
-            <th className="px-1.5 py-1 text-center"></th>
-            <th className="px-1.5 py-1 text-left">{t("basketball.colMarket")}</th>
-            <th className="px-1.5 py-1 text-right">{t("basketball.colTrader")}</th>
-          </tr></thead>
-          <tbody>
-            {TEAM_MARKETS.map((met) => {
-              const key = `total:${met.key}`;
-              const on = isTeamTicked(key);
-              const total = teamTrader(homeSlug, met.key, effHome) + teamTrader(awaySlug, met.key, effAway);
-              return (
-                <tr key={met.key} className={`border-t border-line ${on ? "" : "opacity-45"}`}>
-                  <td className="px-1.5 py-0.5 text-center"><input type="checkbox" checked={on} onChange={(e) => setTeamTick(key, e.target.checked)} className="accent-[var(--accent)]" /></td>
-                  <td className="px-1.5 py-0.5 text-ink whitespace-nowrap">{metricLabel(met.key, locale, met.label)}</td>
-                  <td className="px-1.5 py-0.5 text-right tabular-nums text-ink">{fmt(Math.round(total * 10) / 10)}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
 /* ---------- Player distribution panel ---------- */
-function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effAway, winBy, isTicked, setTick, playerValue, setVal, expRef, teamTarget, onAdd, playerIds, playerCfg, playerMarkets, fixExtId, t }: {
+function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effAway, winBy, isTicked, setTick, playerValue, setVal, expRef, teamTarget, onAdd, playerIds, playerCfg, playerMarkets, existingKeys, existingPlayerMkt, fixExtId, locale, t }: {
   homeSlug: string; awaySlug: string; homeName: string; awayName: string; effHome: number; effAway: number;
   winBy: Map<string, Map<string, BktPlayerWindowRow[]>>;
   isTicked: (s: string, mk: string, w: BktPlayerWindowRow) => boolean;
@@ -386,13 +396,17 @@ function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effA
   playerIds: Record<string, string>;
   playerCfg: Map<string, PmMarketConfig>;
   playerMarkets: { key: string; base: string; label: string; std: number; tpl: string; distributable: boolean }[];
+  existingKeys: Set<string>;
+  existingPlayerMkt: Set<string>;
   fixExtId: string;
+  locale: "tr" | "en";
   t: (k: string) => string;
 }) {
   const [side, setSide] = useState<"home" | "away">("home");
   const [distribute, setDistribute] = useState(false); // futbol gibi: varsayılan kapalı
   const [mk, setMk] = useState(playerMarkets[0]?.key ?? "points");
   const [selPlayer, setSelPlayer] = useState<string | null>(null);
+  const [preview, setPreview] = useState<BktPlayerWindowRow | null>(null); // göz → line önizleme drawer
   const [sort, setSort] = useState<{ key: string; dir: "asc" | "desc" }>({ key: "all", dir: "desc" });
   const slug = side === "home" ? homeSlug : awaySlug;
   const eff = side === "home" ? effHome : effAway;
@@ -427,23 +441,29 @@ function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effA
   const target = teamTarget(slug, mk);
   const distributed = allList.filter((w) => isTicked(slug, mk, w)).reduce((a, w) => a + playerValue(slug, mk, w, allList, eff, distribute), 0);
 
-  // Ekle: bu takım+market'in tikli oyuncularının Config kurallarıyla üretilen çizgilerini Input'a gönder
+  // Config kuralları: bu market için std/template/line-cfg + oyuncu için katılımcı id.
+  const cfgCur = playerCfg.get(mk);
+  const stdCur = (cfgCur?.std ?? met.std) as number;
+  const tplCur = cfgCur?.template_id ?? met.tpl;
+  const lineCfgCur: LineConfig = cfgCur ?? DEFAULT_LINE_CFG;
+  const participantOf = (w: BktPlayerWindowRow) => playerIds[w.player_slug] || w.player_slug;
+  const ladderFor = (w: BktPlayerWindowRow) => buildConfiguredLines(playerValue(slug, mk, w, allList, eff, distribute), stdCur, lineCfgCur, PROP_PAYBACK);
+  // Oyuncu bu market için Input'ta zaten var mı (uyarı).
+  const alreadyIn = (w: BktPlayerWindowRow) => existingPlayerMkt.has(`${tplCur}|${participantOf(w)}`);
+
+  // Ekle: tikli oyuncuların çizgilerini Input'a gönder — Input'ta ZATEN olan satırlar atlanır (mükerrer engel)
   const addCurrent = () => {
     const rows: BktInputRow[] = [];
     const sideNum = side === "home" ? 1 : 2;
     const teamNm = side === "home" ? homeName : awayName;
-    const cfg = playerCfg.get(mk);
-    const std = (cfg?.std ?? met.std) as number;
-    const tpl = cfg?.template_id ?? met.tpl;
-    const lineCfg: LineConfig = cfg ?? DEFAULT_LINE_CFG;
     for (const w of allList) {
       if (!isTicked(slug, mk, w)) continue;
-      const val = playerValue(slug, mk, w, allList, eff, distribute);
-      for (const r of buildConfiguredLines(val, std, lineCfg, PROP_PAYBACK)) {
-        rows.push({ kind: "player", fixtureExtId: fixExtId, template: tpl ?? met.tpl, participant: playerIds[w.player_slug] || w.player_slug, side: sideNum, line: r.line, over: r.overPrice, under: r.underPrice, marketLabel: met.label, playerName: w.player_name, teamName: teamNm });
+      for (const r of ladderFor(w)) {
+        rows.push({ kind: "player", fixtureExtId: fixExtId, template: tplCur ?? met.tpl, participant: participantOf(w), side: sideNum, line: r.line, over: r.overPrice, under: r.underPrice, marketLabel: met.label, playerName: w.player_name, teamName: teamNm });
       }
     }
-    if (rows.length) onAdd(rows);
+    const fresh = rows.filter((r) => !existingKeys.has(rowKey(r)));
+    if (fresh.length) onAdd(fresh);
   };
 
   return (
@@ -470,7 +490,13 @@ function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effA
             )}
             {" · Std "}{met.std}
           </span>
-          <button onClick={addCurrent} className="ml-auto rounded-lg bg-accent px-5 py-2.5 text-[14px] font-semibold text-white shadow-sm hover:opacity-90">
+          {/* Dağıt toggle (belirgin) + info (i) */}
+          <label className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-[13px] font-semibold transition ${distribute ? "border-accent/50 bg-accent-soft text-accent-ink" : "border-line bg-card-2 text-ink-2 hover:text-ink"}`}>
+            <input type="checkbox" checked={distribute} onChange={(e) => setDistribute(e.target.checked)} className="h-4 w-4 accent-[var(--accent)]" />
+            {t("basketball.distribute")}
+            <span title={t("basketball.distributeInfo")} className="inline-flex h-4 w-4 cursor-help items-center justify-center rounded-full border border-current text-[10px] font-bold leading-none">i</span>
+          </label>
+          <button onClick={addCurrent} className="rounded-lg bg-accent px-5 py-2.5 text-[14px] font-semibold text-white shadow-sm hover:opacity-90">
             {t("basketball.addToInput")}
           </button>
         </div>
@@ -482,10 +508,6 @@ function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effA
               <button key={m.key} onClick={() => { setMk(m.key); setSelPlayer(null); }} className={`rounded-full px-3 py-1 text-[11px] font-semibold transition-colors ${m.key === mk ? "bg-accent-soft text-accent-ink ring-1 ring-accent/40" : "bg-veil text-ink-3 hover:text-ink"}`}>{m.label}</button>
             ))}
           </div>
-          <label className="ml-auto flex cursor-pointer items-center gap-1.5 whitespace-nowrap text-[11px] font-semibold text-ink-2">
-            <input type="checkbox" checked={distribute} onChange={(e) => setDistribute(e.target.checked)} className="accent-[var(--accent)]" />
-            {t("basketball.distribute")}
-          </label>
         </div>
       </div>
 
@@ -512,7 +534,10 @@ function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effA
               return (
                 <tr key={w.player_slug} className={`border-t border-line ${on ? "" : "opacity-45"} ${selPlayer === w.player_slug ? "bg-veil" : ""}`}>
                   <td className="px-2 py-1 text-center"><input type="checkbox" checked={on} onChange={(e) => setTick(k, e.target.checked)} className="accent-[var(--accent)]" /></td>
-                  <td className="px-2 py-1 whitespace-nowrap"><button onClick={() => setSelPlayer(w.player_slug === selPlayer ? null : w.player_slug)} className="text-ink hover:text-accent-ink">{w.player_name}</button></td>
+                  <td className="px-2 py-1 whitespace-nowrap">
+                    <button onClick={() => setSelPlayer(w.player_slug === selPlayer ? null : w.player_slug)} className="text-ink hover:text-accent-ink">{w.player_name}</button>
+                    {alreadyIn(w) ? <span title={t("basketball.alreadyAdded")} className="ml-1.5 text-[11px] font-bold text-amber-400">⚠</span> : null}
+                  </td>
                   <td className="px-2 py-1 text-right tabular-nums text-ink-3">{fmt(w.avg_minutes)}</td>
                   <td className="px-2 py-1 text-right tabular-nums text-ink-3">{w.games}</td>
                   <td className="px-2 py-1 text-right tabular-nums text-ink-3">{fmt(w.last5_avg)}</td>
@@ -520,7 +545,16 @@ function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effA
                   <td className="px-2 py-1 text-right tabular-nums text-ink-2">{fmt(w.season_avg)}</td>
                   <td className="px-2 py-1 text-right tabular-nums text-ink-2">{fmt(expRef(slug, mk, w, eff))}</td>
                   <td className="px-2 py-1 text-right">{on ? <NumInput value={val} onChange={(v) => setVal(k, v)} /> : <span className="text-ink-3">-</span>}</td>
-                  <td className="px-2 py-1 text-right tabular-nums text-accent-ink">{mid ? `${mid.line.toFixed(1)} ${mid.overPrice.toFixed(2)}/${mid.underPrice.toFixed(2)}` : "-"}</td>
+                  <td className="px-2 py-1 text-right">
+                    <div className="flex items-center justify-end gap-1.5">
+                      <span className="tabular-nums text-accent-ink">{mid ? `${mid.line.toFixed(1)} ${mid.overPrice.toFixed(2)}/${mid.underPrice.toFixed(2)}` : "-"}</span>
+                      {on ? (
+                        <button onClick={() => setPreview(w)} title={t("basketball.viewLines")} className="text-ink-3 hover:text-accent-ink">
+                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
+                        </button>
+                      ) : null}
+                    </div>
+                  </td>
                 </tr>
               );
             })}
@@ -530,6 +564,38 @@ function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effA
 
       <p className="mt-3 text-[11px] text-ink-3">{t("basketball.selectPlayerHint")}</p>
       {selPlayer ? <BasketballPlayerDrawer key={selPlayer} slug={selPlayer} onClose={() => setSelPlayer(null)} /> : null}
+
+      {/* Göz → Config kurallarına göre üretilen line'lar + oranlar */}
+      {preview ? (
+        <div className="fixed inset-0 z-[90] flex justify-end" onClick={() => setPreview(null)}>
+          <div className="absolute inset-0 bg-black/40" />
+          <div className="relative h-full w-full max-w-sm overflow-auto bg-card p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-start justify-between">
+              <div>
+                <h3 className="text-sm font-semibold text-ink">{preview.player_name}</h3>
+                <p className="mt-0.5 text-[11px] text-ink-3">{met.label} · {t("basketball.colValue")} <span className="font-semibold text-accent-ink">{fmt(playerValue(slug, mk, preview, allList, eff, distribute))}</span> · Std {stdCur}</p>
+              </div>
+              <button onClick={() => setPreview(null)} className="text-[12px] text-ink-3 hover:text-ink">{t("basketball.close")}</button>
+            </div>
+            <table className="mt-4 min-w-full border-collapse text-[12px]">
+              <thead><tr className="border-b border-line text-[9px] uppercase tracking-[0.1em] text-ink-3">
+                <th className="px-2 py-1 text-right">{t("basketball.colLineShort")}</th>
+                <th className="px-2 py-1 text-right">{t("basketball.oddsOver")}</th>
+                <th className="px-2 py-1 text-right">{t("basketball.oddsUnder")}</th>
+              </tr></thead>
+              <tbody>
+                {ladderFor(preview).map((r, i) => (
+                  <tr key={i} className={`border-t border-line ${r.isMid ? "bg-veil font-semibold" : ""}`}>
+                    <td className="px-2 py-1 text-right tabular-nums text-ink">{r.line.toFixed(1)}</td>
+                    <td className="px-2 py-1 text-right tabular-nums text-ink">{r.overPrice.toFixed(2)}</td>
+                    <td className="px-2 py-1 text-right tabular-nums text-ink-2">{r.underPrice == null ? "—" : r.underPrice.toFixed(2)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

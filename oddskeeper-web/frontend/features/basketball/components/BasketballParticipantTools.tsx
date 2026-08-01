@@ -65,7 +65,7 @@ export default function BasketballParticipantTools({ splits, forms, windows, tea
       {/* Model her zaman mount kalır → sekme değişince fixture/takım seçimi kaybolmaz */}
       <div className={tab === "model" ? "" : "hidden"}>
         <BasketballTools pmFixtures={fixtures} splits={splits} forms={forms} windows={windows} teamLogs={teamLogs}
-          playerIds={playerIds} config={config} onAdd={(rows) => setInputRows((p) => [...p, ...rows])} />
+          playerIds={playerIds} config={config} inputRows={inputRows} onAdd={(rows) => setInputRows((p) => [...p, ...rows])} />
       </div>
       {tab === "players" && <PlayerListTab players={players} playerIds={playerIds} onSaved={setPlayerIds} t={t} />}
       {tab === "fixtures" && <FixturesTab fixtures={fixtures} teams={teams} reload={reloadFixtures} t={t} />}
