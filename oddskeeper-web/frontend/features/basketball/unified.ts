@@ -105,6 +105,14 @@ export function euroSeasonToComp(s: BktEuroSeasonRow, logs: BktEuroLogRow[]): Pl
 }
 
 /* ---------------- Team ---------------- */
+export type TeamRosterRow = {
+  key: string;
+  name: string;
+  href: string;
+  games: number;
+  mpg: number | null; ppg: number | null; rpg: number | null; apg: number | null; val: number | null;
+};
+
 export type TeamCompStats = {
   key: CompKey;
   label: string;
@@ -115,19 +123,26 @@ export type TeamCompStats = {
   rpg: number | null; apg: number | null;
   off_rtg: number | null; def_rtg: number | null; net_rtg: number | null; pace: number | null;
   fg_pct: number | null; fg3_pct: number | null; efg_pct: number | null;
-  results: { key: string; date: string | null; home_away: string | null; opponent: string | null; result: string | null; points: number | null; opp_points: number | null }[];
+  hasVal: boolean;
+  roster: TeamRosterRow[];
+  results: { key: string; date: string | null; home_away: string | null; opponent: string | null; opponent_slug?: string | null; result: string | null; points: number | null; opp_points: number | null }[];
 };
 
-export function bslTeamToComp(t: BktTeamSeasonRow, log: BktTeamLogRow[]): TeamCompStats {
+export function bslTeamToComp(t: BktTeamSeasonRow, log: BktTeamLogRow[], roster: BktPlayerSeasonRow[]): TeamCompStats {
   return {
     key: "bsl", label: COMP_META.bsl.label, logo: COMP_META.bsl.logo, seasonLabel: t.season_label,
     games: t.games, wins: t.wins, losses: t.losses,
     ppg: t.ppg, oppg: t.oppg, point_diff: t.point_diff, rpg: t.rpg, apg: t.apg,
     off_rtg: t.off_rtg, def_rtg: t.def_rtg, net_rtg: t.net_rtg, pace: t.pace,
     fg_pct: t.fg_pct, fg3_pct: t.fg3_pct, efg_pct: t.efg_pct,
+    hasVal: false,
+    roster: roster.map((p) => ({
+      key: p.player_slug, name: p.player_name, href: `/dashboard/basketball/player/${p.player_slug}`,
+      games: p.games, mpg: p.mpg, ppg: p.ppg, rpg: p.rpg, apg: p.apg, val: null,
+    })),
     results: log.map((m) => ({
       key: m.match_key + m.match_date, date: m.match_date, home_away: m.home_away,
-      opponent: m.opponent_name, result: m.result, points: m.points, opp_points: m.opp_points,
+      opponent: m.opponent_name, opponent_slug: m.opponent_slug, result: m.result, points: m.points, opp_points: m.opp_points,
     })),
   };
 }

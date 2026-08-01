@@ -44,10 +44,12 @@ select
   round((100*(tot_points-tot_opp)/nullif(tot_poss,0))::numeric,1)  as net_rtg,
   rank() over (partition by agg.competition, agg.season_code
                order by wins desc, (tot_points-tot_opp) desc)      as standings_rank,
-  tm.crest_url
+  tm.crest_url,
+  lnk.bsl_team_slug
 from agg
 left join euroleague.teams tm
-  on tm.competition=agg.competition and tm.season_code=agg.season_code and tm.team_code=agg.team_code;
+  on tm.competition=agg.competition and tm.season_code=agg.season_code and tm.team_code=agg.team_code
+left join euroleague.team_bsl_link lnk on lnk.team_code=agg.team_code;
 
 -- Takim mac logu (takim detay sayfasi icin)
 create or replace view analytics.el_team_game_log_v1 as

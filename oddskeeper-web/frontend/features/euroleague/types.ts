@@ -24,6 +24,7 @@ export type EuroTeamRow = {
   net_rtg: number | null;
   standings_rank: number;
   crest_url?: string | null;
+  bsl_team_slug?: string | null;
 };
 
 export type EuroLeaderRow = {

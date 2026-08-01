@@ -31,6 +31,17 @@ export async function getEuroLeaderboard(code: "E" | "U", seasonCode: string): P
   }
 }
 
+// Bir BSL takiminin euro (EL/EC) gorunumleri (season_label yil bazli eslesir).
+export async function getEuroTeamsForBslSlug(bslTeamSlug: string, seasonLabel: string): Promise<EuroTeamRow[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .schema("analytics").from("el_team_season_v1").select("*")
+    .eq("bsl_team_slug", bslTeamSlug).eq("season_label", seasonLabel)
+    .returns<EuroTeamRow[]>();
+  if (error) { console.error("getEuroTeamsForBslSlug", error.message); return []; }
+  return data ?? [];
+}
+
 export async function getEuroTeam(code: "E" | "U", seasonCode: string, teamCode: string): Promise<EuroTeamRow | null> {
   const supabase = await createClient();
   const { data, error } = await supabase
