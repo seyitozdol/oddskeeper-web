@@ -124,9 +124,10 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
   const home = splitBy.get(homeSlug);
   const away = splitBy.get(awaySlug);
 
-  // Adım 1: maç sayıları
-  const modelHome = home && away && home.home_pf && away.away_pa ? (home.home_pf * away.away_pa) / lgAvg : 0;
-  const modelAway = home && away && away.away_pf && home.home_pa ? (away.away_pf * home.home_pa) / lgAvg : 0;
+  // Adım 1: maç sayıları — PM Pts Model ile AYNI (log5: off × rakip_def / lig_ort).
+  // Fixture/takım seçilince ptsOv sıfırlanır → PM Pts Model değeri gelir; elle override edilebilir.
+  const modelHome = home && away ? (Number(home.ppg) * Number(away.oppg)) / lgAvg : 0;
+  const modelAway = home && away ? (Number(away.ppg) * Number(home.oppg)) / lgAvg : 0;
   const [ptsOv, setPtsOv] = useState<{ h: number | null; a: number | null }>({ h: null, a: null });
   const effHome = ptsOv.h ?? Math.round(modelHome * 10) / 10;
   const effAway = ptsOv.a ?? Math.round(modelAway * 10) / 10;
@@ -212,8 +213,8 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
   // Takım metriklerini Config kurallarıyla Input'a ekle. teamCfg config satırlarını gezer
   // (custom dahil); tikli olmayan metrik + template'siz/model-dışı satır atlanır.
   const totalValue = (base: string) => totalOverride[base] ?? (teamTrader(homeSlug, base, effHome) + teamTrader(awaySlug, base, effAway));
-  // Sıfırla: elle girilen trader/total değerlerini temizle (hesaplanan değerlere döner).
-  const resetTeam = () => { setTraderMetric({}); setTotalOverride({}); };
+  // Sıfırla: elle girilen maç-sayısı + trader/total değerlerini temizle (model'e döner).
+  const resetTeam = () => { setPtsOv({ h: null, a: null }); setTraderMetric({}); setTotalOverride({}); };
   const resetPlayer = () => setPlayerVal({});
   // Tümünü tikle/kaldır (panel bazında: slug ya da "total").
   const setTeamAll = (prefix: string, on: boolean) =>
@@ -260,7 +261,7 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
           <span className="text-[10px] uppercase tracking-[0.14em] text-ink-3">{t("basketball.fixtureLabel")}</span>
           <select
             value={fixSel}
-            onChange={(e) => { setFixSel(e.target.value); const f = pmFixtures.find((x) => String(x.id) === e.target.value); if (f) { setHomeSlug(f.home_team_slug); setAwaySlug(f.away_team_slug); } }}
+            onChange={(e) => { setFixSel(e.target.value); setPtsOv({ h: null, a: null }); const f = pmFixtures.find((x) => String(x.id) === e.target.value); if (f) { setHomeSlug(f.home_team_slug); setAwaySlug(f.away_team_slug); } }}
             className="rounded-md border border-line bg-field px-2 py-1.5 text-[13px] text-ink outline-none focus:border-line-strong">
             <option value="">{t("basketball.fixtureManual")}…</option>
             {pmFixtures.map((f) => (<option key={f.id} value={f.id}>{(f.home_team_name || f.home_team_slug)} — {(f.away_team_name || f.away_team_slug)}{f.external_id ? ` [${f.external_id}]` : ""}</option>))}
@@ -268,14 +269,14 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
         </label>
         <label className="flex flex-col gap-1">
           <span className="text-[10px] uppercase tracking-[0.14em] text-ink-3">{t("basketball.matchHome")}</span>
-          <select value={homeSlug} onChange={(e) => setHomeSlug(e.target.value)} className="rounded-md border border-line bg-field px-2 py-1.5 text-[13px] text-ink outline-none focus:border-line-strong">
+          <select value={homeSlug} onChange={(e) => { setHomeSlug(e.target.value); setPtsOv({ h: null, a: null }); }} className="rounded-md border border-line bg-field px-2 py-1.5 text-[13px] text-ink outline-none focus:border-line-strong">
             {teams.map((tm) => (<option key={tm.team_slug} value={tm.team_slug}>{tm.team_name}</option>))}
           </select>
         </label>
         <span className="pb-2 text-ink-3">vs</span>
         <label className="flex flex-col gap-1">
           <span className="text-[10px] uppercase tracking-[0.14em] text-ink-3">{t("basketball.matchAway")}</span>
-          <select value={awaySlug} onChange={(e) => setAwaySlug(e.target.value)} className="rounded-md border border-line bg-field px-2 py-1.5 text-[13px] text-ink outline-none focus:border-line-strong">
+          <select value={awaySlug} onChange={(e) => { setAwaySlug(e.target.value); setPtsOv({ h: null, a: null }); }} className="rounded-md border border-line bg-field px-2 py-1.5 text-[13px] text-ink outline-none focus:border-line-strong">
             {teams.map((tm) => (<option key={tm.team_slug} value={tm.team_slug}>{tm.team_name}</option>))}
           </select>
         </label>
