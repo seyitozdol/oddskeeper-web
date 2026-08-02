@@ -6,6 +6,7 @@ import { buildLadder, buildConfiguredLines, moneyline, type LineConfig } from ".
 import { PLAYER_MARKETS, TEAM_MARKETS, teamStd, playerStd, metricLabel, isDistributable } from "../marketConfig";
 import { formatMatchDate, normalizePositionCode, positionLabel, roleLabelKey, roleBadgeClass, LEADER_METRICS, playerPhotoUrl, teamLogoPath } from "../lib";
 import { TeamCrest } from "./ui";
+import PlayerAvatar from "./PlayerAvatar";
 import BasketballPlayerDrawer from "./BasketballPlayerDrawer";
 import type { PmFixture, PmMarketConfig, PmModelConfig } from "../pmQueries";
 import type {
@@ -289,24 +290,25 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
   const awayLogo = away?.crest_url || teamLogoPath(awaySlug);
 
   return (
-    <div className="relative isolate">
-      {/* iki takım logosu — arka planda filigran (düşük opacity) */}
-      {home && away && homeSlug !== awaySlug ? (
-        <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
-          {homeLogo ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={homeLogo} alt="" className="absolute -left-16 top-1/2 w-[320px] max-w-[45%] -translate-y-1/2 object-contain opacity-[0.05] dark:opacity-[0.07]" />
-          ) : null}
-          {awayLogo ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={awayLogo} alt="" className="absolute -right-16 top-1/2 w-[320px] max-w-[45%] -translate-y-1/2 object-contain opacity-[0.05] dark:opacity-[0.07]" />
-          ) : null}
-        </div>
-      ) : null}
-
-      <div className="space-y-6">
-      {/* seçim satırı */}
-      <div className="flex flex-wrap items-end gap-3">
+    <div className="space-y-6">
+      {/* üst blok: seçim + maç özeti; arkada iki takım logosu ortada filigran.
+          isolate SADECE bu bloğa (drawer bu ağacın dışında → z-index'i bozulmaz). */}
+      <div className="relative isolate overflow-hidden rounded-xl">
+        {home && away && homeSlug !== awaySlug && (homeLogo || awayLogo) ? (
+          <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 flex items-center justify-center gap-10 sm:gap-16">
+            {homeLogo ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={homeLogo} alt="" referrerPolicy="no-referrer" className="h-24 w-24 object-contain opacity-[0.06] dark:opacity-[0.09] sm:h-28 sm:w-28" />
+            ) : null}
+            {awayLogo ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={awayLogo} alt="" referrerPolicy="no-referrer" className="h-24 w-24 object-contain opacity-[0.06] dark:opacity-[0.09] sm:h-28 sm:w-28" />
+            ) : null}
+          </div>
+        ) : null}
+        <div className="space-y-4">
+        {/* seçim satırı */}
+        <div className="flex flex-wrap items-end gap-3">
         <label className="flex flex-col gap-1">
           <span className="text-[10px] uppercase tracking-[0.14em] text-ink-3">{t("basketball.fixtureLabel")}</span>
           <select
@@ -332,10 +334,9 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
         </label>
       </div>
 
-      {home && away && homeSlug !== awaySlug ? (
-        <>
-          {/* maç sayıları özeti */}
-          <div className="flex flex-wrap items-center gap-4 rounded-lg border border-line bg-veil px-4 py-3 text-sm">
+        {home && away && homeSlug !== awaySlug ? (
+          /* maç sayıları özeti — arka filigran hafif görünsün diye bg yarı saydam */
+          <div className="relative flex flex-wrap items-center gap-4 rounded-lg border border-line bg-veil/85 px-4 py-3 text-sm">
             <div className="flex items-center gap-2"><TeamCrest slug={homeSlug} name={home.team_name} size={30} url={home.crest_url} />
               <NumInput value={effHome} onChange={(v) => setPtsOv((p) => ({ ...p, h: v }))} /></div>
             <span className="text-ink-3">–</span>
@@ -344,7 +345,12 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
             <div><span className="text-ink-3">{t("basketball.matchTotal")}: </span><span className="font-semibold text-accent-ink">{fmt(effHome + effAway)}</span></div>
             <div><span className="text-ink-3">{t("basketball.matchMoneyline")}: </span><span className="font-semibold text-ink">{ml.homePrice.toFixed(2)} / {ml.awayPrice.toFixed(2)}</span></div>
           </div>
+        ) : null}
+        </div>
+      </div>
 
+      {home && away && homeSlug !== awaySlug ? (
+        <>
           {/* tab bar */}
           <div className="flex gap-1.5">
             {([["team", t("basketball.tabTeamMetrics")], ["player", t("basketball.tabPlayerDist")]] as const).map(([k, lbl]) => (
@@ -389,7 +395,6 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
           )}
         </>
       ) : (<p className="text-sm text-ink-3">{t("basketball.matchPickTeams")}</p>)}
-      </div>
     </div>
   );
 }
@@ -707,15 +712,7 @@ function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effA
                   <td className="px-2 py-1 text-center"><input type="checkbox" checked={on} onChange={(e) => setTick(k, e.target.checked)} className="accent-[var(--accent)]" /></td>
                   <td className="px-2 py-1 whitespace-nowrap">
                     <span className="inline-flex items-center gap-2 align-middle">
-                      {(() => {
-                        const pp = playerPhotoUrl(roleOf(w));
-                        return pp ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={pp} alt="" loading="lazy" className="h-7 w-7 shrink-0 rounded-full bg-veil object-cover object-top" />
-                        ) : (
-                          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-veil text-[10px] font-semibold text-ink-3">{w.player_name.slice(0, 1)}</span>
-                        );
-                      })()}
+                      <PlayerAvatar src={playerPhotoUrl(roleOf(w))} name={w.player_name} size={28} />
                       <button onClick={() => setSelPlayer(w.player_slug === selPlayer ? null : w.player_slug)} className="text-ink hover:text-accent-ink">{w.player_name}</button>
                     </span>
                     {alreadyIn(w) ? <span title={t("basketball.alreadyAdded")} className="ml-1.5 text-[11px] font-bold text-amber-400">⚠</span> : null}

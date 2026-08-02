@@ -27,6 +27,7 @@ export default function PlayerProfileTabs({
   const posCode = normalizePositionCode(position);
   const heightStr = formatHeight(height);
   const [active, setActive] = useState<string>(comps[0]?.key ?? "bsl");
+  const [photoFailed, setPhotoFailed] = useState(false);
   const c = comps.find((x) => x.key === active) ?? comps[0];
   if (!c) return null;
 
@@ -34,9 +35,9 @@ export default function PlayerProfileTabs({
     <div>
       {/* Header (tutarlı) — oyuncu fotografi varsa foto, yoksa takim logosu, o da yoksa forma/harf */}
       <div className="flex items-center gap-4">
-        {photoUrl ? (
+        {photoUrl && !photoFailed ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={photoUrl} alt={name} loading="lazy" className="rounded-2xl bg-veil object-cover object-top" style={{ width: 84, height: 84 }} />
+          <img src={photoUrl} alt={name} loading="lazy" referrerPolicy="no-referrer" onError={() => setPhotoFailed(true)} className="rounded-2xl bg-veil object-cover object-top" style={{ width: 84, height: 84 }} />
         ) : teamSlug ? (
           <TeamCrest slug={teamSlug} name={teamName} size={52} />
         ) : crestUrl ? (
