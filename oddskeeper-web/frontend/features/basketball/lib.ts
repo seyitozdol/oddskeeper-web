@@ -88,9 +88,9 @@ export function formatHeight(cm: number | null | undefined): string {
 }
 
 // Oyuncu rol etiketi (bb_player_role_v1.role) → i18n anahtarı + renk sınıfı.
-export type PlayerRole = "starter" | "rotation" | "limited" | "garbage" | "departed" | "newcomer";
+export type PlayerRole = "starter" | "rotation" | "limited" | "garbage" | "departed" | "newcomer" | "euro_focus";
 // Tüm roller (Config > Player Roles listesi + açıklama i18n anahtarları).
-export const ALL_ROLES: PlayerRole[] = ["starter", "rotation", "limited", "garbage", "departed", "newcomer"];
+export const ALL_ROLES: PlayerRole[] = ["starter", "rotation", "limited", "garbage", "departed", "newcomer", "euro_focus"];
 export function roleLabelKey(role: string | null | undefined): string | null {
   switch (role) {
     case "starter": return "basketball.roleStarter";
@@ -99,6 +99,7 @@ export function roleLabelKey(role: string | null | undefined): string | null {
     case "garbage": return "basketball.roleGarbage";
     case "departed": return "basketball.roleDeparted";
     case "newcomer": return "basketball.roleNewcomer";
+    case "euro_focus": return "basketball.roleEuroFocus";
     default: return null;
   }
 }
@@ -113,6 +114,7 @@ export function roleBadgeClass(role: string | null | undefined): string {
     case "garbage":  return "bg-veil text-ink-3";
     case "departed": return "bg-neg/12 text-neg";
     case "newcomer": return "bg-amber-500/15 text-amber-300";
+    case "euro_focus": return "bg-indigo-500/15 text-indigo-300";
     default:         return "bg-veil text-ink-3";
   }
 }
