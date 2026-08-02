@@ -95,26 +95,26 @@ export default function PlayerProfileTabs({
       {/* Per game */}
       <h2 className="mt-4 mb-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-3">{t("basketball.perGame")}</h2>
       <div className="grid grid-cols-3 gap-2 sm:grid-cols-5 lg:grid-cols-6">
-        <StatTile label={t("basketball.games")} value={String(c.games)} />
-        <StatTile label={t("basketball.min")} value={fmt(c.mpg)} />
-        <StatTile label={t("basketball.ppg")} value={fmt(c.ppg)} tone="accent" />
-        <StatTile label={t("basketball.rpg")} value={fmt(c.rpg)} />
-        <StatTile label={t("basketball.apg")} value={fmt(c.apg)} />
-        <StatTile label={t("basketball.spg")} value={fmt(c.spg)} />
-        <StatTile label={t("basketball.bpg")} value={fmt(c.bpg)} />
-        <StatTile label={t("basketball.threePg")} value={fmt(c.fg3m_pg)} />
-        {c.hasVal ? <StatTile label={t("basketball.valuation")} value={fmt(c.val_pg)} tone="accent" /> : null}
+        <StatTile label={t("basketball.games")} value={String(c.games)} info={t("basketball.gamesInfo")} />
+        <StatTile label={t("basketball.min")} value={fmt(c.mpg)} info={t("basketball.minInfo")} />
+        <StatTile label={t("basketball.ppg")} value={fmt(c.ppg)} tone="accent" info={t("basketball.ppgInfo")} />
+        <StatTile label={t("basketball.rpg")} value={fmt(c.rpg)} info={t("basketball.rpgInfo")} />
+        <StatTile label={t("basketball.apg")} value={fmt(c.apg)} info={t("basketball.apgInfo")} />
+        <StatTile label={t("basketball.spg")} value={fmt(c.spg)} info={t("basketball.spgInfo")} />
+        <StatTile label={t("basketball.bpg")} value={fmt(c.bpg)} info={t("basketball.bpgInfo")} />
+        <StatTile label={t("basketball.threePg")} value={fmt(c.fg3m_pg)} info={t("basketball.threePgInfo")} />
+        {c.hasVal ? <StatTile label={t("basketball.valuation")} value={fmt(c.val_pg)} tone="accent" info={t("basketball.valInfo")} /> : null}
       </div>
 
       {/* Shooting */}
       <h2 className="mt-6 mb-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-3">{t("basketball.shooting")}</h2>
       <div className="grid grid-cols-3 gap-2 sm:grid-cols-5 lg:grid-cols-6">
-        <StatTile label={t("basketball.fgPct")} value={fmt(c.fg_pct)} />
-        {c.fg2_pct != null ? <StatTile label="2P%" value={fmt(c.fg2_pct)} /> : null}
-        <StatTile label={t("basketball.threePct")} value={fmt(c.fg3_pct)} />
-        <StatTile label={t("basketball.ftPct")} value={fmt(c.ft_pct)} />
-        {c.efg_pct != null ? <StatTile label={t("basketball.efgPct")} value={fmt(c.efg_pct)} /> : null}
-        <StatTile label={t("basketball.tsPct")} value={fmt(c.ts_pct)} tone="accent" />
+        <StatTile label={t("basketball.fgPct")} value={fmt(c.fg_pct)} info={t("basketball.fgPctInfo")} />
+        {c.fg2_pct != null ? <StatTile label="2P%" value={fmt(c.fg2_pct)} info={t("basketball.twoPctInfo")} /> : null}
+        <StatTile label={t("basketball.threePct")} value={fmt(c.fg3_pct)} info={t("basketball.threePctInfo")} />
+        <StatTile label={t("basketball.ftPct")} value={fmt(c.ft_pct)} info={t("basketball.ftPctInfo")} />
+        {c.efg_pct != null ? <StatTile label={t("basketball.efgPct")} value={fmt(c.efg_pct)} info={t("basketball.efgPctInfo")} /> : null}
+        <StatTile label={t("basketball.tsPct")} value={fmt(c.ts_pct)} tone="accent" info={t("basketball.tsPctInfo")} />
       </div>
 
       {/* Advanced (BSL) */}
@@ -122,12 +122,12 @@ export default function PlayerProfileTabs({
         <>
           <h2 className="mt-6 mb-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-3">{t("basketball.advanced")}</h2>
           <div className="grid grid-cols-3 gap-2 sm:grid-cols-5 lg:grid-cols-6">
-            <StatTile label={t("basketball.usage")} value={fmt(c.usage_pct)} />
-            <StatTile label="PTS/36" value={fmt(c.pts_per36)} />
-            <StatTile label="REB/36" value={fmt(c.reb_per36)} />
-            <StatTile label="AST/36" value={fmt(c.ast_per36)} />
-            <StatTile label={t("basketball.pra")} value={fmt(c.pra_pg)} />
-            <StatTile label="P+A" value={fmt(c.pa_pg)} />
+            <StatTile label={t("basketball.usage")} value={fmt(c.usage_pct)} info={t("basketball.usageInfo")} />
+            <StatTile label="PTS/36" value={fmt(c.pts_per36)} info={t("basketball.pts36Info")} />
+            <StatTile label="REB/36" value={fmt(c.reb_per36)} info={t("basketball.reb36Info")} />
+            <StatTile label="AST/36" value={fmt(c.ast_per36)} info={t("basketball.ast36Info")} />
+            <StatTile label={t("basketball.pra")} value={fmt(c.pra_pg)} info={t("basketball.praInfo")} />
+            <StatTile label="P+A" value={fmt(c.pa_pg)} info={t("basketball.paInfo")} />
           </div>
         </>
       ) : null}

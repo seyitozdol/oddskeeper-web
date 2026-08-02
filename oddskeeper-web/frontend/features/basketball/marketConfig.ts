@@ -91,6 +91,21 @@ export function metricLabel(key: string, locale: string, fallback?: string): str
   const m = METRIC_LABELS[key];
   return m ? (locale === "tr" ? m.tr : m.en) : (fallback ?? key);
 }
+
+// Model ekranı takım metriği hover açıklaması: metrik anlamı + Model hesabı.
+// Model (points hariç) = (projeksiyon sayı / takım sezon sayı ort) × metrik son-10 ort.
+export function metricInfo(key: string, locale: string): string {
+  const name = metricLabel(key, locale, key);
+  if (key === "points") {
+    return locale === "tr"
+      ? "Takım sayısı. Model = maç projeksiyon sayısı (takım hücumu × rakip savunması / lig ortalaması, log5). Trader'ı elle değiştirebilirsin."
+      : "Team points. Model = projected match points (team offense x opponent defense / league average, log5). You can override Trader.";
+  }
+  const low = name.toLocaleLowerCase(locale === "tr" ? "tr" : "en");
+  return locale === "tr"
+    ? `${name}: takım maç başına ${low}. Model = (projeksiyon sayı / takım sezon sayı ort) × ${low} son-10 ort. Trader'ı elle değiştirebilirsin.`
+    : `${name}: team ${low} per match. Model = (projected points / team season points avg) x this stat's last-10 avg. You can override Trader.`;
+}
 export function sideLabel(side: string | null | undefined, locale: string): string {
   const s = side ? SIDE_LABELS[side] : undefined;
   return s ? (locale === "tr" ? s.tr : s.en) : "";

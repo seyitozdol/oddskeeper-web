@@ -61,18 +61,18 @@ export default function BasketballPlayerDrawer({ slug, competition, onClose }: {
           <>
             {/* sezon */}
             <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
-              <StatTile label={t("basketball.games")} value={String(season.games)} />
-              <StatTile label={t("basketball.min")} value={fmt(season.mpg)} />
-              <StatTile label={t("basketball.ppg")} value={fmt(season.ppg)} tone="accent" />
-              <StatTile label={t("basketball.rpg")} value={fmt(season.rpg)} />
-              <StatTile label={t("basketball.apg")} value={fmt(season.apg)} />
-              <StatTile label={t("basketball.spg")} value={fmt(season.spg)} />
-              <StatTile label={t("basketball.bpg")} value={fmt(season.bpg)} />
-              <StatTile label={t("basketball.fgPct")} value={fmt(season.fg_pct)} />
-              <StatTile label={t("basketball.threePct")} value={fmt(season.fg3_pct)} />
-              <StatTile label={t("basketball.ftPct")} value={fmt(season.ft_pct)} />
-              <StatTile label={t("basketball.tsPct")} value={fmt(season.ts_pct)} />
-              <StatTile label={t("basketball.usage")} value={fmt(season.usage_pct)} />
+              <StatTile label={t("basketball.games")} value={String(season.games)} info={t("basketball.gamesInfo")} />
+              <StatTile label={t("basketball.min")} value={fmt(season.mpg)} info={t("basketball.minInfo")} />
+              <StatTile label={t("basketball.ppg")} value={fmt(season.ppg)} tone="accent" info={t("basketball.ppgInfo")} />
+              <StatTile label={t("basketball.rpg")} value={fmt(season.rpg)} info={t("basketball.rpgInfo")} />
+              <StatTile label={t("basketball.apg")} value={fmt(season.apg)} info={t("basketball.apgInfo")} />
+              <StatTile label={t("basketball.spg")} value={fmt(season.spg)} info={t("basketball.spgInfo")} />
+              <StatTile label={t("basketball.bpg")} value={fmt(season.bpg)} info={t("basketball.bpgInfo")} />
+              <StatTile label={t("basketball.fgPct")} value={fmt(season.fg_pct)} info={t("basketball.fgPctInfo")} />
+              <StatTile label={t("basketball.threePct")} value={fmt(season.fg3_pct)} info={t("basketball.threePctInfo")} />
+              <StatTile label={t("basketball.ftPct")} value={fmt(season.ft_pct)} info={t("basketball.ftPctInfo")} />
+              <StatTile label={t("basketball.tsPct")} value={fmt(season.ts_pct)} info={t("basketball.tsPctInfo")} />
+              <StatTile label={t("basketball.usage")} value={fmt(season.usage_pct)} info={t("basketball.usageInfo")} />
             </div>
 
             {/* maç geçmişi */}

@@ -60,18 +60,18 @@ export default function TeamProfileTabs({
       {/* Season averages */}
       <h2 className="mt-6 mb-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-3">{t("basketball.seasonAverages")}</h2>
       <div className="grid grid-cols-3 gap-2 sm:grid-cols-5 lg:grid-cols-6">
-        <StatTile label={t("basketball.played")} value={String(c.games)} />
-        <StatTile label={t("basketball.ppg")} value={fmt(c.ppg)} tone="accent" />
-        <StatTile label={t("basketball.oppg")} value={fmt(c.oppg)} />
-        <StatTile label={t("basketball.diff")} value={fmt(c.point_diff)} />
-        <StatTile label={t("basketball.rpg")} value={fmt(c.rpg)} />
-        <StatTile label={t("basketball.apg")} value={fmt(c.apg)} />
-        <StatTile label={t("basketball.netRtg")} value={fmt(c.net_rtg)} />
-        <StatTile label={t("basketball.offRtg")} value={fmt(c.off_rtg)} />
-        <StatTile label={t("basketball.defRtg")} value={fmt(c.def_rtg)} />
-        <StatTile label={t("basketball.pace")} value={fmt(c.pace)} />
-        <StatTile label={t("basketball.threePct")} value={fmt(c.fg3_pct)} />
-        <StatTile label={t("basketball.fgPct")} value={fmt(c.fg_pct)} />
+        <StatTile label={t("basketball.played")} value={String(c.games)} info={t("basketball.gamesInfo")} />
+        <StatTile label={t("basketball.ppg")} value={fmt(c.ppg)} tone="accent" info={t("basketball.ppgInfo")} />
+        <StatTile label={t("basketball.oppg")} value={fmt(c.oppg)} info={t("basketball.oppgInfo")} />
+        <StatTile label={t("basketball.diff")} value={fmt(c.point_diff)} info={t("basketball.diffInfo")} />
+        <StatTile label={t("basketball.rpg")} value={fmt(c.rpg)} info={t("basketball.rpgInfo")} />
+        <StatTile label={t("basketball.apg")} value={fmt(c.apg)} info={t("basketball.apgInfo")} />
+        <StatTile label={t("basketball.netRtg")} value={fmt(c.net_rtg)} info={t("basketball.netRtgInfo")} />
+        <StatTile label={t("basketball.offRtg")} value={fmt(c.off_rtg)} info={t("basketball.offRtgInfo")} />
+        <StatTile label={t("basketball.defRtg")} value={fmt(c.def_rtg)} info={t("basketball.defRtgInfo")} />
+        <StatTile label={t("basketball.pace")} value={fmt(c.pace)} info={t("basketball.paceInfo")} />
+        <StatTile label={t("basketball.threePct")} value={fmt(c.fg3_pct)} info={t("basketball.threePctInfo")} />
+        <StatTile label={t("basketball.fgPct")} value={fmt(c.fg_pct)} info={t("basketball.fgPctInfo")} />
       </div>
 
       {/* Roster */}

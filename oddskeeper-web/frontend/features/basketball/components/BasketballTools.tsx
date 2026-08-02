@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { useI18n } from "@/lib/i18n/LanguageProvider";
 import { buildLadder, buildConfiguredLines, moneyline, type LineConfig } from "../odds";
-import { PLAYER_MARKETS, TEAM_MARKETS, teamStd, playerStd, metricLabel, isDistributable } from "../marketConfig";
+import { PLAYER_MARKETS, TEAM_MARKETS, teamStd, playerStd, metricLabel, metricInfo, isDistributable } from "../marketConfig";
 import { formatMatchDate, normalizePositionCode, positionLabel, roleLabelKey, roleBadgeClass, LEADER_METRICS, playerPhotoUrl, teamLogoPath } from "../lib";
 import { TeamCrest } from "./ui";
 import PlayerAvatar from "./PlayerAvatar";
@@ -449,13 +449,13 @@ function TeamMetricTable({ slug, side, name, crestUrl, eff, formBy, teamTrader, 
               <tr key={met.key} className={`border-t border-line ${on ? "" : "opacity-45"}`}>
                 <td className="px-1 py-0.5 text-center"><input type="checkbox" checked={on} onChange={(e) => setTeamTick(key, e.target.checked)} className="accent-[var(--accent)]" /></td>
                 <td className="px-1 py-0.5 text-ink whitespace-nowrap">
-                  {metricLabel(met.key, locale, met.label)}
+                  <span title={metricInfo(met.key, locale)} className="cursor-help border-b border-dotted border-ink-3/40">{metricLabel(met.key, locale, met.label)}</span>
                   {inInput(side, met.key) ? <span title={t("basketball.alreadyAdded")} className="ml-1 text-[10px] font-bold text-amber-400">⚠</span> : null}
                 </td>
                 <td className="px-1 py-0.5 text-right tabular-nums text-ink-3">{fmt(f?.season_avg)}</td>
                 <td className="px-1 py-0.5 text-right tabular-nums text-ink-3">{l10w == null ? "-" : fmt(l10w)}</td>
                 <td className="px-1 py-0.5 text-right tabular-nums text-ink-2">{fmt(teamModel(slug, met.key, eff))}</td>
-                <td className="px-1 py-0.5 text-right"><NumInput value={tv} onChange={(v) => setTrader(met.key, v)} w="w-16" warn={on && valueWarn(slug, met.key, tv)} /></td>
+                <td className="px-1 py-0.5 text-right"><NumInput value={tv} onChange={(v) => setTrader(met.key, v)} w="w-20" warn={on && valueWarn(slug, met.key, tv)} /></td>
               </tr>
             );
           })}
@@ -489,8 +489,8 @@ function TotalMetricTable({ totalValue, setTotalOverride, isTeamTicked, setTeamT
             return (
               <tr key={met.key} className={`border-t border-line ${on ? "" : "opacity-45"}`}>
                 <td className="px-1 py-0.5 text-center"><input type="checkbox" checked={on} onChange={(e) => setTeamTick(key, e.target.checked)} className="accent-[var(--accent)]" /></td>
-                <td className="px-1 py-0.5 text-ink whitespace-nowrap">{metricLabel(met.key, locale, met.label)}</td>
-                <td className="px-1 py-0.5 text-right"><NumInput value={Math.round(totalValue(met.key) * 10) / 10} onChange={(v) => setTotalOverride(met.key, v)} w="w-16" /></td>
+                <td className="px-1 py-0.5 text-ink whitespace-nowrap"><span title={metricInfo(met.key, locale)} className="cursor-help border-b border-dotted border-ink-3/40">{metricLabel(met.key, locale, met.label)}</span></td>
+                <td className="px-1 py-0.5 text-right"><NumInput value={Math.round(totalValue(met.key) * 10) / 10} onChange={(v) => setTotalOverride(met.key, v)} w="w-24" /></td>
               </tr>
             );
           })}

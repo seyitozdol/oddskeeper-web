@@ -33,16 +33,21 @@ export function StatTile({
   label,
   value,
   tone,
+  info,
 }: {
   label: string;
   value: string;
   tone?: "pos" | "neg" | "accent";
+  info?: string;   // hover aciklama (metrik anlami/formulu)
 }) {
   const valueClass =
     tone === "pos" ? "text-pos" : tone === "neg" ? "text-neg" : tone === "accent" ? "text-accent-ink" : "text-ink";
   return (
-    <div className="rounded-lg border border-line bg-veil px-3 py-2">
-      <div className="text-[10px] uppercase tracking-[0.14em] text-ink-3">{label}</div>
+    <div className={`rounded-lg border border-line bg-veil px-3 py-2 ${info ? "cursor-help" : ""}`} title={info || undefined}>
+      <div className="flex items-center gap-1 text-[10px] uppercase tracking-[0.14em] text-ink-3">
+        {label}
+        {info ? <span className="text-[8px] leading-none text-ink-3/70">ⓘ</span> : null}
+      </div>
       <div className={`text-sm font-semibold ${valueClass}`}>{value}</div>
     </div>
   );
