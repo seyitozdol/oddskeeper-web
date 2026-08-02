@@ -19,6 +19,7 @@ import json
 import os
 import sys
 import unicodedata
+from difflib import SequenceMatcher
 
 import psycopg2
 from dotenv import load_dotenv
@@ -40,6 +41,17 @@ CLUB_STOPWORDS = {
 MATCH_THRESHOLD = 0.55
 MARGIN = 0.15  # en iyi ile ikinci arasindaki asgari fark
 
+# Bulanik token eslemesi: farkli kaynaklar ayni kulubu yakin ama ayni-olmayan
+# yazimla verebilir (ornek: API-Football 'Rennes' vs SofaScore 'Stade Rennais';
+# token kesisimi bos kalir). Iki token bu benzerligin uzerindeyse "ayni token"
+# sayilir. Esik dusuk tutulamaz: bayern/bayer (0.91), atletico/athletic (0.88)
+# gibi FARKLI takimlar rennes/rennais'ten (0.77) daha benzer. Bu yuzden fuzzy
+# yalnizca YARDIMCI sinyaldir (dusuk agirlik) ve resolve'un cift-taraf + margin
+# korumalari devrede kalir; tek tarafli zayif benzerlik tek basina mac kuramaz.
+FUZZY_TOKEN_MIN = 0.72
+FUZZY_MIN_LEN = 4       # kisa tokenlar (<=3) bulanik eslemede gurultu yapar, atlanir
+FUZZY_WEIGHT = 0.85     # exact sinyallerin (jac/cover/sub) altinda kalir
+
 
 def fold(text: str) -> str:
     """Turkce karakterleri ASCII'ye indirger, kucuk harfe cevirir."""
@@ -59,8 +71,25 @@ def tokens(name: str) -> set[str]:
     return set(keep or raw)
 
 
+def _fuzzy_cover(ta: set[str], tb: set[str]) -> float:
+    """Bulanik kapsama: kucuk tarafin her tokeni digerinde ne kadar iyi karsilik
+    buluyor (esik alti benzerlik 0 sayilir). max(iki yon) alinir, boylece bir
+    taraftaki fazladan token (ornek 'Stade Rennais'teki 'stade') sonucu bogmaz."""
+    def best(t: str, dst: set[str]) -> float:
+        if len(t) < FUZZY_MIN_LEN:
+            return 0.0
+        m = max((SequenceMatcher(None, t, o).ratio() for o in dst
+                 if len(o) >= FUZZY_MIN_LEN), default=0.0)
+        return m if m >= FUZZY_TOKEN_MIN else 0.0
+
+    def cov(src: set[str], dst: set[str]) -> float:
+        return sum(best(t, dst) for t in src) / len(src) if src else 0.0
+
+    return max(cov(ta, tb), cov(tb, ta))
+
+
 def name_score(a: str, b: str) -> float:
-    """0..1 benzerlik. Token kesisimi + kapsama (substring) birlesimi."""
+    """0..1 benzerlik. Token kesisimi + kapsama (substring) + bulanik kapsama."""
     ta, tb = tokens(a), tokens(b)
     if not ta or not tb:
         return 0.0
@@ -70,38 +99,69 @@ def name_score(a: str, b: str) -> float:
     cover = max(len(inter) / len(ta), len(inter) / len(tb))
     fa, fb = fold(a).replace(" ", ""), fold(b).replace(" ", "")
     sub = 1.0 if (fa and fb and (fa in fb or fb in fa)) else 0.0
-    return max(jac, cover * 0.9, sub * 0.85)
+    return max(jac, cover * 0.9, sub * 0.85, _fuzzy_cover(ta, tb) * FUZZY_WEIGHT)
 
 
-def pair_score(site_home: str, site_away: str, ev: dict) -> float:
-    h = name_score(site_home, ev["home_team_name"])
-    a = name_score(site_away, ev["away_team_name"])
+def _orient_score(x_home: str, x_away: str, ev_home: str, ev_away: str) -> float:
+    h = name_score(x_home, ev_home)
+    a = name_score(x_away, ev_away)
     # iki taraf da makul olmali; tek taraf guclu olsa bile digeri cokerse esleme yok
     if min(h, a) < 0.3:
         return 0.0
     return (h + a) / 2
 
 
+def pair_score(site_home: str, site_away: str, ev: dict) -> float:
+    """Duz yon: site ev/deplasman <-> bizim ev/deplasman."""
+    return _orient_score(site_home, site_away, ev["home_team_name"], ev["away_team_name"])
+
+
+def pair_score_rev(site_home: str, site_away: str, ev: dict) -> float:
+    """Ters yon: oran kaynagi ev/deplasmani ters listelemis olabilir."""
+    return _orient_score(site_home, site_away, ev["away_team_name"], ev["home_team_name"])
+
+
+def _best_match(home: str, away: str, our_events: list[dict], scorer) -> dict | None:
+    scored = []
+    for ev in our_events:
+        s = scorer(home, away, ev)
+        if s > 0:
+            scored.append((s, ev))
+    if not scored:
+        return None
+    scored.sort(key=lambda t: t[0], reverse=True)
+    best_score, best_ev = scored[0]
+    second = scored[1][0] if len(scored) > 1 else 0.0
+    if best_score >= MATCH_THRESHOLD and (best_score - second) >= MARGIN:
+        return {
+            "event_id": best_ev["event_id"],
+            "score": round(best_score, 3),
+            "our": f"{best_ev['home_team_name']} - {best_ev['away_team_name']}",
+        }
+    return None
+
+
 def resolve(site_events: list[tuple[str, str]], our_events: list[dict]) -> dict:
-    """(home, away) -> {event_id, score}. Belirsiz eslesmeler atlanir."""
+    """(home, away) -> {event_id, score}. Belirsiz eslesmeler atlanir.
+
+    Iki gecis: once DUZ yon (mevcut davranis; iki bacakli Avrupa eslemelerinde
+    ev/deplasman bacaklarini dogru ayirir). Duz yonde eslesmeyen site maclari
+    icin TERS yon denenir: SofaScore ayni maci farkli event_id + ters takim
+    sirasiyla verdiginde (ornek: SofaScore 'Udinese - Trabzonspor', bet365
+    'Trabzonspor - Udinese') oran yine dogru event'e baglanir. Ters yon yalnizca
+    yedek oldugu icin, ayni ikilinin iki ayri bacagini birbirine karistirmaz.
+    """
     out = {}
     for home, away in site_events:
-        scored = []
-        for ev in our_events:
-            s = pair_score(home, away, ev)
-            if s > 0:
-                scored.append((s, ev))
-        if not scored:
+        m = _best_match(home, away, our_events, pair_score)
+        if m:
+            out[(home, away)] = m
+    for home, away in site_events:
+        if (home, away) in out:
             continue
-        scored.sort(key=lambda t: t[0], reverse=True)
-        best_score, best_ev = scored[0]
-        second = scored[1][0] if len(scored) > 1 else 0.0
-        if best_score >= MATCH_THRESHOLD and (best_score - second) >= MARGIN:
-            out[(home, away)] = {
-                "event_id": best_ev["event_id"],
-                "score": round(best_score, 3),
-                "our": f"{best_ev['home_team_name']} - {best_ev['away_team_name']}",
-            }
+        m = _best_match(home, away, our_events, pair_score_rev)
+        if m:
+            out[(home, away)] = m
     return out
 
 
