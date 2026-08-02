@@ -81,6 +81,7 @@ export type BktPlayerSeasonRow = {
   sofascore_player_id?: number | null;  // BSL: SofaScore kimlik → oyuncu fotografi
   image_url?: string | null;  // EL/EC: EuroLeague headshot (drawer/euro foto)
   role?: string | null;       // rol etiketi (starter|rotation|limited|garbage|departed)
+  country_code?: string | null;  // ISO alpha2 (bayrak)
 };
 
 export type BktLeaderboardRow = BktPlayerSeasonRow & {

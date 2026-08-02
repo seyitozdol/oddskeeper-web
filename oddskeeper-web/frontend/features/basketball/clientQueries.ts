@@ -66,6 +66,7 @@ export async function fetchEuroPlayerSeason(personCode: string, comp: "E" | "U",
     spg: n("spg"), bpg: n("bpg"), fg_pct: n("fg_pct"), fg3_pct: n("fg3_pct"), ft_pct: n("ft_pct"),
     ts_pct: n("ts_pct"), usage_pct: null,
     image_url: (data.image_url as string) ?? null, position: (data.position as string) ?? null,
+    country_code: (data.country_code as string) ?? null,
   } as BktPlayerSeasonRow;
 }
 

@@ -58,6 +58,7 @@ export type EuroLeaderRow = {
   height_cm?: number | null;
   role?: string | null;       // rol etiketi (starter|rotation|limited|garbage|departed)
   crest_url?: string | null;  // takım logosu (euroleague.teams) — Player Leaders
+  country_code?: string | null;  // ISO alpha2 (bayrak)
 };
 
 export type EuroPlayerLogRow = {

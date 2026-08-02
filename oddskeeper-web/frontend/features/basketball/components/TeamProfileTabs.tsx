@@ -6,6 +6,7 @@ import Image from "next/image";
 import { useI18n } from "@/lib/i18n/LanguageProvider";
 import { StatTile, TeamCrest } from "./ui";
 import PlayerAvatar from "./PlayerAvatar";
+import CountryFlag from "./CountryFlag";
 import { fmt, formatMatchDate, homeAwayLabel, normalizePositionCode, positionLabel, roleLabelKey, roleBadgeClass } from "../lib";
 import type { TeamCompStats } from "../unified";
 
@@ -92,6 +93,7 @@ export default function TeamProfileTabs({
                 <td className="px-2 py-2">
                   <Link href={p.href} className="inline-flex items-center gap-2 font-medium text-ink hover:text-accent-ink whitespace-nowrap">
                     <PlayerAvatar src={p.photoUrl} name={p.name} size={28} />
+                    <CountryFlag code={p.country_code} size={14} />
                     {p.name}
                   </Link>
                 </td>

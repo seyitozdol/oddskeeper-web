@@ -55,6 +55,7 @@ export default async function BasketballPlayerPage({
               teamSlug={player.team_slug}
               position={player.position}
               height={player.height_cm}
+              country={player.country_code}
               photoUrl={photoUrl}
               comps={comps}
             />
