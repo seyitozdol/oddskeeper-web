@@ -22,6 +22,17 @@ type Side = "home" | "away" | "total";
 
 type VbInputRow = { kind: "team" | "player"; fixtureExtId: string; template: string; participant: string; side: number; line: number; over: number; under: number | null; label: string; name: string };
 
+// Model market'i: config'ten (varsa) yoksa VB_MARKETS default. base = veri anahtari (points/ace/...).
+type VbMkt = { key: string; base: string; label: string; std: number; tpl: string };
+function marketList(config: PmMarketConfig[], grp: "team" | "player"): VbMkt[] {
+  const rows = config.filter((c) => c.market_group === grp && c.in_model !== false);
+  if (rows.length === 0) return VB_MARKETS.map((m) => ({ key: m.key, base: m.key, label: m.label, std: m.std, tpl: m.tpl }));
+  return [...rows].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)).map((c) => ({
+    key: c.market_key, base: c.base_metric ?? c.market_key, label: c.label ?? c.market_key,
+    std: (c.std ?? vbMarketStd(c.base_metric ?? c.market_key)) as number, tpl: c.template_id ?? "",
+  }));
+}
+
 const btnSave = "rounded-md border border-teal-500/30 bg-teal-500/10 px-3 py-1.5 text-[12px] font-semibold text-teal-300 hover:bg-teal-500/20";
 const btnGhost = "rounded-md border border-line px-3 py-1.5 text-[12px] font-semibold text-ink-2 hover:text-ink";
 const accentBtn = "rounded-lg bg-accent px-5 py-2.5 text-[14px] font-semibold text-white shadow-sm hover:opacity-90";
@@ -111,41 +122,41 @@ function ModelTab({ teamMatches, playerMatches, players, teams, fixtures, config
   const awayCode = fixture?.away_team_slug ?? null;
   const fixExtId = fixture?.external_id ?? "";
 
+  // Market listesi CONFIG'ten (varsa) yoksa VB_MARKETS default.
+  const teamMkts = useMemo(() => marketList(config, "team"), [config]);
+  const playerMkts = useMemo(() => marketList(config, "player"), [config]);
   const teamCfg = useMemo(() => new Map(config.filter((c) => c.market_group === "team").map((c) => [c.market_key, c])), [config]);
   const playerCfg = useMemo(() => new Map(config.filter((c) => c.market_group === "player").map((c) => [c.market_key, c])), [config]);
-  const stdOf = (grp: "team" | "player", mk: string) => ((grp === "team" ? teamCfg : playerCfg).get(mk)?.std ?? vbMarketStd(mk)) as number;
-  const tplOf = (grp: "team" | "player", mk: string) => (grp === "team" ? teamCfg : playerCfg).get(mk)?.template_id ?? VB_MARKETS.find((m) => m.key === mk)?.tpl ?? "";
 
   const rowsForTeam = (code: string | null): VbTeamMatch[] =>
     code ? [...teamMatches].filter((r) => r.team_code === code).sort((a, b) => String(b.match_date).localeCompare(String(a.match_date))) : [];
-  const teamAgg = (code: string | null, mk: string) => {
-    const vals = rowsForTeam(code).map((r) => teamVal(r, mk)).filter((v): v is number => v != null);
+  const teamAgg = (code: string | null, base: string) => {
+    const vals = rowsForTeam(code).map((r) => teamVal(r, base)).filter((v): v is number => v != null);
     return { avg: mean(vals), l5: mean(vals.slice(0, 5)), l10: mean(vals.slice(0, 10)), model: weighted(vals.slice(0, 10)), n: vals.length };
   };
-  const traderVal = (code: string | null, mk: string) => (code && trader[`${code}:${mk}`] != null) ? trader[`${code}:${mk}`] : Math.round(teamAgg(code, mk).model * 10) / 10;
-  const totalValue = (mk: string) => totalOv[mk] ?? Math.round((traderVal(homeCode, mk) + traderVal(awayCode, mk)) * 10) / 10;
-  const isTeamTicked = (col: string, mk: string) => teamTicks[`${col}:${mk}`] !== false;
+  const traderOf = (code: string | null, m: VbMkt) => (code && trader[`${code}:${m.key}`] != null) ? trader[`${code}:${m.key}`] : Math.round(teamAgg(code, m.base).model * 10) / 10;
+  const totalOf = (m: VbMkt) => totalOv[m.key] ?? Math.round((traderOf(homeCode, m) + traderOf(awayCode, m)) * 10) / 10;
+  const isTeamTicked = (col: string, key: string) => teamTicks[`${col}:${key}`] !== false;
 
   const addTeam = () => {
     if (!homeCode || !awayCode) return;
     const rows: VbInputRow[] = [];
     let sent = 0, dup = 0, noTpl = 0, zero = 0;
     const existing = new Set(inputRows.filter((r) => r.kind === "team").map((r) => r.template));
-    const cols: { col: string; sideNum: number; label: string; value: (mk: string) => number }[] = [
-      { col: homeCode, sideNum: 1, label: "home", value: (mk) => traderVal(homeCode, mk) },
-      { col: awayCode, sideNum: 2, label: "away", value: (mk) => traderVal(awayCode, mk) },
-      { col: "total", sideNum: 0, label: "total", value: (mk) => totalValue(mk) },
+    const cols: { col: string; sideNum: number; label: string; value: (m: VbMkt) => number }[] = [
+      { col: homeCode, sideNum: 1, label: "home", value: (m) => traderOf(homeCode, m) },
+      { col: awayCode, sideNum: 2, label: "away", value: (m) => traderOf(awayCode, m) },
+      { col: "total", sideNum: 0, label: "total", value: (m) => totalOf(m) },
     ];
     for (const c of cols) {
-      for (const m of VB_MARKETS) {
+      for (const m of teamMkts) {
         if (!isTeamTicked(c.col, m.key)) continue;
-        const tpl = tplOf("team", m.key);
-        if (!tpl) { noTpl++; continue; }
-        const sideTpl = `${tpl}_${c.label}`;
+        if (!m.tpl) { noTpl++; continue; }
+        const sideTpl = `${m.tpl}_${c.label}`;
         if (existing.has(sideTpl)) { dup++; continue; }
-        const val = c.value(m.key);
+        const val = c.value(m);
         if (!(val > 0)) { zero++; continue; }
-        for (const r of buildConfiguredLines(val, stdOf("team", m.key), teamCfg.get(m.key) ?? DEFAULT_CFG, TEAM_PAYBACK)) {
+        for (const r of buildConfiguredLines(val, m.std, teamCfg.get(m.key) ?? DEFAULT_CFG, TEAM_PAYBACK)) {
           rows.push({ kind: "team", fixtureExtId: fixExtId, template: sideTpl, participant: "", side: c.sideNum, line: r.line, over: r.overPrice, under: r.underPrice, label: `${c.label} ${m.label}`, name: c.col === "total" ? "Total" : (teamNameOf.get(c.col) ?? c.col) });
         }
         sent++;
@@ -196,14 +207,14 @@ function ModelTab({ teamMatches, playerMatches, players, teams, fixtures, config
                 <button onClick={addTeam} className={accentBtn}>{t("volleyball.addToInput")}</button>
               </div>
               <div className="grid gap-4 lg:grid-cols-3">
-                <TeamMetricTable title={homeName} agg={(mk) => teamAgg(homeCode, mk)} traderVal={(mk) => traderVal(homeCode, mk)}
-                  setTrader={(mk, v) => setTrader((p) => ({ ...p, [`${homeCode}:${mk}`]: v }))}
-                  isTicked={(mk) => isTeamTicked(homeCode ?? "", mk)} setTick={(mk, v) => setTeamTicks((p) => ({ ...p, [`${homeCode}:${mk}`]: v }))} t={t} />
-                <TeamMetricTable title={awayName} agg={(mk) => teamAgg(awayCode, mk)} traderVal={(mk) => traderVal(awayCode, mk)}
-                  setTrader={(mk, v) => setTrader((p) => ({ ...p, [`${awayCode}:${mk}`]: v }))}
-                  isTicked={(mk) => isTeamTicked(awayCode ?? "", mk)} setTick={(mk, v) => setTeamTicks((p) => ({ ...p, [`${awayCode}:${mk}`]: v }))} t={t} />
-                <TotalMetricTable title={t("volleyball.side_total")} totalValue={totalValue} setOverride={(mk, v) => setTotalOv((p) => ({ ...p, [mk]: v }))}
-                  isTicked={(mk) => isTeamTicked("total", mk)} setTick={(mk, v) => setTeamTicks((p) => ({ ...p, [`total:${mk}`]: v }))} t={t} />
+                <TeamMetricTable title={homeName} markets={teamMkts} aggOf={(m) => teamAgg(homeCode, m.base)} traderOf={(m) => traderOf(homeCode, m)}
+                  setTraderOf={(m, v) => setTrader((p) => ({ ...p, [`${homeCode}:${m.key}`]: v }))}
+                  tickedOf={(m) => isTeamTicked(homeCode ?? "", m.key)} setTickOf={(m, v) => setTeamTicks((p) => ({ ...p, [`${homeCode}:${m.key}`]: v }))} t={t} />
+                <TeamMetricTable title={awayName} markets={teamMkts} aggOf={(m) => teamAgg(awayCode, m.base)} traderOf={(m) => traderOf(awayCode, m)}
+                  setTraderOf={(m, v) => setTrader((p) => ({ ...p, [`${awayCode}:${m.key}`]: v }))}
+                  tickedOf={(m) => isTeamTicked(awayCode ?? "", m.key)} setTickOf={(m, v) => setTeamTicks((p) => ({ ...p, [`${awayCode}:${m.key}`]: v }))} t={t} />
+                <TotalMetricTable title={t("volleyball.side_total")} markets={teamMkts} totalOf={totalOf} setOverrideOf={(m, v) => setTotalOv((p) => ({ ...p, [m.key]: v }))}
+                  tickedOf={(m) => isTeamTicked("total", m.key)} setTickOf={(m, v) => setTeamTicks((p) => ({ ...p, [`total:${m.key}`]: v }))} t={t} />
               </div>
               <div className="mt-6 grid gap-6 lg:grid-cols-2">
                 <TeamRecent title={homeName} rows={rowsForTeam(homeCode)} locale={locale} t={t} />
@@ -211,9 +222,8 @@ function ModelTab({ teamMatches, playerMatches, players, teams, fixtures, config
               </div>
             </div>
           ) : (
-            <PlayerDist playerMatches={playerMatches} players={players} playerCfg={playerCfg} playerIds={playerIds}
-              homeCode={homeCode} awayCode={awayCode} homeName={homeName} awayName={awayName}
-              stdOf={(mk) => stdOf("player", mk)} tplOf={(mk) => tplOf("player", mk)} fixExtId={fixExtId}
+            <PlayerDist playerMatches={playerMatches} players={players} markets={playerMkts} playerCfg={playerCfg} playerIds={playerIds}
+              homeCode={homeCode} awayCode={awayCode} homeName={homeName} awayName={awayName} fixExtId={fixExtId}
               onAdd={onAdd} inputRows={inputRows} t={t} />
           )}
         </>
@@ -222,11 +232,11 @@ function ModelTab({ teamMatches, playerMatches, players, teams, fixtures, config
   );
 }
 
-function TeamMetricTable({ title, agg, traderVal, setTrader, isTicked, setTick, t }: {
-  title: string;
-  agg: (mk: string) => { avg: number; l5: number; l10: number; model: number; n: number };
-  traderVal: (mk: string) => number; setTrader: (mk: string, v: number) => void;
-  isTicked: (mk: string) => boolean; setTick: (mk: string, v: boolean) => void; t: (k: string) => string;
+function TeamMetricTable({ title, markets, aggOf, traderOf, setTraderOf, tickedOf, setTickOf, t }: {
+  title: string; markets: VbMkt[];
+  aggOf: (m: VbMkt) => { avg: number; l5: number; l10: number; model: number; n: number };
+  traderOf: (m: VbMkt) => number; setTraderOf: (m: VbMkt, v: number) => void;
+  tickedOf: (m: VbMkt) => boolean; setTickOf: (m: VbMkt, v: boolean) => void; t: (k: string) => string;
 }) {
   return (
     <div className="overflow-x-auto">
@@ -242,19 +252,19 @@ function TeamMetricTable({ title, agg, traderVal, setTrader, isTicked, setTick, 
           <th className="px-1 py-1 text-right">{t("volleyball.colTrader")}</th>
         </tr></thead>
         <tbody>
-          {VB_MARKETS.map((m) => {
-            const a = agg(m.key);
-            const on = isTicked(m.key);
-            const tv = Math.round(traderVal(m.key) * 10) / 10;
+          {markets.map((m) => {
+            const a = aggOf(m);
+            const on = tickedOf(m);
+            const tv = Math.round(traderOf(m) * 10) / 10;
             return (
               <tr key={m.key} className={`border-t border-line ${on ? "" : "opacity-45"}`}>
-                <td className="px-1 py-0.5 text-center"><input type="checkbox" checked={on} onChange={(e) => setTick(m.key, e.target.checked)} className="accent-[var(--accent)]" /></td>
+                <td className="px-1 py-0.5 text-center"><input type="checkbox" checked={on} onChange={(e) => setTickOf(m, e.target.checked)} className="accent-[var(--accent)]" /></td>
                 <td className="px-1 py-0.5 text-ink whitespace-nowrap" title={m.label}>{m.label}</td>
                 <td className="px-1 py-0.5 text-right tabular-nums text-ink-3">{fmt(a.avg)}</td>
                 <td className="px-1 py-0.5 text-right tabular-nums text-ink-3">{fmt(a.l5)}</td>
                 <td className="px-1 py-0.5 text-right tabular-nums text-ink-3">{fmt(a.l10)}</td>
                 <td className="px-1 py-0.5 text-right tabular-nums text-ink-2">{fmt(a.model)}</td>
-                <td className="px-1 py-0.5 text-right"><NumInput value={tv} onChange={(v) => setTrader(m.key, v)} w="w-20" /></td>
+                <td className="px-1 py-0.5 text-right"><NumInput value={tv} onChange={(v) => setTraderOf(m, v)} w="w-20" /></td>
               </tr>
             );
           })}
@@ -264,9 +274,9 @@ function TeamMetricTable({ title, agg, traderVal, setTrader, isTicked, setTick, 
   );
 }
 
-function TotalMetricTable({ title, totalValue, setOverride, isTicked, setTick, t }: {
-  title: string; totalValue: (mk: string) => number; setOverride: (mk: string, v: number) => void;
-  isTicked: (mk: string) => boolean; setTick: (mk: string, v: boolean) => void; t: (k: string) => string;
+function TotalMetricTable({ title, markets, totalOf, setOverrideOf, tickedOf, setTickOf, t }: {
+  title: string; markets: VbMkt[]; totalOf: (m: VbMkt) => number; setOverrideOf: (m: VbMkt, v: number) => void;
+  tickedOf: (m: VbMkt) => boolean; setTickOf: (m: VbMkt, v: boolean) => void; t: (k: string) => string;
 }) {
   return (
     <div className="overflow-x-auto">
@@ -278,13 +288,13 @@ function TotalMetricTable({ title, totalValue, setOverride, isTicked, setTick, t
           <th className="px-1 py-1 text-right">{t("volleyball.colTrader")}</th>
         </tr></thead>
         <tbody>
-          {VB_MARKETS.map((m) => {
-            const on = isTicked(m.key);
+          {markets.map((m) => {
+            const on = tickedOf(m);
             return (
               <tr key={m.key} className={`border-t border-line ${on ? "" : "opacity-45"}`}>
-                <td className="px-1 py-0.5 text-center"><input type="checkbox" checked={on} onChange={(e) => setTick(m.key, e.target.checked)} className="accent-[var(--accent)]" /></td>
+                <td className="px-1 py-0.5 text-center"><input type="checkbox" checked={on} onChange={(e) => setTickOf(m, e.target.checked)} className="accent-[var(--accent)]" /></td>
                 <td className="px-1 py-0.5 text-ink whitespace-nowrap" title={m.label}>{m.label}</td>
-                <td className="px-1 py-0.5 text-right"><NumInput value={Math.round(totalValue(m.key) * 10) / 10} onChange={(v) => setOverride(m.key, v)} w="w-24" /></td>
+                <td className="px-1 py-0.5 text-right"><NumInput value={Math.round(totalOf(m) * 10) / 10} onChange={(v) => setOverrideOf(m, v)} w="w-24" /></td>
               </tr>
             );
           })}
@@ -331,22 +341,23 @@ function TeamRecent({ title, rows, locale, t }: { title: string; rows: VbTeamMat
 }
 
 /* ================= PLAYER DIST ================= */
-function PlayerDist({ playerMatches, players, playerCfg, playerIds, stdOf, tplOf, fixExtId, homeCode, awayCode, homeName, awayName, onAdd, inputRows, t }: {
-  playerMatches: VbPlayerMatch[]; players: VbToolsPlayer[]; playerCfg: Map<string, PmMarketConfig>; playerIds: Record<string, string>;
-  stdOf: (mk: string) => number; tplOf: (mk: string) => string; fixExtId: string;
+function PlayerDist({ playerMatches, players, markets, playerCfg, playerIds, fixExtId, homeCode, awayCode, homeName, awayName, onAdd, inputRows, t }: {
+  playerMatches: VbPlayerMatch[]; players: VbToolsPlayer[]; markets: VbMkt[]; playerCfg: Map<string, PmMarketConfig>; playerIds: Record<string, string>;
+  fixExtId: string;
   homeCode: string | null; awayCode: string | null; homeName: string; awayName: string;
   onAdd: (r: VbInputRow[]) => void; inputRows: VbInputRow[]; t: (k: string) => string;
 }) {
   const [side, setSide] = useState<"home" | "away">("home");
   const teamCode = side === "home" ? homeCode : awayCode;
   const teamSideNum = side === "home" ? 1 : 2;
-  const [mk, setMk] = useState(VB_MARKETS[0].key);
+  const [mk, setMk] = useState(markets[0]?.key ?? "");
   const [vals, setVals] = useState<Record<string, number>>({});
   const [ticks, setTicks] = useState<Record<string, boolean>>({});
   const [preview, setPreview] = useState<string | null>(null);
   const [status, setStatus] = useState("");
   const [sort, setSort] = useState<{ k: string; d: "asc" | "desc" }>({ k: "avg", d: "desc" });
-  const market = VB_MARKETS.find((m) => m.key === mk)!;
+  const market = markets.find((m) => m.key === mk) ?? markets[0];
+  const base = market?.base ?? mk;
   const pById = useMemo(() => new Map(players.map((p) => [p.fivb_id, p])), [players]);
 
   // oyuncu -> secili taraf/market ort
@@ -356,13 +367,13 @@ function PlayerDist({ playerMatches, players, playerCfg, playerIds, stdOf, tplOf
       .filter((r) => r.team_code === teamCode)
       .sort((a, b) => String(b.match_date).localeCompare(String(a.match_date)));
     for (const r of matched) {
-      const v = playerVal(r, mk);
+      const v = playerVal(r, base);
       if (v == null) continue;
       if (!byPlayer.has(r.fivb_id)) byPlayer.set(r.fivb_id, []);
       byPlayer.get(r.fivb_id)!.push(v);
     }
     return byPlayer;
-  }, [playerMatches, teamCode, mk]);
+  }, [playerMatches, teamCode, base]);
 
   // Katilim: takimin toplam maci + oyuncu basina oynadigi mac (market bagimsiz) -> rol.
   const { teamTotal, matchCount } = useMemo(() => {
@@ -399,12 +410,13 @@ function PlayerDist({ playerMatches, players, playerCfg, playerIds, stdOf, tplOf
   const isTicked = (fivb_id: number, avg: number) => (ticks[`${fivb_id}`] != null ? ticks[`${fivb_id}`] : avg > 0);
   const participantOf = (fivb_id: number) => playerIds[String(fivb_id)] || String(fivb_id);
   const cfg = playerCfg.get(mk) ?? DEFAULT_CFG;
-  const ladder = (v: number) => buildConfiguredLines(v, stdOf(mk), cfg, PROP_PAYBACK);
+  const std = market?.std ?? vbMarketStd(base);
+  const ladder = (v: number) => buildConfiguredLines(v, std, cfg, PROP_PAYBACK);
 
   const add = () => {
     const out: VbInputRow[] = [];
     let sent = 0, dup = 0, zero = 0, noTpl = 0;
-    const tpl = tplOf(mk);
+    const tpl = market?.tpl ?? "";
     const existing = new Set(inputRows.filter((r) => r.kind === "player").map((r) => `${r.template}|${r.participant}`));
     for (const r of rows) {
       if (!isTicked(r.fivb_id, r.avg)) continue;
@@ -412,7 +424,7 @@ function PlayerDist({ playerMatches, players, playerCfg, playerIds, stdOf, tplOf
       if (existing.has(`${tpl}|${participantOf(r.fivb_id)}`)) { dup++; continue; }
       const v = valueOf(r.fivb_id, r.l10 || r.avg);
       if (!(v > 0)) { zero++; continue; }
-      for (const ln of ladder(v)) out.push({ kind: "player", fixtureExtId: fixExtId, template: tpl, participant: participantOf(r.fivb_id), side: teamSideNum, line: ln.line, over: ln.overPrice, under: ln.underPrice, label: market.label, name: r.name });
+      for (const ln of ladder(v)) out.push({ kind: "player", fixtureExtId: fixExtId, template: tpl, participant: participantOf(r.fivb_id), side: teamSideNum, line: ln.line, over: ln.overPrice, under: ln.underPrice, label: market?.label ?? mk, name: r.name });
       sent++;
     }
     if (out.length) onAdd(out);
@@ -436,7 +448,7 @@ function PlayerDist({ playerMatches, players, playerCfg, playerIds, stdOf, tplOf
       </div>
       <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-line bg-card-2/40 px-2.5 py-2">
         <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-3">{t("volleyball.pickMarket")}</span>
-        {VB_MARKETS.map((m) => (
+        {markets.map((m) => (
           <button key={m.key} onClick={() => setMk(m.key)} className={`rounded-full px-3 py-1 text-[11px] font-semibold ${m.key === mk ? "bg-accent-soft text-accent-ink ring-1 ring-accent/40" : "bg-veil text-ink-3 hover:text-ink"}`}>{m.label}</button>
         ))}
       </div>
@@ -458,7 +470,7 @@ function PlayerDist({ playerMatches, players, playerCfg, playerIds, stdOf, tplOf
             {rows.map((r) => {
               const on = isTicked(r.fivb_id, r.avg);
               const v = valueOf(r.fivb_id, r.l10 || r.avg);
-              const mid = on ? buildLadder(v, stdOf(mk), PROP_PAYBACK).find((x) => x.isMid) : null;
+              const mid = on ? buildLadder(v, std, PROP_PAYBACK).find((x) => x.isMid) : null;
               const url = vbwPhotoUrl(r.vbw) ?? photoUrl(r.sid);
               return (
                 <tr key={r.fivb_id} className={`border-t border-line ${on ? "" : "opacity-45"}`}>
@@ -499,7 +511,7 @@ function PlayerDist({ playerMatches, players, playerCfg, playerIds, stdOf, tplOf
             <div className="absolute inset-0 bg-black/40" />
             <div className="relative h-full w-full max-w-sm overflow-auto bg-card p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
               <h3 className="text-sm font-semibold text-ink">{r.name}</h3>
-              <p className="mt-0.5 text-[11px] text-ink-3">{market.label} · {t("volleyball.colTrader")} <span className="font-semibold text-accent-ink">{fmt(v)}</span> · Std {stdOf(mk)}</p>
+              <p className="mt-0.5 text-[11px] text-ink-3">{market?.label ?? mk} · {t("volleyball.colTrader")} <span className="font-semibold text-accent-ink">{fmt(v)}</span> · Std {std}</p>
               <table className="mt-4 min-w-full border-collapse text-[12px]">
                 <thead><tr className="border-b border-line text-[9px] uppercase tracking-[0.1em] text-ink-3"><th className="px-2 py-1 text-right">{t("volleyball.colLineShort")}</th><th className="px-2 py-1 text-right">{t("volleyball.oddsOver")}</th><th className="px-2 py-1 text-right">{t("volleyball.oddsUnder")}</th></tr></thead>
                 <tbody>{ladder(v).map((ln, i) => (<tr key={i} className={`border-t border-line ${ln.isMid ? "bg-veil font-semibold" : ""}`}><td className="px-2 py-1 text-right tabular-nums text-ink">{ln.line.toFixed(1)}</td><td className="px-2 py-1 text-right tabular-nums text-ink">{ln.overPrice.toFixed(2)}</td><td className="px-2 py-1 text-right tabular-nums text-ink-2">{ln.underPrice == null ? "—" : ln.underPrice.toFixed(2)}</td></tr>))}</tbody>
@@ -624,6 +636,21 @@ function ConfigTab({ config, reload, t }: { config: PmMarketConfig[]; reload: ()
     const payload = missing.map((m, i) => ({ market_group: grp, market_key: m.key, label: m.label, base_metric: m.key, template_id: m.tpl, std: m.std, in_model: true, sort_order: i, lines: 5, under_lines: 5, max_lines: 15, odds_cap: 999, skip_after: 5, skip_step: 2, round_odds: false }));
     if (payload.length && await upsertMarketConfig(payload, LEAGUE)) reload();
   };
+  // Yeni market ekle: base = veri metrigi (points/ace/...) ya da "manual" (veri yok, elle trader).
+  const [nm, setNm] = useState<{ name: string; base: string; tpl: string; std: string }>({ name: "", base: "manual", tpl: "", std: "" });
+  const addMarket = async () => {
+    const manual = nm.base === "manual";
+    const bm = VB_MARKETS.find((m) => m.key === nm.base);
+    const label = nm.name.trim() || (bm ? bm.label : "Market");
+    const key = `custom_${manual ? "manual" : nm.base}_${Date.now() % 1000000}`;
+    const ok = await upsertMarketConfig([{
+      market_group: grp, market_key: key, label, base_metric: manual ? null : nm.base,
+      template_id: nm.tpl.trim() || null, std: nm.std ? parseFloat(nm.std) : (bm?.std ?? 3),
+      in_model: true, sort_order: 999, lines: 5, under_lines: 5, max_lines: 15, odds_cap: 999, skip_after: 5, skip_step: 2, round_odds: false,
+    }], LEAGUE);
+    if (ok) { setNm({ name: "", base: "manual", tpl: "", std: "" }); reload(); }
+  };
+  const inp = "rounded border border-line bg-field px-2 py-1 text-[12px] text-ink outline-none focus:border-line-strong";
   const save = async () => {
     const out = Object.entries(edits).map(([k, p]) => { const [market_group, market_key] = k.split(":"); return { market_group, market_key, ...p }; });
     if (out.length === 0) return;
@@ -641,6 +668,19 @@ function ConfigTab({ config, reload, t }: { config: PmMarketConfig[]; reload: ()
         {missing.length ? <button onClick={seed} className={btnGhost}>{t("volleyball.cfgSeed")} ({missing.length})</button> : null}
         <p className="text-[11px] text-ink-3">{t("volleyball.cfgHint")}</p>
       </div>
+
+      {/* Yeni market ekle */}
+      <div className="mb-3 flex flex-wrap items-end gap-2 rounded-lg border border-line bg-card-2/40 px-3 py-2">
+        <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-3">{t("volleyball.cfgNewMarket")}</span>
+        <input value={nm.name} onChange={(e) => setNm((s) => ({ ...s, name: e.target.value }))} placeholder={t("volleyball.cfgMarketName")} className={`${inp} w-32`} />
+        <select value={nm.base} onChange={(e) => setNm((s) => ({ ...s, base: e.target.value }))} className={inp}>
+          <option value="manual">{t("volleyball.cfgManualNoData")}</option>
+          {VB_MARKETS.map((m) => <option key={m.key} value={m.key}>{m.label}</option>)}
+        </select>
+        <input value={nm.tpl} onChange={(e) => setNm((s) => ({ ...s, tpl: e.target.value }))} placeholder={t("volleyball.marketTemplate")} className={`${inp} w-28`} />
+        <input value={nm.std} onChange={(e) => setNm((s) => ({ ...s, std: e.target.value }))} placeholder={t("volleyball.colStd")} className={`${inp} w-16`} />
+        <button onClick={addMarket} className={btnSave}>{t("volleyball.cfgAdd")}</button>
+      </div>
       <div className="overflow-x-auto">
         <table className="min-w-full border-collapse text-[11px]">
           <thead><tr className="border-b border-line">
@@ -654,7 +694,9 @@ function ConfigTab({ config, reload, t }: { config: PmMarketConfig[]; reload: ()
             {rows.map((c) => (
               <tr key={rk(c)} className="border-t border-line hover:bg-veil">
                 <td className="px-1.5 py-0.5 text-center"><input type="checkbox" checked={!!v(c, "in_model")} onChange={(e) => patch(c, { in_model: e.target.checked })} className="accent-[var(--accent)]" /></td>
-                <td className="px-1.5 py-0.5 text-ink whitespace-nowrap">{c.label ?? c.market_key}</td>
+                <td className="px-1.5 py-0.5 text-ink whitespace-nowrap">{c.market_key.includes("custom_")
+                  ? <input value={(v(c, "label") ?? "").toString()} onChange={(e) => patch(c, { label: e.target.value })} className="w-28 rounded border border-line bg-field px-1 py-0 text-[11px] text-ink outline-none focus:border-line-strong" />
+                  : (c.label ?? c.market_key)}</td>
                 <td className="px-1.5 py-0.5"><input value={(v(c, "template_id") ?? "").toString()} onChange={(e) => patch(c, { template_id: e.target.value || null })} className="w-24 rounded border border-line bg-field px-1 py-0 text-[11px] text-ink outline-none focus:border-line-strong" placeholder="—" /></td>
                 <td className="px-1.5 py-0.5 text-right">{numCell(c, "std")}</td>
                 <td className="px-1.5 py-0.5 text-right">{numCell(c, "lines", "w-10")}</td>
