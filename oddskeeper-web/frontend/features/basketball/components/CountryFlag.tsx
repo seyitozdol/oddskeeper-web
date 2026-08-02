@@ -14,22 +14,17 @@ const FIBA_TO_ISO2: Record<string, string> = {
   SSD: "ss", SWE: "se", TUR: "tr", UK: "gb", UKR: "ua", USA: "us",
 };
 
-function toIso2(code: string): string | null {
+export function toIso2(code?: string | null): string | null {
+  if (!code) return null;
   const c = code.trim().toUpperCase();
   if (FIBA_TO_ISO2[c]) return FIBA_TO_ISO2[c];   // FIBA 3-harf veya "UK"
   if (/^[A-Z]{2}$/.test(c)) return c.toLowerCase(); // zaten ISO alpha2 (BSL)
   return null;
 }
 
-// Ulke bayragi. Kod yoksa/cozulmezse/yuklenmezse hicbir sey gostermez.
-export default function CountryFlag({ code, size = 16, className = "" }: {
-  code?: string | null;
-  size?: number;       // yukseklik (px); genislik ~4:3
-  className?: string;
-}) {
+function FlagImg({ iso, size, className }: { iso: string; size: number; className: string }) {
   const [failed, setFailed] = useState(false);
-  const iso = code ? toIso2(code) : null;
-  if (!iso || failed) return null;
+  if (failed) return null;
   const w = Math.round(size * 4 / 3);
   return (
     // eslint-disable-next-line @next/next/no-img-element
@@ -42,5 +37,32 @@ export default function CountryFlag({ code, size = 16, className = "" }: {
       style={{ width: w, height: size }}
       className={`inline-block shrink-0 rounded-[2px] object-cover ${className}`}
     />
+  );
+}
+
+// Tek bayrak.
+export default function CountryFlag({ code, size = 16, className = "" }: {
+  code?: string | null; size?: number; className?: string;
+}) {
+  const iso = toIso2(code);
+  if (!iso) return null;
+  return <FlagImg iso={iso} size={size} className={className} />;
+}
+
+// Coklu bayrak (cift vatandaslik): kodlar ISO2'ye cevrilir, TEKILLESTIRILIR, yan yana.
+export function CountryFlags({ codes, size = 16, className = "" }: {
+  codes: (string | null | undefined)[]; size?: number; className?: string;
+}) {
+  const seen = new Set<string>();
+  const isos: string[] = [];
+  for (const c of codes) {
+    const iso = toIso2(c);
+    if (iso && !seen.has(iso)) { seen.add(iso); isos.push(iso); }
+  }
+  if (isos.length === 0) return null;
+  return (
+    <span className="inline-flex shrink-0 items-center gap-0.5">
+      {isos.map((iso) => <FlagImg key={iso} iso={iso} size={size} className={className} />)}
+    </span>
   );
 }

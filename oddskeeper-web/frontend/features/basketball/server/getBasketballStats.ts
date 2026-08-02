@@ -304,6 +304,25 @@ export async function getBasketballPlayer(playerSlug: string, season: string = S
   return data ?? null;
 }
 
+// Sezondan bağımsız oyuncu kimliği (isim/takım/pozisyon/ülke/foto). Seçili sezonda
+// verisi olmayan oyuncuda boş şablon başlığını doldurmak için (en yeni sezon satırı).
+export async function getBasketballPlayerAny(playerSlug: string): Promise<BktPlayerSeasonRow | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .schema("analytics")
+    .from("bb_player_season_stats_v1")
+    .select("*")
+    .eq("player_slug", playerSlug)
+    .order("season_label", { ascending: false })
+    .limit(1)
+    .maybeSingle<BktPlayerSeasonRow>();
+  if (error) {
+    console.error("getBasketballPlayerAny error:", error.message);
+    return null;
+  }
+  return data ?? null;
+}
+
 export async function getBasketballPlayerModel(playerSlug: string): Promise<BktMarketModelRow[]> {
   const supabase = await createClient();
   const { data, error } = await supabase

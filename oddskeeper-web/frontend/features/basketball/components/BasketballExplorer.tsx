@@ -6,7 +6,7 @@ import { useI18n } from "@/lib/i18n/LanguageProvider";
 import { fmt, formatMatchDate, normalizePositionCode, positionLabel, playerPhotoUrl } from "../lib";
 import { TeamCrest } from "./ui";
 import PlayerAvatar from "./PlayerAvatar";
-import CountryFlag from "./CountryFlag";
+import { CountryFlags } from "./CountryFlag";
 import MatchOdds from "./MatchOdds";
 import type { BktTeamSeasonRow, BktLeaderboardRow, BktMarketModelRow, BktGameRow, BktFixtureRow } from "../types";
 
@@ -305,7 +305,7 @@ function PlayerLeaders({ rows, season }: { rows: BktLeaderboardRow[]; season: st
                   <td className="px-2 py-2">
                     <Link href={`/dashboard/basketball/player/${r.player_slug}?season=${season}`} className="inline-flex items-center gap-2 font-medium text-ink hover:text-accent-ink whitespace-nowrap">
                       <PlayerAvatar src={playerPhotoUrl({ sofascore_player_id: r.sofascore_player_id, image_url: r.image_url })} name={r.player_name} size={26} />
-                      <CountryFlag code={r.country_code} size={14} />
+                      <CountryFlags codes={[r.country_code, r.country_code2]} size={14} />
                       {r.player_name}
                     </Link>
                   </td>

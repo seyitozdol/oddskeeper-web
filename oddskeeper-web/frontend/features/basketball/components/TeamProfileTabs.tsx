@@ -6,8 +6,8 @@ import Image from "next/image";
 import { useI18n } from "@/lib/i18n/LanguageProvider";
 import { StatTile, TeamCrest } from "./ui";
 import PlayerAvatar from "./PlayerAvatar";
-import CountryFlag from "./CountryFlag";
-import { fmt, formatMatchDate, homeAwayLabel, normalizePositionCode, positionLabel, roleLabelKey, roleBadgeClass } from "../lib";
+import { CountryFlags } from "./CountryFlag";
+import { fmt, formatMatchDate, homeAwayLabel, normalizePositionCode, positionLabel, roleLabelKey, roleBadgeClass, teamLogoPath } from "../lib";
 import type { TeamCompStats } from "../unified";
 
 // Birleşik takım profili: BSL yapısı + kulvar (BSL/EL/EC) toggle. Season averages +
@@ -25,8 +25,15 @@ export default function TeamProfileTabs({
   const c = comps.find((x) => x.key === active) ?? comps[0];
   if (!c) return null;
 
+  const logoUrl = (teamSlug ? teamLogoPath(teamSlug) : null) || crestUrl || null;
+
   return (
-    <div>
+    <div className="relative isolate overflow-hidden">
+      {/* takım logosu — sağ üstte büyük, düşük opacity filigran */}
+      {logoUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={logoUrl} alt="" aria-hidden className="pointer-events-none absolute -right-10 -top-10 -z-10 w-64 object-contain opacity-[0.05] dark:opacity-[0.08]" />
+      ) : null}
       {/* Header */}
       <div className="flex items-center gap-4">
         {teamSlug ? (
@@ -93,7 +100,7 @@ export default function TeamProfileTabs({
                 <td className="px-2 py-2">
                   <Link href={p.href} className="inline-flex items-center gap-2 font-medium text-ink hover:text-accent-ink whitespace-nowrap">
                     <PlayerAvatar src={p.photoUrl} name={p.name} size={28} />
-                    <CountryFlag code={p.country_code} size={14} />
+                    <CountryFlags codes={[p.country_code, p.country_code2]} size={14} />
                     {p.name}
                   </Link>
                 </td>

@@ -5,14 +5,14 @@ import Link from "next/link";
 import Image from "next/image";
 import { useI18n } from "@/lib/i18n/LanguageProvider";
 import { StatTile, TeamCrest } from "./ui";
-import CountryFlag from "./CountryFlag";
+import { CountryFlags } from "./CountryFlag";
 import { fmt, formatMatchDate, homeAwayLabel, positionLabel, normalizePositionCode, formatHeight } from "../lib";
 import type { PlayerCompStats } from "../unified";
 
 // Birleşik oyuncu profili: BSL yapısı + kulvar (BSL/EL/EC) toggle. Oyuncu birden
 // çok kulvarda oynadıysa toggle ile geçilir; tek kulvarda ise toggle gizli.
 export default function PlayerProfileTabs({
-  name, jerseyNo, teamName, teamSlug, crestUrl, photoUrl, position, height, country, comps,
+  name, jerseyNo, teamName, teamSlug, crestUrl, photoUrl, position, height, country, country2, comps,
 }: {
   name: string;
   jerseyNo?: string | null;
@@ -23,6 +23,7 @@ export default function PlayerProfileTabs({
   position?: string | null;   // ham pozisyon kodu (G|GF|F|FC|C)
   height?: number | null;     // boy (cm)
   country?: string | null;    // ISO alpha2 (bayrak)
+  country2?: string | null;   // diğer lig ülkesi (çift vatandaşlık)
   comps: PlayerCompStats[];
 }) {
   const { t, locale } = useI18n();
@@ -51,7 +52,7 @@ export default function PlayerProfileTabs({
           </div>
         )}
         <div>
-          <h1 className="flex items-center gap-2 text-2xl font-semibold text-ink"><CountryFlag code={country} size={20} />{name}</h1>
+          <h1 className="flex items-center gap-2 text-2xl font-semibold text-ink"><CountryFlags codes={[country, country2]} size={20} />{name}</h1>
           <p className="mt-0.5 text-sm text-ink-2">{teamName}</p>
           {posCode || heightStr ? (
             <div className="mt-1.5 flex flex-wrap items-center gap-1.5">

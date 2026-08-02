@@ -6,7 +6,7 @@ import { useI18n } from "@/lib/i18n/LanguageProvider";
 import { fmt, formatMatchDate, normalizePositionCode, positionLabel, playerPhotoUrl } from "@/features/basketball/lib";
 import { normalizePlayerName } from "@/features/basketball/unified";
 import PlayerAvatar from "@/features/basketball/components/PlayerAvatar";
-import CountryFlag from "@/features/basketball/components/CountryFlag";
+import { CountryFlags } from "@/features/basketball/components/CountryFlag";
 import type { EuroTeamRow, EuroLeaderRow, EuroGameRow } from "../types";
 import type { EuroCompKey } from "../config";
 
@@ -283,7 +283,7 @@ function PlayerLeaders({ rows, comp, base, season }: { rows: EuroLeaderRow[]; co
                   <td className="px-2 py-2">
                     <Link href={`${base}/player/${r.person_code}?season=${season}`} className="inline-flex items-center gap-2 font-medium text-ink hover:text-accent-ink whitespace-nowrap">
                       <PlayerAvatar src={playerPhotoUrl({ image_url: r.image_url })} name={normalizePlayerName(r.player_name)} size={26} />
-                      <CountryFlag code={r.country_code} size={14} />
+                      <CountryFlags codes={[r.country_code, r.country_code2]} size={14} />
                       {normalizePlayerName(r.player_name)}
                     </Link>
                   </td>

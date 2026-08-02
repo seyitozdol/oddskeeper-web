@@ -40,7 +40,8 @@ export function euroTeamToComp(t: EuroTeamRow, roster: EuroLeaderRow[], log: Eur
       href: r.bsl_player_slug
         ? `/dashboard/basketball/player/${r.bsl_player_slug}`
         : `/dashboard/euro/${key}/player/${r.person_code}`,
-      position: r.position ?? null, role: r.role ?? null, country_code: r.country_code ?? null,
+      position: r.position ?? null, role: r.role ?? null,
+      country_code: r.country_code ?? null, country_code2: r.country_code2 ?? null,
       photoUrl: playerPhotoUrl({ image_url: r.image_url }),
       games: r.games, mpg: r.mpg, ppg: r.ppg, rpg: r.rpg, apg: r.apg, val: r.val_pg,
     })),

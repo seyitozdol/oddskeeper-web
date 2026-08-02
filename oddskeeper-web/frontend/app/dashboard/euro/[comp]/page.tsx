@@ -32,7 +32,7 @@ export default async function EuroHubPage({
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={cfg.logo} alt={cfg.name} width={40} height={40} className="h-10 w-10 object-contain" />
             <div>
-              <h1 className="text-2xl font-semibold text-ink">{t("basketball.statsTitle")}</h1>
+              <h1 className="text-2xl font-semibold text-ink">{cfg.name} · {t("basketball.statsTitle")}</h1>
               <p className="mt-0.5 text-sm text-ink-3">{seasonLabel}</p>
             </div>
           </div>

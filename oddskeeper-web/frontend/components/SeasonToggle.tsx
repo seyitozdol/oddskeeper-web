@@ -13,9 +13,11 @@ export default function SeasonToggle({ seasons, current }: { seasons: readonly s
     p.set("season", s);
     router.push(`${pathname}?${p.toString()}`);
   };
+  // Güncel (en yeni) sezon her zaman en solda: azalan sırala ("2026-2027" > "2025-2026").
+  const ordered = [...seasons].sort((a, b) => b.localeCompare(a));
   return (
     <div className="inline-flex rounded-lg border border-line bg-card-2 p-0.5">
-      {seasons.map((s) => (
+      {ordered.map((s) => (
         <button
           key={s}
           onClick={() => go(s)}

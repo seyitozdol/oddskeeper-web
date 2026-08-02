@@ -49,7 +49,7 @@ export default async function EuroPlayerPage({
           <SeasonToggle seasons={EURO_SEASONS} current={seasonLabel} />
         </div>
         <div className="mt-4">
-          <PlayerProfileTabs name={normalizePlayerName(player.player_name)} teamName={player.team_name} position={player.position} height={player.height_cm} country={player.country_code} photoUrl={player.image_url} comps={comps} />
+          <PlayerProfileTabs name={normalizePlayerName(player.player_name)} teamName={player.team_name} position={player.position} height={player.height_cm} country={player.country_code} country2={player.country_code2} photoUrl={player.image_url} comps={comps} />
         </div>
       </div>
     </section>

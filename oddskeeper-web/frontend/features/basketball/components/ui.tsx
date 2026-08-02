@@ -46,7 +46,7 @@ export function StatTile({
     <div className={`rounded-lg border border-line bg-veil px-3 py-2 ${info ? "cursor-help" : ""}`} title={info || undefined}>
       <div className="flex items-center gap-1 text-[10px] uppercase tracking-[0.14em] text-ink-3">
         {label}
-        {info ? <span className="text-[8px] leading-none text-ink-3/70">ⓘ</span> : null}
+        {info ? <span className="inline-flex h-[11px] w-[11px] items-center justify-center rounded-full border border-ink-3/40 text-[8px] font-semibold normal-case leading-none text-ink-3/70">i</span> : null}
       </div>
       <div className={`text-sm font-semibold ${valueClass}`}>{value}</div>
     </div>

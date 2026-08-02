@@ -1,12 +1,13 @@
 import Link from "next/link";
 import {
   getBasketballPlayer,
+  getBasketballPlayerAny,
   getBasketballPlayerMatchLog,
   getBasketballPlayerEuroSeasons,
   getBasketballPlayerEuroLog,
 } from "@/features/basketball/server/getBasketballStats";
 import PlayerProfileTabs from "@/features/basketball/components/PlayerProfileTabs";
-import { bslPlayerToComp, euroSeasonToComp } from "@/features/basketball/unified";
+import { bslPlayerToComp, euroSeasonToComp, emptyBslComp } from "@/features/basketball/unified";
 import { normalizeSeason, EURO_SEASONS } from "@/features/euroleague/config";
 import SeasonToggle from "@/components/SeasonToggle";
 import { getT } from "@/lib/i18n/server";
@@ -27,14 +28,20 @@ export default async function BasketballPlayerPage({
     getBasketballPlayerEuroLog(playerSlug, seasonLabel),
   ]);
 
+  // Seçili sezonda veri yoksa kimliği en yeni sezondan çek → boş şablon (takım gibi).
+  const identity = player ?? (await getBasketballPlayerAny(playerSlug));
+
   const comps = player
     ? [bslPlayerToComp(player, log), ...euroSeasons.map((s) => euroSeasonToComp(s, euroLog))]
-    : [];
+    : identity || euroSeasons.length > 0
+      ? [emptyBslComp(seasonLabel, identity?.team_name ?? null), ...euroSeasons.map((s) => euroSeasonToComp(s, euroLog))]
+      : [];
 
   // Oyuncu fotografi: once SofaScore yuz-kirpimli headshot (sofascore_player_id varsa),
   // yoksa EuroLeague headshot'ina dus (cortextech, yalniz EL/EC oynayanlarda var).
-  const photoUrl = player?.sofascore_player_id
-    ? `https://img.sofascore.com/api/v1/player/${player.sofascore_player_id}/image`
+  const sid = player?.sofascore_player_id ?? identity?.sofascore_player_id;
+  const photoUrl = sid
+    ? `https://img.sofascore.com/api/v1/player/${sid}/image`
     : euroSeasons.find((s) => s.image_url)?.image_url ?? null;
 
   return (
@@ -47,15 +54,16 @@ export default async function BasketballPlayerPage({
           <SeasonToggle seasons={EURO_SEASONS} current={seasonLabel} />
         </div>
         <div className="mt-4">
-          {player ? (
+          {comps.length > 0 && identity ? (
             <PlayerProfileTabs
-              name={player.player_name}
-              jerseyNo={player.jersey_no}
-              teamName={player.team_name}
-              teamSlug={player.team_slug}
-              position={player.position}
-              height={player.height_cm}
-              country={player.country_code}
+              name={identity.player_name}
+              jerseyNo={identity.jersey_no}
+              teamName={identity.team_name}
+              teamSlug={identity.team_slug}
+              position={identity.position}
+              height={identity.height_cm}
+              country={identity.country_code}
+              country2={identity.country_code2}
               photoUrl={photoUrl}
               comps={comps}
             />

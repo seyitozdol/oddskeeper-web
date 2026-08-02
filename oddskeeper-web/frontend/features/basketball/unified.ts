@@ -89,6 +89,21 @@ export function bslPlayerToComp(p: BktPlayerSeasonRow, log: BktPlayerLogRow[]): 
   };
 }
 
+// Seçili sezonda verisi olmayan oyuncu için boş BSL kulvarı (şablon: tüm metrikler "-").
+export function emptyBslComp(seasonLabel: string, teamName: string | null): PlayerCompStats {
+  return {
+    key: "bsl", label: COMP_META.bsl.label, logo: COMP_META.bsl.logo,
+    seasonLabel, teamName,
+    games: 0, mpg: null, ppg: null, rpg: null, apg: null,
+    spg: null, bpg: null, fg3m_pg: null, val_pg: null,
+    fg_pct: null, fg2_pct: null, fg3_pct: null, ft_pct: null,
+    efg_pct: null, ts_pct: null,
+    usage_pct: null, pts_per36: null, reb_per36: null, ast_per36: null,
+    pra_pg: null, pa_pg: null,
+    hasAdvanced: true, hasVal: false, log: [],
+  };
+}
+
 export function euroSeasonToComp(s: BktEuroSeasonRow, logs: BktEuroLogRow[]): PlayerCompStats {
   const key = euroCompKey(s.competition);
   return {
@@ -118,7 +133,8 @@ export type TeamRosterRow = {
   position?: string | null;   // BSL ham pozisyon (G|GF|F|FC|C)
   role?: string | null;       // rol etiketi (starter|rotation|limited|garbage|departed)
   photoUrl?: string | null;   // oyuncu fotografi (BSL sofa / EL/EC headshot)
-  country_code?: string | null;  // ISO alpha2 (bayrak)
+  country_code?: string | null;   // ISO alpha2 (bayrak)
+  country_code2?: string | null;  // diğer lig ülkesi (çift vatandaşlık)
   games: number;
   mpg: number | null; ppg: number | null; rpg: number | null; apg: number | null; val: number | null;
 };
@@ -148,7 +164,8 @@ export function bslTeamToComp(t: BktTeamSeasonRow, log: BktTeamLogRow[], roster:
     hasVal: false,
     roster: roster.map((p) => ({
       key: p.player_slug, name: p.player_name, href: `/dashboard/basketball/player/${p.player_slug}`,
-      position: p.position ?? null, role: p.role ?? null, country_code: p.country_code ?? null,
+      position: p.position ?? null, role: p.role ?? null,
+      country_code: p.country_code ?? null, country_code2: p.country_code2 ?? null,
       photoUrl: playerPhotoUrl({ sofascore_player_id: p.sofascore_player_id, image_url: p.image_url }),
       games: p.games, mpg: p.mpg, ppg: p.ppg, rpg: p.rpg, apg: p.apg, val: null,
     })),
