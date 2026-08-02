@@ -170,6 +170,43 @@ def _first_name_compat(a_toks, b_toks):
     return False
 
 
+def apply_dedup_merges(cur, by_id):
+    """Aynı sofascore_player_id'ye bağlı 2+ slug = KESİN mükerrer oyuncu →
+    analytics.bb_pm_player_merges'e (alias→canonical) yaz. Kanonik = en çok maçlı
+    slug (birincil kayıt); kanonik görünen isim = SofaScore temiz ismi (Türkçe-yazım
+    / kısaltma / yazım hatası kopyalarını tekleştirir). Idempotent (upsert).
+    İsim-bazlı kimlik → mükerrer oluşumunu KAYNAKTA engelleyemeyiz; bu adım pozisyon
+    yüklemesinden sonra otomatik tekleştirir (prevention iş akışı)."""
+    from collections import defaultdict
+    cur.execute("""
+        select p.sofascore_player_id, p.player_slug,
+               (select count(*) from basketball.player_match_stats m where m.player_slug = p.player_slug) as games
+        from basketball.players p
+        where p.sofascore_player_id is not null
+    """)
+    groups = defaultdict(list)
+    for sid, slug, games in cur.fetchall():
+        groups[sid].append((slug, games or 0))
+    n_pairs = 0
+    for sid, items in groups.items():
+        if len(items) < 2:
+            continue
+        items.sort(key=lambda x: -x[1])                 # en çok maçlı = kanonik
+        canon_slug = items[0][0]
+        canon_name = (by_id.get(sid) or {}).get("name") # SofaScore temiz ismi
+        for alias_slug, _ in items[1:]:
+            cur.execute("""
+                insert into analytics.bb_pm_player_merges (league, alias_slug, canonical_slug, canonical_name)
+                values ('basketball', %s, %s, %s)
+                on conflict (league, alias_slug) do update set
+                    canonical_slug = excluded.canonical_slug,
+                    canonical_name = coalesce(excluded.canonical_name, analytics.bb_pm_player_merges.canonical_name),
+                    updated_at = now()
+            """, (alias_slug, canon_slug, canon_name))
+            n_pairs += 1
+    return n_pairs
+
+
 def run(args):
     load_dotenv(os.path.join(os.path.dirname(__file__), "..", "..", ".env"))
     sofa = json.load(open(args.json_file, encoding="utf-8"))
@@ -221,6 +258,11 @@ def run(args):
         n += cur.rowcount
     conn.commit()
     print(f"\n[pos] YAZILDI: {n} oyuncu güncellendi (position + height_cm + sofascore_player_id).", flush=True)
+
+    # Otomatik dedup: aynı sofa id'ye bağlı slug'ları birleştir (mükerrer oyuncu fix).
+    merged = apply_dedup_merges(cur, by_id)
+    conn.commit()
+    print(f"[pos] DEDUP: {merged} mükerrer slug kanonikleştirildi (bb_pm_player_merges).", flush=True)
     conn.close()
 
 
