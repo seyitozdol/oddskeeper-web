@@ -9,7 +9,8 @@ import {
   fetchPlayerIds, savePlayerIds,
 } from "@/features/basketball/pmQueries";
 import { VB_MARKETS, vbMarketStd } from "../toolsMarkets";
-import type { VbTeamMatch, VbPlayerMatch, VbToolsPlayer } from "../server/getVolleyballTools";
+import { vbwPhotoUrl } from "../lib";
+import type { VbTeamMatch, VbPlayerMatch, VbToolsPlayer, VbTeam } from "../server/getVolleyballTools";
 
 const LEAGUE = "volleyball";
 const PROP_PAYBACK = 0.915;
@@ -49,7 +50,7 @@ function NumInput({ value, onChange, w = "w-16" }: { value: number; onChange: (v
   );
 }
 
-export default function VolleyballTools({ teamMatches, playerMatches, players }: { teamMatches: VbTeamMatch[]; playerMatches: VbPlayerMatch[]; players: VbToolsPlayer[] }) {
+export default function VolleyballTools({ teamMatches, playerMatches, players, teams }: { teamMatches: VbTeamMatch[]; playerMatches: VbPlayerMatch[]; players: VbToolsPlayer[]; teams: VbTeam[] }) {
   const { t, locale } = useI18n();
   const [tab, setTab] = useState<Tab>("model");
   const [fixtures, setFixtures] = useState<PmFixture[]>([]);
@@ -81,10 +82,10 @@ export default function VolleyballTools({ teamMatches, playerMatches, players }:
       </div>
 
       <div className={tab === "model" ? "" : "hidden"}>
-        <ModelTab teamMatches={teamMatches} playerMatches={playerMatches} players={players} fixtures={fixtures} config={config} playerIds={playerIds} onAdd={onAdd} inputRows={inputRows} t={t} locale={locale} />
+        <ModelTab teamMatches={teamMatches} playerMatches={playerMatches} players={players} teams={teams} fixtures={fixtures} config={config} playerIds={playerIds} onAdd={onAdd} inputRows={inputRows} t={t} locale={locale} />
       </div>
       {tab === "players" && <PlayerListTab players={players} playerIds={playerIds} onSaved={setPlayerIds} t={t} />}
-      {tab === "fixtures" && <FixturesTab fixtures={fixtures} reload={reloadFixtures} t={t} />}
+      {tab === "fixtures" && <FixturesTab fixtures={fixtures} teams={teams} reload={reloadFixtures} t={t} />}
       {tab === "config" && <ConfigTab config={config} reload={reloadConfig} t={t} />}
       {tab === "input" && <InputTab rows={inputRows} setRows={setInputRows} t={t} />}
     </div>
@@ -92,57 +93,60 @@ export default function VolleyballTools({ teamMatches, playerMatches, players }:
 }
 
 /* ================= MODEL ================= */
-function ModelTab({ teamMatches, playerMatches, players, fixtures, config, playerIds, onAdd, inputRows, t, locale }: {
-  teamMatches: VbTeamMatch[]; playerMatches: VbPlayerMatch[]; players: VbToolsPlayer[];
+function ModelTab({ teamMatches, playerMatches, players, teams, fixtures, config, playerIds, onAdd, inputRows, t, locale }: {
+  teamMatches: VbTeamMatch[]; playerMatches: VbPlayerMatch[]; players: VbToolsPlayer[]; teams: VbTeam[];
   fixtures: PmFixture[]; config: PmMarketConfig[]; playerIds: Record<string, string>;
   onAdd: (r: VbInputRow[]) => void; inputRows: VbInputRow[]; t: (k: string) => string; locale: string;
 }) {
   const [sub, setSub] = useState<"team" | "player">("team");
   const [fixSel, setFixSel] = useState("");
-  const [trader, setTrader] = useState<Record<string, number>>({}); // `${side}:${mk}`
-  const [teamTicks, setTeamTicks] = useState<Record<string, boolean>>({});
+  const [trader, setTrader] = useState<Record<string, number>>({});       // `${code}:${mk}`
+  const [totalOv, setTotalOv] = useState<Record<string, number>>({});     // `${mk}`
+  const [teamTicks, setTeamTicks] = useState<Record<string, boolean>>({}); // `${col}:${mk}` col=code|total
   const [teamStatus, setTeamStatus] = useState("");
 
-  const fixExtId = fixtures.find((f) => String(f.id) === fixSel)?.external_id ?? "";
-  const fixHome = fixtures.find((f) => String(f.id) === fixSel)?.home_team_slug === "TUR"; // TUR ev mi
-  const teamSideNum = fixSel ? (fixHome ? 1 : 2) : 0;
+  const teamNameOf = useMemo(() => new Map(teams.map((tm) => [tm.team_code, tm.team_name ?? tm.team_code])), [teams]);
+  const fixture = fixtures.find((f) => String(f.id) === fixSel);
+  const homeCode = fixture?.home_team_slug ?? null;
+  const awayCode = fixture?.away_team_slug ?? null;
+  const fixExtId = fixture?.external_id ?? "";
 
-  // config: market_group=team/player → key market_key = base metric
   const teamCfg = useMemo(() => new Map(config.filter((c) => c.market_group === "team").map((c) => [c.market_key, c])), [config]);
   const playerCfg = useMemo(() => new Map(config.filter((c) => c.market_group === "player").map((c) => [c.market_key, c])), [config]);
   const stdOf = (grp: "team" | "player", mk: string) => ((grp === "team" ? teamCfg : playerCfg).get(mk)?.std ?? vbMarketStd(mk)) as number;
   const tplOf = (grp: "team" | "player", mk: string) => (grp === "team" ? teamCfg : playerCfg).get(mk)?.template_id ?? VB_MARKETS.find((m) => m.key === mk)?.tpl ?? "";
 
-  // taraf bazinda maclar
-  const rowsBySide = (side: Side): VbTeamMatch[] => {
-    const all = [...teamMatches].sort((a, b) => String(b.match_date).localeCompare(String(a.match_date)));
-    return side === "total" ? all : all.filter((r) => r.side === (side === "home" ? "H" : "A"));
+  const rowsForTeam = (code: string | null): VbTeamMatch[] =>
+    code ? [...teamMatches].filter((r) => r.team_code === code).sort((a, b) => String(b.match_date).localeCompare(String(a.match_date))) : [];
+  const teamAgg = (code: string | null, mk: string) => {
+    const vals = rowsForTeam(code).map((r) => teamVal(r, mk)).filter((v): v is number => v != null);
+    return { avg: mean(vals), l5: mean(vals.slice(0, 5)), l10: mean(vals.slice(0, 10)), model: weighted(vals.slice(0, 10)), n: vals.length };
   };
-  const teamAgg = (side: Side, mk: string) => {
-    const rows = rowsBySide(side);
-    const vals = rows.map((r) => teamVal(r, mk)).filter((v): v is number => v != null);
-    const model = weighted(vals.slice(0, 10));
-    return { avg: mean(vals), l5: mean(vals.slice(0, 5)), l10: mean(vals.slice(0, 10)), model, n: vals.length };
-  };
-  const traderVal = (side: Side, mk: string) => trader[`${side}:${mk}`] ?? Math.round(teamAgg(side, mk).model * 10) / 10;
-  const isTeamTicked = (side: Side, mk: string) => teamTicks[`${side}:${mk}`] !== false;
+  const traderVal = (code: string | null, mk: string) => (code && trader[`${code}:${mk}`] != null) ? trader[`${code}:${mk}`] : Math.round(teamAgg(code, mk).model * 10) / 10;
+  const totalValue = (mk: string) => totalOv[mk] ?? Math.round((traderVal(homeCode, mk) + traderVal(awayCode, mk)) * 10) / 10;
+  const isTeamTicked = (col: string, mk: string) => teamTicks[`${col}:${mk}`] !== false;
 
   const addTeam = () => {
+    if (!homeCode || !awayCode) return;
     const rows: VbInputRow[] = [];
     let sent = 0, dup = 0, noTpl = 0, zero = 0;
     const existing = new Set(inputRows.filter((r) => r.kind === "team").map((r) => r.template));
-    for (const side of ["home", "away", "total"] as Side[]) {
+    const cols: { col: string; sideNum: number; label: string; value: (mk: string) => number }[] = [
+      { col: homeCode, sideNum: 1, label: "home", value: (mk) => traderVal(homeCode, mk) },
+      { col: awayCode, sideNum: 2, label: "away", value: (mk) => traderVal(awayCode, mk) },
+      { col: "total", sideNum: 0, label: "total", value: (mk) => totalValue(mk) },
+    ];
+    for (const c of cols) {
       for (const m of VB_MARKETS) {
-        if (!isTeamTicked(side, m.key)) continue;
+        if (!isTeamTicked(c.col, m.key)) continue;
         const tpl = tplOf("team", m.key);
-        const sideTpl = `${tpl}_${side}`;
         if (!tpl) { noTpl++; continue; }
+        const sideTpl = `${tpl}_${c.label}`;
         if (existing.has(sideTpl)) { dup++; continue; }
-        const val = traderVal(side, m.key);
+        const val = c.value(m.key);
         if (!(val > 0)) { zero++; continue; }
-        const sideNum = side === "home" ? 1 : side === "away" ? 2 : 0;
         for (const r of buildConfiguredLines(val, stdOf("team", m.key), teamCfg.get(m.key) ?? DEFAULT_CFG, TEAM_PAYBACK)) {
-          rows.push({ kind: "team", fixtureExtId: fixExtId, template: sideTpl, participant: "", side: sideNum, line: r.line, over: r.overPrice, under: r.underPrice, label: `${side} ${m.label}`, name: side });
+          rows.push({ kind: "team", fixtureExtId: fixExtId, template: sideTpl, participant: "", side: c.sideNum, line: r.line, over: r.overPrice, under: r.underPrice, label: `${c.label} ${m.label}`, name: c.col === "total" ? "Total" : (teamNameOf.get(c.col) ?? c.col) });
         }
         sent++;
       }
@@ -150,7 +154,10 @@ function ModelTab({ teamMatches, playerMatches, players, fixtures, config, playe
     if (rows.length) onAdd(rows);
     setTeamStatus(`${t("volleyball.statSent").replace("{n}", String(sent))}${dup ? " · " + t("volleyball.statDup").replace("{n}", String(dup)) : ""}${noTpl ? " · " + t("volleyball.statNoTpl").replace("{n}", String(noTpl)) : ""}`);
   };
-  const resetTeam = () => { setTrader({}); setTeamTicks({}); };
+  const resetTeam = () => { setTrader({}); setTotalOv({}); setTeamTicks({}); };
+
+  const homeName = homeCode ? (teamNameOf.get(homeCode) ?? homeCode) : "";
+  const awayName = awayCode ? (teamNameOf.get(awayCode) ?? awayCode) : "";
 
   return (
     <div className="space-y-6">
@@ -160,7 +167,7 @@ function ModelTab({ teamMatches, playerMatches, players, fixtures, config, playe
           <span className="text-[10px] uppercase tracking-[0.14em] text-ink-3">{t("volleyball.fixtureLabel")}</span>
           <select value={fixSel} onChange={(e) => setFixSel(e.target.value)}
             className="rounded-md border border-line bg-field px-2 py-1.5 text-[13px] text-ink outline-none focus:border-line-strong">
-            <option value="">{t("volleyball.fixtureManual")}…</option>
+            <option value="">{t("volleyball.pickFixture")}…</option>
             {fixtures.map((f) => (
               <option key={f.id} value={f.id}>
                 {f.home_team_name || f.home_team_slug} — {f.away_team_name || f.away_team_slug}{f.external_id ? ` [${f.external_id}]` : ""}
@@ -170,46 +177,55 @@ function ModelTab({ teamMatches, playerMatches, players, fixtures, config, playe
         </label>
       </div>
 
-      {/* alt sekme */}
-      <div className="flex gap-1.5">
-        {([["team", t("volleyball.tabTeamMetrics")], ["player", t("volleyball.tabPlayerDist")]] as const).map(([k, lbl]) => (
-          <button key={k} onClick={() => setSub(k)} className={`rounded-full px-4 py-1.5 text-xs font-semibold ${sub === k ? "bg-accent text-white" : "bg-card-2 text-ink-2 hover:text-ink"}`}>{lbl}</button>
-        ))}
-      </div>
-
-      {sub === "team" ? (
-        <div>
-          <div className="mb-3 flex items-center gap-3">
-            <span className="text-[11px] text-ink-3">{t("volleyball.addTeamHint")}</span>
-            {teamStatus ? <span className="rounded-md bg-veil px-2 py-1 text-[11px] font-semibold text-ink-2">{teamStatus}</span> : null}
-            <button onClick={resetTeam} className="ml-auto rounded-md border border-line px-3 py-2 text-[12px] font-semibold text-ink-2 hover:text-ink">{t("volleyball.reset")}</button>
-            <button onClick={addTeam} className={accentBtn}>{t("volleyball.addToInput")}</button>
-          </div>
-          <div className="grid gap-4 lg:grid-cols-3">
-            {(["home", "away", "total"] as Side[]).map((side) => (
-              <TeamMetricTable key={side} side={side} title={t(`volleyball.side_${side}`)} teamAgg={teamAgg}
-                traderVal={traderVal} setTrader={(mk, v) => setTrader((p) => ({ ...p, [`${side}:${mk}`]: v }))}
-                isTicked={(mk) => isTeamTicked(side, mk)} setTick={(mk, v) => setTeamTicks((p) => ({ ...p, [`${side}:${mk}`]: v }))} t={t} />
+      {!fixture ? (
+        <p className="rounded-lg border border-dashed border-line px-4 py-6 text-center text-sm text-ink-3">{t("volleyball.needFixture")}</p>
+      ) : (
+        <>
+          <div className="flex gap-1.5">
+            {([["team", t("volleyball.tabTeamMetrics")], ["player", t("volleyball.tabPlayerDist")]] as const).map(([k, lbl]) => (
+              <button key={k} onClick={() => setSub(k)} className={`rounded-full px-4 py-1.5 text-xs font-semibold ${sub === k ? "bg-accent text-white" : "bg-card-2 text-ink-2 hover:text-ink"}`}>{lbl}</button>
             ))}
           </div>
-          {/* recent matches */}
-          <div className="mt-6">
-            <TeamRecent rows={rowsBySide("total")} locale={locale} t={t} />
-          </div>
-        </div>
-      ) : (
-        <PlayerDist playerMatches={playerMatches} players={players} playerCfg={playerCfg} playerIds={playerIds}
-          stdOf={(mk) => stdOf("player", mk)} tplOf={(mk) => tplOf("player", mk)} fixExtId={fixExtId} teamSideNum={teamSideNum}
-          onAdd={onAdd} inputRows={inputRows} t={t} locale={locale} />
+
+          {sub === "team" ? (
+            <div>
+              <div className="mb-3 flex items-center gap-3">
+                <span className="text-[11px] text-ink-3">{t("volleyball.addTeamHint")}</span>
+                {teamStatus ? <span className="rounded-md bg-veil px-2 py-1 text-[11px] font-semibold text-ink-2">{teamStatus}</span> : null}
+                <button onClick={resetTeam} className="ml-auto rounded-md border border-line px-3 py-2 text-[12px] font-semibold text-ink-2 hover:text-ink">{t("volleyball.reset")}</button>
+                <button onClick={addTeam} className={accentBtn}>{t("volleyball.addToInput")}</button>
+              </div>
+              <div className="grid gap-4 lg:grid-cols-3">
+                <TeamMetricTable title={homeName} agg={(mk) => teamAgg(homeCode, mk)} traderVal={(mk) => traderVal(homeCode, mk)}
+                  setTrader={(mk, v) => setTrader((p) => ({ ...p, [`${homeCode}:${mk}`]: v }))}
+                  isTicked={(mk) => isTeamTicked(homeCode ?? "", mk)} setTick={(mk, v) => setTeamTicks((p) => ({ ...p, [`${homeCode}:${mk}`]: v }))} t={t} />
+                <TeamMetricTable title={awayName} agg={(mk) => teamAgg(awayCode, mk)} traderVal={(mk) => traderVal(awayCode, mk)}
+                  setTrader={(mk, v) => setTrader((p) => ({ ...p, [`${awayCode}:${mk}`]: v }))}
+                  isTicked={(mk) => isTeamTicked(awayCode ?? "", mk)} setTick={(mk, v) => setTeamTicks((p) => ({ ...p, [`${awayCode}:${mk}`]: v }))} t={t} />
+                <TotalMetricTable title={t("volleyball.side_total")} totalValue={totalValue} setOverride={(mk, v) => setTotalOv((p) => ({ ...p, [mk]: v }))}
+                  isTicked={(mk) => isTeamTicked("total", mk)} setTick={(mk, v) => setTeamTicks((p) => ({ ...p, [`total:${mk}`]: v }))} t={t} />
+              </div>
+              <div className="mt-6 grid gap-6 lg:grid-cols-2">
+                <TeamRecent title={homeName} rows={rowsForTeam(homeCode)} locale={locale} t={t} />
+                <TeamRecent title={awayName} rows={rowsForTeam(awayCode)} locale={locale} t={t} />
+              </div>
+            </div>
+          ) : (
+            <PlayerDist playerMatches={playerMatches} players={players} playerCfg={playerCfg} playerIds={playerIds}
+              homeCode={homeCode} awayCode={awayCode} homeName={homeName} awayName={awayName}
+              stdOf={(mk) => stdOf("player", mk)} tplOf={(mk) => tplOf("player", mk)} fixExtId={fixExtId}
+              onAdd={onAdd} inputRows={inputRows} t={t} />
+          )}
+        </>
       )}
     </div>
   );
 }
 
-function TeamMetricTable({ side, title, teamAgg, traderVal, setTrader, isTicked, setTick, t }: {
-  side: Side; title: string;
-  teamAgg: (s: Side, mk: string) => { avg: number; l5: number; l10: number; model: number; n: number };
-  traderVal: (s: Side, mk: string) => number; setTrader: (mk: string, v: number) => void;
+function TeamMetricTable({ title, agg, traderVal, setTrader, isTicked, setTick, t }: {
+  title: string;
+  agg: (mk: string) => { avg: number; l5: number; l10: number; model: number; n: number };
+  traderVal: (mk: string) => number; setTrader: (mk: string, v: number) => void;
   isTicked: (mk: string) => boolean; setTick: (mk: string, v: boolean) => void; t: (k: string) => string;
 }) {
   return (
@@ -227,9 +243,9 @@ function TeamMetricTable({ side, title, teamAgg, traderVal, setTrader, isTicked,
         </tr></thead>
         <tbody>
           {VB_MARKETS.map((m) => {
-            const a = teamAgg(side, m.key);
+            const a = agg(m.key);
             const on = isTicked(m.key);
-            const tv = Math.round(traderVal(side, m.key) * 10) / 10;
+            const tv = Math.round(traderVal(m.key) * 10) / 10;
             return (
               <tr key={m.key} className={`border-t border-line ${on ? "" : "opacity-45"}`}>
                 <td className="px-1 py-0.5 text-center"><input type="checkbox" checked={on} onChange={(e) => setTick(m.key, e.target.checked)} className="accent-[var(--accent)]" /></td>
@@ -248,11 +264,41 @@ function TeamMetricTable({ side, title, teamAgg, traderVal, setTrader, isTicked,
   );
 }
 
-function TeamRecent({ rows, locale, t }: { rows: VbTeamMatch[]; locale: string; t: (k: string) => string }) {
+function TotalMetricTable({ title, totalValue, setOverride, isTicked, setTick, t }: {
+  title: string; totalValue: (mk: string) => number; setOverride: (mk: string, v: number) => void;
+  isTicked: (mk: string) => boolean; setTick: (mk: string, v: boolean) => void; t: (k: string) => string;
+}) {
+  return (
+    <div className="overflow-x-auto">
+      <div className="mb-2 text-[12px] font-semibold text-ink">{title}</div>
+      <table className="min-w-full border-collapse text-[11px]">
+        <thead><tr className="border-b border-line text-[9px] uppercase tracking-[0.1em] text-ink-3">
+          <th className="px-1 py-1"></th>
+          <th className="px-1 py-1 text-left">{t("volleyball.colMarket")}</th>
+          <th className="px-1 py-1 text-right">{t("volleyball.colTrader")}</th>
+        </tr></thead>
+        <tbody>
+          {VB_MARKETS.map((m) => {
+            const on = isTicked(m.key);
+            return (
+              <tr key={m.key} className={`border-t border-line ${on ? "" : "opacity-45"}`}>
+                <td className="px-1 py-0.5 text-center"><input type="checkbox" checked={on} onChange={(e) => setTick(m.key, e.target.checked)} className="accent-[var(--accent)]" /></td>
+                <td className="px-1 py-0.5 text-ink whitespace-nowrap" title={m.label}>{m.label}</td>
+                <td className="px-1 py-0.5 text-right"><NumInput value={Math.round(totalValue(m.key) * 10) / 10} onChange={(v) => setOverride(m.key, v)} w="w-24" /></td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function TeamRecent({ title, rows, locale, t }: { title: string; rows: VbTeamMatch[]; locale: string; t: (k: string) => string }) {
   const fmtDate = (d: string | null) => { if (!d) return "-"; const dt = new Date(d); return Number.isNaN(dt.getTime()) ? d : dt.toLocaleDateString(locale === "tr" ? "tr-TR" : "en-GB", { day: "2-digit", month: "short", year: "2-digit" }); };
   return (
     <div>
-      <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-3">{t("volleyball.recentMatches")}</div>
+      <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-3">{title} · {t("volleyball.recentMatches")}</div>
       <div className="max-h-80 overflow-auto">
         <table className="min-w-full border-collapse text-[12px]">
           <thead className="sticky top-0 bg-card-2"><tr className="text-[9px] uppercase tracking-[0.1em] text-ink-3">
@@ -285,12 +331,15 @@ function TeamRecent({ rows, locale, t }: { rows: VbTeamMatch[]; locale: string; 
 }
 
 /* ================= PLAYER DIST ================= */
-function PlayerDist({ playerMatches, players, playerCfg, playerIds, stdOf, tplOf, fixExtId, teamSideNum, onAdd, inputRows, t, locale }: {
+function PlayerDist({ playerMatches, players, playerCfg, playerIds, stdOf, tplOf, fixExtId, homeCode, awayCode, homeName, awayName, onAdd, inputRows, t }: {
   playerMatches: VbPlayerMatch[]; players: VbToolsPlayer[]; playerCfg: Map<string, PmMarketConfig>; playerIds: Record<string, string>;
-  stdOf: (mk: string) => number; tplOf: (mk: string) => string; fixExtId: string; teamSideNum: number;
-  onAdd: (r: VbInputRow[]) => void; inputRows: VbInputRow[]; t: (k: string) => string; locale: string;
+  stdOf: (mk: string) => number; tplOf: (mk: string) => string; fixExtId: string;
+  homeCode: string | null; awayCode: string | null; homeName: string; awayName: string;
+  onAdd: (r: VbInputRow[]) => void; inputRows: VbInputRow[]; t: (k: string) => string;
 }) {
-  const [side, setSide] = useState<"home" | "away" | "total">("total");
+  const [side, setSide] = useState<"home" | "away">("home");
+  const teamCode = side === "home" ? homeCode : awayCode;
+  const teamSideNum = side === "home" ? 1 : 2;
   const [mk, setMk] = useState(VB_MARKETS[0].key);
   const [vals, setVals] = useState<Record<string, number>>({});
   const [ticks, setTicks] = useState<Record<string, boolean>>({});
@@ -304,7 +353,7 @@ function PlayerDist({ playerMatches, players, playerCfg, playerIds, stdOf, tplOf
   const agg = useMemo(() => {
     const byPlayer = new Map<number, number[]>();
     const matched = [...playerMatches]
-      .filter((r) => side === "total" || r.side === (side === "home" ? "H" : "A"))
+      .filter((r) => r.team_code === teamCode)
       .sort((a, b) => String(b.match_date).localeCompare(String(a.match_date)));
     for (const r of matched) {
       const v = playerVal(r, mk);
@@ -313,12 +362,12 @@ function PlayerDist({ playerMatches, players, playerCfg, playerIds, stdOf, tplOf
       byPlayer.get(r.fivb_id)!.push(v);
     }
     return byPlayer;
-  }, [playerMatches, side, mk]);
+  }, [playerMatches, teamCode, mk]);
 
   const rows = useMemo(() => {
     const out = [...agg.entries()].map(([fivb_id, vs]) => {
       const p = pById.get(fivb_id);
-      return { fivb_id, name: cleanName(p?.full_name ?? p?.short_name ?? String(fivb_id)), position: p?.position ?? null, sid: p?.sofascore_player_id ?? null, games: vs.length, avg: mean(vs), l5: mean(vs.slice(0, 5)), l10: mean(vs.slice(0, 10)) };
+      return { fivb_id, name: cleanName(p?.full_name ?? p?.short_name ?? String(fivb_id)), position: p?.position ?? null, sid: p?.sofascore_player_id ?? null, vbw: p?.vbw_photo ?? null, games: vs.length, avg: mean(vs), l5: mean(vs.slice(0, 5)), l10: mean(vs.slice(0, 10)) };
     }).filter((r) => r.games > 0);
     const dir = sort.d === "asc" ? 1 : -1;
     out.sort((a, b) => {
@@ -360,9 +409,9 @@ function PlayerDist({ playerMatches, players, playerCfg, playerIds, stdOf, tplOf
     <div>
       <div className="mb-3 flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-1.5">
-          <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-3">{t("volleyball.split")}</span>
-          {(["home", "away", "total"] as const).map((s) => (
-            <button key={s} onClick={() => setSide(s)} className={`rounded-md px-3 py-1 text-[12px] font-semibold ${side === s ? "bg-accent text-white" : "bg-card-2 text-ink-3 hover:text-ink"}`}>{t(`volleyball.side_${s}`)}</button>
+          <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-3">{t("volleyball.pickTeam")}</span>
+          {(["home", "away"] as const).map((s) => (
+            <button key={s} onClick={() => setSide(s)} className={`rounded-md px-3 py-1 text-[12px] font-semibold ${side === s ? "bg-accent text-white" : "bg-card-2 text-ink-3 hover:text-ink"}`}>{s === "home" ? homeName : awayName}</button>
           ))}
         </div>
         {status ? <span className="rounded-md bg-veil px-2 py-1 text-[11px] font-semibold text-ink-2">{status}</span> : null}
@@ -393,7 +442,7 @@ function PlayerDist({ playerMatches, players, playerCfg, playerIds, stdOf, tplOf
               const on = isTicked(r.fivb_id, r.avg);
               const v = valueOf(r.fivb_id, r.l10 || r.avg);
               const mid = on ? buildLadder(v, stdOf(mk), PROP_PAYBACK).find((x) => x.isMid) : null;
-              const url = photoUrl(r.sid);
+              const url = vbwPhotoUrl(r.vbw) ?? photoUrl(r.sid);
               return (
                 <tr key={r.fivb_id} className={`border-t border-line ${on ? "" : "opacity-45"}`}>
                   <td className="px-2 py-1 text-center"><input type="checkbox" checked={on} onChange={(e) => setTicks((p) => ({ ...p, [`${r.fivb_id}`]: e.target.checked }))} className="accent-[var(--accent)]" /></td>
@@ -486,27 +535,26 @@ function PlayerListTab({ players, playerIds, onSaved, t }: { players: VbToolsPla
 }
 
 /* ================= FIXTURES ================= */
-function FixturesTab({ fixtures, reload, t }: { fixtures: PmFixture[]; reload: () => void; t: (k: string) => string }) {
-  const [opp, setOpp] = useState("");
-  const [home, setHome] = useState(true);
+function FixturesTab({ fixtures, teams, reload, t }: { fixtures: PmFixture[]; teams: VbTeam[]; reload: () => void; t: (k: string) => string }) {
+  const [h, setH] = useState(teams.find((x) => x.team_code === "TUR")?.team_code ?? teams[0]?.team_code ?? "");
+  const [a, setA] = useState(teams.find((x) => x.team_code !== "TUR")?.team_code ?? teams[1]?.team_code ?? "");
   const [ext, setExt] = useState("");
+  const nameOf = (code: string) => teams.find((x) => x.team_code === code)?.team_name ?? code;
   const add = async () => {
-    if (!opp.trim()) return;
-    const tur = { slug: "TUR", name: "Türkiye" };
-    const o = { slug: opp.trim().toUpperCase().slice(0, 3), name: opp.trim() };
-    const f = home
-      ? { home_team_slug: tur.slug, away_team_slug: o.slug, home_team_name: tur.name, away_team_name: o.name }
-      : { home_team_slug: o.slug, away_team_slug: tur.slug, home_team_name: o.name, away_team_name: tur.name };
-    await insertFixture({ ...f, external_id: ext.trim() || null, match_date: null, note: null }, LEAGUE);
-    setOpp(""); setExt(""); reload();
+    if (!h || !a || h === a) return;
+    await insertFixture({ home_team_slug: h, away_team_slug: a, home_team_name: nameOf(h), away_team_name: nameOf(a), external_id: ext.trim() || null, match_date: null, note: null }, LEAGUE);
+    setExt(""); reload();
   };
   return (
     <div>
       <div className="mb-4 flex flex-wrap items-end gap-2">
-        <select value={home ? "h" : "a"} onChange={(e) => setHome(e.target.value === "h")} className="rounded-md border border-line bg-field px-2 py-1.5 text-[13px] text-ink">
-          <option value="h">{t("volleyball.turHome")}</option><option value="a">{t("volleyball.turAway")}</option>
+        <select value={h} onChange={(e) => setH(e.target.value)} className="rounded-md border border-line bg-field px-2 py-1.5 text-[13px] text-ink">
+          {teams.map((x) => <option key={x.team_code} value={x.team_code}>{x.team_name}</option>)}
         </select>
-        <input placeholder={t("volleyball.opponent")} value={opp} onChange={(e) => setOpp(e.target.value)} className="w-40 rounded-md border border-line bg-field px-2 py-1.5 text-[13px] text-ink" />
+        <span className="pb-2 text-ink-3">vs</span>
+        <select value={a} onChange={(e) => setA(e.target.value)} className="rounded-md border border-line bg-field px-2 py-1.5 text-[13px] text-ink">
+          {teams.map((x) => <option key={x.team_code} value={x.team_code}>{x.team_name}</option>)}
+        </select>
         <input placeholder={t("volleyball.extId")} value={ext} onChange={(e) => setExt(e.target.value)} className="w-28 rounded-md border border-line bg-field px-2 py-1.5 text-[13px] text-ink" />
         <button onClick={add} className={btnSave}>{t("volleyball.addFixture")}</button>
       </div>

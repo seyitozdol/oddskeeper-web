@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useI18n } from "@/lib/i18n/LanguageProvider";
+import { vbwPhotoUrl, fivbFlagUrl } from "../lib";
 import type { VbLeaderboardRow, VbMatch, VbFixture } from "../types";
 
 type Tab = "players" | "results" | "fixtures" | "tools";
@@ -245,27 +246,42 @@ function PlayersTab({
                   {cols.map((c) => {
                     const v = c.get(r);
                     if (c.key === "player") {
+                      const photo = vbwPhotoUrl(r.vbw_photo) ?? (r.sofascore_player_id ? `https://img.sofascore.com/api/v1/player/${r.sofascore_player_id}/image` : null);
                       return (
                         <td key={c.key} className="whitespace-nowrap px-2 py-1.5">
                           <Link
                             href={`/dashboard/volleyball/player/${r.fivb_id}?comp=${competitionId}`}
                             className="flex items-center gap-2 font-medium text-ink hover:text-accent-ink"
                           >
-                            {r.sofascore_player_id ? (
+                            {photo ? (
                               // eslint-disable-next-line @next/next/no-img-element
                               <img
-                                src={`https://img.sofascore.com/api/v1/player/${r.sofascore_player_id}/image`}
+                                src={photo}
                                 alt=""
-                                width={22}
-                                height={22}
+                                width={24}
+                                height={24}
                                 loading="lazy"
-                                className="h-[22px] w-[22px] shrink-0 rounded-full border border-line bg-card-2 object-cover"
+                                className="h-6 w-6 shrink-0 rounded-full border border-line bg-card-2 object-cover"
                               />
                             ) : (
-                              <span className="h-[22px] w-[22px] shrink-0 rounded-full border border-line bg-card-2" />
+                              <span className="h-6 w-6 shrink-0 rounded-full border border-line bg-card-2" />
                             )}
                             <span>{v ?? r.fivb_id}</span>
                           </Link>
+                        </td>
+                      );
+                    }
+                    if (c.key === "team") {
+                      const flag = fivbFlagUrl(r.team_code);
+                      return (
+                        <td key={c.key} className={`whitespace-nowrap px-2 py-1.5 ${isTur ? "font-semibold text-accent-ink" : "text-ink-2"}`}>
+                          <span className="inline-flex items-center gap-1.5 align-middle">
+                            {flag ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={flag} alt="" width={18} height={12} loading="lazy" className="h-3 w-[18px] shrink-0 rounded-[2px] object-cover" />
+                            ) : null}
+                            <span>{r.team_code ?? "—"}</span>
+                          </span>
                         </td>
                       );
                     }

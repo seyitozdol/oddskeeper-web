@@ -232,6 +232,11 @@ def parse_profile(html: str):
     bio["height_cm"] = int(re.sub(r"[^0-9]", "", h)) if h and re.search(r"\d", h) else None
     bd = grab("Birth date")   # sitede etiket "Birth date" (kucuk d)
     bio["birth_date"] = to_date(bd) if bd else None
+    # oyuncu fotografi: div.vbw-player-img-wrap img -> cloudinary id (fivb-prd/{id}.webp)
+    pimg = soup.select_one(".vbw-player-img-wrap img")
+    psrc = (pimg.get("src") or pimg.get("data-src") or "") if pimg else ""
+    pm = re.search(r"fivb-prd/([a-z0-9]+)\.(?:webp|jpg|jpeg|png)", psrc)
+    bio["vbw_photo"] = pm.group(1) if pm else None
 
     matches = []
     tables = soup.find_all("table")
@@ -279,7 +284,7 @@ def upsert_player(cur, pid, short_name=None, team_code=None, bio=None):
     if team_code:
         cols["nationality"] = cols.get("nationality") or None
     if bio:
-        for k in ("full_name", "position", "birth_date", "height_cm", "nationality"):
+        for k in ("full_name", "position", "birth_date", "height_cm", "nationality", "vbw_photo"):
             if bio.get(k) is not None:
                 cols[k] = bio[k]
     keys = list(cols.keys())

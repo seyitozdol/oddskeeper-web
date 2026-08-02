@@ -22,6 +22,7 @@ export type VbLeaderboardRow = {
   height_cm: number | null;
   birth_date: string | null;
   sofascore_player_id: number | null;
+  vbw_photo: string | null;
   points: number | null;
   attack_points: number | null;
   block_points: number | null;
@@ -84,6 +85,7 @@ export type VbPlayerBio = {
   height_cm: number | null;
   nationality: string | null;
   sofascore_player_id: number | null;
+  vbw_photo: string | null;
 };
 
 export type VbPlayerMatch = {

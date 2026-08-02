@@ -5,6 +5,7 @@ import {
   getVolleyballPlayerMatches,
 } from "@/features/volleyball/server/getVolleyballStats";
 import { getT } from "@/lib/i18n/server";
+import { vbwPhotoUrl } from "@/features/volleyball/lib";
 import type { VbPlayerMatch } from "@/features/volleyball/types";
 
 function ageOf(birth: string | null): number | null {
@@ -90,11 +91,14 @@ export default async function VolleyballPlayerPage({
         {/* Baslik + bio */}
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="flex items-center gap-4">
-            {bio?.sofascore_player_id ? (
-              // SofaScore oyuncu fotografi (public img host).
+            {(() => {
+              const photo = vbwPhotoUrl(bio?.vbw_photo) ?? (bio?.sofascore_player_id ? `https://img.sofascore.com/api/v1/player/${bio.sofascore_player_id}/image` : null);
+              return photo;
+            })() ? (
+              // Oyuncu fotografi (volleyballworld; yoksa SofaScore).
               // eslint-disable-next-line @next/next/no-img-element
               <img
-                src={`https://img.sofascore.com/api/v1/player/${bio.sofascore_player_id}/image`}
+                src={vbwPhotoUrl(bio?.vbw_photo) ?? `https://img.sofascore.com/api/v1/player/${bio?.sofascore_player_id}/image`}
                 alt={name}
                 width={72}
                 height={72}

@@ -3,15 +3,17 @@ import {
   getVbTeamMatches,
   getVbPlayerMatches,
   getVbToolsPlayers,
+  getVbTeams,
 } from "@/features/volleyball/server/getVolleyballTools";
 import VolleyballTools from "@/features/volleyball/components/VolleyballTools";
 import { getT } from "@/lib/i18n/server";
 
 export default async function VolleyballToolsPage() {
-  const [teamMatches, playerMatches, players, t] = await Promise.all([
+  const [teamMatches, playerMatches, players, teams, t] = await Promise.all([
     getVbTeamMatches(),
     getVbPlayerMatches(),
     getVbToolsPlayers(),
+    getVbTeams(),
     getT(),
   ]);
 
@@ -29,7 +31,7 @@ export default async function VolleyballToolsPage() {
           </Link>
         </div>
 
-        <VolleyballTools teamMatches={teamMatches} playerMatches={playerMatches} players={players} />
+        <VolleyballTools teamMatches={teamMatches} playerMatches={playerMatches} players={players} teams={teams} />
       </div>
     </section>
   );
