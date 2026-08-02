@@ -364,10 +364,26 @@ function PlayerDist({ playerMatches, players, playerCfg, playerIds, stdOf, tplOf
     return byPlayer;
   }, [playerMatches, teamCode, mk]);
 
+  // Katilim: takimin toplam maci + oyuncu basina oynadigi mac (market bagimsiz) -> rol.
+  const { teamTotal, matchCount } = useMemo(() => {
+    const teamDates = new Set<string>();
+    const perPlayer = new Map<number, Set<string>>();
+    for (const r of playerMatches) {
+      if (r.team_code !== teamCode) continue;
+      const d = r.match_date ?? "";
+      teamDates.add(d);
+      if (!perPlayer.has(r.fivb_id)) perPlayer.set(r.fivb_id, new Set());
+      perPlayer.get(r.fivb_id)!.add(d);
+    }
+    return { teamTotal: teamDates.size, matchCount: perPlayer };
+  }, [playerMatches, teamCode]);
+
   const rows = useMemo(() => {
     const out = [...agg.entries()].map(([fivb_id, vs]) => {
       const p = pById.get(fivb_id);
-      return { fivb_id, name: cleanName(p?.full_name ?? p?.short_name ?? String(fivb_id)), position: p?.position ?? null, sid: p?.sofascore_player_id ?? null, vbw: p?.vbw_photo ?? null, games: vs.length, avg: mean(vs), l5: mean(vs.slice(0, 5)), l10: mean(vs.slice(0, 10)) };
+      const played = matchCount.get(fivb_id)?.size ?? vs.length;
+      const ratio = teamTotal > 0 ? played / teamTotal : 0;
+      return { fivb_id, name: cleanName(p?.full_name ?? p?.short_name ?? String(fivb_id)), position: p?.position ?? null, sid: p?.sofascore_player_id ?? null, vbw: p?.vbw_photo ?? null, games: vs.length, played, roleKey: roleKeyOf(ratio), avg: mean(vs), l5: mean(vs.slice(0, 5)), l10: mean(vs.slice(0, 10)) };
     }).filter((r) => r.games > 0);
     const dir = sort.d === "asc" ? 1 : -1;
     out.sort((a, b) => {
@@ -377,7 +393,7 @@ function PlayerDist({ playerMatches, players, playerCfg, playerIds, stdOf, tplOf
       return ((va as number) - (vb as number)) * dir;
     });
     return out;
-  }, [agg, pById, sort]);
+  }, [agg, pById, sort, teamTotal, matchCount]);
 
   const valueOf = (fivb_id: number, def: number) => vals[`${fivb_id}`] ?? Math.round(def * 10) / 10;
   const isTicked = (fivb_id: number, avg: number) => (ticks[`${fivb_id}`] != null ? ticks[`${fivb_id}`] : avg > 0);
@@ -430,7 +446,8 @@ function PlayerDist({ playerMatches, players, playerCfg, playerIds, stdOf, tplOf
             <th className="px-2 py-1.5 text-center"><input type="checkbox" checked={rows.length > 0 && rows.every((r) => isTicked(r.fivb_id, r.avg))} onChange={(e) => rows.forEach((r) => setTicks((p) => ({ ...p, [`${r.fivb_id}`]: e.target.checked })))} className="accent-[var(--accent)]" /></th>
             <th className="px-2 py-1.5 text-left"><button onClick={() => toggleSort("name")} className="uppercase tracking-[0.12em] hover:text-ink">{t("volleyball.thPlayer")}{arrow("name")}</button></th>
             <th className="px-2 py-1.5 text-center">{t("volleyball.thPos")}</th>
-            <th className="px-2 py-1.5 text-right"><button onClick={() => toggleSort("games")} className="uppercase tracking-[0.12em] hover:text-ink">{t("volleyball.colMatches")}{arrow("games")}</button></th>
+            <th className="px-2 py-1.5 text-left" title={t("volleyball.roleInfo")}><button onClick={() => toggleSort("roleKey")} className="uppercase tracking-[0.12em] hover:text-ink">{t("volleyball.colRole")}{arrow("roleKey")}</button></th>
+            <th className="px-2 py-1.5 text-right" title={t("volleyball.matchesInfo")}><button onClick={() => toggleSort("games")} className="uppercase tracking-[0.12em] hover:text-ink">{t("volleyball.colMatches")}{arrow("games")}</button></th>
             <th className="px-2 py-1.5 text-right"><button onClick={() => toggleSort("l5")} className="uppercase tracking-[0.12em] hover:text-ink">L5{arrow("l5")}</button></th>
             <th className="px-2 py-1.5 text-right"><button onClick={() => toggleSort("l10")} className="uppercase tracking-[0.12em] hover:text-ink">L10{arrow("l10")}</button></th>
             <th className="px-2 py-1.5 text-right"><button onClick={() => toggleSort("avg")} className="uppercase tracking-[0.12em] hover:text-ink">{t("volleyball.colAvg")}{arrow("avg")}</button></th>
@@ -456,6 +473,7 @@ function PlayerDist({ playerMatches, players, playerCfg, playerIds, stdOf, tplOf
                     </span>
                   </td>
                   <td className="px-2 py-1 text-center">{r.position ? <span className="inline-block rounded bg-veil px-1.5 py-0.5 text-[10px] font-semibold text-ink-2">{shortPos(r.position)}</span> : <span className="text-ink-3">-</span>}</td>
+                  <td className="px-2 py-1 whitespace-nowrap">{r.roleKey !== "none" ? <span className={`inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold ${roleBadgeClass(r.roleKey)}`} title={`${r.played}/${teamTotal}`}>{t(`volleyball.role_${r.roleKey}`)}</span> : <span className="text-ink-3">-</span>}</td>
                   <td className="px-2 py-1 text-right tabular-nums text-ink-3">{r.games}</td>
                   <td className="px-2 py-1 text-right tabular-nums text-ink-3">{fmt(r.l5)}</td>
                   <td className="px-2 py-1 text-right tabular-nums text-ink-3">{fmt(r.l10)}</td>
@@ -492,6 +510,20 @@ function PlayerDist({ playerMatches, players, playerCfg, playerIds, stdOf, tplOf
       })() : null}
     </div>
   );
+}
+
+// Katilim rolu: oynadigi mac / takim toplam maci orani. Voleybolda sure yok, oran+pozisyon yeter.
+function roleKeyOf(ratio: number): "starter" | "rotation" | "limited" | "none" {
+  if (ratio >= 0.7) return "starter";
+  if (ratio >= 0.35) return "rotation";
+  if (ratio > 0) return "limited";
+  return "none";
+}
+function roleBadgeClass(key: string): string {
+  return key === "starter" ? "bg-emerald-500/15 text-emerald-300"
+    : key === "rotation" ? "bg-sky-500/15 text-sky-300"
+    : key === "limited" ? "bg-amber-500/15 text-amber-300"
+    : "bg-veil text-ink-3";
 }
 
 function shortPos(p: string | null): string {

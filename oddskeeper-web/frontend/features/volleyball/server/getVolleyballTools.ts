@@ -48,27 +48,30 @@ export type VbToolsPlayer = {
   games: number | null;
 };
 
-export async function getVbTeamMatches(): Promise<VbTeamMatch[]> {
+// PostgREST varsayilan 1000 satir kapatir; view'lar bunun ustunde -> sayfalama sart.
+const PAGE = 1000;
+async function fetchAll<T>(view: string, orderCol: string): Promise<T[]> {
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .schema("analytics")
-    .from("vb_pm_team_match_v1")
-    .select("*")
-    .order("match_date", { ascending: false, nullsFirst: false })
-    .returns<VbTeamMatch[]>();
-  if (error) { console.error("getVbTeamMatches", error.message); return []; }
-  return data ?? [];
+  const out: T[] = [];
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await supabase
+      .schema("analytics").from(view).select("*")
+      .order(orderCol, { ascending: false, nullsFirst: false })
+      .range(from, from + PAGE - 1)
+      .returns<T[]>();
+    if (error) { console.error(`fetchAll ${view}`, error.message); break; }
+    out.push(...(data ?? []));
+    if (!data || data.length < PAGE) break;
+  }
+  return out;
+}
+
+export async function getVbTeamMatches(): Promise<VbTeamMatch[]> {
+  return fetchAll<VbTeamMatch>("vb_pm_team_match_v1", "match_date");
 }
 
 export async function getVbPlayerMatches(): Promise<VbPlayerMatch[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .schema("analytics")
-    .from("vb_pm_player_match_v1")
-    .select("*")
-    .returns<VbPlayerMatch[]>();
-  if (error) { console.error("getVbPlayerMatches", error.message); return []; }
-  return data ?? [];
+  return fetchAll<VbPlayerMatch>("vb_pm_player_match_v1", "match_date");
 }
 
 export async function getVbTeams(): Promise<VbTeam[]> {
@@ -84,13 +87,5 @@ export async function getVbTeams(): Promise<VbTeam[]> {
 }
 
 export async function getVbToolsPlayers(): Promise<VbToolsPlayer[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .schema("analytics")
-    .from("vb_pm_player_list_v1")
-    .select("*")
-    .order("games", { ascending: false, nullsFirst: false })
-    .returns<VbToolsPlayer[]>();
-  if (error) { console.error("getVbToolsPlayers", error.message); return []; }
-  return data ?? [];
+  return fetchAll<VbToolsPlayer>("vb_pm_player_list_v1", "games");
 }
