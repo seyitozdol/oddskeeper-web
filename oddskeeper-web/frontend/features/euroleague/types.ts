@@ -57,6 +57,7 @@ export type EuroLeaderRow = {
   position?: string | null;   // EuroLeague API: Guard/Forward/Center
   height_cm?: number | null;
   role?: string | null;       // rol etiketi (starter|rotation|limited|garbage|departed)
+  crest_url?: string | null;  // takım logosu (euroleague.teams) — Player Leaders
 };
 
 export type EuroPlayerLogRow = {

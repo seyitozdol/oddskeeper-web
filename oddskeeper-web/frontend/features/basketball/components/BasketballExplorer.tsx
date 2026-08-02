@@ -3,8 +3,9 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useI18n } from "@/lib/i18n/LanguageProvider";
-import { fmt, formatMatchDate, normalizePositionCode, positionLabel } from "../lib";
+import { fmt, formatMatchDate, normalizePositionCode, positionLabel, playerPhotoUrl } from "../lib";
 import { TeamCrest } from "./ui";
+import PlayerAvatar from "./PlayerAvatar";
 import MatchOdds from "./MatchOdds";
 import type { BktTeamSeasonRow, BktLeaderboardRow, BktMarketModelRow, BktGameRow, BktFixtureRow } from "../types";
 
@@ -301,7 +302,8 @@ function PlayerLeaders({ rows, season }: { rows: BktLeaderboardRow[]; season: st
                 <tr key={r.player_slug} className="border-t border-line hover:bg-veil">
                   <td className="px-2 py-2 text-ink-3 tabular-nums">{i + 1}</td>
                   <td className="px-2 py-2">
-                    <Link href={`/dashboard/basketball/player/${r.player_slug}?season=${season}`} className="font-medium text-ink hover:text-accent-ink whitespace-nowrap">
+                    <Link href={`/dashboard/basketball/player/${r.player_slug}?season=${season}`} className="inline-flex items-center gap-2 font-medium text-ink hover:text-accent-ink whitespace-nowrap">
+                      <PlayerAvatar src={playerPhotoUrl({ sofascore_player_id: r.sofascore_player_id, image_url: r.image_url })} name={r.player_name} size={26} />
                       {r.player_name}
                     </Link>
                   </td>

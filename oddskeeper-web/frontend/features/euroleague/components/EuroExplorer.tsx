@@ -3,8 +3,9 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useI18n } from "@/lib/i18n/LanguageProvider";
-import { fmt, formatMatchDate, normalizePositionCode, positionLabel } from "@/features/basketball/lib";
+import { fmt, formatMatchDate, normalizePositionCode, positionLabel, playerPhotoUrl } from "@/features/basketball/lib";
 import { normalizePlayerName } from "@/features/basketball/unified";
+import PlayerAvatar from "@/features/basketball/components/PlayerAvatar";
 import type { EuroTeamRow, EuroLeaderRow, EuroGameRow } from "../types";
 import type { EuroCompKey } from "../config";
 
@@ -279,12 +280,16 @@ function PlayerLeaders({ rows, comp, base, season }: { rows: EuroLeaderRow[]; co
                 <tr key={r.person_code} className="border-t border-line hover:bg-veil">
                   <td className="px-2 py-2 text-ink-3 tabular-nums">{i + 1}</td>
                   <td className="px-2 py-2">
-                    <Link href={`${base}/player/${r.person_code}?season=${season}`} className="font-medium text-ink hover:text-accent-ink whitespace-nowrap">
+                    <Link href={`${base}/player/${r.person_code}?season=${season}`} className="inline-flex items-center gap-2 font-medium text-ink hover:text-accent-ink whitespace-nowrap">
+                      <PlayerAvatar src={playerPhotoUrl({ image_url: r.image_url })} name={normalizePlayerName(r.player_name)} size={26} />
                       {normalizePlayerName(r.player_name)}
                     </Link>
                   </td>
                   <td className="px-2 py-2">
-                    <Link href={`${base}/team/${r.team_code}?season=${season}`} className="text-ink-2 hover:text-accent-ink whitespace-nowrap text-[12px]">{teamDisplay(r)}</Link>
+                    <Link href={`${base}/team/${r.team_code}?season=${season}`} className="inline-flex items-center gap-1.5 text-ink-2 hover:text-accent-ink whitespace-nowrap text-[12px]">
+                      <Crest url={r.crest_url} name={teamDisplay(r)} size={22} />
+                      {teamDisplay(r)}
+                    </Link>
                   </td>
                   <td className="px-2 py-2">
                     {normalizePositionCode(r.position) ? (
