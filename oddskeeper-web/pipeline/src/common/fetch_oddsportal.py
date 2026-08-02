@@ -82,6 +82,24 @@ def scrape(chromium_path: str | None) -> list[dict]:
                 print(f"[atlandi] {name}: {type(ex).__name__}", flush=True)
                 continue
             p.wait_for_timeout(15000)
+            # OddsPortal mac listesini lazy-load ediyor: EXTRACT_JS yalnizca o an
+            # DOM'da olan satirlari alir, bu yuzden ozellikle cok mac olan Kulup
+            # Hazirlik sayfasinda maclar degisken sekilde eksik kalir (ornek:
+            # Galatasaray-Rennes bazen gelmiyordu). Once kademeli kaydirip tum
+            # satirlari DOM'a getir, sonra cikar.
+            try:
+                prev = -1
+                for _ in range(15):
+                    n = p.evaluate(
+                        "() => document.querySelectorAll('div.group.flex, div[class~=\"group\"]').length"
+                    )
+                    if n == prev:
+                        break
+                    prev = n
+                    p.evaluate("() => window.scrollTo(0, document.body.scrollHeight)")
+                    p.wait_for_timeout(1500)
+            except Exception as ex:
+                print(f"[scroll uyari] {name}: {type(ex).__name__}", flush=True)
             try:
                 found = p.evaluate(EXTRACT_JS)
             except Exception as ex:
