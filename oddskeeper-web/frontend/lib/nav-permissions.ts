@@ -18,6 +18,7 @@ export const NAV_KEYS = [
   "league-tsl",
   "league-1lig",
   "league-tbl",
+  "volleyball",
   "tff-1-lig",
 ] as const;
 
@@ -90,6 +91,14 @@ export const NAV_PERMISSION_ITEMS: NavPermissionItem[] = [
     // Basketbol (TBSL) lig panosu: proxy bu bolumu league-tbl iznine gore
     // kilitler; team/player alt sayfalari da bu prefix'e duser.
     pathPrefixes: ["/dashboard/basketball"],
+  },
+  {
+    key: "volleyball",
+    labelKey: "nav.volleyball",
+    href: "/dashboard/volleyball",
+    // Voleybol (Türkiye kadın milli takım) panosu; team/player alt sayfalari
+    // da bu prefix'e duser.
+    pathPrefixes: ["/dashboard/volleyball"],
   },
   {
     key: "tff-1-lig",

@@ -43,12 +43,15 @@ type LeagueItem = {
   navKey: NavKey;
   label: string;
   href: string;
-  group: "football" | "basketball";
+  group: "football" | "basketball" | "volleyball";
   Icon?: (props: { className?: string }) => ReactElement;
   logoSrc?: string;
   competition?: string;
   sport?: string;
 };
+
+// Voleybol panosu (Türkiye kadın milli takım).
+const VOLLEYBALL_HREF = "/dashboard/volleyball";
 
 const LEAGUE_ITEMS: LeagueItem[] = [
   { key: "tsl", navKey: "league-tsl", label: "TSL", Icon: TslMark, href: TSL_HUB_HREF, group: "football" },
@@ -56,6 +59,8 @@ const LEAGUE_ITEMS: LeagueItem[] = [
   { key: "tbl", navKey: "league-tbl", label: "BSL", Icon: TblMark, href: BASKETBALL_LEAGUE_HREF, group: "basketball", sport: "basketball" },
   { key: "euroleague", navKey: "league-tbl", label: "EL", logoSrc: "/images/leagues/euroleague.svg", href: "/dashboard/euro/euroleague", group: "basketball", sport: "basketball" },
   { key: "eurocup", navKey: "league-tbl", label: "EC", logoSrc: "/images/leagues/eurocup.svg", href: "/dashboard/euro/eurocup", group: "basketball", sport: "basketball" },
+  // Logo yerine Türkiye bayrağı + "Volleyball" (kadın milli takım).
+  { key: "volleyball", navKey: "volleyball", label: "Volleyball", logoSrc: "/images/flags/tr.png", href: VOLLEYBALL_HREF, group: "volleyball" },
 ];
 
 // Lig kisayolu markasi (inline SVG ya da public logo).
@@ -113,6 +118,9 @@ export default function AppHeader({
     }
     if (item.key === "eurocup") {
       return pathname.startsWith("/dashboard/euro/eurocup");
+    }
+    if (item.key === "volleyball") {
+      return pathname.startsWith("/dashboard/volleyball");
     }
     if (item.competition != null) {
       return (
@@ -291,7 +299,7 @@ export default function AppHeader({
             </div>
             ) : null}
 
-            {(["football", "basketball"] as const).map((grp) => {
+            {(["football", "basketball", "volleyball"] as const).map((grp) => {
               const items = LEAGUE_ITEMS.filter((item) => item.group === grp && can(item.navKey));
               if (items.length === 0) return null;
               return (

@@ -19,6 +19,7 @@ import { teamDetail } from "./teamDetail";
 import { tff1 } from "./tff1";
 import { tsl } from "./tsl";
 import { upcomingEvents } from "./upcomingEvents";
+import { volleyball } from "./volleyball";
 
 const MESSAGES: Record<
   string,
@@ -44,6 +45,7 @@ const MESSAGES: Record<
   tff1,
   tsl,
   upcomingEvents,
+  volleyball,
 };
 
 export type TranslateParams = Record<string, string | number>;

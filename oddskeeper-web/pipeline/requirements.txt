@@ -8,3 +8,5 @@ selenium
 curl_cffi
 psycopg2-binary
 playwright
+beautifulsoup4>=4.12
+lxml>=5.0
