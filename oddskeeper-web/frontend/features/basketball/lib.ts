@@ -88,7 +88,9 @@ export function formatHeight(cm: number | null | undefined): string {
 }
 
 // Oyuncu rol etiketi (bb_player_role_v1.role) → i18n anahtarı + renk sınıfı.
-export type PlayerRole = "starter" | "rotation" | "limited" | "garbage" | "departed";
+export type PlayerRole = "starter" | "rotation" | "limited" | "garbage" | "departed" | "newcomer";
+// Tüm roller (Config > Player Roles listesi + açıklama i18n anahtarları).
+export const ALL_ROLES: PlayerRole[] = ["starter", "rotation", "limited", "garbage", "departed", "newcomer"];
 export function roleLabelKey(role: string | null | undefined): string | null {
   switch (role) {
     case "starter": return "basketball.roleStarter";
@@ -96,8 +98,12 @@ export function roleLabelKey(role: string | null | undefined): string | null {
     case "limited": return "basketball.roleLimited";
     case "garbage": return "basketball.roleGarbage";
     case "departed": return "basketball.roleDeparted";
+    case "newcomer": return "basketball.roleNewcomer";
     default: return null;
   }
+}
+export function roleDescKey(role: string): string {
+  return `basketball.roleDesc_${role}`;
 }
 export function roleBadgeClass(role: string | null | undefined): string {
   switch (role) {
@@ -106,6 +112,18 @@ export function roleBadgeClass(role: string | null | undefined): string {
     case "limited":  return "bg-veil text-ink-2";
     case "garbage":  return "bg-veil text-ink-3";
     case "departed": return "bg-neg/12 text-neg";
+    case "newcomer": return "bg-amber-500/15 text-amber-300";
     default:         return "bg-veil text-ink-3";
   }
 }
+
+// Takım-lideri rozetleri: metrik → {window market_key, config toggle key, kısa etiket i18n}.
+export const LEADER_METRICS: { key: string; market: string; cfg: string; labelKey: string }[] = [
+  { key: "minutes",  market: "__minutes", cfg: "leader_minutes",  labelKey: "basketball.leaderMinutes" },
+  { key: "points",   market: "points",    cfg: "leader_points",   labelKey: "basketball.leaderPoints" },
+  { key: "rebounds", market: "rebounds",  cfg: "leader_rebounds", labelKey: "basketball.leaderRebounds" },
+  { key: "assists",  market: "assists",   cfg: "leader_assists",  labelKey: "basketball.leaderAssists" },
+  { key: "blocks",   market: "blocks",    cfg: "leader_blocks",   labelKey: "basketball.leaderBlocks" },
+  { key: "steals",   market: "steals",    cfg: "leader_steals",   labelKey: "basketball.leaderSteals" },
+  { key: "threes",   market: "threes",    cfg: "leader_threes",   labelKey: "basketball.leaderThrees" },
+];

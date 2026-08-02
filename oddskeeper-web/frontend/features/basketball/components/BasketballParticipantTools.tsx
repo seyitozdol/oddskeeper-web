@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useI18n } from "@/lib/i18n/LanguageProvider";
 import BasketballTools from "./BasketballTools";
 import { configLabel, METRIC_LABELS, metricLabel } from "../marketConfig";
+import { ALL_ROLES, roleBadgeClass, roleLabelKey, roleDescKey } from "../lib";
 import {
   fetchPmFixtures, insertFixture, updateFixture, deleteFixture, PmFixture,
   fetchPlayerIds, savePlayerIds,
@@ -40,12 +41,14 @@ export default function BasketballParticipantTools({ splits, forms, windows, tea
   const [fixtures, setFixtures] = useState<PmFixture[]>([]);
   const [playerIds, setPlayerIds] = useState<Record<string, string>>({});
   const [config, setConfig] = useState<PmMarketConfig[]>([]);
+  const [modelConfig, setModelConfig] = useState<PmModelConfig[]>([]);
   const [inputType, setInputType] = useState<InputType>("player");
   const [inputRows, setInputRows] = useState<BktInputRow[]>([]);
 
   const reloadFixtures = () => fetchPmFixtures(league).then(setFixtures);
   const reloadConfig = () => fetchMarketConfig(league).then(setConfig);
-  useEffect(() => { reloadFixtures(); reloadConfig(); fetchPlayerIds(league).then(setPlayerIds); }, [league]);
+  const reloadModelConfig = () => fetchModelConfig().then(setModelConfig);
+  useEffect(() => { reloadFixtures(); reloadConfig(); reloadModelConfig(); fetchPlayerIds(league).then(setPlayerIds); }, [league]);
 
   const teams = useMemo(() => [...splits].map((s) => ({ slug: s.team_slug, name: s.team_name })).sort((a, b) => a.name.localeCompare(b.name, "tr")), [splits]);
 
@@ -69,13 +72,13 @@ export default function BasketballParticipantTools({ splits, forms, windows, tea
       {/* Model her zaman mount kalır → sekme değişince fixture/takım seçimi kaybolmaz */}
       <div className={tab === "model" ? "" : "hidden"}>
         <BasketballTools pmFixtures={fixtures} splits={splits} forms={forms} windows={windows} teamLogs={teamLogs}
-          playerIds={playerIds} config={config} inputRows={inputRows} roles={roles}
+          playerIds={playerIds} config={config} inputRows={inputRows} roles={roles} modelConfig={modelConfig}
           competition={league === "euroleague" ? "E" : league === "eurocup" ? "U" : undefined}
           onAdd={(rows) => setInputRows((p) => [...p, ...rows])} />
       </div>
       {tab === "players" && <PlayerListTab players={players} playerIds={playerIds} onSaved={setPlayerIds} league={league} t={t} />}
       {tab === "fixtures" && <FixturesTab fixtures={fixtures} teams={teams} reload={reloadFixtures} league={league} t={t} />}
-      {tab === "config" && <ConfigTab config={config} reload={reloadConfig} inputType={inputType} setInputType={setInputType} league={league} locale={locale} t={t} />}
+      {tab === "config" && <ConfigTab config={config} reload={reloadConfig} modelConfig={modelConfig} reloadModelConfig={reloadModelConfig} inputType={inputType} setInputType={setInputType} league={league} locale={locale} t={t} />}
       {tab === "input" && <InputTab allRows={inputRows} setRows={setInputRows} initialType={inputType} t={t} />}
     </div>
   );
@@ -246,12 +249,20 @@ function FixturesTab({ fixtures, teams, reload, league, t }: { fixtures: PmFixtu
   );
 }
 
-/* ---------- Rol eşikleri (model_config) editörü — Player Dist etiketi kuralı ---------- */
-function RoleThresholdEditor({ t }: { t: (k: string) => string }) {
-  const [rows, setRows] = useState<PmModelConfig[]>([]);
+/* ---------- Player Roles sekmesi: rol eşikleri + roller listesi + lider toggle'ları ---------- */
+// Açıklamalar i18n'den (EN/TR ayrı); model_config.note KULLANILMAZ (dil karışmasın).
+function cfgKeyLabel(key: string, t: (k: string) => string): string {
+  const lbl = t(`basketball.cfgKey_${key}`);
+  return lbl === `basketball.cfgKey_${key}` ? key : lbl; // i18n yoksa ham anahtar
+}
+
+function PlayerRolesConfig({ modelConfig, reload, t }: {
+  modelConfig: PmModelConfig[]; reload: () => void; t: (k: string) => string;
+}) {
   const [edits, setEdits] = useState<Record<string, number>>({});
   const [saving, setSaving] = useState(false);
-  useEffect(() => { fetchModelConfig().then((r) => setRows(r.filter((x) => x.key.startsWith("role_")))); }, []);
+  const roleRows = modelConfig.filter((x) => x.key.startsWith("role_"));
+  const leaderRows = modelConfig.filter((x) => x.key.startsWith("leader_"));
   const val = (k: string, v: number) => edits[k] ?? v;
   const save = async () => {
     const payload = Object.entries(edits).map(([key, value]) => ({ key, value }));
@@ -259,36 +270,77 @@ function RoleThresholdEditor({ t }: { t: (k: string) => string }) {
     setSaving(true);
     const ok = await saveModelConfig(payload);
     setSaving(false);
-    if (ok) { setRows((rs) => rs.map((r) => (edits[r.key] != null ? { ...r, value: edits[r.key] } : r))); setEdits({}); }
+    if (ok) { setEdits({}); reload(); }
   };
-  if (rows.length === 0) return null;
+  const roleBadge = (role: string) =>
+    `inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold ${roleBadgeClass(role)}`;
+
   return (
-    <div className="mb-4 rounded-lg border border-line bg-card-2/40 px-3 py-2.5">
-      <div className="mb-1 flex items-center gap-3">
-        <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-3">{t("basketball.cfgRoleTitle")}</span>
+    <div className="space-y-4">
+      <div className="flex items-center gap-3">
         <button onClick={save} disabled={saving || Object.keys(edits).length === 0} className={`${btnSave} disabled:opacity-50`}>{t("basketball.save")}</button>
+        <p className="text-[11px] text-ink-3">{t("basketball.cfgRoleHint")}</p>
       </div>
-      <p className="mb-2 text-[11px] text-ink-3">{t("basketball.cfgRoleHint")}</p>
-      <div className="flex flex-wrap gap-x-5 gap-y-1.5">
-        {rows.map((r) => (
-          <label key={r.key} className="flex items-center gap-1.5 text-[11px] text-ink-2" title={r.note ?? r.key}>
-            <span className="text-ink-3">{r.note ?? r.key}</span>
-            <input type="number" step="any" value={val(r.key, r.value)}
-              onChange={(e) => setEdits((s) => ({ ...s, [r.key]: parseFloat(e.target.value) }))}
-              className="w-16 rounded border border-line bg-field px-1 py-0.5 text-right text-[11px] text-ink outline-none focus:border-line-strong" />
-          </label>
-        ))}
+
+      {/* Roller listesi + açıklama (i18n) */}
+      <div className="rounded-lg border border-line bg-card-2/40 px-3 py-2.5">
+        <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-3">{t("basketball.cfgRolesListTitle")}</div>
+        <ul className="space-y-1.5">
+          {ALL_ROLES.map((role) => (
+            <li key={role} className="flex items-start gap-2 text-[12px]">
+              <span className={roleBadge(role)}>{t(roleLabelKey(role) as string)}</span>
+              <span className="text-ink-3">{t(roleDescKey(role))}</span>
+            </li>
+          ))}
+        </ul>
       </div>
+
+      {/* Eşikler (i18n açıklamalı) */}
+      {roleRows.length > 0 && (
+        <div className="rounded-lg border border-line bg-card-2/40 px-3 py-2.5">
+          <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-3">{t("basketball.cfgRoleTitle")}</div>
+          <div className="flex flex-wrap gap-x-5 gap-y-2">
+            {roleRows.map((r) => (
+              <label key={r.key} className="flex items-center gap-1.5 text-[11px] text-ink-2">
+                <span className="text-ink-3">{cfgKeyLabel(r.key, t)}</span>
+                <input type="number" step="any" value={val(r.key, r.value)}
+                  onChange={(e) => setEdits((s) => ({ ...s, [r.key]: parseFloat(e.target.value) }))}
+                  className="w-16 rounded border border-line bg-field px-1 py-0.5 text-right text-[11px] text-ink outline-none focus:border-line-strong" />
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Takım-lideri rozet toggle'ları */}
+      {leaderRows.length > 0 && (
+        <div className="rounded-lg border border-line bg-card-2/40 px-3 py-2.5">
+          <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-3">{t("basketball.cfgLeaderTitle")}</div>
+          <p className="mb-2 text-[11px] text-ink-3">{t("basketball.cfgLeaderHint")}</p>
+          <div className="flex flex-wrap gap-x-5 gap-y-2">
+            {leaderRows.map((r) => (
+              <label key={r.key} className="flex cursor-pointer items-center gap-1.5 text-[11px] text-ink-2">
+                <input type="checkbox" checked={val(r.key, r.value) === 1}
+                  onChange={(e) => setEdits((s) => ({ ...s, [r.key]: e.target.checked ? 1 : 0 }))}
+                  className="accent-[var(--accent)]" />
+                <span className="text-ink-3">{cfgKeyLabel(r.key, t)}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-/* ---------- Config (line üretim kuralları) ---------- */
-function ConfigTab({ config, reload, inputType, setInputType, league, locale, t }: {
+/* ---------- Config: iki sekme — Player Roles / Market Templates ---------- */
+function ConfigTab({ config, reload, modelConfig, reloadModelConfig, inputType, setInputType, league, locale, t }: {
   config: PmMarketConfig[]; reload: () => void;
+  modelConfig: PmModelConfig[]; reloadModelConfig: () => void;
   inputType: "player" | "team"; setInputType: (t: "player" | "team") => void;
   league: string; locale: string; t: (k: string) => string;
 }) {
+  const [sub, setSub] = useState<"roles" | "markets">("roles");
   const [edits, setEdits] = useState<Record<string, Partial<PmMarketConfig>>>({});
   const [saving, setSaving] = useState(false);
   const [nm, setNm] = useState<{ name: string; base: string; side: string; template: string; std: string }>({ name: "", base: "manual", side: "home", template: "", std: "" });
@@ -399,41 +451,53 @@ function ConfigTab({ config, reload, inputType, setInputType, league, locale, t 
   );
 
   const inp = "rounded border border-line bg-field px-2 py-1 text-[12px] text-ink outline-none focus:border-line-strong";
+  const subBtn = (id: "roles" | "markets", label: string) => (
+    <button onClick={() => setSub(id)} className={`rounded-lg px-4 py-1.5 text-[13px] ${sub === id ? "bg-veil font-semibold text-ink" : "text-ink-3 hover:text-ink-2"}`}>{label}</button>
+  );
   return (
     <div>
-      <div className="mb-3 flex flex-wrap items-center gap-3">
-        <label className="flex items-center gap-2 text-[12px] text-ink-2">
-          <span className="text-[10px] uppercase tracking-[0.14em] text-ink-3">{t("basketball.colType")}</span>
-          <select value={inputType} onChange={(e) => setInputType(e.target.value as "player" | "team")} className={inp}>
-            <option value="player">Player</option>
-            <option value="team">Team</option>
-          </select>
-        </label>
-        <button onClick={save} disabled={saving || Object.keys(edits).length === 0} className={`${btnSave} disabled:opacity-50`}>{t("basketball.save")}</button>
-        <p className="text-[11px] text-ink-3">{t("basketball.cfgHint")}</p>
+      <div className="mb-4 flex flex-wrap gap-1.5 border-b border-line pb-2">
+        {subBtn("roles", t("basketball.cfgTabRoles"))}
+        {subBtn("markets", t("basketball.cfgTabMarkets"))}
       </div>
 
-      {league === "basketball" ? <RoleThresholdEditor t={t} /> : null}
+      {sub === "roles" ? (
+        <PlayerRolesConfig modelConfig={modelConfig} reload={reloadModelConfig} t={t} />
+      ) : (
+        <div>
+          <div className="mb-3 flex flex-wrap items-center gap-3">
+            <label className="flex items-center gap-2 text-[12px] text-ink-2">
+              <span className="text-[10px] uppercase tracking-[0.14em] text-ink-3">{t("basketball.colType")}</span>
+              <select value={inputType} onChange={(e) => setInputType(e.target.value as "player" | "team")} className={inp}>
+                <option value="player">Player</option>
+                <option value="team">Team</option>
+              </select>
+            </label>
+            <button onClick={save} disabled={saving || Object.keys(edits).length === 0} className={`${btnSave} disabled:opacity-50`}>{t("basketball.save")}</button>
+            <p className="text-[11px] text-ink-3">{t("basketball.cfgHint")}</p>
+          </div>
 
-      {/* yeni market ekleme — isim elle; base "manual"=data yok (dağıtılmaz) */}
-      <div className="mb-3 flex flex-wrap items-end gap-2 rounded-lg border border-line bg-card-2/40 px-3 py-2">
-        <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-3">{t("basketball.cfgNewMarket")}</span>
-        <input value={nm.name} onChange={(e) => setNm((s) => ({ ...s, name: e.target.value }))} placeholder={t("basketball.cfgMarketName")} className={`${inp} w-28`} />
-        <select value={nm.base} onChange={(e) => setNm((s) => ({ ...s, base: e.target.value }))} className={inp}>
-          <option value="manual">{t("basketball.cfgManualNoData")}</option>
-          {availBases.map((k) => <option key={k} value={k}>{metricLabel(k, locale)}</option>)}
-        </select>
-        {inputType === "team" && (
-          <select value={nm.side} onChange={(e) => setNm((s) => ({ ...s, side: e.target.value }))} className={inp}>
-            <option value="home">Home</option><option value="away">Away</option><option value="total">Total</option>
-          </select>
-        )}
-        <input value={nm.template} onChange={(e) => setNm((s) => ({ ...s, template: e.target.value }))} placeholder={t("basketball.marketTemplate")} className={`${inp} w-32`} />
-        <input value={nm.std} onChange={(e) => setNm((s) => ({ ...s, std: e.target.value }))} placeholder={t("basketball.colStd")} className={`${inp} w-16`} />
-        <button onClick={addMarket} className={btnGhost}>{t("basketball.add")}</button>
-      </div>
+          {/* yeni market ekleme — isim elle; base "manual"=data yok (dağıtılmaz) */}
+          <div className="mb-3 flex flex-wrap items-end gap-2 rounded-lg border border-line bg-card-2/40 px-3 py-2">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-3">{t("basketball.cfgNewMarket")}</span>
+            <input value={nm.name} onChange={(e) => setNm((s) => ({ ...s, name: e.target.value }))} placeholder={t("basketball.cfgMarketName")} className={`${inp} w-28`} />
+            <select value={nm.base} onChange={(e) => setNm((s) => ({ ...s, base: e.target.value }))} className={inp}>
+              <option value="manual">{t("basketball.cfgManualNoData")}</option>
+              {availBases.map((k) => <option key={k} value={k}>{metricLabel(k, locale)}</option>)}
+            </select>
+            {inputType === "team" && (
+              <select value={nm.side} onChange={(e) => setNm((s) => ({ ...s, side: e.target.value }))} className={inp}>
+                <option value="home">Home</option><option value="away">Away</option><option value="total">Total</option>
+              </select>
+            )}
+            <input value={nm.template} onChange={(e) => setNm((s) => ({ ...s, template: e.target.value }))} placeholder={t("basketball.marketTemplate")} className={`${inp} w-32`} />
+            <input value={nm.std} onChange={(e) => setNm((s) => ({ ...s, std: e.target.value }))} placeholder={t("basketball.colStd")} className={`${inp} w-16`} />
+            <button onClick={addMarket} className={btnGhost}>{t("basketball.add")}</button>
+          </div>
 
-      <Section grp={inputType} />
+          <Section grp={inputType} />
+        </div>
+      )}
     </div>
   );
 }

@@ -4,10 +4,10 @@ import { useMemo, useState } from "react";
 import { useI18n } from "@/lib/i18n/LanguageProvider";
 import { buildLadder, buildConfiguredLines, moneyline, type LineConfig } from "../odds";
 import { PLAYER_MARKETS, TEAM_MARKETS, teamStd, playerStd, metricLabel, isDistributable } from "../marketConfig";
-import { formatMatchDate, normalizePositionCode, positionLabel, roleLabelKey, roleBadgeClass } from "../lib";
+import { formatMatchDate, normalizePositionCode, positionLabel, roleLabelKey, roleBadgeClass, LEADER_METRICS } from "../lib";
 import { TeamCrest } from "./ui";
 import BasketballPlayerDrawer from "./BasketballPlayerDrawer";
-import type { PmFixture, PmMarketConfig } from "../pmQueries";
+import type { PmFixture, PmMarketConfig, PmModelConfig } from "../pmQueries";
 import type {
   BktHomeAwaySplitRow, BktTeamMetricFormRow, BktPlayerWindowRow,
   BktTeamLogRow, BktInputRow, BktPlayerRoleRow,
@@ -23,6 +23,7 @@ type Props = {
   config: PmMarketConfig[];
   inputRows: BktInputRow[];
   roles?: BktPlayerRoleRow[];   // BSL oyuncu rol+pozisyon (Player Dist etiketi)
+  modelConfig?: PmModelConfig[];   // lider rozet toggle'ları (leader_*)
   competition?: "E" | "U";   // EL/EC ise drawer euro veriye bağlanır
   onAdd: (rows: BktInputRow[]) => void;
 };
@@ -70,11 +71,37 @@ function NumInput({ value, onChange, step = 0.1, w = "w-16", warn = false }: { v
   );
 }
 
-export default function BasketballTools({ pmFixtures, splits, forms, windows, teamLogs, playerIds, config, inputRows, roles = [], competition, onAdd }: Props) {
+export default function BasketballTools({ pmFixtures, splits, forms, windows, teamLogs, playerIds, config, inputRows, roles = [], modelConfig = [], competition, onAdd }: Props) {
   const { t, locale } = useI18n();
   // rol+pozisyon aramas: "team_slug:player_slug" → satır (Player Dist etiketi).
   const roleBy = useMemo(() => new Map(roles.map((r) => [`${r.team_slug}:${r.player_slug}`, r])), [roles]);
   const euroTeamSlugs = useMemo(() => new Set(roles.filter((r) => r.euro_team).map((r) => r.team_slug)), [roles]);
+  // Takım-lideri rozetleri: "team_slug:player_slug" → [labelKey,...]. leader_* toggle=1 metrikler.
+  const leaderBy = useMemo(() => {
+    const enabled = new Set(modelConfig.filter((c) => c.key.startsWith("leader_") && Number(c.value) === 1).map((c) => c.key));
+    const byTeam = new Map<string, BktPlayerWindowRow[]>();
+    for (const w of windows) { if (!byTeam.has(w.team_slug)) byTeam.set(w.team_slug, []); byTeam.get(w.team_slug)!.push(w); }
+    const map = new Map<string, string[]>();
+    for (const lm of LEADER_METRICS) {
+      if (!enabled.has(lm.cfg)) continue;
+      for (const [team, rows] of byTeam) {
+        let bestSlug: string | null = null, bestVal = 0;
+        if (lm.market === "__minutes") {
+          const seen = new Map<string, number>();
+          for (const w of rows) if (!seen.has(w.player_slug)) seen.set(w.player_slug, (w.avg_minutes ?? 0) * (w.games ?? 0));
+          for (const [ps, tot] of seen) if (tot > bestVal) { bestVal = tot; bestSlug = ps; }
+        } else {
+          for (const w of rows) { if (w.market_key !== lm.market) continue; const v = w.total ?? 0; if (v > bestVal) { bestVal = v; bestSlug = w.player_slug; } }
+        }
+        if (bestSlug && bestVal > 0) {
+          const k = `${team}:${bestSlug}`;
+          if (!map.has(k)) map.set(k, []);
+          map.get(k)!.push(lm.labelKey);
+        }
+      }
+    }
+    return map;
+  }, [windows, modelConfig]);
   // Input'ta zaten olan satır anahtarları (mükerrer engelleme) + oyuncu+market seti (uyarı).
   const existingKeys = useMemo(() => new Set(inputRows.map(rowKey)), [inputRows]);
   const existingPlayerMkt = useMemo(() => new Set(inputRows.filter((r) => r.kind === "player").map((r) => `${r.template}|${r.participant}`)), [inputRows]);
@@ -340,7 +367,7 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
               teamTarget={(slug, mk) => teamTrader(slug, mk, slug === homeSlug ? effHome : effAway)}
               onAdd={onAdd} playerIds={playerIds} playerCfg={playerCfg} playerMarkets={playerMarkets}
               existingKeys={existingKeys} existingPlayerMkt={existingPlayerMkt} onReset={resetPlayer} competition={competition} fixExtId={fixExtId}
-              roleBy={roleBy} euroTeamSlugs={euroTeamSlugs} locale={locale} t={t} />
+              roleBy={roleBy} euroTeamSlugs={euroTeamSlugs} leaderBy={leaderBy} locale={locale} t={t} />
           )}
         </>
       ) : (<p className="text-sm text-ink-3">{t("basketball.matchPickTeams")}</p>)}
@@ -484,7 +511,7 @@ function TeamRecent({ name, logs, locale, t }: { name: string; logs: BktTeamLogR
 }
 
 /* ---------- Player distribution panel ---------- */
-function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effAway, winBy, isTicked, setTick, playerValue, setVal, expRef, teamTarget, onAdd, playerIds, playerCfg, playerMarkets, existingKeys, existingPlayerMkt, onReset, competition, fixExtId, roleBy, euroTeamSlugs, locale, t }: {
+function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effAway, winBy, isTicked, setTick, playerValue, setVal, expRef, teamTarget, onAdd, playerIds, playerCfg, playerMarkets, existingKeys, existingPlayerMkt, onReset, competition, fixExtId, roleBy, euroTeamSlugs, leaderBy, locale, t }: {
   homeSlug: string; awaySlug: string; homeName: string; awayName: string; effHome: number; effAway: number;
   winBy: Map<string, Map<string, BktPlayerWindowRow[]>>;
   isTicked: (s: string, mk: string, w: BktPlayerWindowRow) => boolean;
@@ -504,6 +531,7 @@ function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effA
   fixExtId: string;
   roleBy: Map<string, BktPlayerRoleRow>;
   euroTeamSlugs: Set<string>;
+  leaderBy: Map<string, string[]>;
   locale: "tr" | "en";
   t: (k: string) => string;
 }) {
@@ -661,6 +689,9 @@ function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effA
                   <td className="px-2 py-1 whitespace-nowrap">
                     <button onClick={() => setSelPlayer(w.player_slug === selPlayer ? null : w.player_slug)} className="text-ink hover:text-accent-ink">{w.player_name}</button>
                     {alreadyIn(w) ? <span title={t("basketball.alreadyAdded")} className="ml-1.5 text-[11px] font-bold text-amber-400">⚠</span> : null}
+                    {(leaderBy.get(`${slug}:${w.player_slug}`) ?? []).map((lk) => (
+                      <span key={lk} title={`${t("basketball.leaderTitle")}: ${t(lk)}`} className="ml-1 inline-block rounded bg-amber-500/15 px-1 py-0.5 text-[9px] font-bold text-amber-300">★{t(lk)}</span>
+                    ))}
                   </td>
                   <td className="px-2 py-1 text-center">
                     {normalizePositionCode(roleOf(w)?.position) ? (
