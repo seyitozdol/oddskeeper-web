@@ -44,7 +44,6 @@ export default function VolleyballExplorer({
     { key: "players", label: t("volleyball.tabPlayers") },
     { key: "results", label: t("volleyball.tabResults") },
     { key: "fixtures", label: t("volleyball.tabFixtures") },
-    { key: "tools", label: t("volleyball.tabTools") },
   ];
 
   const rows = useMemo(
@@ -71,6 +70,12 @@ export default function VolleyballExplorer({
             {tb.label}
           </button>
         ))}
+        <Link
+          href="/dashboard/volleyball/tools"
+          className="rounded-full border border-line px-4 py-1.5 text-xs font-semibold text-accent-ink transition hover:bg-veil"
+        >
+          {t("volleyball.tabTools")}
+        </Link>
       </div>
 
       {tab === "players" && (
@@ -85,9 +90,6 @@ export default function VolleyballExplorer({
         <ResultsTab matches={matches} />
       )}
       {tab === "fixtures" && <FixturesTab fixtures={fixtures} />}
-      {tab === "tools" && (
-        <Placeholder text={t("volleyball.comingSoonTools")} />
-      )}
     </div>
   );
 }
