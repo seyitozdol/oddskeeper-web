@@ -155,7 +155,7 @@ export async function getBasketballPlayerRoles(season: string = SEASON): Promise
   const { data, error } = await supabase
     .schema("analytics")
     .from("bb_player_role_v1")
-    .select("season_label,team_slug,player_slug,player_name,position,games,avg_minutes,euro_team,role")
+    .select("season_label,team_slug,player_slug,player_name,position,games,avg_minutes,euro_team,role,sofascore_player_id")
     .eq("season_label", season)
     .returns<BktPlayerRoleRow[]>();
   if (error) {

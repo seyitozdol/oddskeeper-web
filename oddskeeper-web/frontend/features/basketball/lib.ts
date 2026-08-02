@@ -8,6 +8,13 @@ export function teamLogoPath(slug: string | null | undefined): string | null {
   return `/images/basketball_logos/${slug}.png`;
 }
 
+// Oyuncu fotografi: once SofaScore yuz-kirpimi (BSL), yoksa EuroLeague headshot (EL/EC).
+export function playerPhotoUrl(o: { sofascore_player_id?: number | null; image_url?: string | null } | null | undefined): string | null {
+  if (!o) return null;
+  if (o.sofascore_player_id) return `https://img.sofascore.com/api/v1/player/${o.sofascore_player_id}/image`;
+  return o.image_url ?? null;
+}
+
 export function teamInitials(name: string | null | undefined): string {
   if (!name) return "?";
   const words = name.trim().split(/\s+/).filter(Boolean);

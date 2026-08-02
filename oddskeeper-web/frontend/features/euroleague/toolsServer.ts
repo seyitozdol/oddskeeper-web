@@ -65,7 +65,7 @@ export async function getEuroToolsRoles(comp: "E" | "U", season: string): Promis
   const supabase = await createClient();
   const { data, error } = await supabase
     .schema("analytics").from("el_player_role_v1")
-    .select("season_label,team_slug,player_slug,player_name,position,games,avg_minutes,euro_team,role")
+    .select("season_label,team_slug,player_slug,player_name,position,games,avg_minutes,euro_team,role,image_url")
     .eq("competition", comp).eq("season_label", season)
     .returns<BktPlayerRoleRow[]>();
   if (error) { console.error("getEuroToolsRoles", error.message); return []; }

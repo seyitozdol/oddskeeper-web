@@ -31,6 +31,12 @@ export default async function BasketballPlayerPage({
     ? [bslPlayerToComp(player, log), ...euroSeasons.map((s) => euroSeasonToComp(s, euroLog))]
     : [];
 
+  // Oyuncu fotografi: once SofaScore yuz-kirpimli headshot (sofascore_player_id varsa),
+  // yoksa EuroLeague headshot'ina dus (cortextech, yalniz EL/EC oynayanlarda var).
+  const photoUrl = player?.sofascore_player_id
+    ? `https://img.sofascore.com/api/v1/player/${player.sofascore_player_id}/image`
+    : euroSeasons.find((s) => s.image_url)?.image_url ?? null;
+
   return (
     <section className="w-full">
       <div className="rounded-2xl border border-line bg-card p-8">
@@ -49,7 +55,7 @@ export default async function BasketballPlayerPage({
               teamSlug={player.team_slug}
               position={player.position}
               height={player.height_cm}
-              photoUrl={euroSeasons.find((s) => s.image_url)?.image_url ?? null}
+              photoUrl={photoUrl}
               comps={comps}
             />
           ) : (

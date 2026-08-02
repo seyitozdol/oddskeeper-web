@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { useI18n } from "@/lib/i18n/LanguageProvider";
 import { buildLadder, buildConfiguredLines, moneyline, type LineConfig } from "../odds";
 import { PLAYER_MARKETS, TEAM_MARKETS, teamStd, playerStd, metricLabel, isDistributable } from "../marketConfig";
-import { formatMatchDate, normalizePositionCode, positionLabel, roleLabelKey, roleBadgeClass, LEADER_METRICS } from "../lib";
+import { formatMatchDate, normalizePositionCode, positionLabel, roleLabelKey, roleBadgeClass, LEADER_METRICS, playerPhotoUrl, teamLogoPath } from "../lib";
 import { TeamCrest } from "./ui";
 import BasketballPlayerDrawer from "./BasketballPlayerDrawer";
 import type { PmFixture, PmMarketConfig, PmModelConfig } from "../pmQueries";
@@ -285,8 +285,26 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
     setTeamStatus(addStatusMsg(t, sent, dup, noTpl, zero));
   };
 
+  const homeLogo = home?.crest_url || teamLogoPath(homeSlug);
+  const awayLogo = away?.crest_url || teamLogoPath(awaySlug);
+
   return (
-    <div className="space-y-6">
+    <div className="relative isolate">
+      {/* iki takım logosu — arka planda filigran (düşük opacity) */}
+      {home && away && homeSlug !== awaySlug ? (
+        <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+          {homeLogo ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={homeLogo} alt="" className="absolute -left-16 top-1/2 w-[320px] max-w-[45%] -translate-y-1/2 object-contain opacity-[0.05] dark:opacity-[0.07]" />
+          ) : null}
+          {awayLogo ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={awayLogo} alt="" className="absolute -right-16 top-1/2 w-[320px] max-w-[45%] -translate-y-1/2 object-contain opacity-[0.05] dark:opacity-[0.07]" />
+          ) : null}
+        </div>
+      ) : null}
+
+      <div className="space-y-6">
       {/* seçim satırı */}
       <div className="flex flex-wrap items-end gap-3">
         <label className="flex flex-col gap-1">
@@ -371,6 +389,7 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
           )}
         </>
       ) : (<p className="text-sm text-ink-3">{t("basketball.matchPickTeams")}</p>)}
+      </div>
     </div>
   );
 }
@@ -687,7 +706,18 @@ function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effA
                 <tr key={w.player_slug} className={`border-t border-line ${on ? "" : "opacity-45"} ${selPlayer === w.player_slug ? "bg-veil" : ""}`}>
                   <td className="px-2 py-1 text-center"><input type="checkbox" checked={on} onChange={(e) => setTick(k, e.target.checked)} className="accent-[var(--accent)]" /></td>
                   <td className="px-2 py-1 whitespace-nowrap">
-                    <button onClick={() => setSelPlayer(w.player_slug === selPlayer ? null : w.player_slug)} className="text-ink hover:text-accent-ink">{w.player_name}</button>
+                    <span className="inline-flex items-center gap-2 align-middle">
+                      {(() => {
+                        const pp = playerPhotoUrl(roleOf(w));
+                        return pp ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={pp} alt="" loading="lazy" className="h-7 w-7 shrink-0 rounded-full bg-veil object-cover object-top" />
+                        ) : (
+                          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-veil text-[10px] font-semibold text-ink-3">{w.player_name.slice(0, 1)}</span>
+                        );
+                      })()}
+                      <button onClick={() => setSelPlayer(w.player_slug === selPlayer ? null : w.player_slug)} className="text-ink hover:text-accent-ink">{w.player_name}</button>
+                    </span>
                     {alreadyIn(w) ? <span title={t("basketball.alreadyAdded")} className="ml-1.5 text-[11px] font-bold text-amber-400">⚠</span> : null}
                     {(leaderBy.get(`${slug}:${w.player_slug}`) ?? []).map((lk) => (
                       <span key={lk} title={`${t("basketball.leaderTitle")}: ${t(lk)}`} className="ml-1 inline-block rounded bg-amber-500/15 px-1 py-0.5 text-[9px] font-bold text-amber-300">★{t(lk)}</span>

@@ -36,7 +36,7 @@ export default function PlayerProfileTabs({
       <div className="flex items-center gap-4">
         {photoUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={photoUrl} alt={name} loading="lazy" className="rounded-xl bg-veil object-cover object-top" style={{ width: 52, height: 52 }} />
+          <img src={photoUrl} alt={name} loading="lazy" className="rounded-2xl bg-veil object-cover object-top" style={{ width: 84, height: 84 }} />
         ) : teamSlug ? (
           <TeamCrest slug={teamSlug} name={teamName} size={52} />
         ) : crestUrl ? (
