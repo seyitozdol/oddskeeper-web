@@ -2,6 +2,7 @@
 // Oyuncu/takım profili aynı bileşende, kulvar (competition) toggle'ıyla gösterilir.
 
 import type { BktPlayerSeasonRow, BktPlayerLogRow, BktEuroSeasonRow, BktEuroLogRow, BktTeamSeasonRow, BktTeamLogRow } from "./types";
+import { playerPhotoUrl } from "./lib";
 
 export type CompKey = "bsl" | "euroleague" | "eurocup";
 
@@ -115,6 +116,8 @@ export type TeamRosterRow = {
   name: string;
   href: string;
   position?: string | null;   // BSL ham pozisyon (G|GF|F|FC|C)
+  role?: string | null;       // rol etiketi (starter|rotation|limited|garbage|departed)
+  photoUrl?: string | null;   // oyuncu fotografi (BSL sofa / EL/EC headshot)
   games: number;
   mpg: number | null; ppg: number | null; rpg: number | null; apg: number | null; val: number | null;
 };
@@ -144,7 +147,8 @@ export function bslTeamToComp(t: BktTeamSeasonRow, log: BktTeamLogRow[], roster:
     hasVal: false,
     roster: roster.map((p) => ({
       key: p.player_slug, name: p.player_name, href: `/dashboard/basketball/player/${p.player_slug}`,
-      position: p.position ?? null,
+      position: p.position ?? null, role: p.role ?? null,
+      photoUrl: playerPhotoUrl({ sofascore_player_id: p.sofascore_player_id, image_url: p.image_url }),
       games: p.games, mpg: p.mpg, ppg: p.ppg, rpg: p.rpg, apg: p.apg, val: null,
     })),
     results: log.map((m) => ({

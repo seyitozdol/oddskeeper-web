@@ -79,6 +79,8 @@ export type BktPlayerSeasonRow = {
   position?: string | null;   // BSL: SofaScore ham pozisyon (G|GF|F|FC|C)
   height_cm?: number | null;  // BSL: SofaScore boy
   sofascore_player_id?: number | null;  // BSL: SofaScore kimlik → oyuncu fotografi
+  image_url?: string | null;  // EL/EC: EuroLeague headshot (drawer/euro foto)
+  role?: string | null;       // rol etiketi (starter|rotation|limited|garbage|departed)
 };
 
 export type BktLeaderboardRow = BktPlayerSeasonRow & {

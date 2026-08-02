@@ -293,16 +293,17 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
     <div className="space-y-6">
       {/* üst blok: seçim + maç özeti; arkada iki takım logosu ortada filigran.
           isolate SADECE bu bloğa (drawer bu ağacın dışında → z-index'i bozulmaz). */}
-      <div className="relative isolate overflow-hidden rounded-xl">
+      <div className="relative isolate rounded-xl">
         {home && away && homeSlug !== awaySlug && (homeLogo || awayLogo) ? (
-          <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 flex items-center justify-center gap-10 sm:gap-16">
+          // ~4x buyuk; ust-hizali (yukari tasmaz) + yatay ortali, asagi dogru filigran
+          <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 -z-10 flex items-start justify-center gap-12 sm:gap-24">
             {homeLogo ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={homeLogo} alt="" referrerPolicy="no-referrer" className="h-24 w-24 object-contain opacity-[0.06] dark:opacity-[0.09] sm:h-28 sm:w-28" />
+              <img src={homeLogo} alt="" referrerPolicy="no-referrer" className="h-72 w-72 max-w-[42%] object-contain opacity-[0.06] dark:opacity-[0.09] sm:h-96 sm:w-96" />
             ) : null}
             {awayLogo ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={awayLogo} alt="" referrerPolicy="no-referrer" className="h-24 w-24 object-contain opacity-[0.06] dark:opacity-[0.09] sm:h-28 sm:w-28" />
+              <img src={awayLogo} alt="" referrerPolicy="no-referrer" className="h-72 w-72 max-w-[42%] object-contain opacity-[0.06] dark:opacity-[0.09] sm:h-96 sm:w-96" />
             ) : null}
           </div>
         ) : null}

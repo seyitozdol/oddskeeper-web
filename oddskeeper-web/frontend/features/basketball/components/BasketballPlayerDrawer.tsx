@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useI18n } from "@/lib/i18n/LanguageProvider";
 import { fetchBasketballPlayerLog, fetchBasketballPlayerSeason, fetchEuroPlayerSeason, fetchEuroPlayerLog } from "../clientQueries";
 import { TeamCrest, StatTile } from "./ui";
-import { fmt, positionLabel, normalizePositionCode, formatHeight } from "../lib";
+import { fmt, positionLabel, normalizePositionCode, formatHeight, playerPhotoUrl } from "../lib";
 import type { BktPlayerLogRow, BktPlayerSeasonRow } from "../types";
 
 // competition verilirse (E/U) EL/EC drawer'ı (el_player_* view'ları); yoksa BSL.
@@ -25,10 +25,17 @@ export default function BasketballPlayerDrawer({ slug, competition, onClose }: {
     return () => { alive = false; };
   }, [slug, competition]);
 
+  const photoUrl = playerPhotoUrl({ sofascore_player_id: season?.sofascore_player_id, image_url: season?.image_url });
+
   return (
     <div className="fixed inset-0 z-[90]">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="absolute right-0 top-0 h-full w-full max-w-[720px] overflow-y-auto border-l border-line bg-card p-6 shadow-2xl">
+      <div className="absolute right-0 top-0 h-full w-full max-w-[720px] overflow-y-auto border-l border-line bg-card p-6 shadow-2xl isolate">
+        {/* buyuk soluk oyuncu fotografi — solda filigran */}
+        {photoUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={photoUrl} alt="" aria-hidden referrerPolicy="no-referrer" className="pointer-events-none absolute -left-6 top-2 -z-10 w-64 object-contain opacity-[0.07] dark:opacity-[0.10]" />
+        ) : null}
         <div className="mb-4 flex items-start justify-between gap-3">
           <div className="flex items-center gap-3">
             {season?.team_slug ? <TeamCrest slug={season.team_slug} name={season.team_name} size={36} url={season.crest_url} /> : null}
