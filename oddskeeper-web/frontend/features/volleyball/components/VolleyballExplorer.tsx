@@ -286,12 +286,7 @@ function PlayersTab({
                       );
                     }
                     const display = c.kind === "num" ? num(v as number | null) : v ?? "—";
-                    const cls =
-                      c.key === "team" && isTur
-                        ? "font-semibold text-accent-ink"
-                        : c.key === "pts"
-                          ? "font-semibold text-ink"
-                          : "text-ink-2";
+                    const cls = c.key === "pts" ? "font-semibold text-ink" : "text-ink-2";
                     return (
                       <td
                         key={c.key}
