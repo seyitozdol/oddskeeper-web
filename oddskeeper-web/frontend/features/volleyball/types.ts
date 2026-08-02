@@ -44,11 +44,20 @@ export type VbLeaderboardRow = {
   rec_rank: number | null;
 };
 
+export type VbSetScore = { a: number; b: number };
+
 export type VbMatch = {
   competition_id: number;
+  match_no: number;
   match_date: string | null;
-  home_team: string | null;
-  away_team: string | null;
+  home_code: string | null;
+  away_code: string | null;
+  home_name: string | null;
+  away_name: string | null;
+  home_sets: number | null;
+  away_sets: number | null;
+  set_scores: VbSetScore[] | null;
+  status: string | null;
 };
 
 export type VbPlayerBio = {

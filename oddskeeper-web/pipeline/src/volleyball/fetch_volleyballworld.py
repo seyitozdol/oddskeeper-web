@@ -217,8 +217,11 @@ def parse_profile(html: str):
     """profil sayfasi -> (bio dict, [match rows]) ; match row = {date, home, away, category, data}"""
     soup = BeautifulSoup(html, "lxml")
     bio = {}
+    # Dogal sirali ad (Ad Soyad): h1.vbw-player-name; title'daki "Soyad Ad" sirasi degil.
+    name_el = soup.select_one("h1.vbw-player-name") or soup.select_one(".vbw-player-name")
+    natural = name_el.get_text(" ", strip=True) if name_el else None
     title = soup.title.get_text(strip=True) if soup.title else ""
-    bio["full_name"] = title.split(" - ")[0].strip() if title else None
+    bio["full_name"] = natural or (title.split(" - ")[0].strip() if title else None)
     txt = soup.get_text("\n")
     def grab(label):
         m = re.search(re.escape(label) + r"\s*\n\s*([^\n]+)", txt, re.I)
