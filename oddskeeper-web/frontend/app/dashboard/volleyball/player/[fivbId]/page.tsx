@@ -90,7 +90,18 @@ export default async function VolleyballPlayerPage({
         {/* Baslik + bio */}
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="flex items-center gap-4">
-            {bio?.nationality ? (
+            {bio?.sofascore_player_id ? (
+              // SofaScore oyuncu fotografi (public img host).
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={`https://img.sofascore.com/api/v1/player/${bio.sofascore_player_id}/image`}
+                alt={name}
+                width={72}
+                height={72}
+                className="h-18 w-18 shrink-0 rounded-full border border-line bg-card-2 object-cover"
+                style={{ height: 72, width: 72 }}
+              />
+            ) : bio?.nationality ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src="/images/flags/tr.png"

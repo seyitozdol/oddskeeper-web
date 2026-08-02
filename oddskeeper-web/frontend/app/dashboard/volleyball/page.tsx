@@ -2,6 +2,7 @@ import {
   getVolleyballCompetitions,
   getVolleyballLeaderboard,
   getVolleyballMatches,
+  getVolleyballFixtures,
 } from "@/features/volleyball/server/getVolleyballStats";
 import VolleyballExplorer from "@/features/volleyball/components/VolleyballExplorer";
 import CompetitionToggle from "@/features/volleyball/components/CompetitionToggle";
@@ -24,9 +25,10 @@ export default async function VolleyballPage({
     competitions.find((c) => c.competition_id === compId) ?? competitions[0];
   const selectedId = selected?.competition_id ?? 0;
 
-  const [leaderboard, matches] = await Promise.all([
+  const [leaderboard, matches, fixtures] = await Promise.all([
     selectedId ? getVolleyballLeaderboard(selectedId) : Promise.resolve([]),
     selectedId ? getVolleyballMatches(selectedId) : Promise.resolve([]),
+    getVolleyballFixtures(),
   ]);
 
   const initialTab =
@@ -67,6 +69,7 @@ export default async function VolleyballPage({
           competitionId={selectedId}
           leaderboard={leaderboard}
           matches={matches}
+          fixtures={fixtures}
           initialTab={initialTab}
         />
       </div>

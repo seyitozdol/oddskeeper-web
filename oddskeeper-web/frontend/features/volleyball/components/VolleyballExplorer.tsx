@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useI18n } from "@/lib/i18n/LanguageProvider";
-import type { VbLeaderboardRow, VbMatch } from "../types";
+import type { VbLeaderboardRow, VbMatch, VbFixture } from "../types";
 
 type Tab = "players" | "results" | "fixtures" | "tools";
 
@@ -11,6 +11,7 @@ type Props = {
   competitionId: number;
   leaderboard: VbLeaderboardRow[];
   matches: VbMatch[];
+  fixtures: VbFixture[];
   initialTab?: Tab;
 };
 
@@ -31,6 +32,7 @@ export default function VolleyballExplorer({
   competitionId,
   leaderboard,
   matches,
+  fixtures,
   initialTab = "players",
 }: Props) {
   const { t } = useI18n();
@@ -82,9 +84,7 @@ export default function VolleyballExplorer({
       {tab === "results" && (
         <ResultsTab matches={matches} />
       )}
-      {tab === "fixtures" && (
-        <Placeholder text={t("volleyball.comingSoonFixtures")} />
-      )}
+      {tab === "fixtures" && <FixturesTab fixtures={fixtures} />}
       {tab === "tools" && (
         <Placeholder text={t("volleyball.comingSoonTools")} />
       )}
@@ -247,9 +247,22 @@ function PlayersTab({
                         <td key={c.key} className="whitespace-nowrap px-2 py-1.5">
                           <Link
                             href={`/dashboard/volleyball/player/${r.fivb_id}?comp=${competitionId}`}
-                            className="font-medium text-ink hover:text-accent-ink"
+                            className="flex items-center gap-2 font-medium text-ink hover:text-accent-ink"
                           >
-                            {v ?? r.fivb_id}
+                            {r.sofascore_player_id ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={`https://img.sofascore.com/api/v1/player/${r.sofascore_player_id}/image`}
+                                alt=""
+                                width={22}
+                                height={22}
+                                loading="lazy"
+                                className="h-[22px] w-[22px] shrink-0 rounded-full border border-line bg-card-2 object-cover"
+                              />
+                            ) : (
+                              <span className="h-[22px] w-[22px] shrink-0 rounded-full border border-line bg-card-2" />
+                            )}
+                            <span>{v ?? r.fivb_id}</span>
                           </Link>
                         </td>
                       );
@@ -386,6 +399,86 @@ function ResultsTab({ matches }: { matches: VbMatch[] }) {
           </tbody>
         </table>
       </div>
+    </div>
+  );
+}
+
+function FixturesTab({ fixtures }: { fixtures: VbFixture[] }) {
+  const { t, locale } = useI18n();
+  if (fixtures.length === 0)
+    return <Placeholder text={t("volleyball.comingSoonFixtures")} />;
+
+  const fmtDate = (d: string | null) => {
+    if (!d) return "—";
+    const dt = new Date(d);
+    if (Number.isNaN(dt.getTime())) return d;
+    return dt.toLocaleDateString(locale === "tr" ? "tr-TR" : "en-GB", {
+      weekday: "short",
+      day: "2-digit",
+      month: "short",
+    });
+  };
+
+  // Turnuvaya gore grupla ( or. "EuroVolley 2026 · Pool A").
+  const groups = new Map<string, VbFixture[]>();
+  for (const f of fixtures) {
+    const key = [f.competition_name, f.stage].filter(Boolean).join(" · ");
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)!.push(f);
+  }
+
+  return (
+    <div className="space-y-6">
+      {[...groups.entries()].map(([key, list]) => (
+        <div key={key}>
+          <h3 className="mb-3 text-sm font-semibold text-ink">{key}</h3>
+          <div className="overflow-x-auto">
+            <table className="min-w-full border-collapse text-[12px]">
+              <thead>
+                <tr className="border-b border-line">
+                  <Th>{t("volleyball.thDate")}</Th>
+                  <Th>{t("volleyball.thTime")}</Th>
+                  <Th right>{t("volleyball.thHome")}</Th>
+                  <Th> </Th>
+                  <Th>{t("volleyball.thAway")}</Th>
+                  <Th>{t("volleyball.thVenue")}</Th>
+                </tr>
+              </thead>
+              <tbody>
+                {list.map((f) => (
+                  <tr
+                    key={f.id}
+                    className="border-b border-line/60 bg-card-2/40 transition hover:bg-veil"
+                  >
+                    <td className="whitespace-nowrap px-2 py-1.5 text-ink-2">
+                      {fmtDate(f.match_date)}
+                    </td>
+                    <td className="px-2 py-1.5 text-ink-3">{f.match_time ?? "—"}</td>
+                    <td
+                      className={`px-2 py-1.5 text-right font-medium ${
+                        f.home_code === "TUR" ? "text-accent-ink" : "text-ink"
+                      }`}
+                    >
+                      {f.home_code ?? f.home_name ?? "—"}
+                    </td>
+                    <td className="px-2 py-1.5 text-center text-ink-3">v</td>
+                    <td
+                      className={`px-2 py-1.5 ${
+                        f.away_code === "TUR" ? "font-medium text-accent-ink" : "text-ink"
+                      }`}
+                    >
+                      {f.away_code ?? f.away_name ?? "—"}
+                    </td>
+                    <td className="whitespace-nowrap px-2 py-1.5 text-ink-3">
+                      {f.venue ?? "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

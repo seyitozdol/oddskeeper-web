@@ -21,6 +21,7 @@ export type VbLeaderboardRow = {
   nationality: string | null;
   height_cm: number | null;
   birth_date: string | null;
+  sofascore_player_id: number | null;
   points: number | null;
   attack_points: number | null;
   block_points: number | null;
@@ -60,6 +61,20 @@ export type VbMatch = {
   status: string | null;
 };
 
+export type VbFixture = {
+  id: number;
+  competition_name: string;
+  stage: string | null;
+  match_date: string | null;
+  match_time: string | null;
+  home_code: string | null;
+  away_code: string | null;
+  home_name: string | null;
+  away_name: string | null;
+  venue: string | null;
+  status: string | null;
+};
+
 export type VbPlayerBio = {
   fivb_id: number;
   full_name: string | null;
@@ -68,6 +83,7 @@ export type VbPlayerBio = {
   birth_date: string | null;
   height_cm: number | null;
   nationality: string | null;
+  sofascore_player_id: number | null;
 };
 
 export type VbPlayerMatch = {

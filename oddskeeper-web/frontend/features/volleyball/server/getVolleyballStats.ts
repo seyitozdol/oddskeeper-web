@@ -7,6 +7,7 @@ import type {
   VbCompetition,
   VbLeaderboardRow,
   VbMatch,
+  VbFixture,
   VbPlayerBio,
   VbPlayerMatch,
 } from "../types";
@@ -57,6 +58,22 @@ export async function getVolleyballMatches(
     .returns<VbMatch[]>();
   if (error) {
     console.error("getVolleyballMatches error:", error.message);
+    return [];
+  }
+  return data ?? [];
+}
+
+// Yaklasan maclar (Fixtures) - turnuva-toggle'dan bagimsiz, tek liste.
+export async function getVolleyballFixtures(): Promise<VbFixture[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .schema("analytics")
+    .from("vb_fixtures_v1")
+    .select("*")
+    .order("match_date", { ascending: true, nullsFirst: false })
+    .returns<VbFixture[]>();
+  if (error) {
+    console.error("getVolleyballFixtures error:", error.message);
     return [];
   }
   return data ?? [];
