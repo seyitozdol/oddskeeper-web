@@ -5,7 +5,7 @@
 import { createClient } from "@/lib/supabase/server";
 import type {
   BktHomeAwaySplitRow, BktTeamMetricFormRow, BktPlayerWindowRow,
-  BktTeamLogRow, BktPlayerListRow,
+  BktTeamLogRow, BktPlayerListRow, BktPlayerRoleRow,
 } from "@/features/basketball/types";
 
 const PAGE = 1000;
@@ -59,6 +59,17 @@ export async function getEuroToolsTeamLogs(comp: "E" | "U", season: string): Pro
     rows.push(...(data ?? []));
     if (!data || data.length < PAGE) return rows;
   }
+}
+
+export async function getEuroToolsRoles(comp: "E" | "U", season: string): Promise<BktPlayerRoleRow[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .schema("analytics").from("el_player_role_v1")
+    .select("season_label,team_slug,player_slug,player_name,position,games,avg_minutes,euro_team,role")
+    .eq("competition", comp).eq("season_label", season)
+    .returns<BktPlayerRoleRow[]>();
+  if (error) { console.error("getEuroToolsRoles", error.message); return []; }
+  return data ?? [];
 }
 
 export async function getEuroToolsPlayerList(comp: "E" | "U", season: string): Promise<BktPlayerListRow[]> {

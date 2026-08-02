@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { resolveEuroComp, EURO_SEASONS } from "@/features/euroleague/config";
 import {
   getEuroToolsSplits, getEuroToolsForms, getEuroToolsWindows,
-  getEuroToolsTeamLogs, getEuroToolsPlayerList,
+  getEuroToolsTeamLogs, getEuroToolsPlayerList, getEuroToolsRoles,
 } from "@/features/euroleague/toolsServer";
 import BasketballParticipantTools from "@/features/basketball/components/BasketballParticipantTools";
 import SeasonToggle from "@/components/SeasonToggle";
@@ -28,12 +28,13 @@ export default async function EuroToolsPage({
   const code = cfg.code; // 'E' | 'U'
   const seasonLabel = normalizeToolsSeason(season);
 
-  const [splits, forms, windows, teamLogs, players] = await Promise.all([
+  const [splits, forms, windows, teamLogs, players, roles] = await Promise.all([
     getEuroToolsSplits(code, seasonLabel),
     getEuroToolsForms(code, seasonLabel),
     getEuroToolsWindows(code, seasonLabel),
     getEuroToolsTeamLogs(code, seasonLabel),
     getEuroToolsPlayerList(code, seasonLabel),
+    getEuroToolsRoles(code, seasonLabel),
   ]);
 
   return (
@@ -53,7 +54,7 @@ export default async function EuroToolsPage({
           </div>
         </div>
         <BasketballParticipantTools splits={splits} forms={forms} windows={windows} teamLogs={teamLogs}
-          players={players} league={cfg.key} toolsBase={`/dashboard/euro/${cfg.key}`} />
+          players={players} roles={roles} league={cfg.key} toolsBase={`/dashboard/euro/${cfg.key}`} />
       </div>
     </section>
   );
