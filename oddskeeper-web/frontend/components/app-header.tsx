@@ -53,6 +53,14 @@ type LeagueItem = {
 // Voleybol panosu (Türkiye kadın milli takım).
 const VOLLEYBALL_HREF = "/dashboard/volleyball";
 
+// Upcoming Events header markasi: her tema kendi logosuyla (public/images/brand).
+// Yazi yerine logo gorunur; masaustunde hover'da "Upcoming Events" metni acilir.
+const UPCOMING_LOGO_SRC: Record<Theme, string> = {
+  night: "/images/brand/upcoming-events-night.svg",
+  "calimla-light": "/images/brand/upcoming-events-calimla-light.svg",
+  "calimla-dark": "/images/brand/upcoming-events-calimla-dark.svg",
+};
+
 const LEAGUE_ITEMS: LeagueItem[] = [
   { key: "tsl", navKey: "league-tsl", label: "TSL", Icon: TslMark, href: TSL_HUB_HREF, group: "football" },
   { key: "1lig", navKey: "league-1lig", label: "1.Lig", Icon: Lig1Mark, href: TFF1_RESMI_HREF, group: "football" },
@@ -187,9 +195,23 @@ export default function AppHeader({
             {can("upcoming-events") ? (
               <Link
                 href="/dashboard/upcoming-events"
-                className={navLinkClass(isUpcomingActive)}
+                title={t("nav.upcomingEvents")}
+                aria-label={t("nav.upcomingEvents")}
+                className={`ue-trigger group/ue flex items-center ${navLinkClass(
+                  isUpcomingActive
+                )}`}
               >
-                {t("nav.upcomingEvents")}
+                <Image
+                  src={UPCOMING_LOGO_SRC[theme]}
+                  alt={t("nav.upcomingEvents")}
+                  width={24}
+                  height={24}
+                  className="ue-logo h-6 w-6 shrink-0 rounded-full object-contain"
+                  priority
+                />
+                <span className="max-w-0 overflow-hidden whitespace-nowrap opacity-0 transition-all duration-200 group-hover/ue:ml-2 group-hover/ue:max-w-[160px] group-hover/ue:opacity-100">
+                  {t("nav.upcomingEvents")}
+                </span>
               </Link>
             ) : null}
 
@@ -410,9 +432,19 @@ export default function AppHeader({
           {can("upcoming-events") ? (
             <Link
               href="/dashboard/upcoming-events"
-              className={navLinkClass(isUpcomingActive)}
+              aria-label={t("nav.upcomingEvents")}
+              className={`ue-trigger flex items-center gap-2 ${navLinkClass(
+                isUpcomingActive
+              )}`}
             >
-              {t("nav.upcomingEvents")}
+              <Image
+                src={UPCOMING_LOGO_SRC[theme]}
+                alt={t("nav.upcomingEvents")}
+                width={22}
+                height={22}
+                className="ue-logo h-[22px] w-[22px] shrink-0 rounded-full object-contain"
+              />
+              <span>{t("nav.upcomingEvents")}</span>
             </Link>
           ) : null}
 

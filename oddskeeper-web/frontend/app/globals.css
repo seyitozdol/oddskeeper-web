@@ -97,6 +97,24 @@ select option {
   color: var(--ink);
 }
 
+/* Upcoming Events logosu: hover'da eski tip calar saat gibi iki hizli sallanma. */
+@keyframes ue-ring {
+  0%   { transform: rotate(0deg); }
+  20%  { transform: rotate(-14deg); }
+  40%  { transform: rotate(14deg); }
+  60%  { transform: rotate(-10deg); }
+  80%  { transform: rotate(10deg); }
+  100% { transform: rotate(0deg); }
+}
+.ue-logo {
+  transform-origin: 50% 55%;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .ue-trigger:hover .ue-logo {
+    animation: ue-ring 0.45s ease-in-out;
+  }
+}
+
 /* TSL lig amblemi: koyu temalarda (night / calimla-dark) dümdüz beyaz;
    açık temada (calimla-light) orijinal renkli görünsün. */
 .tsl-league-mark {
