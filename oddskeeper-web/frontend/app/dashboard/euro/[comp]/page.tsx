@@ -3,7 +3,6 @@ import { getEuroStandings, getEuroLeaderboard, getEuroGames } from "@/features/e
 import { resolveEuroComp, normalizeSeason, seasonCodeFor, EURO_SEASONS } from "@/features/euroleague/config";
 import EuroExplorer from "@/features/euroleague/components/EuroExplorer";
 import SeasonToggle from "@/components/SeasonToggle";
-import { getT } from "@/lib/i18n/server";
 
 export default async function EuroHubPage({
   params,
@@ -12,7 +11,7 @@ export default async function EuroHubPage({
   params: Promise<{ comp: string }>;
   searchParams: Promise<{ season?: string }>;
 }) {
-  const [{ comp }, { season }, t] = await Promise.all([params, searchParams, getT()]);
+  const [{ comp }, { season }] = await Promise.all([params, searchParams]);
   const cfg = resolveEuroComp(comp);
   if (!cfg) notFound();
 
@@ -28,13 +27,10 @@ export default async function EuroHubPage({
     <section className="w-full">
       <div className="rounded-2xl border border-line bg-card p-8">
         <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3.5">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={cfg.logo} alt={cfg.name} width={40} height={40} className="h-10 w-10 object-contain" />
-            <div>
-              <h1 className="text-2xl font-semibold text-ink">{cfg.name} · {t("basketball.statsTitle")}</h1>
-              <p className="mt-0.5 text-sm text-ink-3">{seasonLabel}</p>
-            </div>
+            <img src={cfg.logo} alt={cfg.name} width={48} height={48} className="h-12 w-12 object-contain" />
+            <h1 className="text-3xl font-bold tracking-tight text-ink">{cfg.name}</h1>
           </div>
           <SeasonToggle seasons={EURO_SEASONS} current={seasonLabel} />
         </div>
