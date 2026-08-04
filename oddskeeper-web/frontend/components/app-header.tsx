@@ -103,9 +103,6 @@ export default function AppHeader({
   const isStatsActive = pathname.startsWith("/dashboard/stats-analysis");
   const isTff1Active = pathname.startsWith("/dashboard/tff-1-lig");
   const isAdminActive = pathname.startsWith("/dashboard/admin");
-  const isPlayerToolsActive = pathname.startsWith(
-    "/dashboard/player-market-prediction"
-  );
   const isPredictionsActive =
     pathname.startsWith("/dashboard/smart-prediction") ||
     pathname.startsWith("/dashboard/deep-prediction-ml") ||
@@ -264,15 +261,6 @@ export default function AppHeader({
                   </div>
                 </div>
               </div>
-            ) : null}
-
-            {can("player-market") ? (
-              <Link
-                href="/dashboard/player-market-prediction"
-                className={navLinkClass(isPlayerToolsActive)}
-              >
-                {t("nav.playerMarket")}
-              </Link>
             ) : null}
 
             {can("stats-analysis") ? (
@@ -478,15 +466,6 @@ export default function AppHeader({
               )}
             >
               {t("nav.matchPredictions")}
-            </Link>
-          ) : null}
-
-          {can("player-market") ? (
-            <Link
-              href="/dashboard/player-market-prediction"
-              className={navLinkClass(isPlayerToolsActive)}
-            >
-              {t("nav.playerMarket")}
             </Link>
           ) : null}
 

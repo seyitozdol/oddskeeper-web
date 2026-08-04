@@ -20,9 +20,31 @@ import ResmiTeams from "./ResmiTeams";
 import ResmiPlayers from "./ResmiPlayers";
 import ResmiPlayerRankings from "./ResmiPlayerRankings";
 import ResmiTeamRankings from "./ResmiTeamRankings";
+import ResmiMatchStatsModel from "./ResmiMatchStatsModel";
+// Player Stats Model: eski "Player Participant Tools" aracı lig kaynağına göre
+// gömülür. TSL futbol logolarını, 1. Lig tff1 logolarını kullanır.
+import TslPlayerMarket from "@/app/dashboard/player-market-prediction/PlayerMarketPredictionPage";
+import Tff1PlayerMarket from "@/app/dashboard/tff-1-lig/player-market/PlayerMarketPredictionPage";
+import { getAllFootballTeamLogos } from "@/lib/football-teams";
+import { getTff1TeamLogos } from "@/features/tff1/server/getTff1Stats";
 
 function first(v: string | string[] | undefined): string | undefined {
   return Array.isArray(v) ? v[0] : v;
+}
+
+// Player Stats Model içeriği: lig kaynağına göre ilgili Player Participant Tools
+// aracını (toggle olmadan) render eder. Logolar server tarafında yüklenir.
+async function renderPlayerStatsModel(config: LeagueConfig): Promise<React.ReactNode> {
+  if (config.source === "tsl") {
+    const teamLogos = await getAllFootballTeamLogos();
+    return <TslPlayerMarket teamLogos={teamLogos} />;
+  }
+  const logoRows = await getTff1TeamLogos();
+  const teamLogos: Record<string, string> = {};
+  for (const row of logoRows) {
+    if (row.logo_url) teamLogos[row.team_id] = row.logo_url;
+  }
+  return <Tff1PlayerMarket teamLogos={teamLogos} />;
 }
 
 export default async function ResmiExperience({
@@ -46,6 +68,8 @@ export default async function ResmiExperience({
     content = <ResmiPlayerRankings data={await loadResmiPlayerRankings(config, season, metric)} />;
   else if (section === "teamRankings")
     content = <ResmiTeamRankings data={await loadResmiTeamRankings(config, season, metric)} />;
+  else if (section === "matchStatsModel") content = <ResmiMatchStatsModel />;
+  else if (section === "playerStatsModel") content = await renderPlayerStatsModel(config);
   else content = <ResmiPlayers data={await loadResmiPlayers(config, season)} />;
 
   return (

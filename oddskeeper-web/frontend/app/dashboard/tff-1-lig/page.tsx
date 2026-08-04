@@ -45,7 +45,7 @@ export default async function Tff1LigPage() {
               {t("tff1.matchesLink")}
             </Link>
             <Link
-              href="/dashboard/tff-1-lig/player-market"
+              href="/dashboard/stats-analysis/tff1/resmi?section=playerStatsModel"
               className="rounded-lg border border-line bg-veil px-3 py-1.5 text-[13px] text-ink-2 transition hover:border-line-strong hover:text-ink"
             >
               {t("tff1.playerMarketLink")}

@@ -55,6 +55,9 @@ export const tsl = defineMessages({
     sectionResults: "Results",
     sectionPlayerRankings: "Player Rankings",
     sectionTeamRankings: "Team Rankings",
+    sectionMatchStatsModel: "Match Stats Model",
+    sectionPlayerStatsModel: "Player Stats Model",
+    matchStatsModelSoon: "Match Stats Model is coming soon.",
     seasonNotStarted: "The season hasn't started yet — fixtures and transfers below.",
 
     // Season
@@ -201,6 +204,9 @@ export const tsl = defineMessages({
     sectionResults: "Sonuçlar",
     sectionPlayerRankings: "Player Rankings",
     sectionTeamRankings: "Team Rankings",
+    sectionMatchStatsModel: "Match Stats Model",
+    sectionPlayerStatsModel: "Player Stats Model",
+    matchStatsModelSoon: "Match Stats Model yakında.",
     seasonNotStarted: "Sezon henüz başlamadı — aşağıda fikstür ve transferler.",
 
     season: "Sezon",

@@ -50,7 +50,6 @@ import {
   type InferredStatus,
 } from "../../player-market-prediction/compute";
 import PlayerProfileDrawer from "./player-profile-drawer";
-import PlayerMarketLeagueToggle from "@/components/PlayerMarketLeagueToggle";
 import type { Translator } from "@/lib/i18n/messages";
 
 const STATUS_LABEL_KEYS: Record<InferredStatus, string> = {
@@ -1099,9 +1098,6 @@ export default function PlayerMarketPredictionPage({
 
   return (
     <div className="w-full space-y-4 px-1">
-      {/* Lig secici: TSL / 1. Lig */}
-      <PlayerMarketLeagueToggle active="1lig" />
-
       {/* Tabs */}
       <div className="flex items-center gap-1 rounded-xl border border-line bg-card px-2 py-1.5">
         {TABS.map((tab) => (

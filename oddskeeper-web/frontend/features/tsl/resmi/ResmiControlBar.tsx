@@ -16,6 +16,8 @@ const SECTION_KEY: Record<ResmiSection, string> = {
   results: "tsl.sectionResults",
   playerRankings: "tsl.sectionPlayerRankings",
   teamRankings: "tsl.sectionTeamRankings",
+  matchStatsModel: "tsl.sectionMatchStatsModel",
+  playerStatsModel: "tsl.sectionPlayerStatsModel",
 };
 
 export default function ResmiControlBar({

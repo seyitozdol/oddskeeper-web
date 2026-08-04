@@ -43,6 +43,11 @@ export const RESMI_SECTIONS = [
   "results",
   "playerRankings",
   "teamRankings",
+  // Team Rankings sağındaki iki model sekmesi. matchStatsModel şimdilik boş;
+  // playerStatsModel eski "Player Participant Tools" aracını lig kaynağına göre
+  // (TSL / 1. Lig) gömer.
+  "matchStatsModel",
+  "playerStatsModel",
 ] as const;
 export type ResmiSection = (typeof RESMI_SECTIONS)[number];
 
