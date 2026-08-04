@@ -26,13 +26,10 @@ export default async function BasketballPage({
     <section className="w-full">
       <div className="rounded-2xl border border-line bg-card p-8">
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3.5">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/images/leagues/bsl.svg" alt="BSL" width={40} height={40} className="h-10 w-10 object-contain" />
-            <div>
-              <h1 className="text-2xl font-semibold text-ink">BSL · {t("basketball.statsTitle")}</h1>
-              <p className="mt-0.5 text-sm text-ink-3">{seasonLabel}</p>
-            </div>
+            <img src="/images/leagues/bsl.svg" alt="BSL" width={48} height={48} className="h-12 w-12 object-contain" />
+            <h1 className="text-3xl font-bold tracking-tight text-ink">{t("basketball.leagueLongName")}</h1>
           </div>
           <SeasonToggle seasons={EURO_SEASONS} current={seasonLabel} />
         </div>

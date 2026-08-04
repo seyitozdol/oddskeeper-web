@@ -7,6 +7,7 @@ import { motion } from "framer-motion";
 import { useI18n } from "../../../lib/i18n/LanguageProvider";
 import { RESMI_SECTIONS, type ResmiSection } from "../constants";
 import type { LeagueConfig } from "../leagues";
+import SeasonToggle from "../../../components/SeasonToggle";
 
 const SECTION_KEY: Record<ResmiSection, string> = {
   league: "tsl.sectionLeague",
@@ -37,7 +38,6 @@ export default function ResmiControlBar({
     return next.toString();
   };
   const sectionHref = (s: ResmiSection) => `${pathname}?${buildQuery({ section: s })}`;
-  const seasonHref = (s: string) => `${pathname}?${buildQuery({ season: s })}`;
 
   return (
     <div className="sticky top-14 z-30 -mx-4 mb-6 border-b border-line bg-canvas/85 px-4 py-3 backdrop-blur-md lg:-mx-8 lg:px-8">
@@ -52,50 +52,25 @@ export default function ResmiControlBar({
             <Image
               src={config.logo}
               alt={leagueName}
-              width={34}
-              height={34}
-              className="tsl-league-mark h-8 w-8 shrink-0 object-contain"
+              width={48}
+              height={48}
+              className="tsl-league-mark h-11 w-11 shrink-0 object-contain"
             />
-            <span className="text-[15px] font-bold tracking-tight text-ink">
+            <span className="text-2xl font-bold tracking-tight text-ink">
               {leagueName}
             </span>
             <Image
               src="/images/flags/tr.png"
               alt="TR"
-              width={22}
-              height={22}
-              className="h-5 w-5 shrink-0 rounded-full object-cover ring-1 ring-line"
+              width={24}
+              height={24}
+              className="h-6 w-6 shrink-0 rounded-full object-cover ring-1 ring-line"
             />
           </Link>
         </div>
 
-        {/* Sag: sezon */}
-        <div className="flex items-center gap-1 rounded-xl border border-line bg-card p-1">
-          {config.seasons.map((s, i) => {
-            const active = s === season;
-            return (
-              <Link
-                key={s}
-                href={seasonHref(s)}
-                className="relative rounded-lg px-3 py-1.5 text-[12px] font-medium tabular-nums transition"
-              >
-                {active ? (
-                  <motion.span
-                    layoutId="resmi-season-pill"
-                    className="absolute inset-0 rounded-lg bg-card-2"
-                    transition={{ type: "spring", stiffness: 480, damping: 38 }}
-                  />
-                ) : null}
-                <span className={`relative ${active ? "text-ink" : "text-ink-3 hover:text-ink-2"}`}>
-                  {s}
-                  <span className="ml-1.5 text-[9px] uppercase tracking-[0.1em] text-ink-3">
-                    {i === 0 ? t("tsl.seasonCurrent") : t("tsl.seasonPast")}
-                  </span>
-                </span>
-              </Link>
-            );
-          })}
-        </div>
+        {/* Sag: sezon (BSL/EL/EC ile ortak SeasonToggle) */}
+        <SeasonToggle seasons={config.seasons} current={season} />
       </div>
 
       {/* Alt: bolumler */}

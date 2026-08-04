@@ -6,6 +6,7 @@ export const basketball = defineMessages({
     title: "Basketball — Team & Player Statistics",
     subtitle: "Turkish Basketball Super League · 2025-26",
     statsTitle: "Team & Player Statistics",
+    leagueLongName: "Turkish Basketball Super League",
     season: "Season",
 
     tabStandings: "Standings",
@@ -342,6 +343,7 @@ export const basketball = defineMessages({
     title: "Basketbol — Takım ve Oyuncu İstatistikleri",
     subtitle: "Türkiye Basketbol Süper Ligi · 2025-26",
     statsTitle: "Takım ve Oyuncu İstatistikleri",
+    leagueLongName: "Türkiye Basketbol Süper Ligi",
     season: "Sezon",
 
     tabStandings: "Puan Durumu",
