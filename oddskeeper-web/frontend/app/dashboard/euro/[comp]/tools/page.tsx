@@ -38,24 +38,22 @@ export default async function EuroToolsPage({
   ]);
 
   return (
-    <section className="w-full">
-      <div className="rounded-2xl border border-line bg-card p-8">
-        <div className="mb-5 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={cfg.logo} alt={cfg.name} width={28} height={28} className="h-7 w-7 object-contain" />
-            <h1 className="text-lg font-semibold text-ink">{cfg.name} · {t("basketball.toolsTitle")}</h1>
-          </div>
-          <div className="flex items-center gap-3">
-            <SeasonToggle seasons={EURO_SEASONS} current={seasonLabel} />
-            <Link href={`/dashboard/euro/${cfg.key}`} className="text-xs text-accent-ink hover:underline">
-              ← {cfg.name}
-            </Link>
-          </div>
+    <section className="w-full px-4 pb-14 lg:px-8">
+      <div className="mb-5 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={cfg.logo} alt={cfg.name} width={36} height={36} className="h-9 w-9 object-contain" />
+          <h1 className="text-2xl font-bold tracking-tight text-ink">{cfg.name} · {t("basketball.toolsTitle")}</h1>
         </div>
-        <BasketballParticipantTools splits={splits} forms={forms} windows={windows} teamLogs={teamLogs}
-          players={players} roles={roles} league={cfg.key} toolsBase={`/dashboard/euro/${cfg.key}`} />
+        <div className="flex items-center gap-3">
+          <SeasonToggle seasons={EURO_SEASONS} current={seasonLabel} />
+          <Link href={`/dashboard/euro/${cfg.key}`} className="text-xs text-accent-ink hover:underline">
+            ← {cfg.name}
+          </Link>
+        </div>
       </div>
+      <BasketballParticipantTools splits={splits} forms={forms} windows={windows} teamLogs={teamLogs}
+        players={players} roles={roles} league={cfg.key} toolsBase={`/dashboard/euro/${cfg.key}`} />
     </section>
   );
 }

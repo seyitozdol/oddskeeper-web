@@ -33,21 +33,19 @@ export default async function BasketballToolsPage({ searchParams }: { searchPara
   ]);
 
   return (
-    <section className="w-full">
-      <div className="rounded-2xl border border-line bg-card p-8">
-        <div className="mb-5 flex items-center justify-between gap-3">
-          <h1 className="text-lg font-semibold text-ink">{t("basketball.toolsTitle")}</h1>
-          <div className="flex items-center gap-3">
-            <SeasonToggle seasons={EURO_SEASONS} current={seasonLabel} />
-            {access.isAdmin ? <BasketballScrapeButton /> : null}
-            <Link href="/dashboard/basketball" className="text-xs text-accent-ink hover:underline">
-              ← {t("basketball.backToLeague")}
-            </Link>
-          </div>
+    <section className="w-full px-4 pb-14 lg:px-8">
+      <div className="mb-5 flex items-center justify-between gap-3">
+        <h1 className="text-2xl font-bold tracking-tight text-ink">{t("basketball.toolsTitle")}</h1>
+        <div className="flex items-center gap-3">
+          <SeasonToggle seasons={EURO_SEASONS} current={seasonLabel} />
+          {access.isAdmin ? <BasketballScrapeButton /> : null}
+          <Link href="/dashboard/basketball" className="text-xs text-accent-ink hover:underline">
+            ← {t("basketball.backToLeague")}
+          </Link>
         </div>
-
-        <BasketballParticipantTools splits={splits} forms={forms} windows={windows} teamLogs={teamLogs} players={players} roles={roles} />
       </div>
+
+      <BasketballParticipantTools splits={splits} forms={forms} windows={windows} teamLogs={teamLogs} players={players} roles={roles} />
     </section>
   );
 }

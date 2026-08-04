@@ -24,19 +24,17 @@ export default async function EuroHubPage({
   ]);
 
   return (
-    <section className="w-full">
-      <div className="rounded-2xl border border-line bg-card p-8">
-        <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
-          <div className="flex items-center gap-3.5">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={cfg.logo} alt={cfg.name} width={48} height={48} className="h-12 w-12 object-contain" />
-            <h1 className="text-3xl font-bold tracking-tight text-ink">{cfg.name}</h1>
-          </div>
-          <SeasonToggle seasons={EURO_SEASONS} current={seasonLabel} />
+    <section className="w-full px-4 pb-14 lg:px-8">
+      <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
+        <div className="flex items-center gap-3.5">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={cfg.logo} alt={cfg.name} width={44} height={44} className="h-11 w-11 object-contain" />
+          <h1 className="text-2xl font-bold tracking-tight text-ink">{cfg.name}</h1>
         </div>
-
-        <EuroExplorer comp={cfg.key} standings={standings} leaderboard={leaderboard} games={games} season={seasonLabel} />
+        <SeasonToggle seasons={EURO_SEASONS} current={seasonLabel} />
       </div>
+
+      <EuroExplorer comp={cfg.key} standings={standings} leaderboard={leaderboard} games={games} season={seasonLabel} />
     </section>
   );
 }

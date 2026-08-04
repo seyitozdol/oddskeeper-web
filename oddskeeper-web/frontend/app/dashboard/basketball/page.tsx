@@ -23,19 +23,17 @@ export default async function BasketballPage({
     tab === "results" || tab === "fixtures" || tab === "players" || tab === "teams" || tab === "match" ? tab : "standings";
 
   return (
-    <section className="w-full">
-      <div className="rounded-2xl border border-line bg-card p-8">
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3.5">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/images/leagues/bsl.svg" alt="BSL" width={48} height={48} className="h-12 w-12 object-contain" />
-            <h1 className="text-3xl font-bold tracking-tight text-ink">{t("basketball.leagueLongName")}</h1>
-          </div>
-          <SeasonToggle seasons={EURO_SEASONS} current={seasonLabel} />
+    <section className="w-full px-4 pb-14 lg:px-8">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3.5">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/images/leagues/bsl.svg" alt="BSL" width={44} height={44} className="h-11 w-11 object-contain" />
+          <h1 className="text-2xl font-bold tracking-tight text-ink">{t("basketball.leagueLongName")}</h1>
         </div>
-
-        <BasketballExplorer standings={standings} leaderboard={leaderboard} teamPoints={teamPoints} games={games} fixtures={fixtures} initialTab={initialTab} season={seasonLabel} />
+        <SeasonToggle seasons={EURO_SEASONS} current={seasonLabel} />
       </div>
+
+      <BasketballExplorer standings={standings} leaderboard={leaderboard} teamPoints={teamPoints} games={games} fixtures={fixtures} initialTab={initialTab} season={seasonLabel} />
     </section>
   );
 }
