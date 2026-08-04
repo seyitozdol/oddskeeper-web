@@ -17,6 +17,9 @@ import {
   fetchPlayerSeasonAppearances,
   fetchFixtureInputs,
   fetchPlayerIds,
+  fetchDistWeights,
+  saveDistWeights,
+  DEFAULT_DIST_WEIGHTS,
   MARKET_OPTIONS,
   type UpcomingFixture,
   type PlayerRow,
@@ -24,6 +27,7 @@ import {
   type MarketOption,
   type StoredMarket,
   type MarketType,
+  type DistWeights,
 } from "./queries";
 import { previousSeasonLabel, currentSeasonLabel, latestSeasonLabel } from "@/lib/season";
 import {
@@ -157,11 +161,114 @@ function SortTh({
   );
 }
 
+// ─── Config > Model: dagitim agirliklari (LY Avg / Last 5 / Avg yuzde) ────────
+function DistributeConfig({
+  weights,
+  onSaved,
+}: {
+  weights: DistWeights;
+  onSaved: (w: DistWeights) => void;
+}) {
+  const { t } = useI18n();
+  const [ly, setLy] = useState(String(weights.ly));
+  const [last5, setLast5] = useState(String(weights.last5));
+  const [avg, setAvg] = useState(String(weights.avg));
+  const [saving, setSaving] = useState(false);
+  const [savedAt, setSavedAt] = useState<number | null>(null);
+
+  // Yeniden yuklenen agirliklarla alanlari senkronla.
+  useEffect(() => {
+    setLy(String(weights.ly));
+    setLast5(String(weights.last5));
+    setAvg(String(weights.avg));
+  }, [weights]);
+
+  const num = (s: string) => {
+    const n = parseFloat(s);
+    return isNaN(n) ? 0 : n;
+  };
+  const total = num(ly) + num(last5) + num(avg);
+  const over = total > 100;
+
+  async function handleSave() {
+    if (over) return;
+    setSaving(true);
+    const w: DistWeights = { ly: num(ly), last5: num(last5), avg: num(avg) };
+    const ok = await saveDistWeights(w);
+    setSaving(false);
+    if (ok) {
+      setSavedAt(Date.now());
+      onSaved(w);
+    }
+  }
+
+  const weightField = (
+    label: string,
+    value: string,
+    setValue: (v: string) => void
+  ) => (
+    <div className="flex flex-col gap-1">
+      <label className="text-[10px] uppercase tracking-[0.12em] text-ink-3">{label}</label>
+      <input
+        type="number"
+        min="0"
+        max="100"
+        step="1"
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        className="w-24 rounded-lg border border-line bg-field px-3 py-2 text-[13px] text-ink focus:border-teal-500/50 focus:outline-none"
+      />
+    </div>
+  );
+
+  return (
+    <div className="rounded-xl border border-line bg-card px-5 py-4">
+      {/* Save yukarida */}
+      <div className="mb-3 flex items-center gap-3">
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={saving || over}
+          className="rounded-lg border border-teal-500/30 bg-teal-500/10 px-4 py-1.5 text-[13px] font-semibold text-teal-300 transition hover:bg-teal-500/20 disabled:opacity-50"
+        >
+          {saving ? t("playerMarket.sendingLabel") : t("playerMarket.saveLabel")}
+        </button>
+        {savedAt !== null && !saving && (
+          <span className="text-[12px] text-teal-400">{t("playerMarket.savedLabel")}</span>
+        )}
+        <span className="text-[13px] font-semibold text-ink">{t("playerMarket.distConfigTitle")}</span>
+      </div>
+
+      <p className="mb-3 max-w-2xl text-[12px] leading-5 text-ink-3">
+        {t("playerMarket.distConfigHint")}
+      </p>
+
+      <div className="flex flex-wrap items-end gap-4">
+        {weightField(t("playerMarket.distWeightLy"), ly, setLy)}
+        {weightField(t("playerMarket.distWeightLast5"), last5, setLast5)}
+        {weightField(t("playerMarket.distWeightAvg"), avg, setAvg)}
+        <div className="flex flex-col gap-1 pb-0.5">
+          <span className="text-[10px] uppercase tracking-[0.12em] text-ink-3">
+            {t("playerMarket.distWeightTotal")}
+          </span>
+          <span className={`text-[15px] font-semibold tabular-nums ${over ? "text-rose-400" : "text-ink"}`}>
+            {total}
+          </span>
+        </div>
+        {over && (
+          <span className="pb-1 text-[12px] text-rose-400">{t("playerMarket.distWeightWarn")}</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function TeamPlayerTable({
   teamName,
   players,
   distExp,
   distributeEnabled,
+  distWeights,
   paybackPct,
   dynamicMode,
   lineTicks,
@@ -177,6 +284,7 @@ function TeamPlayerTable({
   players: PlayerState[];
   distExp: number;
   distributeEnabled: boolean;
+  distWeights: DistWeights;
   paybackPct: number;
   // Dynamic markette line'lar yerine oyuncu basina tek deger girilir
   // (anahtar "<player_key>:dyn"); Ekle bu degeri fiyat olarak yazar.
@@ -210,12 +318,15 @@ function TeamPlayerTable({
               player_source_id: p.player_source_id,
               status: p.status,
               seasonAvg: p.seasonAvg,
+              last5Avg: p.last5Avg,
+              lyAvg: p.lyAvg,
               manualValue: p.manualValue,
             })),
-            distExp
+            distExp,
+            distWeights
           )
         : {},
-    [players, distExp, distributeEnabled]
+    [players, distExp, distributeEnabled, distWeights]
   );
 
   const sortedPlayers = useMemo(() => {
@@ -437,12 +548,16 @@ export default function PlayerMarketPredictionPage({
   // Varsayilan kapali: sezon basinda guncel sezon verisi olmadigindan dagitim
   // yerine manuel calisilir.
   const [distributeEnabled, setDistributeEnabled] = useState(false);
+  // Dagitim agirliklari (Config > Model): LY Avg / Last 5 / Avg yuzdeleri.
+  const [distWeights, setDistWeights] = useState<DistWeights>(DEFAULT_DIST_WEIGHTS);
 
   // ── Data ──
   const [homePlayers, setHomePlayers] = useState<PlayerState[]>([]);
   const [awayPlayers, setAwayPlayers] = useState<PlayerState[]>([]);
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<"model" | "players" | "markets" | "fixtures" | "input">("model");
+  const [activeTab, setActiveTab] = useState<"model" | "players" | "config" | "fixtures" | "input">("model");
+  // Config sekmesi alt sekmeleri: Market (template'ler) / Model (dagitim ayari).
+  const [configSub, setConfigSub] = useState<"market" | "model">("market");
   // Avg bu sezondan, LY Avg bir onceki sezondan okunur.
   const [currentSeason, setCurrentSeason] = useState<string | null>(null);
   // pm_markets kayitlari (league='tff1'): ozel marketler + template id'ler + turler.
@@ -471,6 +586,7 @@ export default function PlayerMarketPredictionPage({
       setCurrentSeason(latestSeasonLabel(currentSeasonLabel(), dataSeason))
     );
     fetchStoredMarkets().then(setStoredMarkets);
+    fetchDistWeights().then(setDistWeights);
   }, []);
 
   const refreshStoredMarkets = () => fetchStoredMarkets().then(setStoredMarkets);
@@ -720,9 +836,12 @@ export default function PlayerMarketPredictionPage({
               player_source_id: p.player_source_id,
               status: p.status,
               seasonAvg: p.seasonAvg,
+              last5Avg: p.last5Avg,
+              lyAvg: p.lyAvg,
               manualValue: p.manualValue,
             })),
-            distExp
+            distExp,
+            distWeights
           )
         : {};
 
@@ -825,7 +944,7 @@ export default function PlayerMarketPredictionPage({
   const TABS = [
     { id: "model" as const, label: t("playerMarket.tabModel") },
     { id: "players" as const, label: t("playerMarket.tabPlayerList") },
-    { id: "markets" as const, label: t("playerMarket.tabMarketList") },
+    { id: "config" as const, label: t("playerMarket.tabConfig") },
     { id: "fixtures" as const, label: t("playerMarket.tabFixtureIds") },
     { id: "input" as const, label: t("playerMarket.tabInput") },
   ];
@@ -855,8 +974,36 @@ export default function PlayerMarketPredictionPage({
       </div>
 
       {activeTab === "players" && <PlayerListTab teamLogos={teamLogos} />}
-      {activeTab === "markets" && (
-        <MarketListTab storedMarkets={storedMarkets} onChanged={refreshStoredMarkets} />
+      {activeTab === "config" && (
+        <div className="space-y-4">
+          {/* Config alt sekmeleri: Market (template'ler) / Model (dagitim ayari) */}
+          <div className="flex items-center gap-1 rounded-xl border border-line bg-card px-2 py-1.5">
+            {([
+              { id: "market" as const, label: t("playerMarket.cfgSubMarket") },
+              { id: "model" as const, label: t("playerMarket.cfgSubModel") },
+            ]).map((sub) => (
+              <button
+                key={sub.id}
+                type="button"
+                onClick={() => setConfigSub(sub.id)}
+                className={`rounded-lg px-4 py-1.5 text-[13px] transition
+                  ${configSub === sub.id
+                    ? "bg-veil font-semibold text-ink"
+                    : "text-ink-3 hover:text-ink-2"}`}
+              >
+                {sub.label}
+              </button>
+            ))}
+          </div>
+          {configSub === "market" ? (
+            <MarketListTab storedMarkets={storedMarkets} onChanged={refreshStoredMarkets} />
+          ) : (
+            <DistributeConfig
+              weights={distWeights}
+              onSaved={setDistWeights}
+            />
+          )}
+        </div>
       )}
       {activeTab === "fixtures" && <FixtureIdTab fixtures={fixtures} />}
       {activeTab === "input" && (
@@ -1023,6 +1170,7 @@ export default function PlayerMarketPredictionPage({
               players={visibleHome}
               distExp={homeDistExpNum}
               distributeEnabled={distributeEnabled}
+              distWeights={distWeights}
               paybackPct={paybackNum}
               dynamicMode={dynamicMode}
               lineTicks={lineTicks}
@@ -1040,6 +1188,7 @@ export default function PlayerMarketPredictionPage({
               players={visibleAway}
               distExp={awayDistExpNum}
               distributeEnabled={distributeEnabled}
+              distWeights={distWeights}
               paybackPct={paybackNum}
               dynamicMode={dynamicMode}
               lineTicks={lineTicks}
