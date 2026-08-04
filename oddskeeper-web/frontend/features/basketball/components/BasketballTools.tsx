@@ -32,6 +32,10 @@ type Props = {
 const PROP_PAYBACK = 0.915;
 const TEAM_PAYBACK = 0.96;
 
+// Yüzde metrikleri: hacim değil oran → projeksiyona ölçeklenmez, log'dan hesaplanır.
+// (ftpct log'da ftm/fta olmadığından hesaplanamaz; fgmadepct = fgm/fga.)
+const PCT_METRICS = new Set(["fgmadepct", "ftpct"]);
+
 // Config satırı yoksa kullanılacak varsayılan line kuralı (mevcut mid±2 davranışı).
 const DEFAULT_LINE_CFG: LineConfig = {
   lines: 5, under_lines: 5, payback: null, round_odds: false,
@@ -184,6 +188,8 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
   // Adım 2: takım metrik trader değerleri
   const [traderMetric, setTraderMetric] = useState<Record<string, number>>({});
   const teamModel = (slug: string, mk: string, effPts: number) => {
+    // Yüzde metrikleri (FG%) hacme ölçeklenmez → son-10 ağırlıklı yüzde, yoksa sezon yüzdesi.
+    if (PCT_METRICS.has(mk)) return teamLast10Weighted(slug, mk) ?? teamSeasonAvg(slug, mk) ?? 0;
     const fm = formBy.get(slug);
     const ptsAvg = fm?.get("points")?.season_avg ?? 1;
     const last10 = fm?.get(mk)?.last10_avg ?? fm?.get(mk)?.season_avg ?? 0;
@@ -202,7 +208,8 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
       case "blocks": return m.blocks;
       case "turnovers": return m.turnovers;
       case "twos": return m.fgm != null && m.fg3m != null ? m.fgm - m.fg3m : null;
-      default: return null; // ftm/oreb/dreb log'da yok
+      case "fgmadepct": return m.fgm != null && m.fga != null && m.fga > 0 ? Math.round((m.fgm / m.fga) * 1000) / 10 : null;
+      default: return null; // ftm/oreb/dreb + ftpct log'da yok
     }
   };
   // Historic min/max (eldeki tüm maçlar). null = veri yok (uyarı yapılmaz).
@@ -219,6 +226,19 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
     let num = 0, den = 0;
     seq.forEach((v, i) => { const w = seq.length - i; num += v * w; den += w; });
     return Math.round((num / den) * 10) / 10;
+  };
+  // Sezon yüzdesi (FG%) log'lardan: Σyapılan / Σdenenen. Form view'ında yüzde yok.
+  const teamSeasonPct = (slug: string, mk: string): number | null => {
+    if (mk !== "fgmadepct") return null; // ftpct: log'da ftm/fta yok
+    let made = 0, att = 0;
+    for (const g of logsBy.get(slug) ?? []) { if (g.fgm != null && g.fga != null) { made += g.fgm; att += g.fga; } }
+    return att > 0 ? Math.round((made / att) * 1000) / 10 : null;
+  };
+  // AVG kolonu: form view'ından; yoksa (yüzde metrikleri) log'dan hesapla.
+  const teamSeasonAvg = (slug: string, mk: string): number | null => {
+    const fromForm = formBy.get(slug)?.get(mk)?.season_avg;
+    if (fromForm != null) return fromForm;
+    return PCT_METRICS.has(mk) ? teamSeasonPct(slug, mk) : null;
   };
   // Trader değeri şüpheli mi (0/negatif VEYA historic aralık dışı).
   const teamValueWarn = (slug: string, key: string, value: number): boolean => {
@@ -385,7 +405,7 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
               {/* Home | Away | Total yan yana (compact) */}
               <div className="grid gap-4 lg:grid-cols-3">
                 {[{ slug: homeSlug, side: "home", eff: effHome, s: home, mkts: teamMarketsBySide.home }, { slug: awaySlug, side: "away", eff: effAway, s: away, mkts: teamMarketsBySide.away }].map(({ slug, side, eff, s, mkts }) => (
-                  <TeamMetricTable key={slug} slug={slug} side={side} name={s.team_name} crestUrl={s.crest_url} eff={eff} markets={mkts} formBy={formBy} teamTrader={teamTrader}
+                  <TeamMetricTable key={slug} slug={slug} side={side} name={s.team_name} crestUrl={s.crest_url} eff={eff} markets={mkts} seasonAvg={teamSeasonAvg} teamTrader={teamTrader}
                     setTrader={(mk, v) => setTraderMetric((p) => ({ ...p, [`${slug}:${mk}`]: v }))} teamModel={teamModel} last10w={teamLast10Weighted}
                     valueWarn={teamValueWarn} inInput={teamInInput} isTeamTicked={isTeamTicked} setTeamTick={(key, v) => setTeamTicks((p) => ({ ...p, [key]: v }))}
                     setAll={(on) => setTeamAll(slug, mkts, on)} locale={locale} t={t} />
@@ -423,10 +443,10 @@ function TickAllHead({ allOn, setAll }: { allOn: boolean; setAll: (on: boolean) 
 const MODEL_INFO_KEY = "basketball.modelInfo";
 
 /* ---------- Team metrik tablosu (compact; Home / Away) ---------- */
-function TeamMetricTable({ slug, side, name, crestUrl, eff, markets, formBy, teamTrader, setTrader, teamModel, last10w, valueWarn, inInput, isTeamTicked, setTeamTick, setAll, locale, t }: {
+function TeamMetricTable({ slug, side, name, crestUrl, eff, markets, seasonAvg, teamTrader, setTrader, teamModel, last10w, valueWarn, inInput, isTeamTicked, setTeamTick, setAll, locale, t }: {
   slug: string; side: string; name: string; crestUrl?: string | null; eff: number;
   markets: { key: string; label: string }[];
-  formBy: Map<string, Map<string, BktTeamMetricFormRow>>;
+  seasonAvg: (slug: string, mk: string) => number | null;
   teamTrader: (s: string, mk: string, e: number) => number;
   setTrader: (mk: string, v: number) => void;
   teamModel: (s: string, mk: string, e: number) => number;
@@ -456,7 +476,6 @@ function TeamMetricTable({ slug, side, name, crestUrl, eff, markets, formBy, tea
         </tr></thead>
         <tbody>
           {markets.map((met) => {
-            const f = formBy.get(slug)?.get(met.key);
             const key = `${slug}:${met.key}`;
             const on = isTeamTicked(key);
             const tv = Math.round(teamTrader(slug, met.key, eff) * 10) / 10;
@@ -468,7 +487,7 @@ function TeamMetricTable({ slug, side, name, crestUrl, eff, markets, formBy, tea
                   <span title={metricInfo(met.key, locale)} className="cursor-help border-b border-dotted border-ink-3/40">{metricLabel(met.key, locale, met.label)}</span>
                   {inInput(side, met.key) ? <span title={t("basketball.alreadyAdded")} className="ml-1 text-[10px] font-bold text-amber-400">⚠</span> : null}
                 </td>
-                <td className="px-1 py-0.5 text-right tabular-nums text-ink-3">{fmt(f?.season_avg)}</td>
+                <td className="px-1 py-0.5 text-right tabular-nums text-ink-3">{fmt(seasonAvg(slug, met.key))}</td>
                 <td className="px-1 py-0.5 text-right tabular-nums text-ink-3">{l10w == null ? "-" : fmt(l10w)}</td>
                 <td className="px-1 py-0.5 text-right tabular-nums text-ink-2">{fmt(teamModel(slug, met.key, eff))}</td>
                 <td className="px-1 py-0.5 text-right"><NumInput value={tv} onChange={(v) => setTrader(met.key, v)} w="w-20" warn={on && valueWarn(slug, met.key, tv)} /></td>
