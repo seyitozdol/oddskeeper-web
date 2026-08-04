@@ -1,6 +1,9 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
+import { type StatusConfig, DEFAULT_STATUS_CONFIG } from "../../player-market-prediction/compute";
+
+export type { StatusConfig };
 
 // TFF 1. Lig player market veri katmani. UI, TSL modulundeki
 // app/dashboard/player-market-prediction ile birebir ayni; tek fark burada
@@ -608,6 +611,63 @@ export async function saveDistWeights(w: DistWeights): Promise<boolean> {
 
   if (error) {
     console.error("saveDistWeights error:", error);
+    return false;
+  }
+  return true;
+}
+
+// Status kurallari (Model ekranindaki durum cikarimi esikleri, league='tff1').
+export async function fetchStatusConfig(): Promise<StatusConfig> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .schema("analytics")
+    .from("pm_model_config")
+    .select("config_key, config_value")
+    .eq("league", LEAGUE);
+
+  if (error) {
+    console.error("fetchStatusConfig error:", error);
+    return DEFAULT_STATUS_CONFIG;
+  }
+  const m: Record<string, number> = {};
+  for (const r of data ?? []) m[r.config_key as string] = Number(r.config_value);
+  const d = DEFAULT_STATUS_CONFIG;
+  return {
+    outN: m["status_out_n"] ?? d.outN,
+    outK: m["status_out_k"] ?? d.outK,
+    starterN: m["status_starter_n"] ?? d.starterN,
+    starterK: m["status_starter_k"] ?? d.starterK,
+    subN: m["status_sub_n"] ?? d.subN,
+    subK: m["status_sub_k"] ?? d.subK,
+    lastOnly: (m["status_last_only"] ?? (d.lastOnly ? 1 : 0)) === 1,
+  };
+}
+
+export async function saveStatusConfig(c: StatusConfig): Promise<boolean> {
+  const supabase = createClient();
+  const now = new Date().toISOString();
+  const kv: [string, number][] = [
+    ["status_out_n", c.outN],
+    ["status_out_k", c.outK],
+    ["status_starter_n", c.starterN],
+    ["status_starter_k", c.starterK],
+    ["status_sub_n", c.subN],
+    ["status_sub_k", c.subK],
+    ["status_last_only", c.lastOnly ? 1 : 0],
+  ];
+  const rows = kv.map(([config_key, config_value]) => ({
+    league: LEAGUE,
+    config_key,
+    config_value,
+    updated_at: now,
+  }));
+  const { error } = await supabase
+    .schema("analytics")
+    .from("pm_model_config")
+    .upsert(rows, { onConflict: "league,config_key" });
+
+  if (error) {
+    console.error("saveStatusConfig error:", error);
     return false;
   }
   return true;

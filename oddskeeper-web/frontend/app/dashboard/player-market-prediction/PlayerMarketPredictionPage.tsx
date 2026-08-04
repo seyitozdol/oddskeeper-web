@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useI18n } from "@/lib/i18n/LanguageProvider";
 import {
   fetchUpcomingFixtures,
@@ -16,6 +16,8 @@ import {
   fetchDistWeights,
   saveDistWeights,
   DEFAULT_DIST_WEIGHTS,
+  fetchStatusConfig,
+  saveStatusConfig,
   MARKET_OPTIONS,
   type UpcomingFixture,
   type PlayerRow,
@@ -24,7 +26,9 @@ import {
   type StoredMarket,
   type MarketType,
   type DistWeights,
+  type StatusConfig,
 } from "./queries";
+import { DEFAULT_STATUS_CONFIG } from "./compute";
 import { previousSeasonLabel, currentSeasonLabel, latestSeasonLabel } from "@/lib/season";
 import {
   PlayerListTab,
@@ -36,7 +40,7 @@ import {
   type DynamicSelection,
 } from "./list-tabs";
 import {
-  inferPlayerStatus,
+  inferPlayerStatusV2,
   distributeExpectation,
   calcOddsLines,
   type InferredStatus,
@@ -255,6 +259,129 @@ function DistributeConfig({
           <span className="pb-1 text-[12px] text-rose-400">{t("playerMarket.distWeightWarn")}</span>
         )}
       </div>
+    </div>
+  );
+}
+
+// ─── Config > Model: Status kurallari (son N mac + en az K kez) ───────────────
+function StatusConfigCard({
+  config,
+  onSaved,
+}: {
+  config: StatusConfig;
+  onSaved: (c: StatusConfig) => void;
+}) {
+  const { t } = useI18n();
+  const [draft, setDraft] = useState<StatusConfig>(config);
+  const [saving, setSaving] = useState(false);
+  const [savedAt, setSavedAt] = useState<number | null>(null);
+
+  // Yeniden yuklenen config ile taslagi senkronla.
+  useEffect(() => {
+    setDraft(config);
+  }, [config]);
+
+  const setNum = (key: keyof StatusConfig) => (v: string) => {
+    const n = parseInt(v, 10);
+    setDraft((d) => ({ ...d, [key]: isNaN(n) ? 0 : Math.max(0, n) }));
+  };
+
+  async function handleSave() {
+    setSaving(true);
+    const ok = await saveStatusConfig(draft);
+    setSaving(false);
+    if (ok) {
+      setSavedAt(Date.now());
+      onSaved(draft);
+    }
+  }
+
+  const numBox = (value: number, onChange: (v: string) => void) => (
+    <input
+      type="number"
+      min="0"
+      step="1"
+      value={String(value)}
+      onChange={(e) => onChange(e.target.value)}
+      className="w-14 rounded-md border border-line bg-field px-2 py-1 text-right text-[13px] text-ink focus:border-teal-500/50 focus:outline-none"
+    />
+  );
+
+  const roleBadge = (label: string, cls: string) => (
+    <span className={`inline-block w-16 rounded px-2 py-0.5 text-center text-[11px] font-semibold ${cls}`}>
+      {label}
+    </span>
+  );
+
+  // Bir kural satiri: [rol] Son [N] maç · ≥ [K] kez · [koşul]
+  const ruleRow = (
+    badge: ReactNode,
+    nKey: keyof StatusConfig,
+    kKey: keyof StatusConfig,
+    cond: string,
+    disabled: boolean
+  ) => (
+    <div className={`flex flex-wrap items-center gap-2 text-[13px] text-ink-2 ${disabled ? "opacity-40" : ""}`}>
+      {badge}
+      <span className="text-ink-3">Son</span>
+      {numBox(draft[nKey] as number, disabled ? () => {} : setNum(nKey))}
+      <span className="text-ink-3">{t("playerMarket.statusWindowUnit")} · ≥</span>
+      {numBox(draft[kKey] as number, disabled ? () => {} : setNum(kKey))}
+      <span className="text-ink-3">{t("playerMarket.statusTimesUnit")} ·</span>
+      <span className="text-ink">{cond}</span>
+    </div>
+  );
+
+  const off = draft.lastOnly;
+
+  return (
+    <div className="rounded-xl border border-line bg-card px-5 py-4">
+      {/* Save yukarida */}
+      <div className="mb-3 flex items-center gap-3">
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={saving}
+          className="rounded-lg border border-teal-500/30 bg-teal-500/10 px-4 py-1.5 text-[13px] font-semibold text-teal-300 transition hover:bg-teal-500/20 disabled:opacity-50"
+        >
+          {saving ? t("playerMarket.sendingLabel") : t("playerMarket.saveLabel")}
+        </button>
+        {savedAt !== null && !saving && (
+          <span className="text-[12px] text-teal-400">{t("playerMarket.savedLabel")}</span>
+        )}
+        <span className="text-[13px] font-semibold text-ink">{t("playerMarket.statusConfigTitle")}</span>
+      </div>
+
+      <p className="mb-3 max-w-2xl text-[12px] leading-5 text-ink-3">
+        {t("playerMarket.statusConfigHint")}
+      </p>
+
+      {/* Kurallar alt alta (oncelik: Out > Starter > Sub) */}
+      <div className="space-y-2.5">
+        {ruleRow(
+          roleBadge(t("playerMarket.statusRoleOut"), "bg-rose-500/15 text-rose-300"),
+          "outN", "outK", t("playerMarket.statusCondOut"), off
+        )}
+        {ruleRow(
+          roleBadge(t("playerMarket.statusRoleStarter"), "bg-emerald-500/15 text-emerald-300"),
+          "starterN", "starterK", t("playerMarket.statusCondStarter"), off
+        )}
+        {ruleRow(
+          roleBadge(t("playerMarket.statusRoleSub"), "bg-amber-500/15 text-amber-300"),
+          "subN", "subK", t("playerMarket.statusCondSub"), off
+        )}
+      </div>
+
+      {/* Override: sadece son maca gore */}
+      <label className="mt-3 flex cursor-pointer items-center gap-2 text-[13px] text-ink-2">
+        <input
+          type="checkbox"
+          checked={draft.lastOnly}
+          onChange={(e) => setDraft((d) => ({ ...d, lastOnly: e.target.checked }))}
+          className="cursor-pointer accent-teal-400"
+        />
+        {t("playerMarket.statusLastOnly")}
+      </label>
     </div>
   );
 }
@@ -547,6 +674,8 @@ export default function PlayerMarketPredictionPage({
   const [distributeEnabled, setDistributeEnabled] = useState(false);
   // Dagitim agirliklari (Config > Model): LY Avg / Last 5 / Avg yuzdeleri.
   const [distWeights, setDistWeights] = useState<DistWeights>(DEFAULT_DIST_WEIGHTS);
+  // Status kurallari (Config > Model): durum cikarimi esikleri.
+  const [statusConfig, setStatusConfig] = useState<StatusConfig>(DEFAULT_STATUS_CONFIG);
 
   // ── Data ──
   const [homePlayers, setHomePlayers] = useState<PlayerState[]>([]);
@@ -586,6 +715,7 @@ export default function PlayerMarketPredictionPage({
     );
     fetchStoredMarkets().then(setStoredMarkets);
     fetchDistWeights().then(setDistWeights);
+    fetchStatusConfig().then(setStatusConfig);
   }, []);
 
   const refreshStoredMarkets = () => fetchStoredMarkets().then(setStoredMarkets);
@@ -668,14 +798,28 @@ export default function PlayerMarketPredictionPage({
       ]);
 
       function buildStates(rawPlayers: PlayerRow[]): PlayerState[] {
+        // Takimin son fiksturleri: bu takimin tum oyuncularinin mac log'undaki
+        // distinct datetime'lar (DESC). "Kadroda yok/oynamadi" bu listeye gore.
+        const teamFixtures = [
+          ...new Set(
+            rawPlayers.flatMap((p) =>
+              (recentMatches[p.player_source_id] ?? []).map((m) => m.match_datetime)
+            )
+          ),
+        ].sort((a, b) => (a < b ? 1 : a > b ? -1 : 0));
+
         const states = rawPlayers.map((p) => {
           const matches = recentMatches[p.player_source_id] ?? [];
           const stat: PlayerMetricStat | undefined = metricStats[p.player_source_id];
-          // Durum cikarimi guncel kadro profilindeki (en son oynanan sezon) mac
-          // sayisiyla yapilir; goruntulenen "mac sayisi" ise secili (guncel)
-          // sezona aittir. Sezon basinda guncel sezon 0 olur, parantezde gecen
-          // sezon gorunur.
-          const status = inferPlayerStatus(matches, p.appearances, p.last_match_datetime);
+          // Durum cikarimi Config > Model'deki Status kurallariyla; takimin son N
+          // fikstur? uzerinden. Sezon basinda (fikstur yok) profil gorunme sayisina
+          // duser. Goruntulenen "mac sayisi" secili (guncel) sezona aittir.
+          const status = inferPlayerStatusV2(
+            matches,
+            teamFixtures,
+            statusConfig,
+            p.appearances
+          );
 
           return {
             player_source_id: p.player_source_id,
@@ -724,7 +868,7 @@ export default function PlayerMarketPredictionPage({
 
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedFixtureId, currentSeason]);
+  }, [selectedFixtureId, currentSeason, statusConfig]);
 
   // ── Refresh metric stats when market changes (keep players) ──
   useEffect(() => {
@@ -1008,10 +1152,10 @@ export default function PlayerMarketPredictionPage({
           {configSub === "market" ? (
             <MarketListTab storedMarkets={storedMarkets} onChanged={refreshStoredMarkets} />
           ) : (
-            <DistributeConfig
-              weights={distWeights}
-              onSaved={setDistWeights}
-            />
+            <div className="space-y-4">
+              <DistributeConfig weights={distWeights} onSaved={setDistWeights} />
+              <StatusConfigCard config={statusConfig} onSaved={setStatusConfig} />
+            </div>
           )}
         </div>
       )}

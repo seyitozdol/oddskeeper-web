@@ -55,6 +55,64 @@ export function inferPlayerStatus(
   return "Out";
 }
 
+// ─── Status rules (config-driven) ─────────────────────────────────────────────
+// Config > Model'deki "Status Kurallari". Takimin son N fikstur? uzerinden
+// (mac log'unda yalnizca starter/substitute var; kayit yok = o mac oynamadi =
+// "absent"). Oncelik: Out > Starter > Sub. "lastOnly" aciksa sadece son maca bakar.
+export type StatusConfig = {
+  outN: number; outK: number;         // son outN macin >= outK'sinde oynamadi -> Out
+  starterN: number; starterK: number; // son starterN macin >= starterK'sinde ilk 11 -> Starter
+  subN: number; subK: number;         // son subN macin >= subK'sinde oynadi (yedek dahil) -> Sub
+  lastOnly: boolean;                  // sadece son maca gore (digerlerini ezer)
+};
+
+export const DEFAULT_STATUS_CONFIG: StatusConfig = {
+  outN: 3, outK: 3, starterN: 3, starterK: 2, subN: 3, subK: 1, lastOnly: false,
+};
+
+/**
+ * Config kurallariyla durum cikarimi.
+ * teamFixtures: takimin son mac datetime'lari (DESC, en yeni ilk, distinct).
+ * playerMatches: oyuncunun mac log kayitlari (match_datetime + lineup_status).
+ * appearances: sezon-basi (teamFixtures bos) fallback icin profil gorunme sayisi.
+ */
+export function inferPlayerStatusV2(
+  playerMatches: Array<{ match_datetime: string; lineup_status: string }>,
+  teamFixtures: string[],
+  cfg: StatusConfig,
+  appearances: number
+): InferredStatus {
+  // Takim fikstur verisi yok (sezon basi) -> eski sezon gorunme sayisina dus.
+  if (teamFixtures.length === 0) {
+    if (appearances >= 5) return "Pos. Starter";
+    if (appearances >= 2) return "Pos. Sub";
+    return "Out";
+  }
+  const byDate = new Map(
+    playerMatches.map((m) => [m.match_datetime, (m.lineup_status || "").toLowerCase()])
+  );
+  // Her fikstur icin oyuncunun durumu: starter | sub | absent.
+  const seq = teamFixtures.map((d) => {
+    const st = byDate.get(d);
+    return !st ? "absent" : st === "starter" ? "starter" : "sub";
+  });
+  const cnt = (n: number, pred: (s: string) => boolean) =>
+    seq.slice(0, Math.max(0, Math.round(n || 0))).filter(pred).length;
+
+  if (cfg.lastOnly) {
+    const last = seq[0];
+    return !last || last === "absent"
+      ? "Out"
+      : last === "starter"
+      ? "Pos. Starter"
+      : "Pos. Sub";
+  }
+  if (cnt(cfg.outN, (s) => s === "absent") >= cfg.outK) return "Out";
+  if (cnt(cfg.starterN, (s) => s === "starter") >= cfg.starterK) return "Pos. Starter";
+  if (cnt(cfg.subN, (s) => s === "starter" || s === "sub") >= cfg.subK) return "Pos. Sub";
+  return "Out";
+}
+
 // ─── Distribution of market expectation ──────────────────────────────────────
 
 export type PlayerEntry = {
