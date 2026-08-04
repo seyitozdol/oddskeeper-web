@@ -275,6 +275,7 @@ export async function getTslLeaderboard(
     total: toNum(r.total_value),
     perMatch: toNum(r.per_match_value),
     per90: toNum(r.per90_value),
+    matches: toNum(r.sample_matches),
     leagueAvg: toNum(r.league_avg),
     vsAvgPct: toNum(r.vs_league_avg_pct),
     valueFormat: r.value_format ?? "count",

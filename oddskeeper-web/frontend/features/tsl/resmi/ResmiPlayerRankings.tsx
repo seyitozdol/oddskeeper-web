@@ -31,6 +31,8 @@ export default async function ResmiPlayerRankings({
     .slice()
     .sort((a, b) => (higher ? (b.total ?? 0) - (a.total ?? 0) : (a.total ?? 0) - (b.total ?? 0)));
 
+  const showMatches = ranked.some((r) => r.matches != null);
+  const showPerMatch = ranked.some((r) => r.perMatch != null);
   const showPer90 = ranked.some((r) => r.per90 != null);
   const showVsAvg = ranked.some((r) => r.vsAvgPct != null);
 
@@ -38,7 +40,9 @@ export default async function ResmiPlayerRankings({
     { id: "rank", label: t("tsl.rank"), defaultDir: "asc" },
     { id: "player", label: t("tsl.player"), defaultDir: "asc" },
     { id: "team", label: t("tsl.team"), defaultDir: "asc" },
+    ...(showMatches ? [{ id: "matches", label: t("tsl.appearances"), defaultDir: "desc" as const }] : []),
     { id: "total", label: t("tsl.basisTotal"), defaultDir: "desc" },
+    ...(showPerMatch ? [{ id: "perMatch", label: t("tsl.basisPerMatch"), defaultDir: "desc" as const }] : []),
     ...(showPer90 ? [{ id: "per90", label: t("tsl.basisPer90"), defaultDir: "desc" as const }] : []),
     ...(showVsAvg ? [{ id: "vsAvg", label: t("tsl.vsAvg"), defaultDir: "desc" as const }] : []),
   ];
@@ -53,7 +57,9 @@ export default async function ResmiPlayerRankings({
         className="font-medium text-accent-ink hover:text-accent"
       />,
       <TeamNameLink key="team" name={r.teamName} href={r.teamId ? teamHrefById[r.teamId] ?? null : null} className="text-ink-2" />,
+      ...(showMatches ? [<span key="matches" className="tabular-nums text-ink-2">{r.matches ?? "—"}</span>] : []),
       <span key="total" className="font-semibold text-ink">{formatMetric(r.total, r.valueFormat)}</span>,
+      ...(showPerMatch ? [<span key="perMatch" className="tabular-nums">{formatMetric(r.perMatch, "decimal")}</span>] : []),
       ...(showPer90 ? [<span key="per90">{formatMetric(r.per90, "decimal")}</span>] : []),
       ...(showVsAvg
         ? [
@@ -70,7 +76,9 @@ export default async function ResmiPlayerRankings({
       i + 1,
       r.playerName,
       r.teamName,
+      ...(showMatches ? [r.matches] : []),
       r.total,
+      ...(showPerMatch ? [r.perMatch] : []),
       ...(showPer90 ? [r.per90] : []),
       ...(showVsAvg ? [r.vsAvgPct] : []),
     ];

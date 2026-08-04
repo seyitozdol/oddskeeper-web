@@ -240,6 +240,7 @@ export async function tff1Leaderboard(season: string, metricKey: string, meta: R
       metricKey, metricLabel: metricKey, total,
       perMatch: RATE_KEYS.has(metricKey) ? total : total != null && apps > 0 ? total / apps : null,
       per90: RATE_KEYS.has(metricKey) ? total : total != null && min > 0 ? (total / min) * 90 : null,
+      matches: toNum(r.appearances),
       leagueAvg: null, vsAvgPct: null, valueFormat: def?.valueFormat ?? "count", isHigherBetter: def?.isHigherBetter ?? true,
     };
   }).filter((x) => x.total != null);

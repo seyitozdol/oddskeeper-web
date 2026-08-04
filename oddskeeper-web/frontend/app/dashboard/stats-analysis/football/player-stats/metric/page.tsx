@@ -206,6 +206,7 @@ export default async function PlayerMetricLeaderboardPage({
   // Anlamsız (tamamen boş) kolonları gizle.
   const hasAny = (pick: (r: (typeof rankedRows)[number]) => number | null) =>
     rankedRows.some((row) => pick(row) !== null && pick(row) !== undefined);
+  const showMatches = hasAny((r) => r.sample_matches);
   const showPer90 = hasAny((r) => r.per90_value);
   const showPerMatch = hasAny((r) => r.per_match_value);
   const showTotal = hasAny((r) => r.total_value);
@@ -215,6 +216,9 @@ export default async function PlayerMetricLeaderboardPage({
     { id: "rank", label: t("common.rank"), defaultDir: "asc" },
     { id: "player", label: t("common.player"), defaultDir: "asc" },
     { id: "team", label: t("common.team"), defaultDir: "asc" },
+    ...(showMatches
+      ? [{ id: "matches", label: t("common.appearances"), defaultDir: "desc" as const }]
+      : []),
     ...(showPer90
       ? [{ id: "per90", label: t("common.per90Label"), defaultDir: "desc" as const }]
       : []),
@@ -299,6 +303,13 @@ export default async function PlayerMetricLeaderboardPage({
           <span>{row.team_name ?? "—"}</span>
         )}
       </span>,
+      ...(showMatches
+        ? [
+            <span key="matches" className="tabular-nums text-ink-2">
+              {row.sample_matches ?? "—"}
+            </span>,
+          ]
+        : []),
       ...(showPer90
         ? [
             <span key="per90" className="font-medium">
@@ -343,6 +354,7 @@ export default async function PlayerMetricLeaderboardPage({
       row.league_rank,
       rowName,
       row.team_name ?? null,
+      ...(showMatches ? [row.sample_matches] : []),
       ...(showPer90 ? [row.per90_value] : []),
       ...(showPerMatch ? [row.per_match_value] : []),
       ...(showTotal ? [row.total_value] : []),

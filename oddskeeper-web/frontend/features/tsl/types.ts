@@ -81,6 +81,7 @@ export type TslLeaderRow = {
   total: number | null;
   perMatch: number | null;
   per90: number | null;
+  matches: number | null;   // oynanan maç sayısı (sample_matches / appearances)
   leagueAvg: number | null;
   vsAvgPct: number | null;
   valueFormat: MetricFormat;

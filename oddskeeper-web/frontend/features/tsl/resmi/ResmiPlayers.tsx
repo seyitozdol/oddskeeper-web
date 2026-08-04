@@ -26,7 +26,6 @@ const GROUPS: { value: Group; labelKey: string }[] = [
 
 const COLS: Record<Group, Col[]> = {
   general: [
-    { key: "appearances", fmt: "int" },
     { key: "starts", fmt: "int" },
     { key: "goals_total", fmt: "int" },
     { key: "assists_total", fmt: "int" },
@@ -113,6 +112,8 @@ export default function ResmiPlayers({ data }: { data: ResmiPlayersBundle }) {
     if (basis === "per_match") return m.perMatch ?? m.total;
     return m.total;
   };
+  // Oynanan maç sayısı (basis'ten bağımsız, her zaman toplam) — position yanında sabit kolon.
+  const matchesOf = (row: ResmiPlayerRow): number | null => row.metrics["appearances"]?.total ?? null;
 
   const filtered = useMemo(() => {
     const tokens = normalizeSearch(search).split(/\s+/).filter(Boolean);
@@ -131,6 +132,13 @@ export default function ResmiPlayers({ data }: { data: ResmiPlayersBundle }) {
     arr.sort((a, b) => {
       if (sortKey === "name") return dir * a.name.localeCompare(b.name, "tr");
       if (sortKey === "team") return dir * (a.teamName ?? "").localeCompare(b.teamName ?? "", "tr");
+      if (sortKey === "matches") {
+        const am = matchesOf(a); const bm = matchesOf(b);
+        if (am == null && bm == null) return 0;
+        if (am == null) return 1;
+        if (bm == null) return -1;
+        return dir * (am - bm);
+      }
       const av = pick(a, sortKey);
       const bv = pick(b, sortKey);
       if (av == null && bv == null) return 0;
@@ -159,6 +167,9 @@ export default function ResmiPlayers({ data }: { data: ResmiPlayersBundle }) {
     const v = pick(row, col.key);
     if (v == null) return "—";
     if (col.fmt === "pct") return `${v.toFixed(1)}%`;
+    // Oran bazlarında (per90 / maç başı) tam sayıya yuvarlamak yanıltıcı (1.6 → 2 olurdu);
+    // yüzde dışındaki tüm değerler 2 ondalık. Toplam bazında metrik kendi formatını korur.
+    if (basis !== "total") return v.toFixed(2);
     if (col.fmt === "dec2") return v.toFixed(2);
     if (col.fmt === "dec1") return v.toFixed(1);
     return String(Math.round(v));
@@ -228,6 +239,14 @@ export default function ResmiPlayers({ data }: { data: ResmiPlayersBundle }) {
                 <Th onClick={() => toggleSort("name")} active={sortKey === "name"} dir={sortDir}>{t("tsl.player")}</Th>
                 <Th onClick={() => toggleSort("team")} active={sortKey === "team"} dir={sortDir}>{t("tsl.team")}</Th>
                 <th className="px-2 py-2 text-center font-medium">{t("tsl.position")}</th>
+                <th
+                  onClick={() => toggleSort("matches")}
+                  className={`cursor-pointer select-none px-2 py-2 text-center font-medium transition hover:text-ink-2 ${sortKey === "matches" ? "text-ink" : ""}`}
+                  title={t("common.appearances")}
+                >
+                  {t("tsl.appearances")}
+                  {sortKey === "matches" ? (sortDir === "asc" ? " ↑" : " ↓") : ""}
+                </th>
                 {cols.map((c) => (
                   <th key={c.key} onClick={() => toggleSort(c.key)} className={`cursor-pointer select-none px-2 py-2 text-center font-medium transition hover:text-ink-2 ${sortKey === c.key ? "text-ink" : ""}`}>
                     {metricLabel(t, c.key, c.key)}
@@ -239,7 +258,7 @@ export default function ResmiPlayers({ data }: { data: ResmiPlayersBundle }) {
             <tbody>
               {pageRows.length === 0 ? (
                 <tr>
-                  <td colSpan={3 + cols.length} className="px-4 py-10 text-center text-[13px] text-ink-3">{t("statsHub.noPlayersMatch")}</td>
+                  <td colSpan={4 + cols.length} className="px-4 py-10 text-center text-[13px] text-ink-3">{t("statsHub.noPlayersMatch")}</td>
                 </tr>
               ) : (
                 pageRows.map((row) => (
@@ -263,6 +282,7 @@ export default function ResmiPlayers({ data }: { data: ResmiPlayersBundle }) {
                       <TeamCell name={row.teamName} logo={row.teamLogo} href={row.teamHref} />
                     </td>
                     <td className="px-2 py-1.5 text-center text-[12px] text-ink-2">{POS_SHORT[(row.positionCode ?? "").toUpperCase()] ?? row.positionCode ?? "—"}</td>
+                    <td className="px-2 py-1.5 text-center tabular-nums text-ink-2">{matchesOf(row) ?? "—"}</td>
                     {cols.map((c) => (
                       <td key={c.key} className="px-2 py-1.5 text-center tabular-nums text-ink-2">{fmtVal(row, c)}</td>
                     ))}
