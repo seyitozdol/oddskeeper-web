@@ -19,8 +19,10 @@ export default async function BasketballPage({
     getBasketballFixtures(),
     getT(),
   ]);
-  const initialTab =
-    tab === "results" || tab === "fixtures" || tab === "players" || tab === "teams" || tab === "match" ? tab : "standings";
+  const VALID_TABS = ["league", "players", "teams", "results", "playerRankings", "teamRankings", "match"] as const;
+  const initialTab = (VALID_TABS as readonly string[]).includes(tab ?? "")
+    ? (tab as (typeof VALID_TABS)[number])
+    : "league";
 
   return (
     <section className="w-full px-4 pb-14 lg:px-8">
