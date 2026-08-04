@@ -76,22 +76,24 @@ export default async function ResmiTeamRankings({
 
   return (
     <section className="space-y-3">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <div className="text-[11px] uppercase tracking-[0.18em] text-ink-3">
-            {t("tsl.sectionTeamRankings")} · {season}
-          </div>
-          <h1 className="mt-1 text-2xl font-semibold text-ink">{title}</h1>
+      <div>
+        <div className="text-[11px] uppercase tracking-[0.18em] text-ink-3">
+          {t("tsl.sectionTeamRankings")} · {season}
         </div>
-        {options.length ? (
+        <h1 className="mt-1 text-2xl font-semibold text-ink">{title}</h1>
+      </div>
+
+      {/* Metrik seçici sekmelerin/başlığın hemen altında (çok metrik → dropdown) */}
+      {options.length ? (
+        <div className="rounded-xl border border-line bg-card px-3 py-2">
           <MetricSelect
             options={options}
             selectedKey={metricKey}
             basePath={basePath}
             baseParams={{ season, section: "teamRankings" }}
           />
-        ) : null}
-      </div>
+        </div>
+      ) : null}
 
       <div className="rounded-2xl border border-line">
         <SortableRankingTable columns={columns} rows={tableRows} initialSortIndex={0} initialSortDir="asc" />

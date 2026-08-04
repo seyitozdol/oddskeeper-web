@@ -76,7 +76,7 @@ export default function SortableRankingTable({
               <th
                 key={column.id}
                 onClick={() => handleSort(index)}
-                className="cursor-pointer select-none whitespace-nowrap px-4 py-2.5 font-medium transition hover:text-ink-2"
+                className="cursor-pointer select-none whitespace-nowrap px-3 py-2 font-medium transition hover:text-ink-2"
               >
                 {column.label}
                 {index === sortIndex ? (sortDir === "asc" ? " ↑" : " ↓") : ""}
@@ -97,7 +97,7 @@ export default function SortableRankingTable({
               {row.cells.map((cell, cellIndex) => (
                 <td
                   key={columns[cellIndex]?.id ?? cellIndex}
-                  className="whitespace-nowrap px-4 py-2"
+                  className="whitespace-nowrap px-3 py-1.5"
                 >
                   {cell}
                 </td>
