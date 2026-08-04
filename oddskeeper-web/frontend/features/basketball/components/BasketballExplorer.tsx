@@ -60,7 +60,7 @@ export default function BasketballExplorer({ standings, leaderboard, teamPoints,
         ))}
         <Link
           href="/dashboard/basketball/tools"
-          className="ml-auto rounded-lg border border-accent/60 px-3.5 py-1.5 text-[13px] font-semibold text-accent-ink ring-1 ring-accent/20 transition hover:bg-accent-soft"
+          className="ml-1 rounded-lg border border-accent/60 px-3.5 py-1.5 text-[13px] font-semibold text-accent-ink ring-1 ring-accent/20 transition hover:bg-accent-soft"
         >
           {t("basketball.toolsNav")}
         </Link>

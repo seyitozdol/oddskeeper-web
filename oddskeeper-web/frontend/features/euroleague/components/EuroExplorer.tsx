@@ -86,7 +86,7 @@ export default function EuroExplorer({
             {tb.label}
           </button>
         ))}
-        <Link href={`${base}/tools`} className="ml-auto rounded-lg border border-accent/60 px-3.5 py-1.5 text-[13px] font-semibold text-accent-ink ring-1 ring-accent/20 transition hover:bg-accent-soft">
+        <Link href={`${base}/tools`} className="ml-1 rounded-lg border border-accent/60 px-3.5 py-1.5 text-[13px] font-semibold text-accent-ink ring-1 ring-accent/20 transition hover:bg-accent-soft">
           {t("basketball.toolsNav")}
         </Link>
       </div>
