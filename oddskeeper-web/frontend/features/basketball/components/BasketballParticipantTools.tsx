@@ -333,14 +333,106 @@ function PlayerRolesConfig({ modelConfig, reload, t }: {
   );
 }
 
-/* ---------- Config: iki sekme — Player Roles / Market Templates ---------- */
+/* ---------- Model ağırlıkları: Team Models + Player Models ---------- */
+// Team Metrics "Model" = (AVG*wavg + L10WTD*wl10) × pace; Player Dist "Model" =
+// son10*w10 + son5*w5 + sezon*wall (saf). BasketballTools bu anahtarları okur.
+function ModelWeightsConfig({ modelConfig, reload, t }: {
+  modelConfig: PmModelConfig[]; reload: () => void; t: (k: string) => string;
+}) {
+  const [tEdits, setTEdits] = useState<Record<string, number>>({});
+  const [pEdits, setPEdits] = useState<Record<string, number>>({});
+  const [savingT, setSavingT] = useState(false);
+  const [savingP, setSavingP] = useState(false);
+  const dbVal = (k: string, d: number) => {
+    const c = modelConfig.find((x) => x.key === k);
+    return c ? c.value : d;
+  };
+  const tv = (k: string, d: number) => tEdits[k] ?? dbVal(k, d);
+  const pv = (k: string, d: number) => pEdits[k] ?? dbVal(k, d);
+  const tTotal = tv("team_model_wavg", 50) + tv("team_model_wl10", 50);
+  const pTotal = pv("player_model_w10", 20) + pv("player_model_w5", 30) + pv("player_model_wall", 50);
+
+  const saveTeam = async () => {
+    setSavingT(true);
+    const ok = await saveModelConfig([
+      { key: "team_model_wavg", value: tv("team_model_wavg", 50) },
+      { key: "team_model_wl10", value: tv("team_model_wl10", 50) },
+    ]);
+    setSavingT(false);
+    if (ok) { setTEdits({}); reload(); }
+  };
+  const savePlayer = async () => {
+    setSavingP(true);
+    const ok = await saveModelConfig([
+      { key: "player_model_w10", value: pv("player_model_w10", 20) },
+      { key: "player_model_w5", value: pv("player_model_w5", 30) },
+      { key: "player_model_wall", value: pv("player_model_wall", 50) },
+    ]);
+    setSavingP(false);
+    if (ok) { setPEdits({}); reload(); }
+  };
+
+  const field = (label: string, value: number, onChange: (v: number) => void) => (
+    <div className="flex flex-col gap-1">
+      <span className="text-[10px] uppercase tracking-[0.12em] text-ink-3">{label}</span>
+      <input type="number" min={0} max={100} step={1} value={value}
+        onChange={(e) => onChange(e.target.value === "" ? 0 : Math.max(0, parseInt(e.target.value, 10) || 0))}
+        className="w-20 rounded border border-line bg-field px-2 py-1 text-right text-[13px] text-ink outline-none focus:border-line-strong" />
+    </div>
+  );
+  const totalCell = (total: number) => (
+    <div className="flex flex-col gap-1 pb-0.5">
+      <span className="text-[10px] uppercase tracking-[0.12em] text-ink-3">{t("basketball.modelTotal")}</span>
+      <span className={`text-[15px] font-semibold tabular-nums ${total > 100 ? "text-neg" : "text-ink"}`}>{total}</span>
+    </div>
+  );
+  const box = "rounded-lg border border-line bg-card-2/40 px-4 py-3";
+  const saveBtn = `${btnSave} disabled:opacity-50`;
+
+  return (
+    <div className="space-y-4">
+      {/* Team Models */}
+      <div className={box}>
+        <div className="mb-2 flex items-center gap-3">
+          <button onClick={saveTeam} disabled={savingT || tTotal > 100} className={saveBtn}>{t("basketball.save")}</button>
+          <span className="text-[13px] font-semibold text-ink">{t("basketball.modelTeamTitle")}</span>
+          {tTotal > 100 ? <span className="text-[12px] text-neg">{t("basketball.modelWarn")}</span> : null}
+        </div>
+        <p className="mb-3 max-w-2xl text-[11px] text-ink-3">{t("basketball.modelTeamHint")}</p>
+        <div className="flex flex-wrap items-end gap-4">
+          {field(t("basketball.modelWAvg"), tv("team_model_wavg", 50), (v) => setTEdits((s) => ({ ...s, team_model_wavg: v })))}
+          {field(t("basketball.modelWL10"), tv("team_model_wl10", 50), (v) => setTEdits((s) => ({ ...s, team_model_wl10: v })))}
+          {totalCell(tTotal)}
+        </div>
+      </div>
+
+      {/* Player Models */}
+      <div className={box}>
+        <div className="mb-2 flex items-center gap-3">
+          <button onClick={savePlayer} disabled={savingP || pTotal > 100} className={saveBtn}>{t("basketball.save")}</button>
+          <span className="text-[13px] font-semibold text-ink">{t("basketball.modelPlayerTitle")}</span>
+          {pTotal > 100 ? <span className="text-[12px] text-neg">{t("basketball.modelWarn")}</span> : null}
+        </div>
+        <p className="mb-3 max-w-2xl text-[11px] text-ink-3">{t("basketball.modelPlayerHint")}</p>
+        <div className="flex flex-wrap items-end gap-4">
+          {field(t("basketball.modelWLast10"), pv("player_model_w10", 20), (v) => setPEdits((s) => ({ ...s, player_model_w10: v })))}
+          {field(t("basketball.modelWLast5"), pv("player_model_w5", 30), (v) => setPEdits((s) => ({ ...s, player_model_w5: v })))}
+          {field(t("basketball.modelWSeason"), pv("player_model_wall", 50), (v) => setPEdits((s) => ({ ...s, player_model_wall: v })))}
+          {totalCell(pTotal)}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- Config: alt sekmeler — Player Roles / Model / Market Templates ---------- */
 function ConfigTab({ config, reload, modelConfig, reloadModelConfig, inputType, setInputType, league, locale, t }: {
   config: PmMarketConfig[]; reload: () => void;
   modelConfig: PmModelConfig[]; reloadModelConfig: () => void;
   inputType: "player" | "team"; setInputType: (t: "player" | "team") => void;
   league: string; locale: string; t: (k: string) => string;
 }) {
-  const [sub, setSub] = useState<"roles" | "markets">("roles");
+  const [sub, setSub] = useState<"roles" | "model" | "markets">("roles");
   const [edits, setEdits] = useState<Record<string, Partial<PmMarketConfig>>>({});
   const [saving, setSaving] = useState(false);
   const [nm, setNm] = useState<{ name: string; base: string; side: string; template: string; std: string }>({ name: "", base: "manual", side: "home", template: "", std: "" });
@@ -457,18 +549,21 @@ function ConfigTab({ config, reload, modelConfig, reloadModelConfig, inputType, 
   );
 
   const inp = "rounded border border-line bg-field px-2 py-1 text-[12px] text-ink outline-none focus:border-line-strong";
-  const subBtn = (id: "roles" | "markets", label: string) => (
+  const subBtn = (id: "roles" | "model" | "markets", label: string) => (
     <button onClick={() => setSub(id)} className={`rounded-lg px-4 py-1.5 text-[13px] ${sub === id ? "bg-veil font-semibold text-ink" : "text-ink-3 hover:text-ink-2"}`}>{label}</button>
   );
   return (
     <div>
       <div className="mb-4 flex flex-wrap gap-1.5 border-b border-line pb-2">
         {subBtn("roles", t("basketball.cfgTabRoles"))}
+        {subBtn("model", t("basketball.cfgTabModel"))}
         {subBtn("markets", t("basketball.cfgTabMarkets"))}
       </div>
 
       {sub === "roles" ? (
         <PlayerRolesConfig modelConfig={modelConfig} reload={reloadModelConfig} t={t} />
+      ) : sub === "model" ? (
+        <ModelWeightsConfig modelConfig={modelConfig} reload={reloadModelConfig} t={t} />
       ) : (
         <div>
           <div className="mb-3 flex flex-wrap items-center gap-3">

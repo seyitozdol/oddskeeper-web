@@ -78,6 +78,14 @@ function NumInput({ value, onChange, step = 0.1, w = "w-16", warn = false }: { v
 
 export default function BasketballTools({ pmFixtures, splits, forms, windows, teamLogs, playerIds, config, inputRows, roles = [], modelConfig = [], competition, onAdd }: Props) {
   const { t, locale } = useI18n();
+  // Model ağırlıkları (Config > Model). Player: son10/son5/sezon karışımı (saf).
+  // Team: AVG + L10 WTD karışımı (sonra pace çarpanı). Config'ten değişince canlı.
+  const mc = useMemo(() => {
+    const m = new Map(modelConfig.map((c) => [c.key, Number(c.value)]));
+    return (k: string, d: number) => (m.has(k) ? (m.get(k) as number) : d);
+  }, [modelConfig]);
+  const pW = { w10: mc("player_model_w10", 20), w5: mc("player_model_w5", 30), wall: mc("player_model_wall", 50) };
+  const tW = { wavg: mc("team_model_wavg", 50), wl10: mc("team_model_wl10", 50) };
   // rol+pozisyon aramas: "team_slug:player_slug" → satır (Player Dist etiketi).
   const roleBy = useMemo(() => new Map(roles.map((r) => [`${r.team_slug}:${r.player_slug}`, r])), [roles]);
   const euroTeamSlugs = useMemo(() => new Set(roles.filter((r) => r.euro_team).map((r) => r.team_slug)), [roles]);
@@ -190,10 +198,19 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
   const teamModel = (slug: string, mk: string, effPts: number) => {
     // Yüzde metrikleri (FG%) hacme ölçeklenmez → son-10 ağırlıklı yüzde, yoksa sezon yüzdesi.
     if (PCT_METRICS.has(mk)) return teamLast10Weighted(slug, mk) ?? teamSeasonAvg(slug, mk) ?? 0;
+    if (mk === "points") return effPts;
     const fm = formBy.get(slug);
     const ptsAvg = fm?.get("points")?.season_avg ?? 1;
-    const last10 = fm?.get(mk)?.last10_avg ?? fm?.get(mk)?.season_avg ?? 0;
-    return mk === "points" ? effPts : Math.round(((effPts / (ptsAvg || 1)) * last10) * 10) / 10;
+    // Taban = gösterilen AVG ve L10 WTD kolonlarının karışımı (Config > Model > Team).
+    // Eksik pencere (ör. L10 WTD "—") hariç, ağırlıklar kalan pencereye normalize.
+    const avg = teamSeasonAvg(slug, mk);
+    const l10 = teamLast10Weighted(slug, mk);
+    let num = 0, den = 0;
+    if (avg != null && tW.wavg > 0) { num += avg * tW.wavg; den += tW.wavg; }
+    if (l10 != null && tW.wl10 > 0) { num += l10 * tW.wl10; den += tW.wl10; }
+    const base = den > 0 ? num / den : avg ?? fm?.get(mk)?.season_avg ?? 0;
+    // Pace çarpanı: projeksiyon sayı / takım sezon sayı ort.
+    return Math.round(((effPts / (ptsAvg || 1)) * base) * 10) / 10;
   };
   const teamTrader = (slug: string, mk: string, effPts: number) => traderMetric[`${slug}:${mk}`] ?? teamModel(slug, mk, effPts);
 
@@ -259,11 +276,18 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
   };
   const tickedTotal = (slug: string, mk: string, list: BktPlayerWindowRow[]) =>
     list.filter((w) => isTicked(slug, mk, w)).reduce((a, w) => a + w.total, 0) || 1;
-  // EXP referansı: oyuncu sezon ort × (takım hedefi / takım sezon ort)
-  const expRef = (slug: string, mk: string, w: BktPlayerWindowRow, effPts: number) => {
-    const teamAvg = formBy.get(slug)?.get(mk)?.season_avg ?? 0;
-    const factor = teamAvg > 0 ? teamTrader(slug, mk, effPts) / teamAvg : 1;
-    return Math.round(w.season_avg * factor * 10) / 10;
+  // Player Model: oyuncunun son10/son5/sezon ort'unun saf ağırlıklı karışımı
+  // (Config > Model > Player ağırlıkları). Örn 20/30/50 → son10×.2+son5×.3+sezon×.5.
+  // Eksik pencere (ör. <5 maç → son5 yok) 0 sayılmaz; ağırlıklar kalan pencerelere
+  // göre normalize edilir (yoksa eksik veri oyuncuyu haksızca aşağı çekerdi).
+  const playerModel = (w: BktPlayerWindowRow) => {
+    const parts: [number | null | undefined, number][] = [
+      [w.last10_avg, pW.w10], [w.last5_avg, pW.w5], [w.season_avg, pW.wall],
+    ];
+    let num = 0, den = 0;
+    for (const [v, wt] of parts) if (v != null && wt > 0) { num += v * wt; den += wt; }
+    if (den <= 0) return Math.round((w.season_avg ?? 0) * 10) / 10;
+    return Math.round((num / den) * 10) / 10;
   };
   const playerValue = (slug: string, mk: string, w: BktPlayerWindowRow, list: BktPlayerWindowRow[], effPts: number, distribute: boolean) => {
     const k = `${slug}:${mk}:${w.player_slug}`;
@@ -271,8 +295,8 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
     if (!isTicked(slug, mk, w)) return 0;
     // kombine + yüzde marketleri dağıtılmaz: oyuncunun kendi ortalaması (elle düzeltilir)
     if (!(playerMarketBy.get(mk)?.distributable ?? true)) return Math.round((w.season_avg ?? 0) * 10) / 10;
-    // Dağıt kapalı (varsayılan): oyuncunun rakip-ayarlı beklentisi (toplama zorlanmaz).
-    if (!distribute) return expRef(slug, mk, w, effPts);
+    // Dağıt kapalı (varsayılan): oyuncunun Model değeri (son10/son5/sezon karışımı).
+    if (!distribute) return playerModel(w);
     // Dağıt açık: takım hedefi tikli oyunculara tarihsel paya göre dağıtılır (topla=hedef).
     const target = teamTrader(slug, mk, effPts);
     return Math.round((target * w.total / tickedTotal(slug, mk, list)) * 10) / 10;
@@ -423,7 +447,7 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
           ) : (
             <PlayerDistPanel homeSlug={homeSlug} awaySlug={awaySlug} homeName={home.team_name} awayName={away.team_name}
               effHome={effHome} effAway={effAway} winBy={winBy} isTicked={isTicked} setTick={(k, v) => setTicks((p) => ({ ...p, [k]: v }))}
-              playerValue={playerValue} setVal={(k, v) => setPlayerVal((p) => ({ ...p, [k]: v }))} expRef={expRef}
+              playerValue={playerValue} setVal={(k, v) => setPlayerVal((p) => ({ ...p, [k]: v }))} playerModel={playerModel}
               teamTarget={(slug, mk) => teamTrader(slug, mk, slug === homeSlug ? effHome : effAway)}
               onAdd={onAdd} playerIds={playerIds} playerCfg={playerCfg} playerMarkets={playerMarkets}
               existingKeys={existingKeys} existingPlayerMkt={existingPlayerMkt} onReset={resetPlayer} competition={competition} fixExtId={fixExtId}
@@ -572,14 +596,14 @@ function TeamRecent({ name, logs, locale, t }: { name: string; logs: BktTeamLogR
 }
 
 /* ---------- Player distribution panel ---------- */
-function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effAway, winBy, isTicked, setTick, playerValue, setVal, expRef, teamTarget, onAdd, playerIds, playerCfg, playerMarkets, existingKeys, existingPlayerMkt, onReset, competition, fixExtId, roleBy, euroTeamSlugs, leaderBy, locale, t }: {
+function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effAway, winBy, isTicked, setTick, playerValue, setVal, playerModel, teamTarget, onAdd, playerIds, playerCfg, playerMarkets, existingKeys, existingPlayerMkt, onReset, competition, fixExtId, roleBy, euroTeamSlugs, leaderBy, locale, t }: {
   homeSlug: string; awaySlug: string; homeName: string; awayName: string; effHome: number; effAway: number;
   winBy: Map<string, Map<string, BktPlayerWindowRow[]>>;
   isTicked: (s: string, mk: string, w: BktPlayerWindowRow) => boolean;
   setTick: (k: string, v: boolean) => void;
   playerValue: (s: string, mk: string, w: BktPlayerWindowRow, list: BktPlayerWindowRow[], e: number, distribute: boolean) => number;
   setVal: (k: string, v: number) => void;
-  expRef: (s: string, mk: string, w: BktPlayerWindowRow, e: number) => number;
+  playerModel: (w: BktPlayerWindowRow) => number;
   teamTarget: (s: string, mk: string) => number;
   onAdd: (rows: BktInputRow[]) => void;
   playerIds: Record<string, string>;
@@ -620,7 +644,7 @@ function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effA
       case "w5": return w.last5_avg ?? 0;
       case "w10": return w.last10_avg ?? 0;
       case "all": return w.season_avg ?? 0;
-      case "exp": return expRef(slug, mk, w, eff);
+      case "exp": return playerModel(w);
       case "value": return playerValue(slug, mk, w, allList, eff, distribute);
       default: return w.season_avg ?? 0;
     }
@@ -734,7 +758,7 @@ function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effA
             <th className="px-2 py-1.5 text-right" title={t("basketball.w5Info")}><button onClick={() => toggleSort("w5")} className="uppercase tracking-[0.12em] hover:text-ink">{t("basketball.w5")}{arrow("w5")}</button></th>
             <th className="px-2 py-1.5 text-right" title={t("basketball.w10Info")}><button onClick={() => toggleSort("w10")} className="uppercase tracking-[0.12em] hover:text-ink">{t("basketball.w10")}{arrow("w10")}</button></th>
             <th className="px-2 py-1.5 text-right" title={t("basketball.allInfo")}><button onClick={() => toggleSort("all")} className="uppercase tracking-[0.12em] hover:text-ink">{t("basketball.wAll")}{arrow("all")}</button></th>
-            <th className="px-2 py-1.5 text-right" title={t("basketball.expInfo")}><button onClick={() => toggleSort("exp")} className="uppercase tracking-[0.12em] hover:text-ink">{t("basketball.expShort")}{arrow("exp")}</button></th>
+            <th className="px-2 py-1.5 text-right" title={t("basketball.playerModelInfo")}><button onClick={() => toggleSort("exp")} className="uppercase tracking-[0.12em] hover:text-ink">{t("basketball.colModel")}{arrow("exp")}</button></th>
             <th className="px-2 py-1.5 text-right"><button onClick={() => toggleSort("value")} className="uppercase tracking-[0.12em] hover:text-ink">{t("basketball.colValue")}{arrow("value")}</button></th>
             <th className="px-2 py-1.5 text-right">{t("basketball.colLineShort")}</th>
           </tr></thead>
@@ -772,7 +796,7 @@ function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effA
                   <td className="px-2 py-1 text-right tabular-nums text-ink-3">{fmt(w.last5_avg)}</td>
                   <td className="px-2 py-1 text-right tabular-nums text-ink-3">{fmt(w.last10_avg)}</td>
                   <td className="px-2 py-1 text-right tabular-nums text-ink-2">{fmt(w.season_avg)}</td>
-                  <td className="px-2 py-1 text-right tabular-nums text-ink-2">{fmt(expRef(slug, mk, w, eff))}</td>
+                  <td className="px-2 py-1 text-right tabular-nums text-ink-2">{fmt(playerModel(w))}</td>
                   <td className="px-2 py-1 text-right">{on ? <NumInput value={val} onChange={(v) => setVal(k, v)} /> : <span className="text-ink-3">-</span>}</td>
                   <td className="px-2 py-1 text-right">
                     <div className="flex items-center justify-end gap-1.5">
