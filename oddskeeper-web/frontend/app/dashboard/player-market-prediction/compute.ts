@@ -60,22 +60,38 @@ export function inferPlayerStatus(
 export type PlayerEntry = {
   player_source_id: string;
   status: InferredStatus;
-  seasonAvg: number | null; // per_match_value
+  seasonAvg: number | null; // per_match_value (AVG kolonu)
+  last5Avg?: number | null; // son 5 mac ort (Last 5 kolonu); yoksa 0 sayilir
+  lyAvg?: number | null; // gecen sezon ort (LY Avg kolonu); yoksa 0 sayilir
   manualValue: number | string; // "" = not set
 };
 
+// Dagitim agirliklari (yuzde): oyuncu bazi = LY*ly + Last5*last5 + Avg*avg / toplam.
+// Sezon basinda guncel-sezon-verisi (Avg/Last5) olmadigindan LY=100 verilir.
+export type DistWeights = { ly: number; last5: number; avg: number };
+const DEFAULT_WEIGHTS: DistWeights = { ly: 0, last5: 0, avg: 100 };
+
 /**
- * Distribute distExp across starters + subs (not Out) proportionally by season avg.
- * If manual is set (non-empty, non-zero string), use that instead of distExp share.
+ * Distribute distExp across starters + subs (not Out) proportionally by a weighted
+ * blend of the player's LY Avg / Last 5 / season Avg (weights are percentages).
+ * If manual is set (non-empty, non-zero string), use that instead of the share.
  */
 export function distributeExpectation(
   players: PlayerEntry[],
-  distExp: number
+  distExp: number,
+  weights: DistWeights = DEFAULT_WEIGHTS
 ): Record<string, number> {
-  const eligible = players.filter((p) => p.status !== "Out");
+  const w = weights ?? DEFAULT_WEIGHTS;
+  const wSum = w.ly + w.last5 + w.avg;
+  // Tum agirliklar 0 ise sezon Avg'a duselim (bolme sifir olmasin).
+  const denom = wSum > 0 ? wSum : 1;
+  const basisOf = (p: PlayerEntry): number =>
+    wSum > 0
+      ? ((p.lyAvg ?? 0) * w.ly + (p.last5Avg ?? 0) * w.last5 + (p.seasonAvg ?? 0) * w.avg) / denom
+      : p.seasonAvg ?? 0;
 
-  // Sum of season avgs for eligible players
-  const totalAvg = eligible.reduce((sum, p) => sum + (p.seasonAvg ?? 0), 0);
+  const eligible = players.filter((p) => p.status !== "Out");
+  const totalBasis = eligible.reduce((sum, p) => sum + basisOf(p), 0);
 
   const result: Record<string, number> = {};
 
@@ -92,11 +108,11 @@ export function distributeExpectation(
       continue;
     }
 
-    if (totalAvg <= 0) {
-      // Equal distribution
+    if (totalBasis <= 0) {
+      // Uygun oyuncularin hicbirinde secili metrik yok → esit dagit.
       result[p.player_source_id] = distExp / Math.max(eligible.length, 1);
     } else {
-      const share = (p.seasonAvg ?? 0) / totalAvg;
+      const share = basisOf(p) / totalBasis;
       result[p.player_source_id] = distExp * share;
     }
   }

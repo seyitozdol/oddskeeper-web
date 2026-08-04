@@ -597,3 +597,52 @@ export async function deleteStoredMarket(marketKey: string): Promise<boolean> {
   }
   return true;
 }
+
+// ─── Model config (analytics.pm_model_config) ────────────────────────────────
+// Dagitim agirliklari: beklenti, oyuncu LY Avg / Last 5 / Avg metriklerinin
+// yuzde-agirlikli karisimina orantili bolunur. Sezon basinda LY=100 verilir.
+
+export type DistWeights = { ly: number; last5: number; avg: number };
+// Tablo/veri yoksa duselecek varsayilan (migration seed ile ayni): LY=100.
+export const DEFAULT_DIST_WEIGHTS: DistWeights = { ly: 100, last5: 0, avg: 0 };
+
+export async function fetchDistWeights(): Promise<DistWeights> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .schema("analytics")
+    .from("pm_model_config")
+    .select("config_key, config_value")
+    .eq("league", "tsl");
+
+  if (error) {
+    console.error("fetchDistWeights error:", error);
+    return DEFAULT_DIST_WEIGHTS;
+  }
+  const map: Record<string, number> = {};
+  for (const r of data ?? []) map[r.config_key as string] = Number(r.config_value);
+  return {
+    ly: map["dist_weight_ly"] ?? DEFAULT_DIST_WEIGHTS.ly,
+    last5: map["dist_weight_last5"] ?? DEFAULT_DIST_WEIGHTS.last5,
+    avg: map["dist_weight_avg"] ?? DEFAULT_DIST_WEIGHTS.avg,
+  };
+}
+
+export async function saveDistWeights(w: DistWeights): Promise<boolean> {
+  const supabase = createClient();
+  const now = new Date().toISOString();
+  const rows = [
+    { league: "tsl", config_key: "dist_weight_ly", config_value: w.ly, updated_at: now },
+    { league: "tsl", config_key: "dist_weight_last5", config_value: w.last5, updated_at: now },
+    { league: "tsl", config_key: "dist_weight_avg", config_value: w.avg, updated_at: now },
+  ];
+  const { error } = await supabase
+    .schema("analytics")
+    .from("pm_model_config")
+    .upsert(rows, { onConflict: "league,config_key" });
+
+  if (error) {
+    console.error("saveDistWeights error:", error);
+    return false;
+  }
+  return true;
+}
