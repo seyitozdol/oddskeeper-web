@@ -111,6 +111,21 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
   // market_key → config (oyuncu / takım ayrı). Takım key'i "{side}_{metric}".
   const playerCfg = useMemo(() => new Map(config.filter((c) => c.market_group === "player").map((c) => [c.market_key, c])), [config]);
   const teamCfg = useMemo(() => config.filter((c) => c.market_group === "team"), [config]);
+  // Takım metrik tabloları CONFIG'ten (taraf bazlı) — Config'ten eklenen market burada da görünür.
+  // base_metric'i olan satırlar (manual=null hariç); base'e göre tekilleştir; config yoksa statik TEAM_MARKETS.
+  const teamMarketsBySide = useMemo(() => {
+    const forSide = (side: string) => {
+      const seen = new Set<string>();
+      const out: { key: string; label: string }[] = [];
+      for (const c of [...teamCfg].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))) {
+        if ((c.side ?? "home") !== side || !c.base_metric || seen.has(c.base_metric)) continue;
+        seen.add(c.base_metric);
+        out.push({ key: c.base_metric, label: metricLabel(c.base_metric, locale, c.label ?? c.base_metric) });
+      }
+      return out.length ? out : TEAM_MARKETS.map((m) => ({ key: m.key, label: m.label }));
+    };
+    return { home: forSide("home"), away: forSide("away"), total: forSide("total") };
+  }, [teamCfg, locale]);
   // Oyuncu market listesi CONFIG'ten (standart 14 + custom). base_metric = veri anahtarı.
   const playerMarkets = useMemo(() => {
     const rows = config.filter((c) => c.market_group === "player");
@@ -249,9 +264,9 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
   // Sıfırla: elle girilen maç-sayısı + trader/total değerlerini temizle (model'e döner).
   const resetTeam = () => { setPtsOv({ h: null, a: null }); setTraderMetric({}); setTotalOverride({}); };
   const resetPlayer = () => setPlayerVal({});
-  // Tümünü tikle/kaldır (panel bazında: slug ya da "total").
-  const setTeamAll = (prefix: string, on: boolean) =>
-    setTeamTicks((p) => { const n = { ...p }; for (const m of TEAM_MARKETS) n[`${prefix}:${m.key}`] = on; return n; });
+  // Tümünü tikle/kaldır (panel bazında: slug ya da "total"); panelin gösterdiği metrikler.
+  const setTeamAll = (prefix: string, markets: { key: string }[], on: boolean) =>
+    setTeamTicks((p) => { const n = { ...p }; for (const m of markets) n[`${prefix}:${m.key}`] = on; return n; });
   // Takım metriği Input'ta zaten var mı (dedup uyarısı).
   const existingTeamTpl = useMemo(() => new Set(inputRows.filter((r) => r.kind === "team").map((r) => r.template)), [inputRows]);
   const teamInInput = (side: string, base: string) => {
@@ -369,14 +384,14 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
               </div>
               {/* Home | Away | Total yan yana (compact) */}
               <div className="grid gap-4 lg:grid-cols-3">
-                {[{ slug: homeSlug, side: "home", eff: effHome, s: home }, { slug: awaySlug, side: "away", eff: effAway, s: away }].map(({ slug, side, eff, s }) => (
-                  <TeamMetricTable key={slug} slug={slug} side={side} name={s.team_name} crestUrl={s.crest_url} eff={eff} formBy={formBy} teamTrader={teamTrader}
+                {[{ slug: homeSlug, side: "home", eff: effHome, s: home, mkts: teamMarketsBySide.home }, { slug: awaySlug, side: "away", eff: effAway, s: away, mkts: teamMarketsBySide.away }].map(({ slug, side, eff, s, mkts }) => (
+                  <TeamMetricTable key={slug} slug={slug} side={side} name={s.team_name} crestUrl={s.crest_url} eff={eff} markets={mkts} formBy={formBy} teamTrader={teamTrader}
                     setTrader={(mk, v) => setTraderMetric((p) => ({ ...p, [`${slug}:${mk}`]: v }))} teamModel={teamModel} last10w={teamLast10Weighted}
                     valueWarn={teamValueWarn} inInput={teamInInput} isTeamTicked={isTeamTicked} setTeamTick={(key, v) => setTeamTicks((p) => ({ ...p, [key]: v }))}
-                    setAll={(on) => setTeamAll(slug, on)} locale={locale} t={t} />
+                    setAll={(on) => setTeamAll(slug, mkts, on)} locale={locale} t={t} />
                 ))}
-                <TotalMetricTable totalValue={totalValue} setTotalOverride={(mk, v) => setTotalOverride((p) => ({ ...p, [mk]: v }))}
-                  isTeamTicked={isTeamTicked} setTeamTick={(key, v) => setTeamTicks((p) => ({ ...p, [key]: v }))} setAll={(on) => setTeamAll("total", on)} locale={locale} t={t} />
+                <TotalMetricTable markets={teamMarketsBySide.total} totalValue={totalValue} setTotalOverride={(mk, v) => setTotalOverride((p) => ({ ...p, [mk]: v }))}
+                  isTeamTicked={isTeamTicked} setTeamTick={(key, v) => setTeamTicks((p) => ({ ...p, [key]: v }))} setAll={(on) => setTeamAll("total", teamMarketsBySide.total, on)} locale={locale} t={t} />
               </div>
               {/* sezon maçları (home / away) */}
               <div className="mt-6 grid gap-6 lg:grid-cols-2">
@@ -408,8 +423,9 @@ function TickAllHead({ allOn, setAll }: { allOn: boolean; setAll: (on: boolean) 
 const MODEL_INFO_KEY = "basketball.modelInfo";
 
 /* ---------- Team metrik tablosu (compact; Home / Away) ---------- */
-function TeamMetricTable({ slug, side, name, crestUrl, eff, formBy, teamTrader, setTrader, teamModel, last10w, valueWarn, inInput, isTeamTicked, setTeamTick, setAll, locale, t }: {
+function TeamMetricTable({ slug, side, name, crestUrl, eff, markets, formBy, teamTrader, setTrader, teamModel, last10w, valueWarn, inInput, isTeamTicked, setTeamTick, setAll, locale, t }: {
   slug: string; side: string; name: string; crestUrl?: string | null; eff: number;
+  markets: { key: string; label: string }[];
   formBy: Map<string, Map<string, BktTeamMetricFormRow>>;
   teamTrader: (s: string, mk: string, e: number) => number;
   setTrader: (mk: string, v: number) => void;
@@ -421,7 +437,7 @@ function TeamMetricTable({ slug, side, name, crestUrl, eff, formBy, teamTrader, 
   setAll: (on: boolean) => void;
   locale: "tr" | "en"; t: (k: string) => string;
 }) {
-  const allOn = TEAM_MARKETS.every((m) => isTeamTicked(`${slug}:${m.key}`));
+  const allOn = markets.every((m) => isTeamTicked(`${slug}:${m.key}`));
   return (
     <div className="overflow-x-auto">
       <div className="mb-2 flex items-center gap-2 text-[12px] font-medium text-ink"><TeamCrest slug={slug} name={name} size={22} url={crestUrl} /><span className="truncate">{name}</span></div>
@@ -439,7 +455,7 @@ function TeamMetricTable({ slug, side, name, crestUrl, eff, formBy, teamTrader, 
           <th className="px-1 py-1 text-right">{t("basketball.colTrader")}</th>
         </tr></thead>
         <tbody>
-          {TEAM_MARKETS.map((met) => {
+          {markets.map((met) => {
             const f = formBy.get(slug)?.get(met.key);
             const key = `${slug}:${met.key}`;
             const on = isTeamTicked(key);
@@ -466,13 +482,14 @@ function TeamMetricTable({ slug, side, name, crestUrl, eff, formBy, teamTrader, 
 }
 
 /* ---------- Toplam (home + away) tablosu — DÜZENLENEBİLİR ---------- */
-function TotalMetricTable({ totalValue, setTotalOverride, isTeamTicked, setTeamTick, setAll, locale, t }: {
+function TotalMetricTable({ markets, totalValue, setTotalOverride, isTeamTicked, setTeamTick, setAll, locale, t }: {
+  markets: { key: string; label: string }[];
   totalValue: (mk: string) => number; setTotalOverride: (mk: string, v: number) => void;
   isTeamTicked: (key: string) => boolean; setTeamTick: (key: string, v: boolean) => void;
   setAll: (on: boolean) => void;
   locale: "tr" | "en"; t: (k: string) => string;
 }) {
-  const allOn = TEAM_MARKETS.every((m) => isTeamTicked(`total:${m.key}`));
+  const allOn = markets.every((m) => isTeamTicked(`total:${m.key}`));
   return (
     <div className="overflow-x-auto">
       <div className="mb-2 text-[12px] font-medium text-ink">{t("basketball.totalSection")}</div>
@@ -483,7 +500,7 @@ function TotalMetricTable({ totalValue, setTotalOverride, isTeamTicked, setTeamT
           <th className="px-1 py-1 text-right">{t("basketball.colTrader")}</th>
         </tr></thead>
         <tbody>
-          {TEAM_MARKETS.map((met) => {
+          {markets.map((met) => {
             const key = `total:${met.key}`;
             const on = isTeamTicked(key);
             return (

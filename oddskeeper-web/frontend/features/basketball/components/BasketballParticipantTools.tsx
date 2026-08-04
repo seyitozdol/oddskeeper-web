@@ -345,7 +345,13 @@ function ConfigTab({ config, reload, modelConfig, reloadModelConfig, inputType, 
   const [saving, setSaving] = useState(false);
   const [nm, setNm] = useState<{ name: string; base: string; side: string; template: string; std: string }>({ name: "", base: "manual", side: "home", template: "", std: "" });
   // Dropdown: hali hazırda açık base'ler HARİÇ (data olup eklenmemiş / silinip geri eklenecek) + "manual" (data yok).
-  const usedBases = new Set(config.filter((c) => c.market_group === inputType && c.base_metric).map((c) => c.base_metric));
+  // Team'de base taraf-bazlı kullanılır (Home/Away/Total ayrı satır) → sadece SEÇİLİ tarafta kullanılanları çıkar,
+  // yoksa bir marketi home'a ekleyince away/total'e ekleyemez oluyorduk.
+  const usedBases = new Set(
+    config
+      .filter((c) => c.market_group === inputType && c.base_metric && (inputType !== "team" || c.side === nm.side))
+      .map((c) => c.base_metric)
+  );
   const availBases = Object.keys(METRIC_LABELS).filter((k) => !usedBases.has(k));
   const rk = (c: PmMarketConfig) => `${c.market_group}:${c.market_key}`;
   const patch = (c: PmMarketConfig, p: Partial<PmMarketConfig>) => setEdits((s) => ({ ...s, [rk(c)]: { ...s[rk(c)], ...p } }));
