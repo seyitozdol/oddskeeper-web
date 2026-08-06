@@ -23,10 +23,13 @@ function yearWeighted(seasons: SeasonWeighted[]): HFAA {
 }
 
 // Excel W6: calculated = etki*current + (1-etki)*weighted (alan bazında).
-// etki=0 → tamamen weighted; etki=1 → tamamen current (weighted bypass). current yoksa weighted.
+// etki=0 → tamamen weighted; etki=1 → tamamen current (weighted bypass).
+// etki>0 AMA son-x (current) verisi yoksa → o oranda BOŞ tabloyu harmanlamış oluruz:
+// calculated NaN döner (UI'da "—"). Yani %100'de son-x boşsa tüm sonuç boşalır.
 function blendCurrent(weighted: HFAA, current: HFAA | null | undefined, etki: number): HFAA {
-  if (!current || etki <= 0) return weighted;
   const e = Math.min(1, Math.max(0, etki));
+  if (e <= 0) return weighted;
+  if (!current) return { hf: NaN, ha: NaN, af: NaN, aa: NaN };
   const mix = (c: number, w: number) => e * c + (1 - e) * w;
   return {
     hf: mix(current.hf, weighted.hf),

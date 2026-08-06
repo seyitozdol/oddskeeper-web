@@ -11,6 +11,8 @@ function buildSelection(
   centerHint: number,
   cfg: ModelConfig
 ): SelectionLines {
+  // Beklenti hesaplanamadıysa (ör. etki>0 ama son-x verisi yok) boş çizgi seti.
+  if (!isFinite(centerHint)) return { balancedLine: NaN, lines: [] };
   // Aday yarım-tam çizgiler: merkez ± ~7.
   const start = Math.max(0.5, halfLine(centerHint) - 7);
   const candidates: number[] = [];
