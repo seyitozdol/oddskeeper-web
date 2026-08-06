@@ -656,7 +656,7 @@ export default function ResmiMatchStatsModel() {
           {/* Kontroller */}
           <div className="rounded-xl border border-line bg-card p-4">
             {/* Fixture + 1X2 (salt-okunur, hemen yanında; oranlar Fixture sekmesinden girilir) */}
-            <div className="flex flex-wrap items-end gap-x-3 gap-y-2">
+            <div className="flex flex-wrap items-start gap-x-3 gap-y-2">
               <div className="min-w-0 flex-1">
                 <label className={lblCls}>{t("msm.tab_fixtures")}</label>
                 <select className={`${selCls} w-full`} value={selectedFixtureId} onChange={(e) => selectFixture(e.target.value)}>
@@ -676,7 +676,7 @@ export default function ResmiMatchStatsModel() {
                     <span className="text-[10px] tabular-nums text-ink-3">{impliedPct(oddsHome)}</span>
                   </div>
                   <div className="flex flex-col items-center gap-1">
-                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-veil text-[13px] font-semibold text-ink-3">X</span>
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center text-[13px] font-semibold text-ink-3">X</span>
                     <b className="text-sm tabular-nums text-ink">{oddsDraw || "—"}</b>
                     <span className="text-[10px] tabular-nums text-ink-3">{impliedPct(oddsDraw)}</span>
                   </div>
