@@ -173,8 +173,6 @@ export default function ResmiMatchStatsModel() {
   const [homeSlug, setHomeSlug] = useState("");
   const [awaySlug, setAwaySlug] = useState("");
   const [market, setMarket] = useState<string>("SOT");
-  const [engine, setEngine] = useState<"analytic" | "montecarlo">("analytic");
-  const [mcSamples, setMcSamples] = useState(4000);
   const [oddsHome, setOddsHome] = useState("");
   const [oddsDraw, setOddsDraw] = useState("");
   const [oddsAway, setOddsAway] = useState("");
@@ -210,11 +208,7 @@ export default function ResmiMatchStatsModel() {
   // Config yükleme (mount + Config sekmesinde kaydedince yeniden).
   const loadConfig = useCallback(() => {
     fetchMarketConfigs(LEAGUE).then(setMarketCfgs);
-    fetchModelConfig(LEAGUE).then((c) => {
-      setModelCfg(c);
-      setEngine(c.engine);
-      setMcSamples(c.mcSamples);
-    });
+    fetchModelConfig(LEAGUE).then(setModelCfg);
     // Ağırlıklandırma + etki artık Config'ten gelir.
     fetchRawModelConfig(LEAGUE).then((r) => {
       if (r) {
@@ -305,7 +299,7 @@ export default function ResmiMatchStatsModel() {
       refereeFoulsPg: ref?.fouls_pg ?? null,
     };
     try {
-      return runModel(inputs, marketCfg, { ...modelCfg, engine, mcSamples });
+      return runModel(inputs, marketCfg, modelCfg);
     } catch (e) {
       console.error("runModel", e);
       return null;
@@ -313,7 +307,7 @@ export default function ResmiMatchStatsModel() {
   }, [
     marketCfg, modelCfg, homeSlug, awaySlug, market, hist, matchLog, selWeek, lastX,
     big4H, redcH, big4A, redcA, weights, etki,
-    oddsHome, oddsDraw, oddsAway, manHome, manAway, manTotal, refereeName, referees, engine, mcSamples,
+    oddsHome, oddsDraw, oddsAway, manHome, manAway, manTotal, refereeName, referees,
   ]);
 
   const exp = output?.expectancy;
@@ -561,18 +555,6 @@ export default function ResmiMatchStatsModel() {
                   ))}
                 </select>
               </div>
-              <div>
-                <label className={lblCls}>{t("msm.engine")}</label>
-                <select
-                  className={`${selCls} w-full`}
-                  value={engine}
-                  onChange={(e) => setEngine(e.target.value as "analytic" | "montecarlo")}
-                >
-                  <option value="analytic" className="bg-field text-ink">{t("msm.analytic")}</option>
-                  <option value="montecarlo" className="bg-field text-ink">{mcSamples}x Simulate</option>
-                </select>
-              </div>
-
               <div>
                 <label className={lblCls}>{t("msm.oddsHome")}</label>
                 <input className={numCls} inputMode="decimal" value={oddsHome} onChange={(e) => setOddsHome(e.target.value)} placeholder="—" />

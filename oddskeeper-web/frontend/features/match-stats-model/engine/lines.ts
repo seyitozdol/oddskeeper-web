@@ -1,8 +1,6 @@
-// Çizgi/oran motoru: Excel Calcv3'ün iki eşdeğeri.
-//  - analytic: normal CDF ile over olasılıkları (deterministik, hızlı).
-//  - montecarlo: 4000 (config) örnek NORM.INV çekimi (Excel'e sadık, tohumlu → determinist).
+// Çizgi/oran motoru: normal CDF ile over olasılıkları (deterministik, kesin).
 // Her seçim için |p-0.5| en küçük "dengeli çizgi" + etrafında 5 çizgi.
-import { normCdf, normInv, mulberry32 } from './normal';
+import { normCdf } from './normal';
 import type { LineOdds, SelectionLines, SegmentExpectancy, ModelConfig } from './types';
 
 const halfLine = (x: number) => Math.floor(x) + 0.5;
@@ -64,54 +62,5 @@ export function analyticSegment(seg: SegmentExpectancy, cfg: ModelConfig): {
     home: buildSelection(over(seg.homeMean, seg.stdHome), seg.homeMean, cfg),
     away: buildSelection(over(seg.awayMean, seg.stdAway), seg.awayMean, cfg),
     total: buildSelection(over(seg.totalMean, totalStd), seg.totalMean, cfg),
-  };
-}
-
-// ---- Monte-Carlo motor ----
-function sampleCounts(mean: number, std: number, n: number, rng: () => number): number[] {
-  const arr = new Array<number>(n);
-  for (let i = 0; i < n; i++) arr[i] = Math.max(0, Math.round(normInv(rng(), mean, std)));
-  return arr;
-}
-function median(sorted: number[]): number {
-  const m = sorted.length >> 1;
-  return sorted.length % 2 ? sorted[m] : (sorted[m - 1] + sorted[m]) / 2;
-}
-// Örnek dizisinden over(L)=count(>L)/n; L artınca azalan → sıralı dizide binary search.
-function overFromSamples(sortedAsc: number[]): (line: number) => number {
-  const n = sortedAsc.length;
-  return (L: number) => {
-    // ilk index > L
-    let lo = 0,
-      hi = n;
-    while (lo < hi) {
-      const mid = (lo + hi) >> 1;
-      if (sortedAsc[mid] > L) hi = mid;
-      else lo = mid + 1;
-    }
-    return (n - lo) / n;
-  };
-}
-
-export function monteCarloSegment(
-  seg: SegmentExpectancy,
-  cfg: ModelConfig,
-  seed: number
-): { home: SelectionLines; away: SelectionLines; total: SelectionLines } {
-  const rng = mulberry32(seed);
-  const n = cfg.mcSamples;
-  const homeArr = sampleCounts(seg.homeMean, seg.stdHome, n, rng);
-  const awayArr = sampleCounts(seg.awayMean, seg.stdAway, n, rng);
-  const totalArr = new Array<number>(n);
-  for (let i = 0; i < n; i++) totalArr[i] = homeArr[i] + awayArr[i];
-
-  const hs = [...homeArr].sort((a, b) => a - b);
-  const as = [...awayArr].sort((a, b) => a - b);
-  const ts = [...totalArr].sort((a, b) => a - b);
-
-  return {
-    home: buildSelection(overFromSamples(hs), median(hs), cfg),
-    away: buildSelection(overFromSamples(as), median(as), cfg),
-    total: buildSelection(overFromSamples(ts), median(ts), cfg),
   };
 }

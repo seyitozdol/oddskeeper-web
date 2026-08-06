@@ -14,7 +14,7 @@ const mc: MarketConfig = {
 const cfg: ModelConfig = {
   margin: 0.93, refereeWeight: 0.3, supremacyDivisor: 5.5,
   xmatrixWOwnFor: 0.65, xmatrixWOwnAlt: 0.05, xmatrixWOppAlt: 0.05, xmatrixWOppAgainst: 0.25,
-  suLow: 1.17, suHigh: 4.51, engine: 'analytic', mcSamples: 4000,
+  suLow: 1.17, suHigh: 4.51,
 };
 const inputs: ModelInputs = {
   market: 'SOT',
@@ -50,8 +50,8 @@ const REF = {
   away:  { balanced: 3.5,  p: { 1.5: 0.77475, 2.5: 0.6325, 3.5: 0.48525, 4.5: 0.32525, 5.5: 0.191 } },
 };
 
-function dumpEngine(label: string, eng: 'analytic' | 'montecarlo') {
-  const o = runModel(inputs, mc, { ...cfg, engine: eng });
+function dumpEngine(label: string) {
+  const o = runModel(inputs, mc, cfg);
   console.log(`\n=== ${label} — FT çizgileri (Excel MC ile karşılaştır) ===`);
   for (const sel of ['total', 'home', 'away'] as const) {
     const s = o.ft[sel];
@@ -64,8 +64,7 @@ function dumpEngine(label: string, eng: 'analytic' | 'montecarlo') {
     }
   }
 }
-dumpEngine('ANALYTIC', 'analytic');
-dumpEngine('MONTE-CARLO (seed sabit)', 'montecarlo');
+dumpEngine('ANALYTIC');
 
 // ===== Elle override doğrulama (Excel semantiği: total re-split, home/away direct) =====
 console.log('\n=== ELLE OVERRIDE (SOT) ===');

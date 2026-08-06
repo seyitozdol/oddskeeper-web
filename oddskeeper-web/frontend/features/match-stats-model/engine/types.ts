@@ -41,8 +41,6 @@ export interface ModelConfig {
   xmatrixWOppAgainst: number; // 0.25
   suLow: number; // 1.17
   suHigh: number; // 4.51
-  engine: 'analytic' | 'montecarlo';
-  mcSamples: number; // 4000
 }
 
 // Bir fikstür + market için tüm model girdileri.
@@ -123,5 +121,4 @@ export interface ModelOutput {
   ft: SegmentLines;
   h1: SegmentLines;
   h2: SegmentLines;
-  engine: 'analytic' | 'montecarlo';
 }

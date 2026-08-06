@@ -166,7 +166,7 @@ export async function fetchModelConfig(league: string): Promise<ModelConfig> {
     return {
       margin: 0.93, refereeWeight: 0.3, supremacyDivisor: 5.5,
       xmatrixWOwnFor: 0.65, xmatrixWOwnAlt: 0.05, xmatrixWOppAlt: 0.05, xmatrixWOppAgainst: 0.25,
-      suLow: 1.17, suHigh: 4.51, engine: "analytic", mcSamples: 4000,
+      suLow: 1.17, suHigh: 4.51,
     };
   }
   return {
@@ -175,8 +175,6 @@ export async function fetchModelConfig(league: string): Promise<ModelConfig> {
     xmatrixWOwnFor: Number(data.xmatrix_w_own_for), xmatrixWOwnAlt: Number(data.xmatrix_w_own_alt),
     xmatrixWOppAlt: Number(data.xmatrix_w_opp_alt), xmatrixWOppAgainst: Number(data.xmatrix_w_opp_against),
     suLow: Number(data.su_low), suHigh: Number(data.su_high),
-    engine: (data.engine as "analytic" | "montecarlo") ?? "analytic",
-    mcSamples: Number(data.mc_samples) || 4000,
   };
 }
 

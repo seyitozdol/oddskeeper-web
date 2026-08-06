@@ -114,14 +114,6 @@ export default function ConfigTab({
           <div><label className={lbl}>{t("msm.refereeWeight")}</label>{numField(model.referee_weight, (v) => setM("referee_weight", v))}</div>
           <div><label className={lbl}>{t("msm.suLow")}</label>{numField(model.su_low, (v) => setM("su_low", v))}</div>
           <div><label className={lbl}>{t("msm.suHigh")}</label>{numField(model.su_high, (v) => setM("su_high", v))}</div>
-          <div>
-            <label className={lbl}>{t("msm.engine")}</label>
-            <select className={`${inp} w-full`} value={model.engine} onChange={(e) => setM("engine", e.target.value as "analytic" | "montecarlo")}>
-              <option value="analytic" className="bg-field text-ink">{t("msm.analytic")}</option>
-              <option value="montecarlo" className="bg-field text-ink">{t("msm.montecarlo")}</option>
-            </select>
-          </div>
-          <div><label className={lbl}>{t("msm.samples")}</label>{numField(model.mc_samples, (v) => setM("mc_samples", Math.round(v)), "500")}</div>
         </div>
         <p className="mt-2 text-[11px] text-ink-3">{t("msm.suNote")}</p>
         <h4 className="mb-2 mt-4 text-[11px] font-semibold uppercase tracking-wide text-ink-3">{t("msm.equation")}</h4>
