@@ -11,6 +11,7 @@ import { useI18n } from "@/lib/i18n/LanguageProvider";
 import {
   fetchAllCurrentPlayers,
   fetchFixtureInputs,
+  fetchBets10FixtureIds,
   saveFixtureInputs,
   fetchPlayerIds,
   savePlayerIds,
@@ -709,6 +710,7 @@ function FragmentCells({
 export function FixtureIdTab({ fixtures }: { fixtures: UpcomingFixture[] }) {
   const { t } = useI18n();
   const [values, setValues] = useState<Record<number, string>>({});
+  const [links, setLinks] = useState<Record<number, string>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<number | null>(null);
@@ -718,7 +720,19 @@ export function FixtureIdTab({ fixtures }: { fixtures: UpcomingFixture[] }) {
       setValues(v);
       setLoading(false);
     });
+    fetchBets10FixtureIds().then(setLinks);
   }, []);
+
+  function applyAllVisible() {
+    setValues((prev) => {
+      const next = { ...prev };
+      for (const f of fixtures) {
+        if (links[f.fixture_id]) next[f.fixture_id] = links[f.fixture_id];
+      }
+      return next;
+    });
+  }
+  const visibleWithLink = fixtures.filter((f) => links[f.fixture_id]).length;
 
   async function handleSave() {
     setSaving(true);
@@ -741,6 +755,15 @@ export function FixtureIdTab({ fixtures }: { fixtures: UpcomingFixture[] }) {
         {savedAt !== null && !saving && (
           <span className="text-[12px] text-teal-400">{t("playerMarket.savedLabel")}</span>
         )}
+        <button
+          type="button"
+          onClick={applyAllVisible}
+          disabled={visibleWithLink === 0}
+          title={t("playerMarket.betsHint")}
+          className="ml-auto rounded-lg border border-line bg-card px-3 py-1.5 text-[13px] font-medium text-ink transition hover:bg-veil disabled:opacity-40"
+        >
+          {t("playerMarket.betsFill")}{visibleWithLink > 0 ? ` (${visibleWithLink})` : ""}
+        </button>
       </div>
 
       {loading ? (
@@ -755,21 +778,38 @@ export function FixtureIdTab({ fixtures }: { fixtures: UpcomingFixture[] }) {
               </tr>
             </thead>
             <tbody>
-              {fixtures.map((f) => (
+              {fixtures.map((f) => {
+                const suggestion = links[f.fixture_id];
+                return (
                 <tr key={f.fixture_id} className="border-t border-line transition hover:bg-veil">
                   <td className="px-2 py-1.5 text-ink whitespace-nowrap">{f.label}</td>
                   <td className="px-2 py-1.5">
-                    <input
-                      type="text"
-                      value={values[f.fixture_id] ?? ""}
-                      onChange={(e) =>
-                        setValues((prev) => ({ ...prev, [f.fixture_id]: e.target.value }))
-                      }
-                      className="w-36 rounded border border-line bg-field px-1.5 py-0.5 text-[11px] text-ink focus:border-teal-500/50 focus:outline-none"
-                    />
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="text"
+                        value={values[f.fixture_id] ?? ""}
+                        onChange={(e) =>
+                          setValues((prev) => ({ ...prev, [f.fixture_id]: e.target.value }))
+                        }
+                        className="w-36 rounded border border-line bg-field px-1.5 py-0.5 text-[11px] text-ink focus:border-teal-500/50 focus:outline-none"
+                      />
+                      {suggestion && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setValues((prev) => ({ ...prev, [f.fixture_id]: suggestion }))
+                          }
+                          title={`${t("playerMarket.betsHint")}: ${suggestion}`}
+                          className="shrink-0 rounded border border-teal-500/40 bg-teal-500/10 px-1.5 py-0.5 text-[10px] font-medium text-teal-300 hover:bg-teal-500/20"
+                        >
+                          {t("playerMarket.betsApply")}
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>

@@ -99,6 +99,33 @@ export async function fetchFixtureInputs(league: string): Promise<Record<string,
   return out;
 }
 
+// Bets10 önerisi (resolver'ın doldurduğu tracker.fixture_bets10_link).
+export interface Bets10Link {
+  bets10EventId: string | null;
+  homeOdds: number | null;
+  drawOdds: number | null;
+  awayOdds: number | null;
+  matchScore: number | null;
+}
+export async function fetchBets10Links(league: string): Promise<Record<string, Bets10Link>> {
+  const { data, error } = await sb()
+    .from("fixture_bets10_link_v1")
+    .select("fixture_id, bets10_event_id, home_odds, draw_odds, away_odds, match_score")
+    .eq("league", league);
+  if (error) { console.error("fetchBets10Links", error); return {}; }
+  const out: Record<string, Bets10Link> = {};
+  for (const r of data ?? []) {
+    out[String(r.fixture_id)] = {
+      bets10EventId: (r.bets10_event_id as string) ?? null,
+      homeOdds: r.home_odds != null ? Number(r.home_odds) : null,
+      drawOdds: r.draw_odds != null ? Number(r.draw_odds) : null,
+      awayOdds: r.away_odds != null ? Number(r.away_odds) : null,
+      matchScore: r.match_score != null ? Number(r.match_score) : null,
+    };
+  }
+  return out;
+}
+
 export async function saveFixtureInputs(
   league: string,
   rows: Array<{ fixture_id: string; external_fixture_id: string; home_odds: number | null; draw_odds: number | null; away_odds: number | null }>

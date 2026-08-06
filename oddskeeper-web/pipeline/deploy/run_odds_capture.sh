@@ -26,3 +26,9 @@ if [ -n "$DUMP" ]; then
   "$VENV" "$PIPELINE/src/common/load_site_odds.py" "$DUMP" \
     >> "$LOG/odds_capture.log" 2>&1
 fi
+
+# 3) Fikstur <-> Bets10 bagini yeniden kur (Match/Player Stats Model Fixture ID
+# sekmeleri icin tracker.fixture_bets10_link). Oran/upcoming_events yuklendikten
+# SONRA calisir; proxy gerekmez, DB'den okur. Frontend bu tablodan oneri gosterir.
+"$VENV" "$PIPELINE/src/common/link_fixtures_bets10.py" \
+  >> "$LOG/odds_capture.log" 2>&1

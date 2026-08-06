@@ -5,9 +5,11 @@ import { useI18n } from "../../../../lib/i18n/LanguageProvider";
 import {
   fetchFixtures,
   fetchFixtureInputs,
+  fetchBets10Links,
   saveFixtureInputs,
   type FixtureRow,
   type FixtureInput,
+  type Bets10Link,
 } from "./queries";
 import TeamCrest from "@/features/tsl/shared/TeamCrest";
 import { getTeamLogoPath } from "@/features/player-detail/utils/getTeamLogoPath";
@@ -28,10 +30,12 @@ export default function FixtureIdTab({
   const [round, setRound] = useState(1);
   const [fixtures, setFixtures] = useState<FixtureRow[]>([]);
   const [inputs, setInputs] = useState<Record<string, FixtureInput>>({});
+  const [links, setLinks] = useState<Record<string, Bets10Link>>({});
   const [status, setStatus] = useState<"" | "saving" | "ok" | "err">("");
 
   useEffect(() => {
     fetchFixtureInputs(league).then(setInputs);
+    fetchBets10Links(league).then(setLinks);
   }, [league]);
   useEffect(() => {
     fetchFixtures(league, round).then(setFixtures);
@@ -48,6 +52,25 @@ export default function FixtureIdTab({
       return { ...prev, [fid]: { ...base, ...patch } };
     });
   }
+
+  // Bets10 önerisini bir fikstüre uygula (id + 1X2 oran). Otomatik değil; buton
+  // tıklamasıyla. Bulunmayan alanlar mevcut değeri korur.
+  function applyLink(fid: string, lk: Bets10Link) {
+    edit(fid, {
+      externalFixtureId: lk.bets10EventId ?? "",
+      homeOdds: lk.homeOdds,
+      drawOdds: lk.drawOdds,
+      awayOdds: lk.awayOdds,
+    });
+  }
+  // Görüntülenen turdaki tüm eşleşen fikstürlere uygula.
+  function applyAllVisible() {
+    for (const f of fixtures) {
+      const lk = links[f.fixtureId];
+      if (lk) applyLink(f.fixtureId, lk);
+    }
+  }
+  const visibleWithLink = fixtures.filter((f) => links[f.fixtureId]).length;
 
   async function save() {
     setStatus("saving");
@@ -78,9 +101,17 @@ export default function FixtureIdTab({
           ))}
         </select>
         <button
+          onClick={applyAllVisible}
+          disabled={visibleWithLink === 0}
+          title={t("msm.betsHint")}
+          className="ml-auto rounded-md border border-line bg-card px-3 py-1.5 text-sm font-medium text-ink hover:bg-veil disabled:opacity-40"
+        >
+          {t("msm.betsFill")}{visibleWithLink > 0 ? ` (${visibleWithLink})` : ""}
+        </button>
+        <button
           onClick={save}
           disabled={status === "saving"}
-          className="ml-auto rounded-md bg-accent px-3.5 py-1.5 text-sm font-semibold text-accent-ink hover:opacity-90 disabled:opacity-50"
+          className="rounded-md bg-accent px-3.5 py-1.5 text-sm font-semibold text-accent-ink hover:opacity-90 disabled:opacity-50"
         >
           {t("msm.save")}
         </button>
@@ -102,6 +133,7 @@ export default function FixtureIdTab({
           <tbody>
             {fixtures.map((f) => {
               const v = inputs[f.fixtureId];
+              const lk = links[f.fixtureId];
               return (
                 <tr key={f.fixtureId} className="border-t border-line/60 hover:bg-veil">
                   <td className="px-2 py-1.5 whitespace-nowrap text-ink">
@@ -126,9 +158,25 @@ export default function FixtureIdTab({
                       onChange={(e) => edit(f.fixtureId, { awayOdds: e.target.value === "" ? null : parseFloat(e.target.value) })} />
                   </td>
                   <td className="px-2 py-1.5">
-                    <input type="text" className={`${inp} w-40`} value={v?.externalFixtureId ?? ""}
-                      placeholder="fixture id"
-                      onChange={(e) => edit(f.fixtureId, { externalFixtureId: e.target.value })} />
+                    <div className="flex items-center gap-1.5">
+                      <input type="text" className={`${inp} w-40`} value={v?.externalFixtureId ?? ""}
+                        placeholder="fixture id"
+                        onChange={(e) => edit(f.fixtureId, { externalFixtureId: e.target.value })} />
+                      {lk && (
+                        <button
+                          onClick={() => applyLink(f.fixtureId, lk)}
+                          title={`${t("msm.betsHint")}: ${lk.homeOdds ?? "-"}/${lk.drawOdds ?? "-"}/${lk.awayOdds ?? "-"}${lk.bets10EventId ? ` · ${lk.bets10EventId}` : ""}`}
+                          className="shrink-0 rounded border border-accent/40 bg-accent/10 px-1.5 py-0.5 text-[10px] font-medium text-accent hover:bg-accent/20"
+                        >
+                          {t("msm.betsApply")}
+                        </button>
+                      )}
+                    </div>
+                    {lk && (
+                      <div className="mt-0.5 text-[10px] text-ink-3">
+                        {lk.homeOdds ?? "-"}/{lk.drawOdds ?? "-"}/{lk.awayOdds ?? "-"}
+                      </div>
+                    )}
                   </td>
                 </tr>
               );

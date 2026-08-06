@@ -465,6 +465,27 @@ export async function fetchFixtureInputs(): Promise<Record<number, string>> {
   return result;
 }
 
+// Bets10 fixture id önerisi (resolver'ın doldurduğu link tablosu). Player Stats
+// Model için yalnızca fixture id gerekir (oran değil).
+export async function fetchBets10FixtureIds(): Promise<Record<number, string>> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .schema("analytics")
+    .from("fixture_bets10_link_v1")
+    .select("fixture_id, bets10_event_id")
+    .eq("league", LEAGUE)
+    .not("bets10_event_id", "is", null);
+  if (error) {
+    console.error("fetchBets10FixtureIds error:", error);
+    return {};
+  }
+  const result: Record<number, string> = {};
+  for (const row of data ?? []) {
+    if (row.bets10_event_id) result[row.fixture_id] = row.bets10_event_id;
+  }
+  return result;
+}
+
 export async function saveFixtureInputs(
   entries: Record<number, string>
 ): Promise<boolean> {
