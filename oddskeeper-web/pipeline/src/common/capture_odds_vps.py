@@ -275,6 +275,23 @@ def widen_key(url: str) -> str:
     return sp.path + "?" + urlencode(q)
 
 
+def set_query(url: str, **params) -> str:
+    """URL query'sinde verilen parametreleri ayarlar (varsa uzerine yazar)."""
+    sp = urlsplit(url)
+    q = [(k, v) for k, v in parse_qsl(sp.query, keep_blank_values=True)
+         if k not in params]
+    q += [(k, str(v)) for k, v in params.items()]
+    return urlunsplit((sp.scheme, sp.netloc, sp.path, urlencode(q), sp.fragment))
+
+
+# events-table/v2 SAYFA BASINA ~20 EVENT dondurur (eventSortBy=StartDate,
+# pageNumber ile sayfalanir). Genis pencere tek sayfada yalnizca en yakin 20
+# maci verir; ileri turlar (or. 3. hafta Besiktas-Corum) sonraki sayfalarda kalir
+# ve SESSIZCE kaybolurdu. Bu yuzden pageNumber'i 1..MAX arttirip bos/kisa sayfaya
+# kadar cekiyoruz.
+WIDEN_MAX_PAGES = 12
+
+
 def capture(site: str, headed: bool, out_dir: Path, only, per_league: int,
             detail_wait_ms: int, list_wait_ms: int,
             use_proxy: bool, chromium_path: str | None, country: str | None,
@@ -351,23 +368,29 @@ def capture(site: str, headed: bool, out_dir: Path, only, per_league: int,
                 if key in seen_keys:
                     continue
                 seen_keys.add(key)
-                url = widen_url(r["url"], horizon_days)
-                try:
-                    resp = page.request.get(
-                        url, headers=r["headers"], timeout=40000
-                    )
-                    if resp.status != 200:
-                        print(f"  [genis-pencere {resp.status}] {label}", flush=True)
-                        continue
-                    body = resp.json()
-                except Exception as ex:
-                    print(f"  [genis-pencere hata] {label}: {type(ex).__name__}", flush=True)
-                    continue
-                store["responses"].append({
-                    "json": body, "url": url, "status": 200,
-                    "kind": "xhr", "at": datetime.now(timezone.utc).isoformat(),
-                })
-                widened += 1
+                base_url = widen_url(r["url"], horizon_days)
+                # pageNumber 1..MAX: kisa/bos sayfaya kadar don (tum ileri turlar).
+                for page_no in range(1, WIDEN_MAX_PAGES + 1):
+                    url = set_query(base_url, pageNumber=page_no)
+                    try:
+                        resp = page.request.get(url, headers=r["headers"], timeout=40000)
+                        if resp.status != 200:
+                            print(f"  [genis-pencere {resp.status}] {label} s{page_no}", flush=True)
+                            break
+                        body = resp.json()
+                    except Exception as ex:
+                        print(f"  [genis-pencere hata] {label} s{page_no}: {type(ex).__name__}", flush=True)
+                        break
+                    n = len((body.get("data") or {}).get("events") or [])
+                    if n == 0:
+                        break
+                    store["responses"].append({
+                        "json": body, "url": url, "status": 200,
+                        "kind": "xhr", "at": datetime.now(timezone.utc).isoformat(),
+                    })
+                    widened += 1
+                    if n < 20:  # kisa sayfa = son sayfa
+                        break
             if widened:
                 ev = sum(len((rr.get("json") or {}).get("data", {}).get("events") or [])
                          for rr in store["responses"][-widened:])

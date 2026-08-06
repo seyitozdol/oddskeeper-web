@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sys
 import unicodedata
 from difflib import SequenceMatcher
@@ -102,7 +103,21 @@ def name_score(a: str, b: str) -> float:
     return max(jac, cover * 0.9, sub * 0.85, _fuzzy_cover(ta, tb) * FUZZY_WEIGHT)
 
 
+# Yas-grubu / yedek takim belirtecleri. Bir tarafta olup digerinde yoksa FARKLI
+# takimlardir (senior Besiktas != Besiktas U19). name_score'un 'cover'i altkumeyi
+# tam-kapsam sayip senior ile U19'u nerdeyse esitliyor (1.0 vs 0.9); margin (0.15)
+# ikisini de eleyip DOGRU senior eslesmesini de kaybettiriyordu. Bu guard onu keser.
+_AGE_RE = re.compile(r"\bu(1[4-9]|2[0-3])\b")
+
+
+def _age_tags(name: str) -> frozenset[str]:
+    return frozenset(m.group(0) for m in _AGE_RE.finditer(fold(name)))
+
+
 def _orient_score(x_home: str, x_away: str, ev_home: str, ev_away: str) -> float:
+    # Yas-grubu uyusmazligi (bir yanda U19 var digerinde yok) = farkli takim.
+    if _age_tags(x_home) != _age_tags(ev_home) or _age_tags(x_away) != _age_tags(ev_away):
+        return 0.0
     h = name_score(x_home, ev_home)
     a = name_score(x_away, ev_away)
     # iki taraf da makul olmali; tek taraf guclu olsa bile digeri cokerse esleme yok
