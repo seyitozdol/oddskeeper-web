@@ -224,7 +224,7 @@ export interface RawModelConfig {
   xmatrix_w_opp_alt: number; xmatrix_w_opp_against: number;
   su_low: number; su_high: number;
   engine: "analytic" | "montecarlo"; mc_samples: number;
-  weight_s1: number; weight_s2: number; weight_s3: number; default_etki: number;
+  weight_s1: number; weight_s2: number; weight_s3: number; weight_s4: number; default_etki: number;
 }
 export interface RawMarketConfig {
   market: string;
@@ -249,7 +249,7 @@ export async function fetchRawModelConfig(league: string): Promise<RawModelConfi
     xmatrix_w_opp_alt: n(data.xmatrix_w_opp_alt), xmatrix_w_opp_against: n(data.xmatrix_w_opp_against),
     su_low: n(data.su_low), su_high: n(data.su_high),
     engine: (data.engine as "analytic" | "montecarlo") ?? "analytic", mc_samples: n(data.mc_samples),
-    weight_s1: n(data.weight_s1), weight_s2: n(data.weight_s2), weight_s3: n(data.weight_s3),
+    weight_s1: n(data.weight_s1), weight_s2: n(data.weight_s2), weight_s3: n(data.weight_s3), weight_s4: n(data.weight_s4),
     default_etki: n(data.default_etki),
   };
 }

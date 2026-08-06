@@ -46,13 +46,11 @@ export interface ModelConfig {
 // Bir fikstür + market için tüm model girdileri.
 export interface ModelInputs {
   market: string;
-  // Yıl-ağırlıklı geçmiş harman (caller sezonları+ağırlıkları seçer).
+  // Sezon-ağırlıklı harman: 4 sezon (23-24 / 24-25 / 25-26 / 26-27), her biri kendi ağırlığıyla.
+  // 26-27 (güncel) değeri caller tarafından maç-logu penceresinden hesaplanıp buraya eklenir.
+  // Veri yoksa (ör. sezon başı) o sezon caller tarafından hiç eklenmez.
   homeSeasons: SeasonWeighted[];
   awaySeasons: SeasonWeighted[];
-  // Güncel sezon (opsiyonel; null ise sadece geçmiş kullanılır).
-  homeCurrent?: HFAA | null;
-  awayCurrent?: HFAA | null;
-  etki: number; // "Etki Yüzdesi" W6: etki*current + (1-etki)*yearWeighted (0..1)
   // 1x2 oranları (supremacy için).
   homeOdds: number;
   drawOdds: number;

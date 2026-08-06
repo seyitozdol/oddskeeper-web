@@ -26,7 +26,7 @@ const inputs: ModelInputs = {
     { hf: 5.029003267973857, ha: 3.8654970760233915, af: 3.8732370141038874, aa: 5.030787753697972, weight: 0.65 },
     { hf: 5.029003267973857, ha: 3.8654970760233915, af: 3.8732370141038874, aa: 5.030787753697972, weight: 0.35 },
   ],
-  etki: 0, homeOdds: 1.25, drawOdds: 5.85, awayOdds: 9.58,
+  homeOdds: 1.25, drawOdds: 5.85, awayOdds: 9.58,
 };
 
 const EXP = { home: 7.131966162426129, away: 3.390686206342006, total: 10.522652368768135 };
@@ -110,7 +110,7 @@ const cardInputs: ModelInputs = {
     { hf: 2.490712074303406, ha: 2.7169977640178886, af: 2.7217062263501894, aa: 2.495356037151703, weight: 0.65 },
     { hf: 2.490712074303406, ha: 2.7169977640178886, af: 2.7217062263501894, aa: 2.495356037151703, weight: 0.35 },
   ],
-  etki: 0, homeOdds: 1.25, drawOdds: 5.85, awayOdds: 9.58,
+  homeOdds: 1.25, drawOdds: 5.85, awayOdds: 9.58,
   refereeCardsPg: 4.428571428571429,
 };
 const EXP_MODEL_TOTAL = 4.867489, EXP_REF_TOTAL = 4.735814, EXP_REF_HOME = 1.947437, EXP_REF_AWAY = 2.788377;

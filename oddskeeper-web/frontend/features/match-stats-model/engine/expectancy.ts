@@ -1,5 +1,5 @@
 // Beklenti (expectancy) katmanı: Excel Sim sayfasının mantığı.
-// Yıl-ağırlıklı geçmiş + güncel harman (Etki%) -> çapraz matris -> supremacy -> 1H/2H bölüşüm.
+// Sezon-ağırlıklı harman (4 sezon, 26-27 dahil) -> çapraz matris -> supremacy -> 1H/2H bölüşüm.
 import type {
   HFAA,
   SeasonWeighted,
@@ -9,7 +9,7 @@ import type {
   Expectancy,
 } from './types';
 
-// Σ weight_i · season_i (yıl-ağırlıklı harman).
+// Σ weight_i · season_i (sezon-ağırlıklı harman; 23-24 / 24-25 / 25-26 / 26-27).
 function yearWeighted(seasons: SeasonWeighted[]): HFAA {
   const acc: HFAA = { hf: 0, ha: 0, af: 0, aa: 0 };
   for (const s of seasons) {
@@ -21,26 +21,14 @@ function yearWeighted(seasons: SeasonWeighted[]): HFAA {
   return acc;
 }
 
-// etki*current + (1-etki)*yearWeighted (alan bazında). current yoksa yearWeighted.
-function blendCurrent(yw: HFAA, current: HFAA | null | undefined, etki: number): HFAA {
-  if (!current || etki <= 0) return yw;
-  const mix = (c: number, y: number) => etki * c + (1 - etki) * y;
-  return {
-    hf: mix(current.hf, yw.hf),
-    ha: mix(current.ha, yw.ha),
-    af: mix(current.af, yw.af),
-    aa: mix(current.aa, yw.aa),
-  };
-}
-
 export function computeExpectancy(
   inputs: ModelInputs,
   mc: MarketConfig,
   cfg: ModelConfig
 ): Expectancy {
-  // 1) Yıl-ağırlıklı + güncel harman, iki takım.
-  const home = blendCurrent(yearWeighted(inputs.homeSeasons), inputs.homeCurrent, inputs.etki);
-  const away = blendCurrent(yearWeighted(inputs.awaySeasons), inputs.awayCurrent, inputs.etki);
+  // 1) Sezon-ağırlıklı harman, iki takım (26-27 caller tarafından 4. sezon olarak eklenmiş).
+  const home = yearWeighted(inputs.homeSeasons);
+  const away = yearWeighted(inputs.awaySeasons);
 
   // 2) Çapraz matris. Ev sahibi evde oynar (HF birincil), rakip deplasmanda (AA birincil-against).
   const { xmatrixWOwnFor: w1, xmatrixWOwnAlt: w2, xmatrixWOppAlt: w3, xmatrixWOppAgainst: w4 } = cfg;

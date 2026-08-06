@@ -11,6 +11,7 @@ import {
   type ModelInputs,
   type SeasonWeighted,
   type SelectionLines,
+  type HFAA,
 } from "@/features/match-stats-model/engine";
 import {
   MARKETS,
@@ -176,8 +177,7 @@ export default function ResmiMatchStatsModel() {
   const [oddsHome, setOddsHome] = useState("");
   const [oddsDraw, setOddsDraw] = useState("");
   const [oddsAway, setOddsAway] = useState("");
-  const [etki, setEtki] = useState(0); // 0..1
-  const [weights, setWeights] = useState<number[]>([0.5, 0.3, 0.2]); // 25-26/24-25/23-24
+  const [weights, setWeights] = useState<number[]>([0.5, 0.3, 0.2, 0]); // 25-26/24-25/23-24/26-27(güncel)
   const [refereeName, setRefereeName] = useState("");
   const [manHome, setManHome] = useState("");
   const [manAway, setManAway] = useState("");
@@ -209,12 +209,9 @@ export default function ResmiMatchStatsModel() {
   const loadConfig = useCallback(() => {
     fetchMarketConfigs(LEAGUE).then(setMarketCfgs);
     fetchModelConfig(LEAGUE).then(setModelCfg);
-    // Ağırlıklandırma + etki artık Config'ten gelir.
+    // Sezon ağırlıkları (4 sezon, 26-27 dahil) Config'ten gelir.
     fetchRawModelConfig(LEAGUE).then((r) => {
-      if (r) {
-        setWeights([r.weight_s1, r.weight_s2, r.weight_s3]);
-        setEtki(r.default_etki);
-      }
+      if (r) setWeights([r.weight_s1, r.weight_s2, r.weight_s3, r.weight_s4]);
     });
     // Export için ham market config + template'ler (blok sırasında).
     fetchRawMarketConfigs(LEAGUE).then((rows) => {
@@ -266,12 +263,17 @@ export default function ResmiMatchStatsModel() {
 
   const output = useMemo(() => {
     if (!marketCfg || !modelCfg || !homeSlug || !awaySlug) return null;
-    const seasonsFor = (slug: string): SeasonWeighted[] =>
-      HIST_SEASONS.map((s, i) => {
+    // 4 sezonluk harman: 3 geçmiş (histdata) + 26-27 güncel (maç-logu penceresinden).
+    // Bir sezon verisi yoksa veya ağırlığı 0 ise harmana katılmaz.
+    const seasonsFor = (slug: string, current: HFAA | null): SeasonWeighted[] => {
+      const arr = HIST_SEASONS.map((s, i) => {
         const v = hist[slug]?.[s];
         if (!v || weights[i] <= 0) return null;
         return { ...v, weight: weights[i] };
       }).filter(Boolean) as SeasonWeighted[];
+      if (current && weights[3] > 0) arr.push({ ...current, weight: weights[3] });
+      return arr;
+    };
 
     const num = (s: string): number | null => {
       const n = parseFloat(s);
@@ -280,14 +282,13 @@ export default function ResmiMatchStatsModel() {
     const oH = num(oddsHome);
     const oA = num(oddsAway);
     const ref = referees.find((r) => r.referee_name === refereeName);
+    const homeCur = currentHFAA(matchLog[homeSlug], selWeek, lastX, big4H, redcH);
+    const awayCur = currentHFAA(matchLog[awaySlug], selWeek, lastX, big4A, redcA);
 
     const inputs: ModelInputs = {
       market,
-      homeSeasons: seasonsFor(homeSlug),
-      awaySeasons: seasonsFor(awaySlug),
-      homeCurrent: currentHFAA(matchLog[homeSlug], selWeek, lastX, big4H, redcH),
-      awayCurrent: currentHFAA(matchLog[awaySlug], selWeek, lastX, big4A, redcA),
-      etki,
+      homeSeasons: seasonsFor(homeSlug, homeCur),
+      awaySeasons: seasonsFor(awaySlug, awayCur),
       // Oran yoksa nötr supremacy (eşit oran → faktör 1).
       homeOdds: oH ?? 2,
       drawOdds: num(oddsDraw) ?? 3.4,
@@ -306,7 +307,7 @@ export default function ResmiMatchStatsModel() {
     }
   }, [
     marketCfg, modelCfg, homeSlug, awaySlug, market, hist, matchLog, selWeek, lastX,
-    big4H, redcH, big4A, redcA, weights, etki,
+    big4H, redcH, big4A, redcA, weights,
     oddsHome, oddsDraw, oddsAway, manHome, manAway, manTotal, refereeName, referees,
   ]);
 
@@ -362,7 +363,7 @@ export default function ResmiMatchStatsModel() {
       fixture_id: externalFixtureId, match: matchLabel, market,
       home_exp: exp?.ft.homeMean ?? null, away_exp: exp?.ft.awayMean ?? null, total_exp: exp?.ft.totalMean ?? null,
       manual_home: num(manHome), manual_away: num(manAway), manual_total: num(manTotal),
-      etki, row_count: currentRows.length,
+      row_count: currentRows.length,
     });
   }
 
@@ -569,13 +570,8 @@ export default function ResmiMatchStatsModel() {
               </div>
             </div>
 
-            {/* Etki % + Hafta/Son-x (güncel sezon pencereleme, Excel W6/W7/W8) */}
+            {/* Hafta/Son-x (26-27 güncel sezon penceresi) + 4 sezon ağırlığı */}
             <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-4">
-              <div>
-                <label className={lblCls}>{t("msm.etki")} ({(etki * 100).toFixed(0)}%)</label>
-                <input type="range" min={0} max={1} step={0.05} value={etki}
-                  onChange={(e) => setEtki(parseFloat(e.target.value))} className="w-full accent-[var(--color-accent)]" />
-              </div>
               <div>
                 <label className={lblCls}>{t("msm.selWeek")}</label>
                 <input className={numCls} inputMode="numeric" value={selWeek}
@@ -586,12 +582,12 @@ export default function ResmiMatchStatsModel() {
                 <input className={numCls} inputMode="numeric" value={lastX}
                   onChange={(e) => setLastX(Math.max(1, parseInt(e.target.value) || 99))} />
               </div>
-              <div>
+              <div className="md:col-span-2">
                 <label className={lblCls}>{t("msm.cfgWeighting")}</label>
                 <div className="flex flex-wrap gap-1.5 pt-1 text-[11px] text-ink-2">
-                  {HIST_SEASONS.map((s, i) => (
-                    <span key={s} className="rounded bg-field px-1.5 py-1 tabular-nums">
-                      {s.slice(2)}: <b className="text-ink">{weights[i]}</b>
+                  {[...HIST_SEASONS, CURRENT_SEASON].map((s, i) => (
+                    <span key={s} className={`rounded px-1.5 py-1 tabular-nums ${weights[i] > 0 ? "bg-field" : "bg-field/40 text-ink-3"}`}>
+                      {s.replace(/^20(\d\d)-20(\d\d)$/, "$1/$2")}: <b className={weights[i] > 0 ? "text-ink" : "text-ink-3"}>{weights[i]}</b>
                     </span>
                   ))}
                 </div>
