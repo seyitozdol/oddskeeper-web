@@ -586,8 +586,8 @@ export default function ResmiMatchStatsModel() {
         </div>
       ) : (
         <div className="space-y-4">
-          <div className="grid gap-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
-            {/* ═══ SOL: seçimler + temel metrikler ═══ */}
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,0.8fr)_minmax(0,1.25fr)]">
+            {/* ═══ SOL: fixture/market/hakem/manuel + expectancy ═══ */}
             <div className="min-w-0 space-y-4">
           {/* Kontroller */}
           <div className="rounded-xl border border-line bg-card p-4">
@@ -619,81 +619,53 @@ export default function ResmiMatchStatsModel() {
             </div>
             {importNotice && <div className="mb-3 text-[11px] text-neg">{importNotice}</div>}
 
-            {/* Market + 1X2 oranları (kompakt, logolu + yüzdelik) */}
-            <div className="flex flex-wrap items-end gap-3">
-              <div className="w-full sm:w-36">
-                <label className={lblCls}>{t("msm.market")}</label>
-                <select className={`${selCls} w-full`} value={market} onChange={(e) => setMarket(e.target.value)}>
-                  {MARKETS.map((m) => (
-                    <option key={m} value={m} className="bg-field text-ink">{m}</option>
+            {/* Market */}
+            <div className="mt-3">
+              <label className={lblCls}>{t("msm.market")}</label>
+              <select className={`${selCls} w-full sm:w-40`} value={market} onChange={(e) => setMarket(e.target.value)}>
+                {MARKETS.map((m) => (
+                  <option key={m} value={m} className="bg-field text-ink">{m}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* 1X2 oranları (kompakt, logolu + yüzdelik) */}
+            <div className="mt-3">
+              <label className={lblCls}>1X2</label>
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-md border border-line bg-card-2 px-2.5 py-1.5">
+                <span className="flex items-center gap-1">
+                  <TeamCrest logo={getTeamLogoPath(homeSlug)} name={homeName} size="xs" />
+                  <input className={oddCls} inputMode="decimal" value={oddsHome} onChange={(e) => setOddsHome(e.target.value)} placeholder="—" />
+                  <span className="w-7 text-right text-[10px] font-semibold tabular-nums text-ink-3">{impliedPct(oddsHome)}</span>
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-veil text-[8px] font-semibold text-ink-3">X</span>
+                  <input className={oddCls} inputMode="decimal" value={oddsDraw} onChange={(e) => setOddsDraw(e.target.value)} placeholder="—" />
+                  <span className="w-7 text-right text-[10px] font-semibold tabular-nums text-ink-3">{impliedPct(oddsDraw)}</span>
+                </span>
+                <span className="flex items-center gap-1">
+                  <TeamCrest logo={getTeamLogoPath(awaySlug)} name={awayName} size="xs" />
+                  <input className={oddCls} inputMode="decimal" value={oddsAway} onChange={(e) => setOddsAway(e.target.value)} placeholder="—" />
+                  <span className="w-7 text-right text-[10px] font-semibold tabular-nums text-ink-3">{impliedPct(oddsAway)}</span>
+                </span>
+              </div>
+            </div>
+
+            {/* Hakem seçimi (sadece Card/Foul marketlerinde) */}
+            {showReferee && (
+              <div className="mt-3">
+                <label className={lblCls}>{t("msm.referee")}</label>
+                <select className={`${selCls} w-full`} value={refereeName} onChange={(e) => setRefereeName(e.target.value)}>
+                  <option value="" className="bg-field text-ink">—</option>
+                  {referees.map((r) => (
+                    <option key={r.referee_name} value={r.referee_name} className="bg-field text-ink">{r.referee_name}</option>
                   ))}
                 </select>
               </div>
-              <div className="min-w-0 flex-1">
-                <label className={lblCls}>1X2</label>
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-md border border-line bg-card-2 px-2.5 py-1.5">
-                  <span className="flex items-center gap-1">
-                    <TeamCrest logo={getTeamLogoPath(homeSlug)} name={homeName} size="xs" />
-                    <input className={oddCls} inputMode="decimal" value={oddsHome} onChange={(e) => setOddsHome(e.target.value)} placeholder="—" />
-                    <span className="w-7 text-right text-[10px] font-semibold tabular-nums text-ink-3">{impliedPct(oddsHome)}</span>
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-veil text-[8px] font-semibold text-ink-3">X</span>
-                    <input className={oddCls} inputMode="decimal" value={oddsDraw} onChange={(e) => setOddsDraw(e.target.value)} placeholder="—" />
-                    <span className="w-7 text-right text-[10px] font-semibold tabular-nums text-ink-3">{impliedPct(oddsDraw)}</span>
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <TeamCrest logo={getTeamLogoPath(awaySlug)} name={awayName} size="xs" />
-                    <input className={oddCls} inputMode="decimal" value={oddsAway} onChange={(e) => setOddsAway(e.target.value)} placeholder="—" />
-                    <span className="w-7 text-right text-[10px] font-semibold tabular-nums text-ink-3">{impliedPct(oddsAway)}</span>
-                  </span>
-                </div>
-              </div>
-            </div>
+            )}
 
-            {/* Güncel sezon penceresi (kompakt tek satır) + Ağırlık donut'u */}
-            <div className="mt-3 grid gap-3 sm:grid-cols-2">
-              <div className="rounded-lg border border-line bg-card-2 p-2.5">
-                <div className="mb-1.5 flex items-center justify-between">
-                  <span className="text-[10px] font-medium uppercase tracking-wide text-ink-3">{t("msm.currentWindow")}</span>
-                  <span className="text-[10px] tabular-nums text-ink-3">{maxWeek > 0 ? maxWeek : t("msm.noCurrent")}</span>
-                </div>
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-                  <span className="flex items-center gap-1">
-                    <label className="text-[10px] uppercase text-ink-3">{t("msm.selWeek")}</label>
-                    <input className={`${oddCls} disabled:opacity-50`} type="number" min={1} max={Math.max(1, maxWeek)}
-                      disabled={maxWeek === 0} value={maxWeek === 0 ? "" : selWeek}
-                      onChange={(e) => setSelWeek(clampWeek(e.target.value))} />
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <label className="text-[10px] uppercase text-ink-3">{t("msm.lastX")}</label>
-                    <input className={`${oddCls} disabled:opacity-50`} type="number" min={1} max={Math.max(1, maxWeek)}
-                      disabled={maxWeek === 0} value={maxWeek === 0 ? "" : lastX}
-                      onChange={(e) => setLastX(clampWeek(e.target.value))} />
-                  </span>
-                </div>
-              </div>
-              <div className="rounded-lg border border-line bg-card-2 p-2">
-                <WeightPie
-                  labels={[...HIST_SEASONS, CURRENT_SEASON].map((s) => s.replace(/^20(\d\d)-20(\d\d)$/, "$1/$2"))}
-                  weights={weights}
-                />
-              </div>
-            </div>
-
-            {/* Hakem + elle override */}
-            <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-4">
-              {showReferee && (
-                <div>
-                  <label className={lblCls}>{t("msm.referee")}</label>
-                  <select className={`${selCls} w-full`} value={refereeName} onChange={(e) => setRefereeName(e.target.value)}>
-                    <option value="" className="bg-field text-ink">—</option>
-                    {referees.map((r) => (
-                      <option key={r.referee_name} value={r.referee_name} className="bg-field text-ink">{r.referee_name}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
+            {/* Elle override (home/away/total) */}
+            <div className="mt-3 grid grid-cols-3 gap-2">
               <div>
                 <label className={lblCls}>{t("msm.manualHome")}</label>
                 <input className={numCls} inputMode="decimal" value={manHome} onChange={(e) => setManHome(e.target.value)} placeholder="—" />
@@ -725,18 +697,18 @@ export default function ResmiMatchStatsModel() {
             )}
           </div>
 
-          {/* Beklenti özeti */}
+          {/* Nihai beklenti (expectancy) — büyük */}
           {exp && (
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-3 gap-2">
               {([
                 [t("msm.homeExp"), exp.ft.homeMean, exp.h1.homeMean, exp.h2.homeMean],
                 [t("msm.awayExp"), exp.ft.awayMean, exp.h1.awayMean, exp.h2.awayMean],
                 [t("msm.totalExp"), exp.ft.totalMean, exp.h1.totalMean, exp.h2.totalMean],
               ] as const).map(([lbl, ft, h1, h2]) => (
-                <div key={lbl} className="rounded-lg border border-line bg-card p-3 text-center">
-                  <div className="text-[11px] uppercase tracking-wide text-ink-3">{lbl}</div>
-                  <div className="mt-1 text-2xl font-semibold text-ink tabular-nums">{fmt(ft as number)}</div>
-                  <div className="mt-0.5 text-[11px] text-ink-3 tabular-nums">
+                <div key={lbl} className="rounded-xl border border-line bg-card p-3 text-center">
+                  <div className="text-[10px] uppercase tracking-wide text-ink-3">{lbl}</div>
+                  <div className="mt-1 text-[32px] font-bold leading-none text-ink tabular-nums">{fmt(ft as number)}</div>
+                  <div className="mt-1.5 text-[10px] text-ink-3 tabular-nums">
                     1H {fmt(h1 as number)} · 2H {fmt(h2 as number)}
                   </div>
                 </div>
@@ -744,43 +716,73 @@ export default function ResmiMatchStatsModel() {
             </div>
           )}
 
-          {/* Hesaplama (Excel Sim R22 "Calculated x": harman HF/HA/AF/AA → Eq → xS) */}
-          {exp && (
-            <div className="rounded-xl border border-line bg-card p-3">
-              <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-3">{t("msm.calcTitle")}</div>
-              <table className="w-full max-w-md text-center text-[12px] tabular-nums">
-                <thead>
-                  <tr className="text-ink-3">
-                    <th className="py-1 text-left font-medium"></th>
-                    <th className="py-1 font-medium">{homeName || t("msm.home")}</th>
-                    <th className="py-1 font-medium">{awayName || t("msm.away")}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {([
-                    ["HF", exp.homeStats.hf, exp.awayStats.hf, false],
-                    ["HA", exp.homeStats.ha, exp.awayStats.ha, false],
-                    ["AF", exp.homeStats.af, exp.awayStats.af, false],
-                    ["AA", exp.homeStats.aa, exp.awayStats.aa, false],
-                    ["Eq", exp.homeEq, exp.awayEq, false],
-                    ["xS", exp.homeXs, exp.awayXs, true],
-                  ] as const).map(([lbl, h, a, strong]) => (
-                    <tr key={lbl} className="border-t border-line/60">
-                      <td className="py-1 text-left font-semibold text-ink">{lbl}</td>
-                      <td className={`py-1 ${strong ? "font-semibold text-ink" : "text-ink-2"}`}>{fmt(h as number)}</td>
-                      <td className={`py-1 ${strong ? "font-semibold text-ink" : "text-ink-2"}`}>{fmt(a as number)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              {exp.refereeSuggestedTotal != null && (
-                <div className="mt-2 text-[11px] text-ink-3">
-                  {t("msm.refereeSuggestion")}: <b className="text-ink">{exp.refereeSuggestedTotal.toFixed(2)}</b>
+            </div>
+
+            {/* ═══ ORTA: 26/27 penceresi + yıl dağılımı + hesaplama ═══ */}
+            <div className="min-w-0 space-y-4">
+              <div className="space-y-3 rounded-xl border border-line bg-card p-3">
+                {/* 26/27 penceresi (kompakt) */}
+                <div>
+                  <div className="mb-1.5 flex items-center justify-between">
+                    <span className="text-[10px] font-medium uppercase tracking-wide text-ink-3">{t("msm.currentWindow")}</span>
+                    <span className="text-[10px] tabular-nums text-ink-3">{maxWeek > 0 ? maxWeek : "—"}</span>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+                    <span className="flex items-center gap-1">
+                      <label className="text-[10px] uppercase text-ink-3">{t("msm.selWeek")}</label>
+                      <input className={`${oddCls} disabled:opacity-50`} type="number" min={1} max={Math.max(1, maxWeek)}
+                        disabled={maxWeek === 0} value={maxWeek === 0 ? "" : selWeek}
+                        onChange={(e) => setSelWeek(clampWeek(e.target.value))} />
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <label className="text-[10px] uppercase text-ink-3">{t("msm.lastX")}</label>
+                      <input className={`${oddCls} disabled:opacity-50`} type="number" min={1} max={Math.max(1, maxWeek)}
+                        disabled={maxWeek === 0} value={maxWeek === 0 ? "" : lastX}
+                        onChange={(e) => setLastX(clampWeek(e.target.value))} />
+                    </span>
+                  </div>
+                </div>
+                {/* Yıl dağılımı (donut) */}
+                <div className="border-t border-line/60 pt-3">
+                  <div className="mb-1 text-[10px] font-medium uppercase tracking-wide text-ink-3">{t("msm.cfgWeighting")}</div>
+                  <WeightPie
+                    labels={[...HIST_SEASONS, CURRENT_SEASON].map((s) => s.replace(/^20(\d\d)-20(\d\d)$/, "$1/$2"))}
+                    weights={weights}
+                  />
+                </div>
+              </div>
+
+              {/* Hesaplama (Excel Sim R22 "Calculated x": harman HF/HA/AF/AA → Eq → xS) */}
+              {exp && (
+                <div className="rounded-xl border border-line bg-card p-3">
+                  <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-3">{t("msm.calcTitle")}</div>
+                  <table className="w-full text-center text-[12px] tabular-nums">
+                    <thead>
+                      <tr className="text-ink-3">
+                        <th className="py-1 text-left font-medium"></th>
+                        <th className="py-1 font-medium">{homeName || t("msm.home")}</th>
+                        <th className="py-1 font-medium">{awayName || t("msm.away")}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {([
+                        ["HF", exp.homeStats.hf, exp.awayStats.hf, false],
+                        ["HA", exp.homeStats.ha, exp.awayStats.ha, false],
+                        ["AF", exp.homeStats.af, exp.awayStats.af, false],
+                        ["AA", exp.homeStats.aa, exp.awayStats.aa, false],
+                        ["Eq", exp.homeEq, exp.awayEq, false],
+                        ["xS", exp.homeXs, exp.awayXs, true],
+                      ] as const).map(([lbl, h, a, strong]) => (
+                        <tr key={lbl} className="border-t border-line/60">
+                          <td className="py-1 text-left font-semibold text-ink">{lbl}</td>
+                          <td className={`py-1 ${strong ? "font-semibold text-ink" : "text-ink-2"}`}>{fmt(h as number)}</td>
+                          <td className={`py-1 ${strong ? "font-semibold text-ink" : "text-ink-2"}`}>{fmt(a as number)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               )}
-            </div>
-          )}
-
             </div>
 
             {/* ═══ SAĞ: odds tabloları (segment çizgileri) ═══ */}
