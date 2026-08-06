@@ -68,7 +68,7 @@ export default async function ResmiExperience({
     content = <ResmiPlayerRankings data={await loadResmiPlayerRankings(config, season, metric)} />;
   else if (section === "teamRankings")
     content = <ResmiTeamRankings data={await loadResmiTeamRankings(config, season, metric)} />;
-  else if (section === "matchStatsModel") content = <ResmiMatchStatsModel />;
+  else if (section === "matchStatsModel") content = <ResmiMatchStatsModel league={config.source} />;
   else if (section === "playerStatsModel") content = await renderPlayerStatsModel(config);
   else content = <ResmiPlayers data={await loadResmiPlayers(config, season)} />;
 

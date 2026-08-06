@@ -39,9 +39,11 @@ function sb() {
   return createClient().schema("analytics");
 }
 
-// league → league_fixtures_v1.competition eşlemesi.
+// league → fikstür kaynağı. TSL apifootball (league_fixtures_v1); 1.Lig SofaScore
+// (msm_fixtures_tff1_v1 = tff1_fixtures_v1 + team_id→msm slug köprüsü).
 const COMPETITION: Record<string, string> = { tsl: "Süper Lig", tff1: "1. Lig" };
-export const FIXTURE_SEASON = "2026/2027"; // league_fixtures_v1 slash formatı
+const FIXTURE_VIEW: Record<string, string> = { tsl: "league_fixtures_v1", tff1: "msm_fixtures_tff1_v1" };
+export const FIXTURE_SEASON = "2026/2027"; // slash formatı (her iki kaynak da)
 
 export interface FixtureRow {
   fixtureId: string;
@@ -61,7 +63,7 @@ export interface FixtureInput {
 
 export async function fetchFixtures(league: string, round?: number): Promise<FixtureRow[]> {
   let q = sb()
-    .from("league_fixtures_v1")
+    .from(FIXTURE_VIEW[league] ?? "league_fixtures_v1")
     .select("fixture_id, round_number, home_team_slug, away_team_slug, home_team_name, away_team_name, fixture_datetime")
     .eq("competition", COMPETITION[league] ?? league)
     .eq("season_label", FIXTURE_SEASON)

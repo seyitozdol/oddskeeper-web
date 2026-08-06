@@ -43,7 +43,6 @@ import type { MarketConfig, ModelConfig } from "@/features/match-stats-model/eng
 import TeamCrest from "@/features/tsl/shared/TeamCrest";
 import { getTeamLogoPath } from "@/features/player-detail/utils/getTeamLogoPath";
 
-const LEAGUE = "tsl";
 const BIG4 = new Set(["besiktas", "galatasaray", "fenerbahce", "trabzonspor"]);
 const TABS = ["model", "config", "fixtures", "input"] as const;
 
@@ -248,7 +247,7 @@ function SegmentBlock({
 }
 
 // ─── Ana bileşen ────────────────────────────────────────────────────────────
-export default function ResmiMatchStatsModel() {
+export default function ResmiMatchStatsModel({ league: LEAGUE = "tsl" }: { league?: string }) {
   const { t } = useI18n();
   const [tab, setTab] = useState<Tab>("model");
   const [configFocus, setConfigFocus] = useState<string | null>(null);
@@ -322,7 +321,7 @@ export default function ResmiMatchStatsModel() {
       for (const r of rows) (map[r.market] ??= []).push(r.template_code);
       setTemplatesByMarket(map);
     });
-  }, []);
+  }, [LEAGUE]);
 
   // Mount: referans veriler.
   useEffect(() => {
