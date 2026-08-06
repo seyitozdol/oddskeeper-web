@@ -46,11 +46,14 @@ export interface ModelConfig {
 // Bir fikstür + market için tüm model girdileri.
 export interface ModelInputs {
   market: string;
-  // Sezon-ağırlıklı harman: 4 sezon (23-24 / 24-25 / 25-26 / 26-27), her biri kendi ağırlığıyla.
-  // 26-27 (güncel) değeri caller tarafından maç-logu penceresinden hesaplanıp buraya eklenir.
-  // Veri yoksa (ör. sezon başı) o sezon caller tarafından hiç eklenmez.
+  // Yıl-ağırlıklı GEÇMİŞ harman (3 sezon: 25-26 / 24-25 / 23-24), her biri kendi ağırlığıyla.
   homeSeasons: SeasonWeighted[];
   awaySeasons: SeasonWeighted[];
+  // Güncel sezon (26-27) son-x-hafta penceresi (Excel R10). Yoksa null → sadece weighted kullanılır.
+  homeCurrent?: HFAA | null;
+  awayCurrent?: HFAA | null;
+  // "Etki Yüzdesi" W6: calculated = etki*current + (1-etki)*weighted (0..1).
+  etki: number;
   // 1x2 oranları (supremacy için).
   homeOdds: number;
   drawOdds: number;
@@ -78,8 +81,12 @@ export interface Expectancy {
   h1: SegmentExpectancy;
   h2: SegmentExpectancy;
   // Ara değerler (Excel Sim R22 "Calculated x" alanı — şeffaflık/UI için).
-  homeStats: HFAA; // harmanlanmış ev HF/HA/AF/AA (U23-26)
-  awayStats: HFAA; // harmanlanmış dep (W23-26)
+  homeWeighted: HFAA; // yıl-ağırlıklı geçmiş (etki öncesi)
+  awayWeighted: HFAA;
+  homeLastX: HFAA | null; // güncel sezon son-x-hafta penceresi (Excel R10); yoksa null
+  awayLastX: HFAA | null;
+  homeStats: HFAA; // NİHAİ calculated ev HF/HA/AF/AA (weighted↔lastX etki harmanı, U23-26)
+  awayStats: HFAA; // NİHAİ calculated dep (W23-26)
   homeEq: number; // çapraz matris sonucu, supremacy ÖNCESİ (U27)
   awayEq: number; // (W27)
   homeXs: number; // supremacy SONRASI (U28)

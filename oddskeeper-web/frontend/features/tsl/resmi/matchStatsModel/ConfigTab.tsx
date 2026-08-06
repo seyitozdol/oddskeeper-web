@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { useI18n } from "../../../../lib/i18n/LanguageProvider";
 import {
   HIST_SEASONS,
-  CURRENT_SEASON,
   fetchRawModelConfig,
   fetchRawMarketConfigs,
   fetchTemplates,
@@ -146,7 +145,7 @@ export default function ConfigTab({
             <div><label className={lbl}>{HIST_SEASONS[0]}</label>{numField(model.weight_s1, (v) => setM("weight_s1", v))}</div>
             <div><label className={lbl}>{HIST_SEASONS[1]}</label>{numField(model.weight_s2, (v) => setM("weight_s2", v))}</div>
             <div><label className={lbl}>{HIST_SEASONS[2]}</label>{numField(model.weight_s3, (v) => setM("weight_s3", v))}</div>
-            <div><label className={lbl}>{CURRENT_SEASON}</label>{numField(model.weight_s4, (v) => setM("weight_s4", v))}</div>
+            <div><label className={lbl}>{t("msm.defaultEtki")}</label>{numField(model.default_etki, (v) => setM("default_etki", v))}</div>
           </div>
           <p className="mt-2 text-[11px] text-ink-3">{t("msm.weightSumNote")}</p>
         </section>

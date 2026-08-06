@@ -102,60 +102,65 @@ const impliedPct = (s: string): string => {
   return isFinite(n) && n > 0 ? `${(100 / n).toFixed(0)}%` : "—";
 };
 
-// Ağırlıklandırma donut'u (tek pasta). Etiketler (yıl + %) dilimin üzerinde, küçük font.
+// Ağırlıklandırma: dikey bar grafik (yıl bazında weighted ağırlıklar).
 const PIE_COLORS = ["#6366f1", "#06b6d4", "#f59e0b", "#10b981"];
-function WeightPie({ labels, weights }: { labels: string[]; weights: number[] }) {
+function WeightBars({ labels, weights }: { labels: string[]; weights: number[] }) {
+  const maxW = Math.max(...weights.map((w) => Math.max(0, w)), 0.0001);
   const total = weights.reduce((a, b) => a + Math.max(0, b), 0);
-  const R = 32, cx = 50, cy = 50, sw = 20;
-  const C = 2 * Math.PI * R;
-  let acc = 0;
-  const segs = weights.map((w, i) => {
-    const frac = total > 0 ? Math.max(0, w) / total : 0;
-    const start = acc;
-    acc += frac;
-    return { i, frac, start };
-  });
   return (
-    <div className="flex justify-center">
-      <svg viewBox="0 0 100 100" className="h-32 w-32" role="img" aria-label="weighting">
-        {/* dilimler (12 yönünden saat yönünde) */}
-        <g transform={`rotate(-90 ${cx} ${cy})`}>
-          {total > 0 ? (
-            segs
-              .filter((s) => s.frac > 0)
-              .map((s) => (
-                <circle
-                  key={s.i}
-                  cx={cx}
-                  cy={cy}
-                  r={R}
-                  fill="none"
-                  stroke={PIE_COLORS[s.i]}
-                  strokeWidth={sw}
-                  strokeDasharray={`${s.frac * C} ${C - s.frac * C}`}
-                  strokeDashoffset={-s.start * C}
-                />
-              ))
-          ) : (
-            <circle cx={cx} cy={cy} r={R} fill="none" stroke="var(--color-veil)" strokeWidth={sw} />
-          )}
-        </g>
-        {/* etiketler: yıl + yüzde, dilimin ortasında */}
-        {total > 0 &&
-          segs
-            .filter((s) => s.frac >= 0.08)
-            .map((s) => {
-              const ang = (s.start + s.frac / 2) * 2 * Math.PI - Math.PI / 2;
-              const x = cx + R * Math.cos(ang);
-              const y = cy + R * Math.sin(ang);
-              return (
-                <text key={s.i} x={x} y={y} textAnchor="middle" fill="#fff" fontSize="5.5" fontWeight={700}>
-                  <tspan x={x} dy="-0.3em">{labels[s.i]}</tspan>
-                  <tspan x={x} dy="1.05em">{Math.round(s.frac * 100)}%</tspan>
-                </text>
-              );
-            })}
-      </svg>
+    <div className="flex items-stretch justify-between gap-2" style={{ height: 104 }}>
+      {labels.map((lbl, i) => {
+        const w = Math.max(0, weights[i] ?? 0);
+        const hPct = (w / maxW) * 100;
+        const pct = total > 0 ? Math.round((100 * w) / total) : 0;
+        return (
+          <div key={lbl} className="flex flex-1 flex-col items-center gap-1">
+            <span className="text-[10px] font-semibold leading-none tabular-nums text-ink">{w}</span>
+            <div className="flex w-full flex-1 items-end">
+              <div className="w-full rounded-t" style={{ height: `${Math.max(3, hPct)}%`, background: PIE_COLORS[i] }} />
+            </div>
+            <span className="text-[9px] leading-none text-ink-2">{lbl}</span>
+            <span className="text-[9px] leading-none tabular-nums text-ink-3">{pct}%</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// Kompakt HF/HA/AF/AA tablosu (weighted / son-x / calculated). rows: [etiket, ev, dep, kalın].
+function MiniHFAA({
+  title,
+  homeName,
+  awayName,
+  rows,
+}: {
+  title: string;
+  homeName: string;
+  awayName: string;
+  rows: Array<readonly [string, number, number, boolean]>;
+}) {
+  return (
+    <div className="min-w-[116px] flex-1">
+      <div className="mb-1 text-center text-[10px] font-semibold uppercase tracking-wide text-ink-3">{title}</div>
+      <table className="w-full text-center text-[11px] tabular-nums">
+        <thead>
+          <tr className="text-ink-3">
+            <th className="py-0.5"></th>
+            <th className="py-0.5 font-medium">{homeName}</th>
+            <th className="py-0.5 font-medium">{awayName}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map(([lbl, h, a, strong]) => (
+            <tr key={lbl} className="border-t border-line/60">
+              <td className="py-0.5 text-left font-semibold text-ink">{lbl}</td>
+              <td className={`py-0.5 ${strong ? "font-semibold text-ink" : "text-ink-2"}`}>{isFinite(h) ? h.toFixed(2) : "—"}</td>
+              <td className={`py-0.5 ${strong ? "font-semibold text-ink" : "text-ink-2"}`}>{isFinite(a) ? a.toFixed(2) : "—"}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
@@ -243,7 +248,8 @@ export default function ResmiMatchStatsModel() {
   const [oddsHome, setOddsHome] = useState("");
   const [oddsDraw, setOddsDraw] = useState("");
   const [oddsAway, setOddsAway] = useState("");
-  const [weights, setWeights] = useState<number[]>([0.5, 0.3, 0.2, 0]); // 25-26/24-25/23-24/26-27(güncel)
+  const [weights, setWeights] = useState<number[]>([0.5, 0.3, 0.2]); // 25-26/24-25/23-24 (weighted geçmiş)
+  const [etki, setEtki] = useState(0); // W6 etki %: 0..1, son-x-hafta harman ağırlığı
   const [refereeName, setRefereeName] = useState("");
   const [manHome, setManHome] = useState("");
   const [manAway, setManAway] = useState("");
@@ -275,9 +281,12 @@ export default function ResmiMatchStatsModel() {
   const loadConfig = useCallback(() => {
     fetchMarketConfigs(LEAGUE).then(setMarketCfgs);
     fetchModelConfig(LEAGUE).then(setModelCfg);
-    // Sezon ağırlıkları (4 sezon, 26-27 dahil) Config'ten gelir.
+    // Sezon ağırlıkları (3 geçmiş sezon) + Etki% varsayılanı Config'ten gelir.
     fetchRawModelConfig(LEAGUE).then((r) => {
-      if (r) setWeights([r.weight_s1, r.weight_s2, r.weight_s3, r.weight_s4]);
+      if (r) {
+        setWeights([r.weight_s1, r.weight_s2, r.weight_s3]);
+        setEtki(r.default_etki);
+      }
     });
     // Export için ham market config + template'ler (blok sırasında).
     fetchRawMarketConfigs(LEAGUE).then((rows) => {
@@ -354,25 +363,15 @@ export default function ResmiMatchStatsModel() {
     const hi = Math.max(1, maxWeek);
     return isFinite(n) ? Math.min(hi, Math.max(1, n)) : hi;
   };
-  // 26/27 sezonunun harmandaki etki yüzdesi (weight_s4 / toplam ağırlık).
-  const etkiPct = (() => {
-    const tot = weights.reduce((a, b) => a + Math.max(0, b), 0);
-    return tot > 0 ? Math.round((100 * Math.max(0, weights[3])) / tot) : 0;
-  })();
-
   const output = useMemo(() => {
     if (!marketCfg || !modelCfg || !homeSlug || !awaySlug) return null;
-    // 4 sezonluk harman: 3 geçmiş (histdata) + 26-27 güncel (maç-logu penceresinden).
-    // Bir sezon verisi yoksa veya ağırlığı 0 ise harmana katılmaz.
-    const seasonsFor = (slug: string, current: HFAA | null): SeasonWeighted[] => {
-      const arr = HIST_SEASONS.map((s, i) => {
+    // weighted = 3 geçmiş sezon (histdata) yıl-ağırlıklı. 26-27 güncel AYRI (etki ile harman).
+    const seasonsFor = (slug: string): SeasonWeighted[] =>
+      HIST_SEASONS.map((s, i) => {
         const v = hist[slug]?.[s];
         if (!v || weights[i] <= 0) return null;
         return { ...v, weight: weights[i] };
       }).filter(Boolean) as SeasonWeighted[];
-      if (current && weights[3] > 0) arr.push({ ...current, weight: weights[3] });
-      return arr;
-    };
 
     const num = (s: string): number | null => {
       const n = parseFloat(s);
@@ -381,13 +380,15 @@ export default function ResmiMatchStatsModel() {
     const oH = num(oddsHome);
     const oA = num(oddsAway);
     const ref = referees.find((r) => r.referee_name === refereeName);
-    const homeCur = currentHFAA(matchLog[homeSlug], selWeek, lastX, big4H, redcH);
-    const awayCur = currentHFAA(matchLog[awaySlug], selWeek, lastX, big4A, redcA);
 
     const inputs: ModelInputs = {
       market,
-      homeSeasons: seasonsFor(homeSlug, homeCur),
-      awaySeasons: seasonsFor(awaySlug, awayCur),
+      homeSeasons: seasonsFor(homeSlug),
+      awaySeasons: seasonsFor(awaySlug),
+      // Güncel sezon (26-27) son-x-hafta penceresi + Etki% (W6) harmanı.
+      homeCurrent: currentHFAA(matchLog[homeSlug], selWeek, lastX, big4H, redcH),
+      awayCurrent: currentHFAA(matchLog[awaySlug], selWeek, lastX, big4A, redcA),
+      etki,
       // Oran yoksa nötr supremacy (eşit oran → faktör 1).
       homeOdds: oH ?? 2,
       drawOdds: num(oddsDraw) ?? 3.4,
@@ -406,7 +407,7 @@ export default function ResmiMatchStatsModel() {
     }
   }, [
     marketCfg, modelCfg, homeSlug, awaySlug, market, hist, matchLog, selWeek, lastX,
-    big4H, redcH, big4A, redcA, weights,
+    big4H, redcH, big4A, redcA, weights, etki,
     oddsHome, oddsDraw, oddsAway, manHome, manAway, manTotal, refereeName, referees,
   ]);
 
@@ -697,19 +698,28 @@ export default function ResmiMatchStatsModel() {
               </div>
             </div>
 
-            {/* Hakem düzeltilmiş toplam önerisi (Excel'de M8'e uygulanır) */}
-            {exp?.refereeSuggestedTotal != null && (
-              <div className="mt-3 flex items-center gap-2 rounded-md border border-line bg-card-2 px-3 py-2 text-sm">
-                <span className="text-ink-2">
-                  {t("msm.refereeSuggestion")}:{" "}
-                  <b className="text-ink tabular-nums">{exp.refereeSuggestedTotal.toFixed(2)}</b>
-                </span>
-                <button
-                  onClick={() => setManTotal(exp.refereeSuggestedTotal!.toFixed(3))}
-                  className="ml-auto rounded-md bg-accent px-2.5 py-1 text-xs font-semibold text-accent-ink hover:opacity-90"
-                >
-                  {t("msm.apply")}
-                </button>
+            {/* Hakem özeti (sadece Card/Foul): seçilen hakemin istatistikleri + önerilen toplam */}
+            {showReferee && (
+              <div className="mt-3 rounded-md border border-line bg-card-2 p-2.5">
+                <div className="mb-1.5 text-[10px] font-medium uppercase tracking-wide text-ink-3">{t("msm.referee")}</div>
+                {(() => {
+                  const rf = referees.find((r) => r.referee_name === refereeName);
+                  if (!rf) return <div className="text-[11px] text-ink-3">{t("msm.refPick")}</div>;
+                  return (
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px]">
+                      <span className="text-ink-2">{t("msm.refPlayed")} <b className="tabular-nums text-ink">{rf.played ?? "—"}</b></span>
+                      <span className="text-ink-2">{t("msm.refCards")} <b className="tabular-nums text-ink">{rf.cards_pg != null ? rf.cards_pg.toFixed(2) : "—"}</b></span>
+                      <span className="text-ink-2">{t("msm.refFouls")} <b className="tabular-nums text-ink">{rf.fouls_pg != null ? rf.fouls_pg.toFixed(2) : "—"}</b></span>
+                      {exp?.refereeSuggestedTotal != null && (
+                        <span className="ml-auto flex items-center gap-1.5">
+                          <span className="text-ink-2">{t("msm.refereeSuggestion")}: <b className="tabular-nums text-ink">{exp.refereeSuggestedTotal.toFixed(2)}</b></span>
+                          <button onClick={() => setManTotal(exp.refereeSuggestedTotal!.toFixed(3))}
+                            className="rounded-md bg-accent px-2 py-0.5 text-[10px] font-semibold text-accent-ink hover:opacity-90">{t("msm.apply")}</button>
+                        </span>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
             )}
           </div>
@@ -733,35 +743,47 @@ export default function ResmiMatchStatsModel() {
             </div>
           )}
 
-            {/* Hesaplama (Excel Sim R22 "Calculated x": harman HF/HA/AF/AA → Eq → xS) */}
+            {/* Hesaplama: Weighted (geçmiş) + Son-x (26/27) → Etki% → Calculated (Excel R10/W6) */}
             {exp && (
               <div className="rounded-xl border border-line bg-card p-3">
                 <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-3">{t("msm.calcTitle")}</div>
-                <table className="w-full text-center text-[12px] tabular-nums">
-                  <thead>
-                    <tr className="text-ink-3">
-                      <th className="py-1 text-left font-medium"></th>
-                      <th className="py-1 font-medium">{homeName || t("msm.home")}</th>
-                      <th className="py-1 font-medium">{awayName || t("msm.away")}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {([
+                <div className="flex gap-3 overflow-x-auto">
+                  <MiniHFAA
+                    title={t("msm.weighted")}
+                    homeName={homeName || t("msm.home")}
+                    awayName={awayName || t("msm.away")}
+                    rows={[
+                      ["HF", exp.homeWeighted.hf, exp.awayWeighted.hf, false],
+                      ["HA", exp.homeWeighted.ha, exp.awayWeighted.ha, false],
+                      ["AF", exp.homeWeighted.af, exp.awayWeighted.af, false],
+                      ["AA", exp.homeWeighted.aa, exp.awayWeighted.aa, false],
+                    ] as const}
+                  />
+                  <MiniHFAA
+                    title={t("msm.lastXTable")}
+                    homeName={homeName || t("msm.home")}
+                    awayName={awayName || t("msm.away")}
+                    rows={[
+                      ["HF", exp.homeLastX?.hf ?? NaN, exp.awayLastX?.hf ?? NaN, false],
+                      ["HA", exp.homeLastX?.ha ?? NaN, exp.awayLastX?.ha ?? NaN, false],
+                      ["AF", exp.homeLastX?.af ?? NaN, exp.awayLastX?.af ?? NaN, false],
+                      ["AA", exp.homeLastX?.aa ?? NaN, exp.awayLastX?.aa ?? NaN, false],
+                    ] as const}
+                  />
+                  <MiniHFAA
+                    title={t("msm.calculated")}
+                    homeName={homeName || t("msm.home")}
+                    awayName={awayName || t("msm.away")}
+                    rows={[
                       ["HF", exp.homeStats.hf, exp.awayStats.hf, false],
                       ["HA", exp.homeStats.ha, exp.awayStats.ha, false],
                       ["AF", exp.homeStats.af, exp.awayStats.af, false],
                       ["AA", exp.homeStats.aa, exp.awayStats.aa, false],
                       ["Eq", exp.homeEq, exp.awayEq, false],
                       ["xS", exp.homeXs, exp.awayXs, true],
-                    ] as const).map(([lbl, h, a, strong]) => (
-                      <tr key={lbl} className="border-t border-line/60">
-                        <td className="py-1 text-left font-semibold text-ink">{lbl}</td>
-                        <td className={`py-1 ${strong ? "font-semibold text-ink" : "text-ink-2"}`}>{fmt(h as number)}</td>
-                        <td className={`py-1 ${strong ? "font-semibold text-ink" : "text-ink-2"}`}>{fmt(a as number)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    ] as const}
+                  />
+                </div>
               </div>
             )}
 
@@ -786,16 +808,21 @@ export default function ResmiMatchStatsModel() {
                       disabled={maxWeek === 0} value={maxWeek === 0 ? "" : lastX}
                       onChange={(e) => setLastX(clampWeek(e.target.value))} />
                   </span>
-                  <span className="flex items-center gap-1 rounded bg-field px-1.5 py-1 text-[10px] text-ink-2">
-                    {t("msm.impact")} <b className="tabular-nums text-ink">{etkiPct}%</b>
+                  {/* Etki % (Excel W6): son-x harman ağırlığı. 0 → weighted, 100 → son-x bypass */}
+                  <span className="flex items-center gap-1">
+                    <label className="text-[10px] uppercase text-ink-3">{t("msm.impact")}</label>
+                    <input className={oddCls} type="number" min={0} max={100} step={5}
+                      value={Math.round(etki * 100)}
+                      onChange={(e) => setEtki(Math.min(1, Math.max(0, (parseInt(e.target.value) || 0) / 100)))} />
+                    <span className="text-[10px] text-ink-3">%</span>
                   </span>
                 </div>
               </div>
-              {/* Yıl dağılımı (donut) */}
+              {/* Yıl dağılımı (dikey barlar) */}
               <div className="border-t border-line/60 pt-3">
                 <div className="mb-1 text-[10px] font-medium uppercase tracking-wide text-ink-3">{t("msm.cfgWeighting")}</div>
-                <WeightPie
-                  labels={[...HIST_SEASONS, CURRENT_SEASON].map((s) => s.replace(/^20(\d\d)-20(\d\d)$/, "$1/$2"))}
+                <WeightBars
+                  labels={HIST_SEASONS.map((s) => s.replace(/^20(\d\d)-20(\d\d)$/, "$1/$2"))}
                   weights={weights}
                 />
               </div>

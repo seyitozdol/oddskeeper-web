@@ -1,5 +1,6 @@
 // Beklenti (expectancy) katmanı: Excel Sim sayfasının mantığı.
-// Sezon-ağırlıklı harman (4 sezon, 26-27 dahil) -> çapraz matris -> supremacy -> 1H/2H bölüşüm.
+// weighted (yıl-ağırlıklı geçmiş) + lastX (güncel son-x-hafta) -> Etki% harman (W6)
+// -> çapraz matris -> supremacy -> 1H/2H bölüşüm.
 import type {
   HFAA,
   SeasonWeighted,
@@ -9,7 +10,7 @@ import type {
   Expectancy,
 } from './types';
 
-// Σ weight_i · season_i (sezon-ağırlıklı harman; 23-24 / 24-25 / 25-26 / 26-27).
+// Σ weight_i · season_i (yıl-ağırlıklı geçmiş harman; 25-26 / 24-25 / 23-24).
 function yearWeighted(seasons: SeasonWeighted[]): HFAA {
   const acc: HFAA = { hf: 0, ha: 0, af: 0, aa: 0 };
   for (const s of seasons) {
@@ -21,14 +22,30 @@ function yearWeighted(seasons: SeasonWeighted[]): HFAA {
   return acc;
 }
 
+// Excel W6: calculated = etki*current + (1-etki)*weighted (alan bazında).
+// etki=0 → tamamen weighted; etki=1 → tamamen current (weighted bypass). current yoksa weighted.
+function blendCurrent(weighted: HFAA, current: HFAA | null | undefined, etki: number): HFAA {
+  if (!current || etki <= 0) return weighted;
+  const e = Math.min(1, Math.max(0, etki));
+  const mix = (c: number, w: number) => e * c + (1 - e) * w;
+  return {
+    hf: mix(current.hf, weighted.hf),
+    ha: mix(current.ha, weighted.ha),
+    af: mix(current.af, weighted.af),
+    aa: mix(current.aa, weighted.aa),
+  };
+}
+
 export function computeExpectancy(
   inputs: ModelInputs,
   mc: MarketConfig,
   cfg: ModelConfig
 ): Expectancy {
-  // 1) Sezon-ağırlıklı harman, iki takım (26-27 caller tarafından 4. sezon olarak eklenmiş).
-  const home = yearWeighted(inputs.homeSeasons);
-  const away = yearWeighted(inputs.awaySeasons);
+  // 1) weighted (geçmiş) → lastX (güncel) ile Etki% harmanı = calculated, iki takım.
+  const homeW = yearWeighted(inputs.homeSeasons);
+  const awayW = yearWeighted(inputs.awaySeasons);
+  const home = blendCurrent(homeW, inputs.homeCurrent, inputs.etki);
+  const away = blendCurrent(awayW, inputs.awayCurrent, inputs.etki);
 
   // 2) Çapraz matris. Ev sahibi evde oynar (HF birincil), rakip deplasmanda (AA birincil-against).
   const { xmatrixWOwnFor: w1, xmatrixWOwnAlt: w2, xmatrixWOppAlt: w3, xmatrixWOppAgainst: w4 } = cfg;
@@ -105,6 +122,10 @@ export function computeExpectancy(
   const away2h = awayExp - away1h;
 
   return {
+    homeWeighted: homeW,
+    awayWeighted: awayW,
+    homeLastX: inputs.homeCurrent ?? null,
+    awayLastX: inputs.awayCurrent ?? null,
     homeStats: home,
     awayStats: away,
     homeEq,
