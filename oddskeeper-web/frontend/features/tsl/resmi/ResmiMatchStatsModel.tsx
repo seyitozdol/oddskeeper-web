@@ -657,15 +657,28 @@ export default function ResmiMatchStatsModel() {
           <div className="rounded-xl border border-line bg-card p-4">
             {/* Fixture + 1X2 (salt-okunur, hemen yanında; oranlar Fixture sekmesinden girilir) */}
             <div className="flex flex-wrap items-start gap-x-3 gap-y-2">
-              <div className="min-w-0 flex-1">
-                <label className={lblCls}>{t("msm.tab_fixtures")}</label>
-                <select className={`${selCls} w-full`} value={selectedFixtureId} onChange={(e) => selectFixture(e.target.value)}>
-                  {fixtures.map((f) => (
-                    <option key={f.fixtureId} value={f.fixtureId} className="bg-field text-ink">
-                      R{f.round} · {f.label}
-                    </option>
-                  ))}
-                </select>
+              <div className="min-w-0 flex-1 space-y-3">
+                <div>
+                  <label className={lblCls}>{t("msm.tab_fixtures")}</label>
+                  <select className={`${selCls} w-full`} value={selectedFixtureId} onChange={(e) => selectFixture(e.target.value)}>
+                    {fixtures.map((f) => (
+                      <option key={f.fixtureId} value={f.fixtureId} className="bg-field text-ink">
+                        R{f.round} · {f.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className={`${lblCls} flex items-center gap-1`}>
+                    {t("msm.market")}
+                    <ConfigGear onClick={() => goConfig("markets")} title={t("msm.cfgMarkets")} />
+                  </label>
+                  <select className={`${selCls} w-full`} value={market} onChange={(e) => setMarket(e.target.value)}>
+                    {MARKETS.map((m) => (
+                      <option key={m} value={m} className="bg-field text-ink">{m}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
               <div>
                 <label className={lblCls}>1X2</label>
@@ -687,19 +700,6 @@ export default function ResmiMatchStatsModel() {
                   </div>
                 </div>
               </div>
-            </div>
-
-            {/* Market */}
-            <div className="mt-3">
-              <label className={`${lblCls} flex items-center gap-1`}>
-                {t("msm.market")}
-                <ConfigGear onClick={() => goConfig("markets")} title={t("msm.cfgMarkets")} />
-              </label>
-              <select className={`${selCls} w-full sm:w-40`} value={market} onChange={(e) => setMarket(e.target.value)}>
-                {MARKETS.map((m) => (
-                  <option key={m} value={m} className="bg-field text-ink">{m}</option>
-                ))}
-              </select>
             </div>
 
             {/* Hakem seçimi (sadece Card/Foul marketlerinde) */}
