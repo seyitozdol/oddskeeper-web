@@ -165,6 +165,23 @@ function MiniHFAA({
   );
 }
 
+// Dişli çark: tıklayınca Config sekmesindeki ilgili bölüme götürür.
+function ConfigGear({ onClick, title }: { onClick: () => void; title: string }) {
+  return (
+    <button
+      onClick={onClick}
+      title={title}
+      aria-label={title}
+      className="shrink-0 rounded p-0.5 text-ink-3 transition hover:text-accent"
+    >
+      <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="3" />
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+      </svg>
+    </button>
+  );
+}
+
 // ─── Line tablosu (bir seçim: Home/Away/Total) ──────────────────────────────
 function LineTable({ title, sel }: { title: string; sel: SelectionLines | null }) {
   const { t } = useI18n();
@@ -234,6 +251,12 @@ function SegmentBlock({
 export default function ResmiMatchStatsModel() {
   const { t } = useI18n();
   const [tab, setTab] = useState<Tab>("model");
+  const [configFocus, setConfigFocus] = useState<string | null>(null);
+  // Model'deki dişli → Config sekmesine geç + ilgili bölüme kaydır.
+  const goConfig = (section: string) => {
+    setConfigFocus(section);
+    setTab("config");
+  };
 
   // Referans veriler.
   const [teams, setTeams] = useState<TeamOption[]>([]);
@@ -531,7 +554,7 @@ export default function ResmiMatchStatsModel() {
             <button
               onClick={addCurrentMarket}
               disabled={currentRows.length === 0}
-              className="rounded-md bg-accent px-3 py-1.5 text-xs font-semibold text-accent-ink hover:opacity-90 disabled:opacity-50"
+              className="rounded-lg border border-blue-500/50 bg-blue-500/15 px-4 py-1.5 text-[13px] font-semibold text-blue-600 transition hover:bg-blue-500/25 disabled:opacity-40 dark:text-blue-300"
             >
               {t("msm.addToInput")} ({currentRows.length})
             </button>
@@ -546,7 +569,7 @@ export default function ResmiMatchStatsModel() {
       </div>
 
       {tab === "config" ? (
-        <ConfigTab league={LEAGUE} onSaved={loadConfig} />
+        <ConfigTab league={LEAGUE} focus={configFocus} onSaved={loadConfig} />
       ) : tab === "fixtures" ? (
         <FixtureIdTab league={LEAGUE} onSaved={() => fetchFixtureInputs(LEAGUE).then(setFixtureInputs)} />
       ) : tab === "input" ? (
@@ -646,29 +669,32 @@ export default function ResmiMatchStatsModel() {
               </div>
               <div>
                 <label className={lblCls}>1X2</label>
-                <div className="flex items-center gap-x-3 rounded-md border border-line bg-card-2 px-2.5 py-[7px]">
-                  <span className="flex items-center gap-1">
-                    <TeamCrest logo={getTeamLogoPath(homeSlug)} name={homeName} size="xs" />
-                    <b className="text-xs tabular-nums text-ink">{oddsHome || "—"}</b>
+                <div className="flex items-start gap-4 rounded-md border border-line bg-card-2 px-3 py-2">
+                  <div className="flex flex-col items-center gap-1">
+                    <TeamCrest logo={getTeamLogoPath(homeSlug)} name={homeName} size="lg" />
+                    <b className="text-sm tabular-nums text-ink">{oddsHome || "—"}</b>
                     <span className="text-[10px] tabular-nums text-ink-3">{impliedPct(oddsHome)}</span>
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-veil text-[8px] font-semibold text-ink-3">X</span>
-                    <b className="text-xs tabular-nums text-ink">{oddsDraw || "—"}</b>
+                  </div>
+                  <div className="flex flex-col items-center gap-1">
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-veil text-[13px] font-semibold text-ink-3">X</span>
+                    <b className="text-sm tabular-nums text-ink">{oddsDraw || "—"}</b>
                     <span className="text-[10px] tabular-nums text-ink-3">{impliedPct(oddsDraw)}</span>
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <TeamCrest logo={getTeamLogoPath(awaySlug)} name={awayName} size="xs" />
-                    <b className="text-xs tabular-nums text-ink">{oddsAway || "—"}</b>
+                  </div>
+                  <div className="flex flex-col items-center gap-1">
+                    <TeamCrest logo={getTeamLogoPath(awaySlug)} name={awayName} size="lg" />
+                    <b className="text-sm tabular-nums text-ink">{oddsAway || "—"}</b>
                     <span className="text-[10px] tabular-nums text-ink-3">{impliedPct(oddsAway)}</span>
-                  </span>
+                  </div>
                 </div>
               </div>
             </div>
 
             {/* Market */}
             <div className="mt-3">
-              <label className={lblCls}>{t("msm.market")}</label>
+              <label className={`${lblCls} flex items-center gap-1`}>
+                {t("msm.market")}
+                <ConfigGear onClick={() => goConfig("markets")} title={t("msm.cfgMarkets")} />
+              </label>
               <select className={`${selCls} w-full sm:w-40`} value={market} onChange={(e) => setMarket(e.target.value)}>
                 {MARKETS.map((m) => (
                   <option key={m} value={m} className="bg-field text-ink">{m}</option>
@@ -708,7 +734,10 @@ export default function ResmiMatchStatsModel() {
             {/* Hakem özeti (sadece Card/Foul): seçilen hakemin istatistikleri + önerilen toplam */}
             {showReferee && (
               <div className="mt-3 rounded-md border border-line bg-card-2 p-2.5">
-                <div className="mb-1.5 text-[10px] font-medium uppercase tracking-wide text-ink-3">{t("msm.referee")}</div>
+                <div className="mb-1.5 flex items-center gap-1 text-[10px] font-medium uppercase tracking-wide text-ink-3">
+                  {t("msm.referee")}
+                  <ConfigGear onClick={() => goConfig("model")} title={t("msm.refereeWeight")} />
+                </div>
                 {(() => {
                   const rf = referees.find((r) => r.referee_name === refereeName);
                   if (!rf) return <div className="text-[11px] text-ink-3">{t("msm.refPick")}</div>;
@@ -827,7 +856,10 @@ export default function ResmiMatchStatsModel() {
               </div>
               {/* Yıl dağılımı (dikey barlar) */}
               <div className="border-t border-line/60 pt-3">
-                <div className="mb-1 text-[10px] font-medium uppercase tracking-wide text-ink-3">{t("msm.cfgWeighting")}</div>
+                <div className="mb-1 flex items-center gap-1 text-[10px] font-medium uppercase tracking-wide text-ink-3">
+                  {t("msm.cfgWeighting")}
+                  <ConfigGear onClick={() => goConfig("weighting")} title={t("msm.cfgWeighting")} />
+                </div>
                 <WeightBars
                   labels={[...HIST_SEASONS, CURRENT_SEASON].map((s) => s.replace(/^20(\d\d)-20(\d\d)$/, "$1/$2"))}
                   weights={weights}

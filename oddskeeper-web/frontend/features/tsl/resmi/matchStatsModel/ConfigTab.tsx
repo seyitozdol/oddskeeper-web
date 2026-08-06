@@ -38,9 +38,11 @@ const EX_BASE = 10;
 
 export default function ConfigTab({
   league,
+  focus,
   onSaved,
 }: {
   league: string;
+  focus?: string | null;
   onSaved?: () => void;
 }) {
   const { t } = useI18n();
@@ -54,6 +56,17 @@ export default function ConfigTab({
     fetchRawMarketConfigs(league).then(setMarkets);
     fetchTemplates(league).then(setTemplates);
   }, [league]);
+
+  // Model'deki dişliden gelen odak: ilgili bölüme kaydır + kısa vurgula.
+  useEffect(() => {
+    if (!focus || !model) return;
+    const el = document.getElementById(`cfg-${focus}`);
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "start" });
+    el.classList.add("ring-2", "ring-accent");
+    const tmr = setTimeout(() => el.classList.remove("ring-2", "ring-accent"), 1600);
+    return () => clearTimeout(tmr);
+  }, [focus, model]);
 
   function setM<K extends keyof RawModelConfig>(k: K, v: RawModelConfig[K]) {
     setModel((m) => (m ? { ...m, [k]: v } : m));
@@ -108,7 +121,7 @@ export default function ConfigTab({
       </div>
 
       {/* Model parametreleri */}
-      <section className="rounded-xl border border-line bg-card p-4">
+      <section id="cfg-model" className="scroll-mt-4 rounded-xl border border-line bg-card p-4">
         <h3 className="mb-3 text-sm font-semibold text-ink">{t("msm.cfgModel")}</h3>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           <div><label className={lbl}>{t("msm.margin")}</label>{numField(model.margin, (v) => setM("margin", v))}</div>
@@ -140,7 +153,7 @@ export default function ConfigTab({
 
       {/* Ağırlıklandırma + LVL */}
       <div className="grid gap-5 md:grid-cols-2">
-        <section className="rounded-xl border border-line bg-card p-4">
+        <section id="cfg-weighting" className="scroll-mt-4 rounded-xl border border-line bg-card p-4">
           <h3 className="mb-3 text-sm font-semibold text-ink">{t("msm.cfgWeighting")}</h3>
           <div className="grid grid-cols-2 gap-3">
             <div><label className={lbl}>{HIST_SEASONS[0]}</label>{numField(model.weight_s1, (v) => setM("weight_s1", v))}</div>
@@ -152,7 +165,7 @@ export default function ConfigTab({
           <p className="mt-2 text-[11px] text-ink-3">{t("msm.weightSumNote")}</p>
         </section>
 
-        <section className="rounded-xl border border-line bg-card p-4">
+        <section id="cfg-lvl" className="scroll-mt-4 rounded-xl border border-line bg-card p-4">
           <h3 className="mb-3 text-sm font-semibold text-ink">{t("msm.cfgLvl")}</h3>
           <div className="grid grid-cols-2 gap-3">
             <div><label className={lbl}>{t("msm.supremacyDivisor")}</label>{numField(model.supremacy_divisor, (v) => setM("supremacy_divisor", v), "0.1")}</div>
@@ -190,7 +203,7 @@ export default function ConfigTab({
       </div>
 
       {/* Marketler tablosu */}
-      <section className="rounded-xl border border-line bg-card p-4">
+      <section id="cfg-markets" className="scroll-mt-4 rounded-xl border border-line bg-card p-4">
         <h3 className="mb-3 text-sm font-semibold text-ink">{t("msm.cfgMarkets")}</h3>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[560px] text-left text-[11px] tabular-nums">
@@ -243,7 +256,7 @@ export default function ConfigTab({
       </section>
 
       {/* Template listesi (salt-okunur) */}
-      <section className="rounded-xl border border-line bg-card p-4">
+      <section id="cfg-templates" className="scroll-mt-4 rounded-xl border border-line bg-card p-4">
         <h3 className="mb-3 text-sm font-semibold text-ink">{t("msm.cfgTemplates")}</h3>
         <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
           {Array.from(new Set(templates.map((x) => x.market))).map((mk) => (
