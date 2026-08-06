@@ -9,6 +9,8 @@ import {
   type FixtureRow,
   type FixtureInput,
 } from "./queries";
+import TeamCrest from "@/features/tsl/shared/TeamCrest";
+import { getTeamLogoPath } from "@/features/player-detail/utils/getTeamLogoPath";
 
 const NO_SPINNER =
   "appearance-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none";
@@ -102,7 +104,15 @@ export default function FixtureIdTab({
               const v = inputs[f.fixtureId];
               return (
                 <tr key={f.fixtureId} className="border-t border-line/60 hover:bg-veil">
-                  <td className="px-2 py-1.5 whitespace-nowrap text-ink">{f.label}</td>
+                  <td className="px-2 py-1.5 whitespace-nowrap text-ink">
+                    <span className="flex items-center gap-1.5">
+                      <TeamCrest logo={getTeamLogoPath(f.homeSlug)} name={f.homeName} size="xs" />
+                      <span>{f.homeName}</span>
+                      <span className="text-ink-3">-</span>
+                      <TeamCrest logo={getTeamLogoPath(f.awaySlug)} name={f.awayName} size="xs" />
+                      <span>{f.awayName}</span>
+                    </span>
+                  </td>
                   <td className="px-2 py-1.5">
                     <input type="number" step="0.01" className={`${inp} w-16`} value={v?.homeOdds ?? ""}
                       onChange={(e) => edit(f.fixtureId, { homeOdds: e.target.value === "" ? null : parseFloat(e.target.value) })} />

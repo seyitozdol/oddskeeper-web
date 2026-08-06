@@ -54,6 +54,7 @@ export const msm = defineMessages({
     simTotal: "Model (Sim)",
     selWeek: "Week",
     lastX: "Last x weeks",
+    currentWindow: "Current-season window (26/27)",
     big4: "Excl. Big 4",
     redc: "Excl. Red card",
     noCurrent: "No current-season data yet.",
@@ -83,7 +84,7 @@ export const msm = defineMessages({
     clear: "Clear",
     previewNote: "Preview of current market. Use “Add” to accumulate into the import list.",
     engineNote:
-      "Balanced line and 5 lines around it; odds = margin / probability. Engine selectable in Config.",
+      "Balanced line and 5 lines around it; odds = margin / probability.",
   },
   tr: {
     tab_model: "Model",
@@ -137,6 +138,7 @@ export const msm = defineMessages({
     simTotal: "Model (Sim)",
     selWeek: "Hafta",
     lastX: "Son x hafta",
+    currentWindow: "Güncel sezon penceresi (26/27)",
     big4: "4 Büyük hariç",
     redc: "Kırmızı kart hariç",
     noCurrent: "Güncel sezon verisi henüz yok.",
@@ -166,6 +168,6 @@ export const msm = defineMessages({
     clear: "Temizle",
     previewNote: "Seçili marketin önizlemesi. “Ekle” ile import listesine biriktir.",
     engineNote:
-      "Dengeli çizgi ve etrafında 5 çizgi; oran = marj / olasılık. Motor Config'ten seçilir.",
+      "Dengeli çizgi ve etrafında 5 çizgi; oran = marj / olasılık.",
   },
 });
