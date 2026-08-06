@@ -586,8 +586,8 @@ export default function ResmiMatchStatsModel() {
         </div>
       ) : (
         <div className="space-y-4">
-          <div className="grid gap-4 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,0.8fr)_minmax(0,1.25fr)]">
-            {/* ═══ SOL: fixture/market/hakem/manuel + expectancy ═══ */}
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.2fr)_minmax(0,0.85fr)]">
+            {/* ═══ 1. KOLON: seçimler + expectancy + 26/27 penceresi + donut + hesaplama ═══ */}
             <div className="min-w-0 space-y-4">
           {/* Kontroller */}
           <div className="rounded-xl border border-line bg-card p-4">
@@ -716,11 +716,8 @@ export default function ResmiMatchStatsModel() {
             </div>
           )}
 
-            </div>
-
-            {/* ═══ ORTA: 26/27 penceresi + yıl dağılımı + hesaplama ═══ */}
-            <div className="min-w-0 space-y-4">
-              <div className="space-y-3 rounded-xl border border-line bg-card p-3">
+            {/* 1. kolonun altı: 26/27 penceresi + yıl dağılımı + hesaplama */}
+            <div className="space-y-3 rounded-xl border border-line bg-card p-3">
                 {/* 26/27 penceresi (kompakt) */}
                 <div>
                   <div className="mb-1.5 flex items-center justify-between">
@@ -792,10 +789,9 @@ export default function ResmiMatchStatsModel() {
               <SegmentBlock label={t("msm.secondHalf")} seg={output?.h2 ?? null} homeName={homeName} awayName={awayName} />
               <p className="text-[11px] text-ink-3">{t("msm.engineNote")}</p>
             </div>
-          </div>
 
-          {/* Güncel sezon maç logu (Excel AM-BC) — tam genişlik */}
-          <div className="grid gap-3 md:grid-cols-2">
+            {/* ═══ 3. KOLON: güncel sezon maç logu (Excel AM-BC) ═══ */}
+            <div className="min-w-0 space-y-3">
             {[
               { id: "home", name: homeName || t("msm.home"), slug: homeSlug, b4: big4H, setB4: setBig4H, rc: redcH, setRc: setRedcH },
               { id: "away", name: awayName || t("msm.away"), slug: awaySlug, b4: big4A, setB4: setBig4A, rc: redcA, setRc: setRedcA },
@@ -850,6 +846,7 @@ export default function ResmiMatchStatsModel() {
                 </div>
               );
             })}
+            </div>
           </div>
         </div>
       )}
