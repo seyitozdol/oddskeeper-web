@@ -143,6 +143,17 @@ export async function logImport(league: string, row: Record<string, unknown>): P
   return true;
 }
 
+// Takım logoları: tsl → null (lokal /images/football_logos/{slug}.png kullanılır);
+// tff1 → slug→logo_url haritası (msm_team_logos_tff1_v1, SofaScore/Flashscore URL).
+export async function fetchTeamLogos(league: string): Promise<Record<string, string> | null> {
+  if (league !== "tff1") return null;
+  const { data, error } = await sb().from("msm_team_logos_tff1_v1").select("slug, logo_url");
+  if (error) { console.error("fetchTeamLogos", error); return {}; }
+  const out: Record<string, string> = {};
+  for (const r of data ?? []) if (r.logo_url) out[r.slug as string] = r.logo_url as string;
+  return out;
+}
+
 export async function fetchTeams(league: string): Promise<TeamOption[]> {
   const { data, error } = await sb()
     .from("msm_teams_v1")

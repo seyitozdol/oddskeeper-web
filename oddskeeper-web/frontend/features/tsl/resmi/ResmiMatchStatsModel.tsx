@@ -18,6 +18,7 @@ import {
   HIST_SEASONS,
   CURRENT_SEASON,
   fetchTeams,
+  fetchTeamLogos,
   fetchMarketConfigs,
   fetchModelConfig,
   fetchReferees,
@@ -259,6 +260,7 @@ export default function ResmiMatchStatsModel({ league: LEAGUE = "tsl" }: { leagu
 
   // Referans veriler.
   const [teams, setTeams] = useState<TeamOption[]>([]);
+  const [teamLogos, setTeamLogos] = useState<Record<string, string> | null>(null); // tff1: slug→url; tsl: null (lokal)
   const [marketCfgs, setMarketCfgs] = useState<Record<string, MarketConfig>>({});
   const [modelCfg, setModelCfg] = useState<ModelConfig | null>(null);
   const [referees, setReferees] = useState<RefereeRow[]>([]);
@@ -326,6 +328,7 @@ export default function ResmiMatchStatsModel({ league: LEAGUE = "tsl" }: { leagu
   // Mount: referans veriler.
   useEffect(() => {
     fetchTeams(LEAGUE).then(setTeams);
+    fetchTeamLogos(LEAGUE).then(setTeamLogos);
     fetchReferees(LEAGUE).then(setReferees);
     fetchFixtures(LEAGUE).then(setFixtures);
     fetchFixtureInputs(LEAGUE).then(setFixtureInputs);
@@ -369,6 +372,9 @@ export default function ResmiMatchStatsModel({ league: LEAGUE = "tsl" }: { leagu
   const marketCfg = marketCfgs[market] ?? null;
   const homeName = teams.find((x) => x.slug === homeSlug)?.name ?? "";
   const awayName = teams.find((x) => x.slug === awaySlug)?.name ?? "";
+  // Logo: tsl → lokal path; tff1 → slug→url (yoksa null → TeamCrest baş harf).
+  const logoFor = (slug: string): string | null =>
+    teamLogos ? (teamLogos[slug] ?? null) : getTeamLogoPath(slug);
 
   // Güncel sezon (26-27) oynanmış maç sayısı = maç-logu max index (iki takım).
   const maxWeek = useMemo(() => {
@@ -643,10 +649,14 @@ export default function ResmiMatchStatsModel({ league: LEAGUE = "tsl" }: { leagu
           {/* Arka planda iki takım logosu — ortada, düşük opacity (basketbol filigranı) */}
           {homeSlug && awaySlug && homeSlug !== awaySlug && (
             <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 -z-10 flex items-start justify-center gap-12 sm:gap-24">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={getTeamLogoPath(homeSlug)} alt="" className="h-72 w-72 max-w-[42%] object-contain opacity-[0.06] dark:opacity-[0.09] sm:h-96 sm:w-96" />
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={getTeamLogoPath(awaySlug)} alt="" className="h-72 w-72 max-w-[42%] object-contain opacity-[0.06] dark:opacity-[0.09] sm:h-96 sm:w-96" />
+              {logoFor(homeSlug) && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={logoFor(homeSlug)!} alt="" referrerPolicy="no-referrer" className="h-72 w-72 max-w-[42%] object-contain opacity-[0.06] dark:opacity-[0.09] sm:h-96 sm:w-96" />
+              )}
+              {logoFor(awaySlug) && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={logoFor(awaySlug)!} alt="" referrerPolicy="no-referrer" className="h-72 w-72 max-w-[42%] object-contain opacity-[0.06] dark:opacity-[0.09] sm:h-96 sm:w-96" />
+              )}
             </div>
           )}
           <div className="grid gap-4 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.2fr)_minmax(0,0.85fr)]">
@@ -683,7 +693,7 @@ export default function ResmiMatchStatsModel({ league: LEAGUE = "tsl" }: { leagu
                 <label className={lblCls}>1X2</label>
                 <div className="flex items-start gap-4 rounded-md border border-line bg-card-2 px-3 py-2">
                   <div className="flex flex-col items-center gap-1">
-                    <TeamCrest logo={getTeamLogoPath(homeSlug)} name={homeName} size="lg" />
+                    <TeamCrest logo={logoFor(homeSlug)} name={homeName} size="lg" />
                     <b className="text-sm tabular-nums text-ink">{oddsHome || "—"}</b>
                     <span className="text-[10px] tabular-nums text-ink-3">{impliedPct(oddsHome)}</span>
                   </div>
@@ -693,7 +703,7 @@ export default function ResmiMatchStatsModel({ league: LEAGUE = "tsl" }: { leagu
                     <span className="text-[10px] tabular-nums text-ink-3">{impliedPct(oddsDraw)}</span>
                   </div>
                   <div className="flex flex-col items-center gap-1">
-                    <TeamCrest logo={getTeamLogoPath(awaySlug)} name={awayName} size="lg" />
+                    <TeamCrest logo={logoFor(awaySlug)} name={awayName} size="lg" />
                     <b className="text-sm tabular-nums text-ink">{oddsAway || "—"}</b>
                     <span className="text-[10px] tabular-nums text-ink-3">{impliedPct(oddsAway)}</span>
                   </div>
@@ -886,7 +896,7 @@ export default function ResmiMatchStatsModel({ league: LEAGUE = "tsl" }: { leagu
                 <div key={id} className="min-w-0 rounded-xl border border-line bg-card p-3">
                   <div className="mb-2 flex items-center gap-3">
                     <span className="flex items-center gap-1.5 text-xs font-semibold text-ink">
-                      <TeamCrest logo={getTeamLogoPath(slug)} name={name} size="xs" />
+                      <TeamCrest logo={logoFor(slug)} name={name} size="xs" />
                       {name} · {market}
                     </span>
                     <label className="ml-auto flex items-center gap-1 text-[11px] text-ink-2">

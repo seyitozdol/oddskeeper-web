@@ -24,6 +24,7 @@ export default function TeamCrest({
       <img
         src={logo}
         alt={name ?? ""}
+        referrerPolicy="no-referrer"
         className={`${s.box} shrink-0 object-contain`}
         style={{ width: s.px, height: s.px }}
         loading="lazy"

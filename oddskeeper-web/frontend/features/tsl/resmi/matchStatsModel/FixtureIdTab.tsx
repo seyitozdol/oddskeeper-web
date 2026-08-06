@@ -6,6 +6,7 @@ import {
   fetchFixtures,
   fetchFixtureInputs,
   fetchBets10Links,
+  fetchTeamLogos,
   saveFixtureInputs,
   type FixtureRow,
   type FixtureInput,
@@ -31,11 +32,15 @@ export default function FixtureIdTab({
   const [fixtures, setFixtures] = useState<FixtureRow[]>([]);
   const [inputs, setInputs] = useState<Record<string, FixtureInput>>({});
   const [links, setLinks] = useState<Record<string, Bets10Link>>({});
+  const [teamLogos, setTeamLogos] = useState<Record<string, string> | null>(null);
   const [status, setStatus] = useState<"" | "saving" | "ok" | "err">("");
+  const logoFor = (slug: string): string | null =>
+    teamLogos ? (teamLogos[slug] ?? null) : getTeamLogoPath(slug);
 
   useEffect(() => {
     fetchFixtureInputs(league).then(setInputs);
     fetchBets10Links(league).then(setLinks);
+    fetchTeamLogos(league).then(setTeamLogos);
   }, [league]);
   useEffect(() => {
     fetchFixtures(league, round).then(setFixtures);
@@ -138,10 +143,10 @@ export default function FixtureIdTab({
                 <tr key={f.fixtureId} className="border-t border-line/60 hover:bg-veil">
                   <td className="px-2 py-1.5 whitespace-nowrap text-ink">
                     <span className="flex items-center gap-1.5">
-                      <TeamCrest logo={getTeamLogoPath(f.homeSlug)} name={f.homeName} size="xs" />
+                      <TeamCrest logo={logoFor(f.homeSlug)} name={f.homeName} size="xs" />
                       <span>{f.homeName}</span>
                       <span className="text-ink-3">-</span>
-                      <TeamCrest logo={getTeamLogoPath(f.awaySlug)} name={f.awayName} size="xs" />
+                      <TeamCrest logo={logoFor(f.awaySlug)} name={f.awayName} size="xs" />
                       <span>{f.awayName}</span>
                     </span>
                   </td>
