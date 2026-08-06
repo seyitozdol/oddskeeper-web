@@ -4,6 +4,7 @@ import { getPlayerDetailHref } from "@/lib/routes";
 import type { ResmiTeamsBundle } from "@/features/tsl/server/resmiLoaders";
 import ResmiTeamBoard, { type MetricLite, type TeamLite } from "./ResmiTeamBoard";
 import { PlayerFace, PlayerNameLink } from "./parts";
+import TransferLogo from "./TransferLogo";
 
 const CATEGORY_LABELS: Record<string, string> = {
   attacking: "Hücum",
@@ -140,10 +141,7 @@ function TransferClub({
 }) {
   const inner = (
     <span className="inline-flex max-w-[90px] items-center gap-1 truncate">
-      {logo ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={logo} alt="" className="h-3.5 w-3.5 shrink-0 object-contain" loading="lazy" />
-      ) : null}
+      <TransferLogo logo={logo} name={name} />
       <span className="truncate">{name ?? "—"}</span>
     </span>
   );

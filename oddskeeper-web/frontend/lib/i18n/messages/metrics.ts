@@ -11,6 +11,7 @@ export const metrics = defineMessages({
     cat_attacking: "Attacking",
     cat_build_up: "Build Up",
     cat_defence: "Defence",
+    cat_defending: "Defence",
     cat_discipline: "Discipline",
     cat_goal_composition: "Goal Composition",
     cat_goalkeeper: "Goalkeeper",
@@ -83,11 +84,13 @@ export const metrics = defineMessages({
     team_total_throws: "Total Throws",
     team_xg_per_shot: "xG per Shot",
     team_yellow_cards: "Yellow Cards",
+    aggression: "Aggression",
   },
   tr: {
     cat_attack: "Hücum",
     cat_attacking: "Hücum",
     cat_build_up: "Oyun Kuruluşu",
+    cat_defending: "Savunma",
     cat_defence: "Savunma",
     cat_discipline: "Disiplin",
     cat_goal_composition: "Gol Dağılımı",
@@ -159,5 +162,6 @@ export const metrics = defineMessages({
     team_total_throws: "Taç Atışı",
     team_xg_per_shot: "Şut Başına xG",
     team_yellow_cards: "Sarı Kart",
+    aggression: "Agresyon",
   },
 });

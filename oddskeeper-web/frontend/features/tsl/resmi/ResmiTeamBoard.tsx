@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useI18n } from "@/lib/i18n/LanguageProvider";
+import { categoryLabel, metricLabel } from "@/lib/i18n/metricLabel";
 import { formatMetric } from "@/features/tsl/lib";
 import TeamCrest from "@/features/tsl/shared/TeamCrest";
 
@@ -82,7 +83,7 @@ export default function ResmiTeamBoard({
                   on ? "border-accent/40 bg-accent-soft text-accent-ink" : "border-line bg-veil text-ink-3 hover:text-ink-2"
                 }`}
               >
-                {g.label}
+                {categoryLabel(t, g.key, g.label)}
               </button>
             );
           })}
@@ -99,7 +100,7 @@ export default function ResmiTeamBoard({
                   on ? "border-line-strong bg-card-2 font-semibold text-ink" : "border-line bg-card text-ink-2 hover:border-line-strong hover:text-ink"
                 }`}
               >
-                {m.label}
+                {metricLabel(t, m.key, m.label)}
               </button>
             );
           })}
