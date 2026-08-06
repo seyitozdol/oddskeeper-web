@@ -102,36 +102,60 @@ const impliedPct = (s: string): string => {
   return isFinite(n) && n > 0 ? `${(100 / n).toFixed(0)}%` : "—";
 };
 
-// Ağırlıklandırma pastası (4 sezon). Ağırlık 0 olan dilim çizilmez, legend'de kalır.
+// Ağırlıklandırma donut'u (tek pasta). Etiketler (yıl + %) dilimin üzerinde, küçük font.
 const PIE_COLORS = ["#6366f1", "#06b6d4", "#f59e0b", "#10b981"];
 function WeightPie({ labels, weights }: { labels: string[]; weights: number[] }) {
   const total = weights.reduce((a, b) => a + Math.max(0, b), 0);
-  const stops: string[] = [];
+  const R = 32, cx = 50, cy = 50, sw = 20;
+  const C = 2 * Math.PI * R;
   let acc = 0;
-  weights.forEach((w, i) => {
+  const segs = weights.map((w, i) => {
     const frac = total > 0 ? Math.max(0, w) / total : 0;
-    const start = acc * 360;
+    const start = acc;
     acc += frac;
-    if (frac > 0) stops.push(`${PIE_COLORS[i]} ${start}deg ${acc * 360}deg`);
+    return { i, frac, start };
   });
-  const bg = stops.length ? `conic-gradient(${stops.join(",")})` : "var(--color-veil)";
   return (
-    <div className="flex items-center gap-3">
-      <div className="relative h-16 w-16 shrink-0 rounded-full" style={{ background: bg }}>
-        <div className="absolute inset-[26%] rounded-full bg-card-2" />
-      </div>
-      <div className="flex flex-1 flex-col gap-1 text-[11px]">
-        {labels.map((lbl, i) => (
-          <div key={lbl} className="flex items-center gap-1.5">
-            <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: PIE_COLORS[i], opacity: weights[i] > 0 ? 1 : 0.3 }} />
-            <span className={weights[i] > 0 ? "text-ink-2" : "text-ink-3"}>{lbl}</span>
-            <b className="ml-auto tabular-nums text-ink">{weights[i]}</b>
-            <span className="w-9 text-right tabular-nums text-ink-3">
-              {total > 0 ? `${Math.round((100 * Math.max(0, weights[i])) / total)}%` : "—"}
-            </span>
-          </div>
-        ))}
-      </div>
+    <div className="flex justify-center">
+      <svg viewBox="0 0 100 100" className="h-32 w-32" role="img" aria-label="weighting">
+        {/* dilimler (12 yönünden saat yönünde) */}
+        <g transform={`rotate(-90 ${cx} ${cy})`}>
+          {total > 0 ? (
+            segs
+              .filter((s) => s.frac > 0)
+              .map((s) => (
+                <circle
+                  key={s.i}
+                  cx={cx}
+                  cy={cy}
+                  r={R}
+                  fill="none"
+                  stroke={PIE_COLORS[s.i]}
+                  strokeWidth={sw}
+                  strokeDasharray={`${s.frac * C} ${C - s.frac * C}`}
+                  strokeDashoffset={-s.start * C}
+                />
+              ))
+          ) : (
+            <circle cx={cx} cy={cy} r={R} fill="none" stroke="var(--color-veil)" strokeWidth={sw} />
+          )}
+        </g>
+        {/* etiketler: yıl + yüzde, dilimin ortasında */}
+        {total > 0 &&
+          segs
+            .filter((s) => s.frac >= 0.08)
+            .map((s) => {
+              const ang = (s.start + s.frac / 2) * 2 * Math.PI - Math.PI / 2;
+              const x = cx + R * Math.cos(ang);
+              const y = cy + R * Math.sin(ang);
+              return (
+                <text key={s.i} x={x} y={y} textAnchor="middle" fill="#fff" fontSize="5.5" fontWeight={700}>
+                  <tspan x={x} dy="-0.3em">{labels[s.i]}</tspan>
+                  <tspan x={x} dy="1.05em">{Math.round(s.frac * 100)}%</tspan>
+                </text>
+              );
+            })}
+      </svg>
     </div>
   );
 }
@@ -270,18 +294,30 @@ export default function ResmiMatchStatsModel() {
 
   // Mount: referans veriler.
   useEffect(() => {
-    fetchTeams(LEAGUE).then((ts) => {
-      setTeams(ts);
-      if (ts.length >= 2) {
-        setHomeSlug((h) => h || ts[0].slug);
-        setAwaySlug((a) => a || ts[1].slug);
-      }
-    });
+    fetchTeams(LEAGUE).then(setTeams);
     fetchReferees(LEAGUE).then(setReferees);
     fetchFixtures(LEAGUE).then(setFixtures);
     fetchFixtureInputs(LEAGUE).then(setFixtureInputs);
     loadConfig();
   }, [loadConfig]);
+
+  // Takımlar SADECE fikstürden gelir: fikstürler yüklenince ilkini otomatik seç.
+  useEffect(() => {
+    if (!selectedFixtureId && fixtures.length) {
+      const f = fixtures[0];
+      setSelectedFixtureId(f.fixtureId);
+      setHomeSlug(f.homeSlug);
+      setAwaySlug(f.awaySlug);
+    }
+  }, [fixtures, selectedFixtureId]);
+
+  // Seçili fikstürün oranlarını fixture_inputs'tan doldur (geç yüklenmeyi de yakalar).
+  useEffect(() => {
+    const fi = selectedFixtureId ? fixtureInputs[selectedFixtureId] : undefined;
+    setOddsHome(fi?.homeOdds != null ? String(fi.homeOdds) : "");
+    setOddsDraw(fi?.drawOdds != null ? String(fi.drawOdds) : "");
+    setOddsAway(fi?.awayOdds != null ? String(fi.awayOdds) : "");
+  }, [selectedFixtureId, fixtureInputs]);
 
   // Takım/market değişince hist + current çek.
   useEffect(() => {
@@ -375,15 +411,12 @@ export default function ResmiMatchStatsModel() {
   // ─── Fixture seçimi + export ────────────────────────────────────────────────
   function selectFixture(fid: string) {
     setSelectedFixtureId(fid);
-    if (!fid) return;
     const f = fixtures.find((x) => x.fixtureId === fid);
-    if (!f) return;
-    setHomeSlug(f.homeSlug);
-    setAwaySlug(f.awaySlug);
-    const fi = fixtureInputs[fid];
-    setOddsHome(fi?.homeOdds != null ? String(fi.homeOdds) : "");
-    setOddsDraw(fi?.drawOdds != null ? String(fi.drawOdds) : "");
-    setOddsAway(fi?.awayOdds != null ? String(fi.awayOdds) : "");
+    if (f) {
+      setHomeSlug(f.homeSlug);
+      setAwaySlug(f.awaySlug);
+    }
+    // Oranlar [selectedFixtureId, fixtureInputs] effect'inde doldurulur.
   }
 
   const externalFixtureId = selectedFixtureId
@@ -444,21 +477,14 @@ export default function ResmiMatchStatsModel() {
     XLSX.writeFile(wb, `${matchLabel || "input"}.xlsx`);
   }
 
-  // Reset: seçimleri başa döndür, ayarları config'ten yeniden yükle.
+  // Reset: ilk fikstüre + varsayılan markete dön, ayarları config'ten yeniden yükle.
   function resetModel() {
-    setSelectedFixtureId("");
     setMarket("SOT");
-    setOddsHome("");
-    setOddsDraw("");
-    setOddsAway("");
     setManHome("");
     setManAway("");
     setManTotal("");
     setRefereeName("");
-    if (teams.length >= 2) {
-      setHomeSlug(teams[0].slug);
-      setAwaySlug(teams[1].slug);
-    }
+    if (fixtures.length) selectFixture(fixtures[0].fixtureId);
     loadConfig();
   }
 
@@ -466,6 +492,7 @@ export default function ResmiMatchStatsModel() {
   const selCls =
     "rounded-md border border-line bg-field px-2 py-1.5 text-sm text-ink focus:outline-none focus:border-accent";
   const numCls = `${selCls} ${NO_SPINNER} w-full`;
+  const oddCls = `rounded border border-line bg-field ${NO_SPINNER} w-14 px-1.5 py-1 text-center text-xs text-ink focus:outline-none focus:border-accent`;
   const lblCls = "mb-1 block text-[11px] font-medium uppercase tracking-wide text-ink-3";
 
   return (
@@ -559,14 +586,16 @@ export default function ResmiMatchStatsModel() {
         </div>
       ) : (
         <div className="space-y-4">
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
+            {/* ═══ SOL: seçimler + temel metrikler ═══ */}
+            <div className="min-w-0 space-y-4">
           {/* Kontroller */}
           <div className="rounded-xl border border-line bg-card p-4">
-            {/* Fixture seçimi (Fixture ID sekmesinden gelir) + Reset */}
+            {/* Fixture seçimi + Add to Input + Reset */}
             <div className="mb-3 flex items-end gap-2">
-              <div className="flex-1">
+              <div className="min-w-0 flex-1">
                 <label className={lblCls}>{t("msm.tab_fixtures")}</label>
-                <select className={`${selCls} w-full md:w-1/2`} value={selectedFixtureId} onChange={(e) => selectFixture(e.target.value)}>
-                  <option value="" className="bg-field text-ink">— Manuel —</option>
+                <select className={`${selCls} w-full`} value={selectedFixtureId} onChange={(e) => selectFixture(e.target.value)}>
                   {fixtures.map((f) => (
                     <option key={f.fixtureId} value={f.fixtureId} className="bg-field text-ink">
                       R{f.round} · {f.label}
@@ -581,7 +610,6 @@ export default function ResmiMatchStatsModel() {
               >
                 {t("msm.addToInput")} ({currentRows.length})
               </button>
-              {importNotice && <span className="self-center text-[11px] text-neg">{importNotice}</span>}
               <button
                 onClick={resetModel}
                 className="rounded-md border border-line px-3 py-2 text-sm font-semibold text-ink-2 hover:text-ink"
@@ -589,24 +617,11 @@ export default function ResmiMatchStatsModel() {
                 {t("msm.reset")}
               </button>
             </div>
-            <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-              <div>
-                <label className={lblCls}>{t("msm.home")}</label>
-                <select className={`${selCls} w-full`} value={homeSlug} onChange={(e) => setHomeSlug(e.target.value)}>
-                  {teams.map((x) => (
-                    <option key={x.slug} value={x.slug} className="bg-field text-ink">{x.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className={lblCls}>{t("msm.away")}</label>
-                <select className={`${selCls} w-full`} value={awaySlug} onChange={(e) => setAwaySlug(e.target.value)}>
-                  {teams.map((x) => (
-                    <option key={x.slug} value={x.slug} className="bg-field text-ink">{x.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
+            {importNotice && <div className="mb-3 text-[11px] text-neg">{importNotice}</div>}
+
+            {/* Market + 1X2 oranları (kompakt, logolu + yüzdelik) */}
+            <div className="flex flex-wrap items-end gap-3">
+              <div className="w-full sm:w-36">
                 <label className={lblCls}>{t("msm.market")}</label>
                 <select className={`${selCls} w-full`} value={market} onChange={(e) => setMarket(e.target.value)}>
                   {MARKETS.map((m) => (
@@ -614,71 +629,51 @@ export default function ResmiMatchStatsModel() {
                   ))}
                 </select>
               </div>
-            </div>
-
-            {/* 1x2 oranları — logolu + yüzdelik (Excel gösterimi) */}
-            <div className="mt-3 grid grid-cols-3 gap-3">
-              {/* Ev */}
-              <div className="rounded-lg border border-line bg-card-2 p-2">
-                <div className="mb-1.5 flex items-center gap-1.5">
-                  <TeamCrest logo={getTeamLogoPath(homeSlug)} name={homeName} size="xs" />
-                  <span className="truncate text-[11px] font-medium text-ink">{homeName || t("msm.home")}</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <input className={`${numCls} w-full`} inputMode="decimal" value={oddsHome} onChange={(e) => setOddsHome(e.target.value)} placeholder="—" />
-                  <span className="w-9 shrink-0 text-right text-[11px] font-semibold tabular-nums text-ink-2">{impliedPct(oddsHome)}</span>
-                </div>
-              </div>
-              {/* Beraberlik */}
-              <div className="rounded-lg border border-line bg-card-2 p-2">
-                <div className="mb-1.5 flex items-center gap-1.5">
-                  <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-veil text-[8px] font-semibold text-ink-3">X</span>
-                  <span className="truncate text-[11px] font-medium text-ink-2">{t("msm.oddsDraw")}</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <input className={`${numCls} w-full`} inputMode="decimal" value={oddsDraw} onChange={(e) => setOddsDraw(e.target.value)} placeholder="—" />
-                  <span className="w-9 shrink-0 text-right text-[11px] font-semibold tabular-nums text-ink-2">{impliedPct(oddsDraw)}</span>
-                </div>
-              </div>
-              {/* Deplasman */}
-              <div className="rounded-lg border border-line bg-card-2 p-2">
-                <div className="mb-1.5 flex items-center gap-1.5">
-                  <TeamCrest logo={getTeamLogoPath(awaySlug)} name={awayName} size="xs" />
-                  <span className="truncate text-[11px] font-medium text-ink">{awayName || t("msm.away")}</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <input className={`${numCls} w-full`} inputMode="decimal" value={oddsAway} onChange={(e) => setOddsAway(e.target.value)} placeholder="—" />
-                  <span className="w-9 shrink-0 text-right text-[11px] font-semibold tabular-nums text-ink-2">{impliedPct(oddsAway)}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Güncel sezon penceresi (Hafta + Son-x bir arada) + Ağırlıklandırma pastası */}
-            <div className="mt-3 grid gap-3 md:grid-cols-2">
-              <div className="rounded-lg border border-line bg-card-2 p-3">
-                <div className="mb-2 flex items-center justify-between">
-                  <span className="text-[11px] font-medium uppercase tracking-wide text-ink-3">{t("msm.currentWindow")}</span>
-                  <span className="text-[10px] tabular-nums text-ink-3">
-                    {maxWeek > 0 ? maxWeek : t("msm.noCurrent")}
+              <div className="min-w-0 flex-1">
+                <label className={lblCls}>1X2</label>
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-md border border-line bg-card-2 px-2.5 py-1.5">
+                  <span className="flex items-center gap-1">
+                    <TeamCrest logo={getTeamLogoPath(homeSlug)} name={homeName} size="xs" />
+                    <input className={oddCls} inputMode="decimal" value={oddsHome} onChange={(e) => setOddsHome(e.target.value)} placeholder="—" />
+                    <span className="w-7 text-right text-[10px] font-semibold tabular-nums text-ink-3">{impliedPct(oddsHome)}</span>
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-veil text-[8px] font-semibold text-ink-3">X</span>
+                    <input className={oddCls} inputMode="decimal" value={oddsDraw} onChange={(e) => setOddsDraw(e.target.value)} placeholder="—" />
+                    <span className="w-7 text-right text-[10px] font-semibold tabular-nums text-ink-3">{impliedPct(oddsDraw)}</span>
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <TeamCrest logo={getTeamLogoPath(awaySlug)} name={awayName} size="xs" />
+                    <input className={oddCls} inputMode="decimal" value={oddsAway} onChange={(e) => setOddsAway(e.target.value)} placeholder="—" />
+                    <span className="w-7 text-right text-[10px] font-semibold tabular-nums text-ink-3">{impliedPct(oddsAway)}</span>
                   </span>
                 </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className={lblCls}>{t("msm.selWeek")}</label>
-                    <input className={`${numCls} disabled:opacity-50`} type="number" min={1} max={Math.max(1, maxWeek)}
+              </div>
+            </div>
+
+            {/* Güncel sezon penceresi (kompakt tek satır) + Ağırlık donut'u */}
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              <div className="rounded-lg border border-line bg-card-2 p-2.5">
+                <div className="mb-1.5 flex items-center justify-between">
+                  <span className="text-[10px] font-medium uppercase tracking-wide text-ink-3">{t("msm.currentWindow")}</span>
+                  <span className="text-[10px] tabular-nums text-ink-3">{maxWeek > 0 ? maxWeek : t("msm.noCurrent")}</span>
+                </div>
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+                  <span className="flex items-center gap-1">
+                    <label className="text-[10px] uppercase text-ink-3">{t("msm.selWeek")}</label>
+                    <input className={`${oddCls} disabled:opacity-50`} type="number" min={1} max={Math.max(1, maxWeek)}
                       disabled={maxWeek === 0} value={maxWeek === 0 ? "" : selWeek}
                       onChange={(e) => setSelWeek(clampWeek(e.target.value))} />
-                  </div>
-                  <div>
-                    <label className={lblCls}>{t("msm.lastX")}</label>
-                    <input className={`${numCls} disabled:opacity-50`} type="number" min={1} max={Math.max(1, maxWeek)}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <label className="text-[10px] uppercase text-ink-3">{t("msm.lastX")}</label>
+                    <input className={`${oddCls} disabled:opacity-50`} type="number" min={1} max={Math.max(1, maxWeek)}
                       disabled={maxWeek === 0} value={maxWeek === 0 ? "" : lastX}
                       onChange={(e) => setLastX(clampWeek(e.target.value))} />
-                  </div>
+                  </span>
                 </div>
               </div>
-              <div className="rounded-lg border border-line bg-card-2 p-3">
-                <div className="mb-2 text-[11px] font-medium uppercase tracking-wide text-ink-3">{t("msm.cfgWeighting")}</div>
+              <div className="rounded-lg border border-line bg-card-2 p-2">
                 <WeightPie
                   labels={[...HIST_SEASONS, CURRENT_SEASON].map((s) => s.replace(/^20(\d\d)-20(\d\d)$/, "$1/$2"))}
                   weights={weights}
@@ -786,7 +781,18 @@ export default function ResmiMatchStatsModel() {
             </div>
           )}
 
-          {/* Güncel sezon maç logu (Excel AM-BC) + Big4/RedC istisnaları */}
+            </div>
+
+            {/* ═══ SAĞ: odds tabloları (segment çizgileri) ═══ */}
+            <div className="min-w-0 space-y-4">
+              <SegmentBlock label={t("msm.fullTime")} seg={output?.ft ?? null} homeName={homeName} awayName={awayName} />
+              <SegmentBlock label={t("msm.firstHalf")} seg={output?.h1 ?? null} homeName={homeName} awayName={awayName} />
+              <SegmentBlock label={t("msm.secondHalf")} seg={output?.h2 ?? null} homeName={homeName} awayName={awayName} />
+              <p className="text-[11px] text-ink-3">{t("msm.engineNote")}</p>
+            </div>
+          </div>
+
+          {/* Güncel sezon maç logu (Excel AM-BC) — tam genişlik */}
           <div className="grid gap-3 md:grid-cols-2">
             {[
               { id: "home", name: homeName || t("msm.home"), slug: homeSlug, b4: big4H, setB4: setBig4H, rc: redcH, setRc: setRedcH },
@@ -794,9 +800,12 @@ export default function ResmiMatchStatsModel() {
             ].map(({ id, name, slug, b4, setB4, rc, setRc }) => {
               const rows = windowRows(matchLog[slug], selWeek, lastX, b4, rc);
               return (
-                <div key={id} className="rounded-xl border border-line bg-card p-3">
+                <div key={id} className="min-w-0 rounded-xl border border-line bg-card p-3">
                   <div className="mb-2 flex items-center gap-3">
-                    <span className="text-xs font-semibold text-ink">{name} · {market}</span>
+                    <span className="flex items-center gap-1.5 text-xs font-semibold text-ink">
+                      <TeamCrest logo={getTeamLogoPath(slug)} name={name} size="xs" />
+                      {name} · {market}
+                    </span>
                     <label className="ml-auto flex items-center gap-1 text-[11px] text-ink-2">
                       <input type="checkbox" checked={b4} onChange={(e) => setB4(e.target.checked)} className="h-3 w-3 accent-[var(--color-accent)]" />
                       {t("msm.big4")}
@@ -840,15 +849,6 @@ export default function ResmiMatchStatsModel() {
               );
             })}
           </div>
-
-          {/* Segment çizgi tabloları */}
-          <div className="space-y-4">
-            <SegmentBlock label={t("msm.fullTime")} seg={output?.ft ?? null} homeName={homeName} awayName={awayName} />
-            <SegmentBlock label={t("msm.firstHalf")} seg={output?.h1 ?? null} homeName={homeName} awayName={awayName} />
-            <SegmentBlock label={t("msm.secondHalf")} seg={output?.h2 ?? null} homeName={homeName} awayName={awayName} />
-          </div>
-
-          <p className="text-[11px] text-ink-3">{t("msm.engineNote")}</p>
         </div>
       )}
     </div>

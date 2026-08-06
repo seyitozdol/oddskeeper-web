@@ -5,7 +5,7 @@ export const msm = defineMessages({
   en: {
     tab_model: "Model",
     tab_config: "Config",
-    tab_fixtures: "Fixture ID",
+    tab_fixtures: "Fixture",
     tab_input: "Input",
     comingSoon: "This tab is coming soon.",
     home: "Home",
@@ -89,7 +89,7 @@ export const msm = defineMessages({
   tr: {
     tab_model: "Model",
     tab_config: "Config",
-    tab_fixtures: "Fikstür ID",
+    tab_fixtures: "Fikstür",
     tab_input: "Input",
     comingSoon: "Bu sekme yakında gelecek.",
     home: "Ev",
