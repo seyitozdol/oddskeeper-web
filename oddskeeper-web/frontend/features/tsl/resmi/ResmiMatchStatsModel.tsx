@@ -248,7 +248,7 @@ export default function ResmiMatchStatsModel() {
   const [oddsHome, setOddsHome] = useState("");
   const [oddsDraw, setOddsDraw] = useState("");
   const [oddsAway, setOddsAway] = useState("");
-  const [weights, setWeights] = useState<number[]>([0.5, 0.3, 0.2]); // 25-26/24-25/23-24 (weighted geçmiş)
+  const [weights, setWeights] = useState<number[]>([0.5, 0.3, 0.2, 0]); // 25-26/24-25/23-24/26-27 (weighted)
   const [etki, setEtki] = useState(0); // W6 etki %: 0..1, son-x-hafta harman ağırlığı
   const [refereeName, setRefereeName] = useState("");
   const [manHome, setManHome] = useState("");
@@ -281,10 +281,10 @@ export default function ResmiMatchStatsModel() {
   const loadConfig = useCallback(() => {
     fetchMarketConfigs(LEAGUE).then(setMarketCfgs);
     fetchModelConfig(LEAGUE).then(setModelCfg);
-    // Sezon ağırlıkları (3 geçmiş sezon) + Etki% varsayılanı Config'ten gelir.
+    // Sezon ağırlıkları (25-26/24-25/23-24/26-27) + Etki% varsayılanı Config'ten gelir.
     fetchRawModelConfig(LEAGUE).then((r) => {
       if (r) {
-        setWeights([r.weight_s1, r.weight_s2, r.weight_s3]);
+        setWeights([r.weight_s1, r.weight_s2, r.weight_s3, r.weight_s4]);
         setEtki(r.default_etki);
       }
     });
@@ -365,13 +365,17 @@ export default function ResmiMatchStatsModel() {
   };
   const output = useMemo(() => {
     if (!marketCfg || !modelCfg || !homeSlug || !awaySlug) return null;
-    // weighted = 3 geçmiş sezon (histdata) yıl-ağırlıklı. 26-27 güncel AYRI (etki ile harman).
-    const seasonsFor = (slug: string): SeasonWeighted[] =>
-      HIST_SEASONS.map((s, i) => {
+    // weighted = 4 sezon yıl-ağırlıklı: 3 geçmiş (histdata) + 26-27 sezon-başı-bugüne (tüm oynanmış).
+    // 26-27 son-x-hafta penceresi AYRICA "last-x" olarak Etki% (W6) ile harmana girer.
+    const seasonsFor = (slug: string, full: HFAA | null): SeasonWeighted[] => {
+      const arr = HIST_SEASONS.map((s, i) => {
         const v = hist[slug]?.[s];
         if (!v || weights[i] <= 0) return null;
         return { ...v, weight: weights[i] };
       }).filter(Boolean) as SeasonWeighted[];
+      if (full && weights[3] > 0) arr.push({ ...full, weight: weights[3] });
+      return arr;
+    };
 
     const num = (s: string): number | null => {
       const n = parseFloat(s);
@@ -380,11 +384,14 @@ export default function ResmiMatchStatsModel() {
     const oH = num(oddsHome);
     const oA = num(oddsAway);
     const ref = referees.find((r) => r.referee_name === refereeName);
+    // 26-27 weighted 4. sezon = tüm oynanmış maç ortalaması (sezon-başı-bugüne).
+    const homeFull = currentHFAA(matchLog[homeSlug], 99, 99, big4H, redcH);
+    const awayFull = currentHFAA(matchLog[awaySlug], 99, 99, big4A, redcA);
 
     const inputs: ModelInputs = {
       market,
-      homeSeasons: seasonsFor(homeSlug),
-      awaySeasons: seasonsFor(awaySlug),
+      homeSeasons: seasonsFor(homeSlug, homeFull),
+      awaySeasons: seasonsFor(awaySlug, awayFull),
       // Güncel sezon (26-27) son-x-hafta penceresi + Etki% (W6) harmanı.
       homeCurrent: currentHFAA(matchLog[homeSlug], selWeek, lastX, big4H, redcH),
       awayCurrent: currentHFAA(matchLog[awaySlug], selWeek, lastX, big4A, redcA),
@@ -822,7 +829,7 @@ export default function ResmiMatchStatsModel() {
               <div className="border-t border-line/60 pt-3">
                 <div className="mb-1 text-[10px] font-medium uppercase tracking-wide text-ink-3">{t("msm.cfgWeighting")}</div>
                 <WeightBars
-                  labels={HIST_SEASONS.map((s) => s.replace(/^20(\d\d)-20(\d\d)$/, "$1/$2"))}
+                  labels={[...HIST_SEASONS, CURRENT_SEASON].map((s) => s.replace(/^20(\d\d)-20(\d\d)$/, "$1/$2"))}
                   weights={weights}
                 />
               </div>
