@@ -36,14 +36,15 @@ export default function FixtureIdTab({
   }, [league, round]);
 
   function edit(fid: string, patch: Partial<FixtureInput>) {
-    setInputs((prev) => ({
-      ...prev,
-      [fid]: {
-        externalFixtureId: "", homeOdds: null, drawOdds: null, awayOdds: null,
-        ...prev[fid],
-        ...patch,
-      },
-    }));
+    setInputs((prev) => {
+      const base: FixtureInput = prev[fid] ?? {
+        externalFixtureId: "",
+        homeOdds: null,
+        drawOdds: null,
+        awayOdds: null,
+      };
+      return { ...prev, [fid]: { ...base, ...patch } };
+    });
   }
 
   async function save() {
