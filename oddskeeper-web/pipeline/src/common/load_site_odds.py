@@ -274,12 +274,21 @@ def main() -> None:
     conn = psycopg2.connect(os.environ["DATABASE_URL"])
     cur = conn.cursor()
 
+    # KADIN TAKIM AYRIMI: SofaScore kadin takimini ADINDA isaretlemiyor (kadin
+    # Fenerbahce = 'Fenerbahce Istanbul', 'Women'/'Kadin' YOK); ayrim yalniz
+    # gender kolonunda + turnuva adinda. Ad-tabanli eslesme erkek/kadin ayni
+    # ikiliyi (ayni gun erkek+kadin derbisi) ayirt edemez -> U19'daki gibi margin
+    # cakismasi DOGRU erkek eslesmesini de eleyebilir. Bizim TUM oran kaynaklarimiz
+    # (Bets10 sayfalari, API-Football ligleri 2/3/848/667, OddsPortal ligleri)
+    # ERKEK musabakasi oldugundan gender='F' event'ler adayliktan cikarilir.
+    # (Kadin oran kaynagi eklenirse bu varsayim gozden gecirilmeli.)
     cur.execute(
         """
         select event_id, home_team_name, away_team_name, sport, start_ts
         from tracker.upcoming_events
         where status_type in ('notstarted','inprogress')
           and start_ts > now() - interval '6 hours'
+          and gender is distinct from 'F'
         """
     )
     our = [
