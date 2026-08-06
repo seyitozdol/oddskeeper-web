@@ -109,20 +109,28 @@ def resolve_tsl(cur, bets10: dict[int, dict]) -> list[dict]:
     fixtures = cur.fetchall()
     cands = [e for e in bets10.values() if e["tournament"] == TSL_TOURNAMENT]
 
+    # TARİH TAM-EŞİTLİĞİ KULLANILMAZ: league_fixtures_v1 bir turun TÜM maçlarını
+    # tek nominal güne koyuyor (ör. R1'in 9 maçı da 2026-08-16), SofaScore ise
+    # gerçek günü tutuyor (matchweek Cuma-Pazartesi yayılır). Sıralı (ev, dep)
+    # çifti sezonda TEKİL olduğu için eşleşme yön (pair_score) + margin ile
+    # güvenli; tarih yalnızca geniş bir savunma penceresi ve beraberlik bozucu.
+    DATE_WINDOW = 10  # gün
+
     out = []
     for fid, hslug, aslug, fdate in fixtures:
         ev = {"home_team_name": hslug, "away_team_name": aslug}  # slug'ı ad gibi puanla
         scored = []
         for e in cands:
-            if e["date"] != fdate:
+            dd = abs((e["date"] - fdate).days) if (fdate and e["date"]) else 999
+            if fdate and e["date"] and dd > DATE_WINDOW:
                 continue
             s = pair_score(e["home"], e["away"], ev)
             if s > 0:
-                scored.append((s, e))
+                scored.append((s, -dd, e))  # önce puan, sonra en yakın tarih
         if not scored:
             continue
-        scored.sort(key=lambda t: t[0], reverse=True)
-        best_s, best_e = scored[0]
+        scored.sort(key=lambda t: (t[0], t[1]), reverse=True)
+        best_s, _, best_e = scored[0]
         second = scored[1][0] if len(scored) > 1 else 0.0
         if best_s >= MATCH_THRESHOLD and (best_s - second) >= MARGIN:
             out.append(_row("tsl", fid, best_e, round(best_s, 3)))
