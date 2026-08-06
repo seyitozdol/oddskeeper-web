@@ -306,8 +306,9 @@ def main() -> None:
             """
             insert into tracker.site_event_odds (
                 site, home_team_name, away_team_name, market_name, selection,
-                odds, competition, start_text, page_kind, snapshot_label, captured_at
-            ) values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                odds, competition, start_text, page_kind, snapshot_label,
+                site_event_id, captured_at
+            ) values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
             on conflict (site, home_team_name, away_team_name, market_name, selection)
             do update set
                 odds = excluded.odds,
@@ -315,24 +316,31 @@ def main() -> None:
                 start_text = excluded.start_text,
                 page_kind = excluded.page_kind,
                 snapshot_label = excluded.snapshot_label,
+                site_event_id = excluded.site_event_id,
                 captured_at = excluded.captured_at
             """,
             (
                 site, r["home"], r["away"], r["market"], r["selection"] or "",
                 r["odds"], r.get("competition"), r.get("start_text"),
-                r.get("page_kind"), r.get("snapshot_label"), r["captured_at"],
+                r.get("page_kind"), r.get("snapshot_label"),
+                r.get("site_event_id"), r["captured_at"],
             ),
         )
 
-    # market sayisi: mac basina benzersiz market adedi
+    # market sayisi: mac basina benzersiz market adedi.
+    # site_event_id: sitenin fixture id'si (Bets10'da 'f-...'); bir macin tum
+    # market/selection satirlari ayni id'yi tasir, ilk bos olmayani aliriz.
     per_event: dict[int, dict] = {}
     for (h, a), m in matches.items():
-        mkts = {r["market"] for r in rows if r["home"] == h and r["away"] == a}
+        grp = [r for r in rows if r["home"] == h and r["away"] == a]
+        mkts = {r["market"] for r in grp}
+        site_eid = next((r.get("site_event_id") for r in grp if r.get("site_event_id")), None)
         per_event[m["event_id"]] = {
             "market_count": len(mkts),
             "home": h,
             "away": a,
             "score": m["score"],
+            "site_event_id": site_eid,
         }
 
     for event_id, info in per_event.items():
@@ -340,20 +348,21 @@ def main() -> None:
             """
             insert into tracker.event_odds_availability (
                 event_id, site, has_odds, listed, market_count,
-                site_home_name, site_away_name, match_score, checked_at
-            ) values (%s,%s,true,true,%s,%s,%s,%s,now())
+                site_home_name, site_away_name, site_event_id, match_score, checked_at
+            ) values (%s,%s,true,true,%s,%s,%s,%s,%s,now())
             on conflict (event_id, site) do update set
                 has_odds = true,
                 listed = true,
                 market_count = excluded.market_count,
                 site_home_name = excluded.site_home_name,
                 site_away_name = excluded.site_away_name,
+                site_event_id = excluded.site_event_id,
                 match_score = excluded.match_score,
                 checked_at = now()
             """,
             (
                 event_id, site, info["market_count"],
-                info["home"], info["away"], info["score"],
+                info["home"], info["away"], info["site_event_id"], info["score"],
             ),
         )
 
