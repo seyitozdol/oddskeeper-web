@@ -216,7 +216,8 @@ export default function ConfigTab({
               {markets.map((m, i) => {
                 const cell = (v: number, on: (x: number) => void) => (
                   <td className="px-1 py-0.5">
-                    <input type="number" step="0.0001" className={`${inp} w-16`} value={v}
+                    <input type="number" step="0.01" className={`${inp} w-16`}
+                      value={Number.isFinite(v) ? Number(v.toFixed(2)) : ""}
                       onChange={(e) => on(parseFloat(e.target.value))} />
                   </td>
                 );

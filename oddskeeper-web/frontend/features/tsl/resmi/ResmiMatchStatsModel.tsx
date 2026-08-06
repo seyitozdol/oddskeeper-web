@@ -205,7 +205,6 @@ export default function ResmiMatchStatsModel() {
   const [rawMarketCfgs, setRawMarketCfgs] = useState<Record<string, RawMarketConfig>>({});
   const [templatesByMarket, setTemplatesByMarket] = useState<Record<string, string[]>>({});
   const [importList, setImportList] = useState<ImportRow[]>([]);
-  const [importBusy, setImportBusy] = useState(false);
   const [importNotice, setImportNotice] = useState("");
 
   // Config yükleme (mount + Config sekmesinde kaydedince yeniden).
@@ -352,13 +351,6 @@ export default function ResmiMatchStatsModel() {
     const n = parseFloat(s);
     return isFinite(n) ? n : null;
   };
-  const buildSeasons = (h: HistBySlug, slug: string): SeasonWeighted[] =>
-    HIST_SEASONS.map((s, i) => {
-      const v = h[slug]?.[s];
-      if (!v || weights[i] <= 0) return null;
-      return { ...v, weight: weights[i] };
-    }).filter(Boolean) as SeasonWeighted[];
-
   // Aynı maç+market importa daha önce yazıldıysa mükerrer eklemeyi engelle.
   const dupKey = (fixtureId: string, mLabel: string, mkt: string) => `${fixtureId}|${mLabel}|${mkt}`;
   const alreadyIn = (fixtureId: string, mLabel: string, mkt: string) =>
@@ -378,40 +370,6 @@ export default function ResmiMatchStatsModel() {
       manual_home: num(manHome), manual_away: num(manAway), manual_total: num(manTotal),
       etki, row_count: currentRows.length,
     });
-  }
-
-  async function addAllMarkets() {
-    if (!modelCfg || !homeSlug || !awaySlug) return;
-    setImportBusy(true);
-    const slugs = [homeSlug, awaySlug];
-    const ref = referees.find((r) => r.referee_name === refereeName);
-    const acc: ImportRow[] = [];
-    for (const mkt of MARKETS) {
-      const mcfg = marketCfgs[mkt];
-      const rc = rawMarketCfgs[mkt];
-      const tpls = templatesByMarket[mkt] ?? [];
-      if (!mcfg || !rc || tpls.length === 0) continue; // template'siz market (Corner) atlanır
-      if (alreadyIn(externalFixtureId, matchLabel, mkt)) continue; // zaten import'ta
-      const h = await fetchHistData(LEAGUE, mkt, slugs);
-      const ml = await fetchCurrentMatchLog(LEAGUE, mkt, slugs, CURRENT_SEASON);
-      const inputs: ModelInputs = {
-        market: mkt,
-        homeSeasons: buildSeasons(h, homeSlug), awaySeasons: buildSeasons(h, awaySlug),
-        homeCurrent: currentHFAA(ml[homeSlug], selWeek, lastX, big4H, redcH),
-        awayCurrent: currentHFAA(ml[awaySlug], selWeek, lastX, big4A, redcA),
-        etki, homeOdds: num(oddsHome) ?? 2, drawOdds: num(oddsDraw) ?? 3.4, awayOdds: num(oddsAway) ?? 2,
-        manualHome: null, manualAway: null, manualTotal: null,
-        refereeCardsPg: ref?.cards_pg ?? null, refereeFoulsPg: ref?.fouls_pg ?? null,
-      };
-      try {
-        const out = runModel(inputs, mcfg, { ...modelCfg, engine, mcSamples });
-        acc.push(...buildImportRows(out, { lineCount: rc.line_count, sendHalves: rc.send_halves, midOnly: rc.mid_only }, tpls, externalFixtureId, mkt, matchLabel));
-      } catch (e) {
-        console.error("addAllMarkets", mkt, e);
-      }
-    }
-    setImportList((l) => [...l, ...acc]);
-    setImportBusy(false);
   }
 
   function exportXlsx() {
@@ -483,20 +441,8 @@ export default function ResmiMatchStatsModel() {
       ) : tab === "input" ? (
         <div className="space-y-4">
           <div className="flex flex-wrap items-center gap-2 rounded-xl border border-line bg-card p-3 text-sm">
-            <span className="text-ink-2">
-              {matchLabel} · <b className="text-ink">{market}</b>
-            </span>
-            <button onClick={addCurrentMarket} disabled={currentRows.length === 0}
-              className="rounded-md bg-accent px-3 py-1.5 text-xs font-semibold text-accent-ink hover:opacity-90 disabled:opacity-50">
-              {t("msm.addCurrent")} ({currentRows.length})
-            </button>
-            <button onClick={addAllMarkets} disabled={importBusy}
-              className="rounded-md border border-line bg-field px-3 py-1.5 text-xs font-semibold text-ink hover:bg-veil disabled:opacity-50">
-              {importBusy ? "…" : t("msm.addAll")}
-            </button>
+            <span className="text-xs text-ink-3">{importList.length} {t("msm.rows")}</span>
             <div className="ml-auto flex items-center gap-2">
-              {importNotice && <span className="text-xs text-neg">{importNotice}</span>}
-              <span className="text-xs text-ink-3">{importList.length} {t("msm.rows")}</span>
               <button onClick={exportXlsx} disabled={importList.length === 0}
                 className="rounded-md bg-accent px-3 py-1.5 text-xs font-semibold text-accent-ink hover:opacity-90 disabled:opacity-50">
                 {t("msm.exportXlsx")}
@@ -524,7 +470,7 @@ export default function ResmiMatchStatsModel() {
                 </tr>
               </thead>
               <tbody>
-                {(importList.length ? importList : currentRows).map((r, i) => (
+                {importList.map((r, i) => (
                   <tr key={i} className={`border-t border-line/60 ${r.status === "SU" ? "text-neg" : "text-ink-2"}`}>
                     <td className="px-2 py-1 whitespace-nowrap">{r.fixtureId || "—"}</td>
                     <td className="px-2 py-1 whitespace-nowrap text-ink">{r.matchLabel}</td>
@@ -547,15 +493,12 @@ export default function ResmiMatchStatsModel() {
                     </td>
                   </tr>
                 ))}
-                {importList.length === 0 && currentRows.length === 0 && (
+                {importList.length === 0 && (
                   <tr><td colSpan={9} className="px-2 py-6 text-center text-ink-3">—</td></tr>
                 )}
               </tbody>
             </table>
           </div>
-          {importList.length === 0 && currentRows.length > 0 && (
-            <p className="text-[11px] text-ink-3">{t("msm.previewNote")}</p>
-          )}
         </div>
       ) : tab !== "model" ? (
         <div className="rounded-xl border border-line bg-card px-5 py-16 text-center text-sm text-ink-3">
