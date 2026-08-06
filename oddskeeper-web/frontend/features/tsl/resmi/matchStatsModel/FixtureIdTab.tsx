@@ -20,6 +20,18 @@ const NO_SPINNER =
 
 const ROUNDS = Array.from({ length: 34 }, (_, i) => i + 1);
 
+// Kaydedilen oran, güncel Bets10 önerisinden farklı mı? (2 ondalık toleransı).
+const round2 = (x: number | null | undefined) => (x == null ? null : Math.round(x * 100) / 100);
+function oddsStale(v: FixtureInput | undefined, lk: Bets10Link | undefined): boolean {
+  if (!v || !lk) return false;
+  if (v.homeOdds == null && v.drawOdds == null && v.awayOdds == null) return false; // kaydedilmiş oran yok
+  return (
+    round2(v.homeOdds) !== round2(lk.homeOdds) ||
+    round2(v.drawOdds) !== round2(lk.drawOdds) ||
+    round2(v.awayOdds) !== round2(lk.awayOdds)
+  );
+}
+
 export default function FixtureIdTab({
   league,
   onSaved,
@@ -178,8 +190,18 @@ export default function FixtureIdTab({
                       )}
                     </div>
                     {lk && (
-                      <div className="mt-0.5 text-[10px] text-ink-3">
-                        {lk.homeOdds ?? "-"}/{lk.drawOdds ?? "-"}/{lk.awayOdds ?? "-"}
+                      <div className="mt-0.5 flex items-center gap-1.5">
+                        <span className="text-[10px] text-ink-3">
+                          {lk.homeOdds ?? "-"}/{lk.drawOdds ?? "-"}/{lk.awayOdds ?? "-"}
+                        </span>
+                        {oddsStale(v, lk) && (
+                          <span
+                            title={t("msm.oddsStaleHint")}
+                            className="rounded border border-amber-500/40 bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-amber-600 dark:text-amber-300"
+                          >
+                            ⟳ {t("msm.oddsStale")}
+                          </span>
+                        )}
                       </div>
                     )}
                   </td>
