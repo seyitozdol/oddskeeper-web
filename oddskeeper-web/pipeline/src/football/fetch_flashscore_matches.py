@@ -113,9 +113,10 @@ def fetch_match_obj(m):
 def process_league(cfg):
     matches = discover(cfg["url"])
     if TEST_MID:
-        picks = [x for x in matches if x["mid"] == TEST_MID] or [
-            {"mid": TEST_MID, "ts": int(now_ts()) - 3 * 3600, "h": None, "a": None, "hs": None, "as": None}]
-        picks = picks[:1]
+        # TEST_MID yalniz bu ligin results'inda gercekten varsa islenir. UYDURMA YOK:
+        # yoksa mid, ait olmadigi ligde islenip yanlis competition'la yazilirdi
+        # (cross-league corruption; Boluspor macinin 'Süper Lig' olarak yazilmasi bug'i).
+        picks = [x for x in matches if x["mid"] == TEST_MID][:1]
     else:
         picks = [x for x in matches if is_eligible(x)]
     print(f"[{cfg['key']}] toplam blok={len(matches)}, islenecek={len(picks)}", flush=True)
