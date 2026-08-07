@@ -14,6 +14,7 @@ import {
 } from "./queries";
 import TeamCrest from "@/features/tsl/shared/TeamCrest";
 import { getTeamLogoPath } from "@/features/player-detail/utils/getTeamLogoPath";
+import RefreshNowButton from "@/features/upcoming-events/components/RefreshNowButton";
 
 const NO_SPINNER =
   "appearance-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none";
@@ -34,9 +35,11 @@ function oddsStale(v: FixtureInput | undefined, lk: Bets10Link | undefined): boo
 
 export default function FixtureIdTab({
   league,
+  isAdmin = false,
   onSaved,
 }: {
   league: string;
+  isAdmin?: boolean;
   onSaved?: () => void;
 }) {
   const { t } = useI18n();
@@ -49,10 +52,17 @@ export default function FixtureIdTab({
   const logoFor = (slug: string): string | null =>
     teamLogos ? (teamLogos[slug] ?? null) : getTeamLogoPath(slug);
 
-  useEffect(() => {
+  // Kaydedilmiş oranları + güncel Bets10 önerilerini (yeniden) çek. Refresh
+  // butonu bitince çağrılır: FixtureIdTab verisi client-fetch olduğu için
+  // router.refresh() tek başına taze linkleri getirmez.
+  function reloadOdds() {
     fetchFixtureInputs(league).then(setInputs);
     fetchBets10Links(league).then(setLinks);
+  }
+  useEffect(() => {
+    reloadOdds();
     fetchTeamLogos(league).then(setTeamLogos);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [league]);
   useEffect(() => {
     fetchFixtures(league, round).then(setFixtures);
@@ -117,11 +127,16 @@ export default function FixtureIdTab({
             <option key={r} value={r} className="bg-field text-ink">{r}</option>
           ))}
         </select>
+        {isAdmin && (
+          <div className="ml-auto" title={t("msm.betsRefreshHint")}>
+            <RefreshNowButton onDone={reloadOdds} />
+          </div>
+        )}
         <button
           onClick={applyAllVisible}
           disabled={visibleWithLink === 0}
           title={t("msm.betsHint")}
-          className="ml-auto rounded-md border border-line bg-card px-3 py-1.5 text-sm font-medium text-ink hover:bg-veil disabled:opacity-40"
+          className={`${isAdmin ? "" : "ml-auto "}rounded-md border border-line bg-card px-3 py-1.5 text-sm font-medium text-ink hover:bg-veil disabled:opacity-40`}
         >
           {t("msm.betsFill")}{visibleWithLink > 0 ? ` (${visibleWithLink})` : ""}
         </button>

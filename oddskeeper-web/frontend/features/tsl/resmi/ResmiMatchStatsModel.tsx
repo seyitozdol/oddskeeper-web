@@ -248,7 +248,13 @@ function SegmentBlock({
 }
 
 // ─── Ana bileşen ────────────────────────────────────────────────────────────
-export default function ResmiMatchStatsModel({ league: LEAGUE = "tsl" }: { league?: string }) {
+export default function ResmiMatchStatsModel({
+  league: LEAGUE = "tsl",
+  isAdmin = false,
+}: {
+  league?: string;
+  isAdmin?: boolean;
+}) {
   const { t } = useI18n();
   const [tab, setTab] = useState<Tab>("model");
   const [configFocus, setConfigFocus] = useState<string | null>(null);
@@ -576,7 +582,7 @@ export default function ResmiMatchStatsModel({ league: LEAGUE = "tsl" }: { leagu
       {tab === "config" ? (
         <ConfigTab league={LEAGUE} focus={configFocus} onSaved={loadConfig} />
       ) : tab === "fixtures" ? (
-        <FixtureIdTab league={LEAGUE} onSaved={() => fetchFixtureInputs(LEAGUE).then(setFixtureInputs)} />
+        <FixtureIdTab league={LEAGUE} isAdmin={isAdmin} onSaved={() => fetchFixtureInputs(LEAGUE).then(setFixtureInputs)} />
       ) : tab === "input" ? (
         <div className="space-y-4">
           <div className="flex flex-wrap items-center gap-2 rounded-xl border border-line bg-card p-3 text-sm">

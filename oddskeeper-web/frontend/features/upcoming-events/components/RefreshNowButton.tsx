@@ -9,7 +9,9 @@ type Phase = "idle" | "queued" | "running" | "done" | "error";
 // Yalnizca admin sayfada render edilir. Butona basinca pipeline tetiklenir
 // (public.pipeline_triggers'a pending satir); VPS worker calistirir. Buton
 // durumu GET ile poll edilir; bitince sayfa yenilenir (taze oran gelir).
-export default function RefreshNowButton() {
+// onDone: client tarafinda veri ceken sayfalar (or. MSM Fixture sekmesi)
+// router.refresh() ile yenilenmez; bitince kendi fetch'lerini tekrar cagirir.
+export default function RefreshNowButton({ onDone }: { onDone?: () => void } = {}) {
   const { t } = useI18n();
   const router = useRouter();
   const [phase, setPhase] = useState<Phase>("idle");
@@ -55,6 +57,7 @@ export default function RefreshNowButton() {
           if (pollRef.current) clearInterval(pollRef.current);
           setPhase("done");
           router.refresh();
+          onDone?.();
           setTimeout(() => setPhase("idle"), 4000);
         } else if (st === "error") {
           if (pollRef.current) clearInterval(pollRef.current);
