@@ -70,7 +70,6 @@ team_xg as (
 select
   s.*,
   case when s.played > 0 then round(100.0 * s.wins / s.played, 1) end as win_pct,
-  tx.xg,
   p.shots,
   p.shots_on_target,
   p.total_passes,
@@ -83,7 +82,8 @@ select
   p.interceptions,
   p.fouls,
   p.rating_avg,
-  p.km_per_match
+  p.km_per_match,
+  tx.xg
 from standings s
 left join player_agg p
   on p.season_label = s.season_label and p.team_id = s.team_id
