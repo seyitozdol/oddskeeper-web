@@ -72,19 +72,13 @@ def _num(v):
         return None
 
 
-def main():
-    if len(sys.argv) < 4:
-        raise SystemExit("Kullanim: load_flashscore_player_stats.py <klasor> <season_label> <lig adi>")
-    folder = Path(sys.argv[1])
-    season_label = sys.argv[2]
-    competition = sys.argv[3]
-    if not folder.is_dir():
-        raise SystemExit(f"Klasor yok: {folder}")
-    if not (SUPABASE_URL and SUPABASE_KEY):
-        raise SystemExit("Eksik env: SUPABASE_URL / SUPABASE_SECRET_KEY")
-
+def load_folder(folder, season_label, competition, do_refresh=True, dry_run=False):
+    """<folder>/*_m_*.json dosyalarini football.matches + match_player_stats_details'e
+    yazar (source='flashscore'). do_refresh=tff1 mat'larini tazele; dry_run=DB'ye yazma.
+    Hem CLI main() hem canli fetch_flashscore_matches.py bunu cagirir."""
+    folder = Path(folder)
     m_rows, p_rows = [], []
-    empty, skipped = 0, 0
+    empty = 0
     files = sorted(folder.glob("*_m_*.json"))
     for f in files:
         data = json.loads(f.read_text(encoding="utf-8"))
@@ -174,16 +168,34 @@ def main():
                 "raw_stats": raw,
             })
 
-    print(f"Dosya: {len(files)}, oyuncusuz mac: {empty}, mac satiri: {len(m_rows)}, oyuncu satiri: {len(p_rows)}", flush=True)
-    upsert("matches", m_rows, "source,source_match_id")
-    print(f"[matches] {len(m_rows)} upsert", flush=True)
     dedup = {}
     for r in p_rows:
         dedup[(r["source_match_id"], r["source_player_id"])] = r
     p_rows = list(dedup.values())
+    print(f"Dosya: {len(files)}, oyuncusuz mac: {empty}, mac satiri: {len(m_rows)}, oyuncu satiri: {len(p_rows)}", flush=True)
+    if dry_run:
+        sample = next((r for r in p_rows if r.get("expected_goals") is not None), None)
+        print(f"[dry-run] upsert atlandi; ornek xG: "
+              f"{sample and sample.get('player_name')} = {sample and sample.get('expected_goals')}", flush=True)
+        return len(m_rows), len(p_rows)
+    upsert("matches", m_rows, "source,source_match_id")
+    print(f"[matches] {len(m_rows)} upsert", flush=True)
     upsert("match_player_stats_details", p_rows, "source,source_match_id,source_player_id")
     print(f"[players] {len(p_rows)} upsert", flush=True)
-    refresh_mats()
+    if do_refresh:
+        refresh_mats()
+    return len(m_rows), len(p_rows)
+
+
+def main():
+    if len(sys.argv) < 4:
+        raise SystemExit("Kullanim: load_flashscore_player_stats.py <klasor> <season_label> <lig adi>")
+    folder = Path(sys.argv[1])
+    if not folder.is_dir():
+        raise SystemExit(f"Klasor yok: {folder}")
+    if not (SUPABASE_URL and SUPABASE_KEY):
+        raise SystemExit("Eksik env: SUPABASE_URL / SUPABASE_SECRET_KEY")
+    load_folder(folder, sys.argv[2], sys.argv[3])
 
 
 def refresh_mats():
