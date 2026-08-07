@@ -1,0 +1,38 @@
+import { defineMessages } from "../defineMessages";
+
+export const notes = defineMessages({
+  en: {
+    add: "Add note",
+    title: "Team notes",
+    countLabel: "{count} notes",
+    placeholder: "Write a note about this team...",
+    save: "Save",
+    saving: "Saving...",
+    cancel: "Cancel",
+    edit: "Edit",
+    delete: "Delete",
+    confirmDelete: "Delete this note?",
+    empty: "No notes yet.",
+    loadError: "Notes could not be loaded.",
+    saveError: "Note could not be saved.",
+    by: "by {name}",
+    close: "Close",
+  },
+  tr: {
+    add: "Not ekle",
+    title: "Takim notlari",
+    countLabel: "{count} not",
+    placeholder: "Bu takim hakkinda bir not yaz...",
+    save: "Kaydet",
+    saving: "Kaydediliyor...",
+    cancel: "Vazgec",
+    edit: "Duzenle",
+    delete: "Sil",
+    confirmDelete: "Bu not silinsin mi?",
+    empty: "Henuz not yok.",
+    loadError: "Notlar yuklenemedi.",
+    saveError: "Not kaydedilemedi.",
+    by: "{name}",
+    close: "Kapat",
+  },
+});

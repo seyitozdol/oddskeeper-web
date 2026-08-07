@@ -42,6 +42,8 @@ import {
 } from "./matchStatsModel/queries";
 import type { MarketConfig, ModelConfig } from "@/features/match-stats-model/engine";
 import TeamCrest from "@/features/tsl/shared/TeamCrest";
+import TeamNoteBadge from "./matchStatsModel/TeamNoteBadge";
+import type { TeamNote } from "@/lib/team-notes";
 import { getTeamLogoPath } from "@/features/player-detail/utils/getTeamLogoPath";
 
 const BIG4 = new Set(["besiktas", "galatasaray", "fenerbahce", "trabzonspor"]);
@@ -274,6 +276,8 @@ export default function ResmiMatchStatsModel({
   // Seçimler / knob'lar.
   const [homeSlug, setHomeSlug] = useState("");
   const [awaySlug, setAwaySlug] = useState("");
+  // Takım notları (slug → notlar): 1X2 logolarındaki rozet + hover için.
+  const [teamNotes, setTeamNotes] = useState<Record<string, TeamNote[]>>({});
   const [market, setMarket] = useState<string>("SOT");
   const [oddsHome, setOddsHome] = useState("");
   const [oddsDraw, setOddsDraw] = useState("");
@@ -367,6 +371,27 @@ export default function ResmiMatchStatsModel({
     fetchCurrentStats(LEAGUE, market, slugs, CURRENT_SEASON).then(setCurrent);
     fetchCurrentMatchLog(LEAGUE, market, slugs, CURRENT_SEASON).then(setMatchLog);
   }, [homeSlug, awaySlug, market]);
+
+  // Takımlar değişince iki takımın notlarını tek istekte çek.
+  useEffect(() => {
+    if (!homeSlug || !awaySlug) {
+      setTeamNotes({});
+      return;
+    }
+    let alive = true;
+    const slugs = [homeSlug, awaySlug].join(",");
+    fetch(`/api/team-notes?slugs=${encodeURIComponent(slugs)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { bySlug?: Record<string, TeamNote[]> } | null) => {
+        if (alive && data?.bySlug) setTeamNotes(data.bySlug);
+      })
+      .catch(() => {
+        if (alive) setTeamNotes({});
+      });
+    return () => {
+      alive = false;
+    };
+  }, [homeSlug, awaySlug]);
 
   // Market / fixture / takım değişince elle override'lar (home/away/total) sıfırlanır.
   useEffect(() => {
@@ -699,7 +724,10 @@ export default function ResmiMatchStatsModel({
                 <label className={lblCls}>1X2</label>
                 <div className="flex items-start gap-4 rounded-md border border-line bg-card-2 px-3 py-2">
                   <div className="flex flex-col items-center gap-1">
-                    <TeamCrest logo={logoFor(homeSlug)} name={homeName} size="lg" />
+                    <span className="relative">
+                      <TeamCrest logo={logoFor(homeSlug)} name={homeName} size="lg" />
+                      <TeamNoteBadge notes={teamNotes[homeSlug] ?? []} />
+                    </span>
                     <b className="text-sm tabular-nums text-ink">{oddsHome || "—"}</b>
                     <span className="text-[10px] tabular-nums text-ink-3">{impliedPct(oddsHome)}</span>
                   </div>
@@ -709,7 +737,10 @@ export default function ResmiMatchStatsModel({
                     <span className="text-[10px] tabular-nums text-ink-3">{impliedPct(oddsDraw)}</span>
                   </div>
                   <div className="flex flex-col items-center gap-1">
-                    <TeamCrest logo={logoFor(awaySlug)} name={awayName} size="lg" />
+                    <span className="relative">
+                      <TeamCrest logo={logoFor(awaySlug)} name={awayName} size="lg" />
+                      <TeamNoteBadge notes={teamNotes[awaySlug] ?? []} />
+                    </span>
                     <b className="text-sm tabular-nums text-ink">{oddsAway || "—"}</b>
                     <span className="text-[10px] tabular-nums text-ink-3">{impliedPct(oddsAway)}</span>
                   </div>

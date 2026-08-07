@@ -17,6 +17,8 @@ import { getTeamCurrentSquad } from "../../../../../../features/team-detail/serv
 import { getTeamStatisticsSplit } from "../../../../../../features/team-detail/server/getTeamStatisticsSplit";
 import { SeasonSelect } from "../../../../../../features/team-detail/components/SeasonSelect";
 import { getT } from "@/lib/i18n/server";
+import { getNavAccess } from "@/lib/nav-access-server";
+import { getNotesForSlugs } from "@/lib/team-notes";
 import { getTeamSeasonHistory } from "../../../../../../features/team-detail/server/getTeamSeasonHistory";
 import { SeasonHistoryPanel } from "../../../../../../features/team-detail/panels/SeasonHistoryPanel";
 import { getTeamComparison } from "../../../../../../features/team-detail/server/getTeamComparison";
@@ -194,6 +196,14 @@ export default async function TeamDetailPage({
 
   const t = await getT();
 
+  // Takım notları (başlıkta logo rozeti + "not ekle" modalı için).
+  const notesViewer = await getNavAccess();
+  const notesBySlug = await getNotesForSlugs([localTeam.slug], {
+    userId: notesViewer.userId,
+    isAdmin: notesViewer.isAdmin,
+  });
+  const teamNotes = notesBySlug[localTeam.slug] ?? [];
+
   // Sezon seçici gösterilen sekmeler ve sekmeye göre seçili sezon.
   const SEASON_TABS: ValidTab[] = [
     "team-statistics",
@@ -220,6 +230,7 @@ export default async function TeamDetailPage({
         teamSlug={localTeam.slug}
         activeTab={activeTab}
         resultsCount={resultsRows.length}
+        initialNotes={teamNotes}
       />
 
       {SEASON_TABS.includes(activeTab) && seasonLabels.length > 1 ? (

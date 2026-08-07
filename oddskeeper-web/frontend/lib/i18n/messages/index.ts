@@ -12,6 +12,7 @@ import { matchPredictions } from "./matchPredictions";
 import { metrics } from "./metrics";
 import { msm } from "./msm";
 import { nav } from "./nav";
+import { notes } from "./notes";
 import { playerDetail } from "./playerDetail";
 import { playerMarket } from "./playerMarket";
 import { smartPrediction } from "./smartPrediction";
@@ -39,6 +40,7 @@ const MESSAGES: Record<
   metrics,
   msm,
   nav,
+  notes,
   playerDetail,
   playerMarket,
   smartPrediction,
