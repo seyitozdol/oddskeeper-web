@@ -12,6 +12,7 @@ Sonuc: ref.flashscore_player_map (sofascore_player_id NULL'lanabilir; opta_playe
 Calistirma:
   .venv\\Scripts\\python.exe src\\football\\build_flashscore_opta_player_map.py [--dry-run]
 """
+import os
 import sys
 import unicodedata
 from difflib import SequenceMatcher
@@ -24,6 +25,8 @@ from dotenv import dotenv_values
 ROOT = Path(__file__).resolve().parents[2]
 ENV = dotenv_values(ROOT / ".env")
 DRY = "--dry-run" in sys.argv
+# Eslesme yapilacak sezon (canli job guncel sezona bakar). Env ile ezilir.
+SEASON = (os.environ.get("FS_MAP_SEASON") or "2026/2027").strip()
 
 CHAR_MAP = str.maketrans({"đ": "d", "ð": "d", "ø": "o", "ł": "l", "þ": "th", "ı": "i"})
 
@@ -56,8 +59,8 @@ def main():
             select d.source_player_id, max(d.player_name), max(d.team_name)
             from football.match_player_stats_details d
             join football.matches m on m.source=d.source and m.source_match_id=d.source_match_id
-            where d.source=%s and m.season_label='2025/2026' and m.competition like 'S%%per Lig%%'
-            group by 1""", (source,))
+            where d.source=%s and m.season_label=%s and m.competition like 'S%%per Lig%%'
+            group by 1""", (source, SEASON))
         return {r[0]: (r[1], r[2]) for r in cur.fetchall()}
 
     fs = pool("flashscore")

@@ -45,10 +45,11 @@ DIV = "÷"   # ÷ alan ayirici
 NOT = "¬"   # ¬ alan sonu
 
 # Islenecek ligler: FlashScore results sayfasi + DB competition + season_label + dosya oneki.
-# Faz 2: yalniz 1.Lig. Super Lig (super-lig/results/) Faz 3'te acilacak.
 LEAGUES = [
     {"key": "1lig", "url": "https://www.flashscore.com/football/turkey/1-lig/results/",
      "competition": "Trendyol 1. Lig", "season_label": "2026/2027"},
+    {"key": "tsl", "url": "https://www.flashscore.com/football/turkey/super-lig/results/",
+     "competition": "Süper Lig", "season_label": "2026/2027"},
 ]
 
 
