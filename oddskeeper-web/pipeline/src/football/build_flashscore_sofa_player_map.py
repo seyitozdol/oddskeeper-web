@@ -8,6 +8,7 @@ ikinci gecis: token alt-kumesi tekilse. Sonuc ref.flashscore_player_map'e yazili
 Calistirma:
   .venv\\Scripts\\python.exe src\\football\\build_flashscore_sofa_player_map.py [--dry-run]
 """
+import os
 import sys
 import unicodedata
 
@@ -19,6 +20,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 ENV = dotenv_values(ROOT / ".env")
 DRY = "--dry-run" in sys.argv
+# Eslesme yapilacak sezon (canli job guncel sezona bakar). Env ile ezilir.
+SEASON = (os.environ.get("FS_MAP_SEASON") or "2026/2027").strip()
 
 
 CHAR_MAP = str.maketrans({"đ": "d", "ð": "d", "ø": "o", "ł": "l", "þ": "th", "ı": "i"})
@@ -49,8 +52,8 @@ def main():
             select d.source_player_id, max(d.player_name), max(d.team_name)
             from football.match_player_stats_details d
             join football.matches m on m.source=d.source and m.source_match_id=d.source_match_id
-            where d.source=%s and m.competition like 'Trendyol 1. Lig%%' and m.season_label='2025/2026'
-            group by 1""", (source,))
+            where d.source=%s and m.competition like 'Trendyol 1. Lig%%' and m.season_label=%s
+            group by 1""", (source, SEASON))
         return {r[0]: (r[1], r[2]) for r in cur.fetchall()}
 
     fs = players("flashscore")
@@ -86,7 +89,7 @@ def main():
             unmatched.append((fid, name, len(hit or [])))
 
     n_exact = sum(1 for r in rows if r[3] == "token-exact")
-    print(f"FS oyuncu: {len(fs)}, Sofa oyuncu: {len(sofa)}, eslesen: {len(rows)} (exact {n_exact}, subset {len(rows)-n_exact}), eslesmeyen: {len(unmatched)}")
+    print(f"[{SEASON}] FS oyuncu: {len(fs)}, Sofa oyuncu: {len(sofa)}, eslesen: {len(rows)} (exact {n_exact}, subset {len(rows)-n_exact}), eslesmeyen: {len(unmatched)}")
     for u in unmatched[:15]:
         print("  eslesmedi:", u)
     if not DRY:

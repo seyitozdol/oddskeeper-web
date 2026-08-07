@@ -48,6 +48,11 @@ chmod +x /opt/oddskeeper/run_upcoming_events.sh /opt/oddskeeper/run_odds_capture
 #    idempotent + flock. Faz 2'de FlashScore overlay eklenecek.
 */10 * * * *  /opt/oddskeeper/run_match_scrape.sh
 
+# 0b) FlashScore->SofaScore oyuncu eşlemesi (ref.flashscore_player_map): günde bir.
+#     Yeni sezon oyuncularını eşler → tff1 FS overlay (xg/xgot/xa/kart/pozisyon)
+#     görünür olur. DB-driven, idempotent, proxy yok. 04:00 (CEST).
+0 4 * * *     /opt/oddskeeper/run_fs_player_map.sh
+
 # 1) Yaklaşan maçlar (SofaScore proxy'den; tracker.upcoming_events besler): 3 saatte bir
 30 */3 * * *  /opt/oddskeeper/run_upcoming_events.sh
 
