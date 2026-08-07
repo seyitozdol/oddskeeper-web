@@ -19,6 +19,10 @@ import {
 import type { Tff1MatchRow } from "@/features/tff1/types";
 import { getAnyFootballTeamBySlug, slugifyTeamName } from "@/lib/football-teams";
 import { getLocale, getT } from "@/lib/i18n/server";
+import { getNavAccess } from "@/lib/nav-access-server";
+import { getNotesForSlugs } from "@/lib/team-notes";
+import { tff1SlugForTeamId } from "@/lib/tff1-team-slugs";
+import Tff1TeamNotesHeader from "@/features/tff1/components/Tff1TeamNotesHeader";
 
 function num(v: number | string | null | undefined): number {
   const x = typeof v === "string" ? Number(v) : v;
@@ -51,6 +55,19 @@ export default async function Tff1TeamPage({
       getT(),
       getLocale(),
     ]);
+
+  // Takım notları: 1. Lig team_id -> MSM/notes slug (MSM 1X2 rozetiyle aynı
+  // slug uzayı). Haritada olmayan takımda not gösterilmez.
+  const noteSlug = tff1SlugForTeamId(teamId);
+  let teamNotes: Awaited<ReturnType<typeof getNotesForSlugs>>[string] = [];
+  if (noteSlug) {
+    const viewer = await getNavAccess();
+    const bySlug = await getNotesForSlugs([noteSlug], {
+      userId: viewer.userId,
+      isAdmin: viewer.isAdmin,
+    });
+    teamNotes = bySlug[noteSlug] ?? [];
+  }
 
   const teamSeasons = teams
     .filter((tr) => tr.team_id === teamId)
@@ -110,21 +127,16 @@ export default async function Tff1TeamPage({
             ← {t("tff1.backToLeague")}
           </Link>
 
-          <div className="mt-4 flex flex-wrap items-center gap-4">
-            {logoUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={logoUrl} alt={teamName} className="h-16 w-16 object-contain" />
-            ) : (
-              <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-line bg-veil text-2xl font-semibold text-ink-3">
-                {teamName.slice(0, 1)}
-              </div>
-            )}
-            <div>
-              <h1 className="text-2xl font-semibold text-ink lg:text-3xl">
-                {teamName}
-              </h1>
-              <p className="mt-1 text-[13px] text-ink-3">{t("tff1.kicker")}</p>
-            </div>
+          <div className="mt-4">
+            <Tff1TeamNotesHeader
+              teamSlug={noteSlug}
+              teamName={teamName}
+              logoUrl={logoUrl}
+              initialNotes={teamNotes}
+              subtitle={
+                <p className="mt-1 text-[13px] text-ink-3">{t("tff1.kicker")}</p>
+              }
+            />
           </div>
 
           <div className="mt-6 rounded-lg border border-line bg-veil px-4 py-3">
@@ -259,43 +271,34 @@ export default async function Tff1TeamPage({
           ← {t("tff1.backToLeague")}
         </Link>
 
-        <div className="mt-4 flex flex-wrap items-center gap-4">
-          {logo ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={logo}
-              alt={team.team_name ?? ""}
-              className="h-16 w-16 object-contain"
-            />
-          ) : (
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-line bg-veil text-2xl font-semibold text-ink-3">
-              {(team.team_name ?? "?").slice(0, 1)}
-            </div>
-          )}
-          <div>
-            <h1 className="text-2xl font-semibold text-ink lg:text-3xl">
-              {team.team_name}
-            </h1>
-            <div className="mt-1 flex items-center gap-2 text-[13px] text-ink-3">
-              <span>{t("tff1.kicker")}</span>
-              <span>·</span>
-              <div className="flex gap-1">
-                {teamSeasons.map((tr) => (
-                  <Link
-                    key={tr.season_label}
-                    href={`/dashboard/tff-1-lig/team/${teamId}?season=${encodeURIComponent(tr.season_label)}`}
-                    className={`rounded-md border px-2 py-0.5 text-[12px] transition ${
-                      tr.season_label === season
-                        ? "border-line-strong bg-card-2 text-ink"
-                        : "border-line bg-veil text-ink-2 hover:text-ink"
-                    }`}
-                  >
-                    {tr.season_label}
-                  </Link>
-                ))}
+        <div className="mt-4">
+          <Tff1TeamNotesHeader
+            teamSlug={noteSlug}
+            teamName={team.team_name ?? teamId}
+            logoUrl={logo ?? null}
+            initialNotes={teamNotes}
+            subtitle={
+              <div className="mt-1 flex items-center gap-2 text-[13px] text-ink-3">
+                <span>{t("tff1.kicker")}</span>
+                <span>·</span>
+                <div className="flex gap-1">
+                  {teamSeasons.map((tr) => (
+                    <Link
+                      key={tr.season_label}
+                      href={`/dashboard/tff-1-lig/team/${teamId}?season=${encodeURIComponent(tr.season_label)}`}
+                      className={`rounded-md border px-2 py-0.5 text-[12px] transition ${
+                        tr.season_label === season
+                          ? "border-line-strong bg-card-2 text-ink"
+                          : "border-line bg-veil text-ink-2 hover:text-ink"
+                      }`}
+                    >
+                      {tr.season_label}
+                    </Link>
+                  ))}
+                </div>
               </div>
-            </div>
-          </div>
+            }
+          />
         </div>
 
         <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
