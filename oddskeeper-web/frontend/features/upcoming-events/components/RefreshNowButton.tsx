@@ -11,9 +11,15 @@ type Phase = "idle" | "queued" | "running" | "done" | "error";
 // durumu GET ile poll edilir; bitince sayfa yenilenir (taze oran gelir).
 // onDone: client tarafinda veri ceken sayfalar (or. MSM Fixture sekmesi)
 // router.refresh() ile yenilenmez; bitince kendi fetch'lerini tekrar cagirir.
-export default function RefreshNowButton({ onDone }: { onDone?: () => void } = {}) {
+// kind: hangi pipeline zinciri kosacak. Varsayilan 'all' (tum oran zinciri);
+// MSM Fixture sekmesi 'bets10_odds' verir (yalniz Bets10 + resolver, hizli).
+export default function RefreshNowButton({
+  onDone,
+  kind = "all",
+}: { onDone?: () => void; kind?: string } = {}) {
   const { t } = useI18n();
   const router = useRouter();
+  const endpoint = `/api/admin/trigger-refresh?kind=${encodeURIComponent(kind)}`;
   const [phase, setPhase] = useState<Phase>("idle");
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -27,7 +33,7 @@ export default function RefreshNowButton({ onDone }: { onDone?: () => void } = {
     if (phase === "queued" || phase === "running") return;
     setPhase("queued");
     try {
-      const res = await fetch("/api/admin/trigger-refresh", { method: "POST" });
+      const res = await fetch(endpoint, { method: "POST" });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
     } catch (e) {
       console.error("trigger-refresh error:", e);
@@ -49,7 +55,7 @@ export default function RefreshNowButton({ onDone }: { onDone?: () => void } = {
         return;
       }
       try {
-        const res = await fetch("/api/admin/trigger-refresh", { method: "GET" });
+        const res = await fetch(endpoint, { method: "GET" });
         const json = await res.json();
         const st = json?.latest?.status as string | undefined;
         if (st === "running") setPhase("running");

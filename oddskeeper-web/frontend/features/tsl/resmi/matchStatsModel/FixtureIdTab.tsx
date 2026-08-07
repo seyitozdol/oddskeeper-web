@@ -129,7 +129,7 @@ export default function FixtureIdTab({
         </select>
         {isAdmin && (
           <div className="ml-auto" title={t("msm.betsRefreshHint")}>
-            <RefreshNowButton onDone={reloadOdds} />
+            <RefreshNowButton kind="bets10_odds" onDone={reloadOdds} />
           </div>
         )}
         <button

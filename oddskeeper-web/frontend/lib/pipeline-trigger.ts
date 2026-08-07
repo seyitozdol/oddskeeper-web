@@ -4,7 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 // kind ile ayrıştırılır: 'all' (futbol/oran zinciri) | 'tbf_basketball' (TBF scraper).
 // Debounce ve durum sorgusu kind-BAZLI: basketbol tetiği futbol butonunu bloklamaz.
 
-export type TriggerKind = "all" | "tbf_basketball";
+export type TriggerKind = "all" | "bets10_odds" | "tbf_basketball";
 
 export type TriggerRow = {
   id: number;

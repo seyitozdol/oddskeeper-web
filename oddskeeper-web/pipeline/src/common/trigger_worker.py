@@ -21,12 +21,20 @@ load_dotenv(ROOT / ".env")
 
 # kind -> sirayla calistirilacak wrapper'lar.
 #  'all'            = futbol/oran zinciri (maclar, hafif oran kaynaklari, agir Bets10 son).
+#  'bets10_odds'    = YALNIZ Bets10 oran yakalama + fixture<->bets10 resolver
+#                     (run_odds_capture.sh). MSM Fixture sekmesindeki "oranlari simdi
+#                     yenile" butonu icin: sofascore/365/oddsportal'i atlar, hizli.
+#                     run_odds_capture.sh kendi flock'una sahip; scheduled cron ile
+#                     cakismaz. Bilinmeyen kind 'all'a duser (asagida .get fallback).
 #  'tbf_basketball' = yalniz TBF basketbol scraper'i (headful+xvfb+TR proxy).
 KIND_WRAPPERS = {
     "all": [
         "/opt/oddskeeper/run_upcoming_events.sh",
         "/opt/oddskeeper/run_bet365_odds.sh",
         "/opt/oddskeeper/run_oddsportal.sh",
+        "/opt/oddskeeper/run_odds_capture.sh",
+    ],
+    "bets10_odds": [
         "/opt/oddskeeper/run_odds_capture.sh",
     ],
     "tbf_basketball": [
