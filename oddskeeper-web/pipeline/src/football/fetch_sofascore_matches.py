@@ -42,6 +42,7 @@ API = "https://api.sofascore.com/api/v1"
 # test edilmis yukleyici mantigini yeniden kullan (dosyaya dokunmadan)
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 loader = importlib.import_module("load_sofascore_1lig_player_stats")
+teamload = importlib.import_module("load_sofascore_team_stats")  # takim-mac stat (GSheet + MSM feed)
 
 MIN_AGE_H = float(os.environ.get("SOFA_MIN_AGE_H", "4"))
 MAX_AGE_H = float(os.environ.get("SOFA_MAX_AGE_H", "60"))
@@ -129,7 +130,7 @@ def process_league(cfg: dict):
     loader.SEASON_LABEL = season_label
     loader.COMPETITION = comp
 
-    m_rows, p_rows = [], []
+    m_rows, p_rows, t_rows = [], [], []
     for ev in eligible:
         eid = ev["id"]
         try:
@@ -139,6 +140,14 @@ def process_league(cfg: dict):
             continue
         m_rows.append(loader.match_row(ev, playoff=False))
         p_rows.extend(loader.player_rows(ev, lineup))
+        # Takim-mac statlari (statistics + incidents -> match_team_stats, source='sofascore').
+        # Eksik/404 ise sadece takim-stat atlanir, oyuncu verisi etkilenmez.
+        try:
+            stats = get(f"{API}/event/{eid}/statistics")
+            inc = get(f"{API}/event/{eid}/incidents")
+            t_rows.extend(teamload.build_team_rows(ev, stats, inc, comp))
+        except Exception as e:  # noqa
+            print(f"  takim-stat atlandi {eid}: {repr(e)[:80]}", flush=True)
         hs = (ev.get("homeScore") or {}).get("current")
         as_ = (ev.get("awayScore") or {}).get("current")
         print(f"  + {ev['homeTeam']['name']} {hs}-{as_} {ev['awayTeam']['name']} (event {eid})", flush=True)
@@ -146,6 +155,9 @@ def process_league(cfg: dict):
 
     if m_rows:
         loader.upsert("matches", m_rows, "source,source_match_id")
+    if t_rows:
+        teamload.upsert(t_rows)
+        print(f"[{comp}] takim-stat upsert: {len(t_rows)} satir", flush=True)
     # ayni oyuncu-mac anahtarini tekillestir (son kazanir)
     dedup = {}
     for r in p_rows:
