@@ -22,13 +22,19 @@ fi
 
 {
   echo "===== $(date -u '+%F %T UTC') START ====="
-  # SofaScore: bitmis maclar, kickoff+2.5..6s penceresi (~ mac bitiminden +30 dk)
+  # 1) SofaScore (ANA): bitmis maclar, kickoff+2.5..6s penceresi (~ bitis +30 dk)
   if SOFA_MIN_AGE_H=2.5 SOFA_MAX_AGE_H=6 "$VENV" "$PIPE/src/football/fetch_sofascore_matches.py"; then
     echo "===== $(date -u '+%F %T UTC') SOFA OK ====="
   else
     rc=$?
     echo "===== $(date -u '+%F %T UTC') SOFA FAILED rc=$rc ====="
   fi
-  # Faz 2 (yakinda): FlashScore overlay fetcher
-  # "$VENV" "$PIPE/src/football/fetch_flashscore_matches.py"
+  # 2) FlashScore (OVERLAY): xg/xgot/xa/sari-kirmizi kart/detayli pozisyon.
+  #    Proxysiz duz HTTP; ayni 2.5-6s penceresi (fetcher kendi FS_* envleriyle).
+  if "$VENV" "$PIPE/src/football/fetch_flashscore_matches.py"; then
+    echo "===== $(date -u '+%F %T UTC') FLASH OK ====="
+  else
+    rc=$?
+    echo "===== $(date -u '+%F %T UTC') FLASH FAILED rc=$rc ====="
+  fi
 } >> "$LOG" 2>&1
