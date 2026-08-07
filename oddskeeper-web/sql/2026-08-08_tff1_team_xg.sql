@@ -57,14 +57,12 @@ player_agg as (
   group by 1, 2
 ),
 team_xg as (
-  -- SofaScore statistics takim xG'si (match_team_stats), sezon+takim toplami
-  select mm.season_label, ts.source_team_id as team_id,
-         round(sum(ts.details_expected_goals), 2) as xg
-  from football.match_team_stats ts
-  join football.matches mm
-    on mm.source = 'sofascore' and mm.source_match_id = ts.source_match_id
-  where ts.source = 'sofascore' and mm.competition = 'Trendyol 1. Lig'
-    and ts.details_expected_goals is not null
+  -- Takim xG = oyuncu xG toplami. 1.Lig'de xG SofaScore'da YOK, FlashScore'dan gelir;
+  -- oyuncu mat'i (tff1_player_season_stats_mat) FS xG'yi fmap ile dogru kopruluyor,
+  -- ayrica sofascore team_id ve season_label tasiyor -> takima toplamak temiz.
+  select season_label, team_id, round(sum(xg), 2) as xg
+  from analytics.tff1_player_season_stats_mat
+  where xg is not null
   group by 1, 2
 )
 select
