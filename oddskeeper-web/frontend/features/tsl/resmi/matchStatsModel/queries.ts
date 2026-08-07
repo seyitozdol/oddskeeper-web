@@ -53,6 +53,7 @@ export interface FixtureRow {
   homeName: string;
   awayName: string;
   label: string;
+  datetime: string | null;
 }
 export interface FixtureInput {
   externalFixtureId: string;
@@ -80,7 +81,38 @@ export async function fetchFixtures(league: string, round?: number): Promise<Fix
     homeName: (r.home_team_name as string) ?? r.home_team_slug,
     awayName: (r.away_team_name as string) ?? r.away_team_slug,
     label: `${r.home_team_name} - ${r.away_team_name}`,
+    datetime: (r.fixture_datetime as string) ?? null,
   }));
+}
+
+// GSheet sekmesi: maç başına takım statları (analytics.msm_gsheet_v1, source='sofascore').
+export interface GsheetRow {
+  sourceMatchId: string;
+  homeTeamName: string;
+  awayTeamName: string;
+  vals: Record<string, number | null>;
+}
+export async function fetchGsheetRows(league: string): Promise<GsheetRow[]> {
+  const { data, error } = await sb()
+    .from("msm_gsheet_v1")
+    .select("*")
+    .eq("league", league)
+    .eq("season_label", FIXTURE_SEASON);
+  if (error) { console.error("fetchGsheetRows", error); return []; }
+  return (data ?? []).map((r) => {
+    const vals: Record<string, number | null> = {};
+    for (const k of Object.keys(r)) {
+      if (["source_match_id", "league", "competition", "match_datetime", "season_label",
+           "home_team_id", "away_team_id", "home_team_name", "away_team_name"].includes(k)) continue;
+      vals[k] = r[k] != null ? Number(r[k]) : null;
+    }
+    return {
+      sourceMatchId: String(r.source_match_id),
+      homeTeamName: (r.home_team_name as string) ?? "",
+      awayTeamName: (r.away_team_name as string) ?? "",
+      vals,
+    };
+  });
 }
 
 export async function fetchFixtureInputs(league: string): Promise<Record<string, FixtureInput>> {

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useI18n } from "../../../lib/i18n/LanguageProvider";
 import ConfigTab from "./matchStatsModel/ConfigTab";
+import GSheetTab from "./matchStatsModel/GSheetTab";
 import FixtureIdTab from "./matchStatsModel/FixtureIdTab";
 import * as XLSX from "xlsx";
 import { buildImportRows, type ImportRow } from "./matchStatsModel/exportRows";
@@ -47,7 +48,7 @@ import type { TeamNote } from "@/lib/team-notes";
 import { getTeamLogoPath } from "@/features/player-detail/utils/getTeamLogoPath";
 
 const BIG4 = new Set(["besiktas", "galatasaray", "fenerbahce", "trabzonspor"]);
-const TABS = ["model", "config", "fixtures", "input"] as const;
+const TABS = ["model", "config", "fixtures", "input", "gsheet"] as const;
 
 // Güncel sezon maç logundan HF/HA/AF/AA (Excel U11-14): hafta penceresi + Big4/RedC istisnası.
 function currentHFAA(
@@ -670,6 +671,8 @@ export default function ResmiMatchStatsModel({
             </table>
           </div>
         </div>
+      ) : tab === "gsheet" ? (
+        <GSheetTab league={LEAGUE} />
       ) : tab !== "model" ? (
         <div className="rounded-xl border border-line bg-card px-5 py-16 text-center text-sm text-ink-3">
           {t("msm.comingSoon")}
