@@ -50,6 +50,7 @@ export default function ConfigTab({
   const [markets, setMarkets] = useState<RawMarketConfig[]>([]);
   const [templates, setTemplates] = useState<TemplateRow[]>([]);
   const [status, setStatus] = useState<"" | "saving" | "ok" | "err">("");
+  const [section, setSection] = useState<"general" | "stdHalves">("general");
 
   useEffect(() => {
     fetchRawModelConfig(league).then(setModel);
@@ -60,6 +61,7 @@ export default function ConfigTab({
   // Model'deki dişliden gelen odak: ilgili bölüme kaydır + kısa vurgula.
   useEffect(() => {
     if (!focus || !model) return;
+    setSection("general"); // dişliden gelen odak Genel bölümündeki kartlara gider
     const el = document.getElementById(`cfg-${focus}`);
     if (!el) return;
     el.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -107,8 +109,21 @@ export default function ConfigTab({
 
   return (
     <div className="space-y-5">
-      {/* Kaydet çubuğu */}
+      {/* Alt sekmeler (Genel / STD ve Halves) + Kaydet çubuğu */}
       <div className="flex items-center gap-3">
+        <div className="flex items-center gap-1 rounded-lg border border-line bg-card-2 p-0.5">
+          {(["general", "stdHalves"] as const).map((s) => (
+            <button
+              key={s}
+              onClick={() => setSection(s)}
+              className={`rounded-md px-3 py-1 text-sm ${
+                section === s ? "bg-veil font-semibold text-ink" : "text-ink-3 hover:text-ink-2"
+              }`}
+            >
+              {t(s === "general" ? "msm.cfgGeneral" : "msm.cfgStdHalves")}
+            </button>
+          ))}
+        </div>
         <button
           onClick={saveAll}
           disabled={status === "saving"}
@@ -120,6 +135,8 @@ export default function ConfigTab({
         {status === "err" && <span className="text-sm text-neg">{t("msm.saveFailed")}</span>}
       </div>
 
+      {section === "general" && (
+      <>
       {/* Model parametreleri */}
       <section id="cfg-model" className="scroll-mt-4 rounded-xl border border-line bg-card p-4">
         <h3 className="mb-3 text-sm font-semibold text-ink">{t("msm.cfgModel")}</h3>
@@ -274,6 +291,63 @@ export default function ConfigTab({
           ))}
         </div>
       </section>
+      </>
+      )}
+
+      {/* STD ve Halves: market başına std + halve payları (geçmiş sezon değerleri) */}
+      {section === "stdHalves" && (
+        <section className="rounded-xl border border-line bg-card p-4">
+          <h3 className="mb-1 text-sm font-semibold text-ink">{t("msm.cfgStdHalves")}</h3>
+          <p className="mb-3 max-w-3xl text-[11px] leading-relaxed text-ink-3">{t("msm.stdHalvesNote")}</p>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[640px] text-left text-[11px] tabular-nums">
+              <thead>
+                <tr className="text-ink-3">
+                  <th rowSpan={2} className="px-1 py-1 align-bottom font-medium">{t("msm.market")}</th>
+                  <th colSpan={2} className="border-l border-line/60 px-1 py-1 text-center font-medium">{t("msm.stdFt")}</th>
+                  <th colSpan={2} className="border-l border-line/60 px-1 py-1 text-center font-medium">{t("msm.std1H")}</th>
+                  <th colSpan={2} className="border-l border-line/60 px-1 py-1 text-center font-medium">{t("msm.std2H")}</th>
+                  <th colSpan={2} className="border-l border-line/60 px-1 py-1 text-center font-medium">{t("msm.halveShares")}</th>
+                </tr>
+                <tr className="text-ink-3">
+                  <th className="border-l border-line/60 px-1 py-0.5 text-center font-normal">{t("msm.home")}</th>
+                  <th className="px-1 py-0.5 text-center font-normal">{t("msm.away")}</th>
+                  <th className="border-l border-line/60 px-1 py-0.5 text-center font-normal">{t("msm.home")}</th>
+                  <th className="px-1 py-0.5 text-center font-normal">{t("msm.away")}</th>
+                  <th className="border-l border-line/60 px-1 py-0.5 text-center font-normal">{t("msm.home")}</th>
+                  <th className="px-1 py-0.5 text-center font-normal">{t("msm.away")}</th>
+                  <th className="border-l border-line/60 px-1 py-0.5 text-center font-normal">1H</th>
+                  <th className="px-1 py-0.5 text-center font-normal">2H</th>
+                </tr>
+              </thead>
+              <tbody>
+                {markets.map((m, i) => {
+                  const cell = (v: number, on: (x: number) => void, left = false) => (
+                    <td className={`px-1 py-0.5 ${left ? "border-l border-line/60" : ""}`}>
+                      <input type="number" step="0.01" className={`${inp} w-16`}
+                        value={Number.isFinite(v) ? Number(v.toFixed(2)) : ""}
+                        onChange={(e) => on(parseFloat(e.target.value))} />
+                    </td>
+                  );
+                  return (
+                    <tr key={m.market} className="border-t border-line/60 text-ink-2">
+                      <td className="px-1 py-0.5 font-medium text-ink">{m.market}</td>
+                      {cell(m.std_home_ft, (x) => setMk(i, { std_home_ft: x }), true)}
+                      {cell(m.std_away_ft, (x) => setMk(i, { std_away_ft: x }))}
+                      {cell(m.std_home_1h, (x) => setMk(i, { std_home_1h: x }), true)}
+                      {cell(m.std_away_1h, (x) => setMk(i, { std_away_1h: x }))}
+                      {cell(m.std_home_2h, (x) => setMk(i, { std_home_2h: x }), true)}
+                      {cell(m.std_away_2h, (x) => setMk(i, { std_away_2h: x }))}
+                      {cell(m.split_1h, (x) => setMk(i, { split_1h: x }), true)}
+                      {cell(m.split_2h, (x) => setMk(i, { split_2h: x }))}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
     </div>
   );
 }
