@@ -31,10 +31,21 @@ fi
   fi
   # 2) FlashScore (OVERLAY): xg/xgot/xa/sari-kirmizi kart/detayli pozisyon.
   #    Proxysiz duz HTTP; ayni 2.5-6s penceresi (fetcher kendi FS_* envleriyle).
-  if "$VENV" "$PIPE/src/football/fetch_flashscore_matches.py"; then
+  FLASH_OUT=$("$VENV" "$PIPE/src/football/fetch_flashscore_matches.py" 2>&1); frc=$?
+  echo "$FLASH_OUT"
+  if [ "$frc" -eq 0 ]; then
     echo "===== $(date -u '+%F %T UTC') FLASH OK ====="
   else
-    rc=$?
-    echo "===== $(date -u '+%F %T UTC') FLASH FAILED rc=$rc ====="
+    echo "===== $(date -u '+%F %T UTC') FLASH FAILED rc=$frc ====="
+  fi
+
+  # 3) Bu turda mac islendiyse: yeni oyunculari FS->Sofa esle + tff1 player mat tazele.
+  #    Yoksa yeni 26/27 oyuncularinin kart/xG overlay'i 04:00 gunluk job'a kadar
+  #    gecikirdi (Juan Arguello kart bug'i). DB-driven + idempotent + hizli.
+  if echo "$FLASH_OUT" | grep -qE 'islenecek=[1-9]'; then
+    if FS_MAP_SEASON="2026/2027" "$VENV" "$PIPE/src/football/build_flashscore_sofa_player_map.py" >/dev/null; then
+      "$VENV" -c "import psycopg2; from dotenv import dotenv_values; e=dotenv_values('$PIPE/.env'); c=psycopg2.connect(e['DATABASE_URL'].strip().strip(chr(34))); c.autocommit=True; c.cursor().execute('refresh materialized view analytics.tff1_player_season_stats_mat')"
+      echo "===== $(date -u '+%F %T UTC') FS-MAP + MAT OK ====="
+    fi
   fi
 } >> "$LOG" 2>&1
