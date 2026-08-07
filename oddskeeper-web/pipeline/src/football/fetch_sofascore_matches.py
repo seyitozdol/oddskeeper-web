@@ -50,9 +50,11 @@ FORCE_SEASON = (os.environ.get("SOFA_SEASON_ID") or "").strip()  # test: belirli
 SLEEP = float(os.environ.get("SOFA_SLEEP", "0.6"))
 
 # Islenecek ligler. SofaScore unique-tournament id + DB competition etiketi.
-# TFF1 (Trendyol 1. Lig) ut id'si dogrulaninca eklenecek.
+# ut=52 Super Lig, ut=98 Trendyol 1. Lig (26/27 season 98149). competition
+# etiketi tff1 view'larinin filtresiyle birebir olmali ('Trendyol 1. Lig').
 LEAGUES = [
     {"ut": 52, "competition": "Süper Lig"},
+    {"ut": 98, "competition": "Trendyol 1. Lig"},
 ]
 
 

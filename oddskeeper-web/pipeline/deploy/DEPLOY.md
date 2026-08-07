@@ -39,8 +39,15 @@ chmod +x /opt/oddskeeper/run_upcoming_events.sh /opt/oddskeeper/run_odds_capture
   `{session}` yer tutucusu her koşuda yeni sticky id ile değiştirilir (oturum boyunca sabit IP).
 
 ## Cron (`crontab -e`)
-Sunucu saati UTC. Üç iş:
+**Sunucu yerel saati Europe/Berlin (CEST, UTC+2) ve cron BU yerel saatte tetikler**
+(eskiden "UTC" yazıyordu, yanlıştı; loglardaki UTC damgaları `date -u`'dan gelir).
+İşler:
 ```cron
+# 0) Maç-sonrası hızlı scrape (SofaScore ana; TSL + 1.Lig): her 10 dk polling.
+#    Bitmiş ve kickoff+2.5..6s penceresindeki maçları çeker (~ bitiş +30 dk),
+#    idempotent + flock. Faz 2'de FlashScore overlay eklenecek.
+*/10 * * * *  /opt/oddskeeper/run_match_scrape.sh
+
 # 1) Yaklaşan maçlar (SofaScore proxy'den; tracker.upcoming_events besler): 3 saatte bir
 30 */3 * * *  /opt/oddskeeper/run_upcoming_events.sh
 
@@ -66,6 +73,12 @@ Sunucu saati UTC. Üç iş:
 ```
 `public.pipeline_triggers` tablosu gerekir (sql/2026-07-31_pipeline_triggers.sql).
 Wrapper'ları kopyala: `cp oddskeeper-web/pipeline/deploy/run_*.sh /opt/oddskeeper/ && chmod +x /opt/oddskeeper/run_*.sh`
+
+**Maç-sonrası scrape (İş 0):** `run_match_scrape.sh` yeni; `fetch_sofascore_matches.py`
+artık TSL + 1.Lig'i (LEAGUES: ut=52 + ut=98) besler. Mevcut `run_sofascore.sh`
+(3 saatlik uzun-kuyruk düzeltme işi, grace 4-60s) da aynı LEAGUES'ten 1.Lig'i
+kapsar; ikisi de idempotent, çakışma zararsız. Kurulum: `cp .../run_match_scrape.sh
+/opt/oddskeeper/ && chmod +x /opt/oddskeeper/run_match_scrape.sh` + cron İş 0.
 `.env`'e `API_FOOTBALL_KEY` ekli olmalı (bet365 işi için).
 
 ## İş 2 — SPIKE (parser yazmadan önce, ZORUNLU)
