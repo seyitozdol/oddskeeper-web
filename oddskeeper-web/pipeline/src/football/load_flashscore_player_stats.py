@@ -28,6 +28,16 @@ SUPABASE_KEY = (ENV.get("SUPABASE_SECRET_KEY") or "").strip().strip('"')
 
 SOURCE = "flashscore"
 PLAYOFF_HDRS = {"Final", "Semi-finals", "Quarter-finals", "Qualification Round 1", "Qualification Round 2"}
+IMG_BASE = "https://static.flashscore.com/res/image/data/"
+
+
+def pick_image(images):
+    """FS participant.images -> foto URL (variantType 24 tercih, sonra 15)."""
+    if not images:
+        return None
+    by_variant = {i.get("variantType"): i.get("path") for i in images if i.get("path")}
+    path = by_variant.get(24) or by_variant.get(15) or next(iter(by_variant.values()), None)
+    return IMG_BASE + path if path else None
 
 
 def upsert(table: str, rows: list, conflict_cols: str) -> None:
@@ -142,6 +152,9 @@ def load_folder(folder, season_label, competition, do_refresh=True, dry_run=Fals
             if pos:
                 raw["_position"] = pos
             raw["_inBaseLineup"] = bool(p.get("inBaseLineup"))
+            photo = pick_image(part.get("images"))
+            if photo:
+                raw["_photo"] = photo
             minutes = _num(st.get("MATCH_MINUTES_PLAYED")) or 0
             if p.get("inBaseLineup"):
                 status = "starter"

@@ -44,8 +44,11 @@ fi
   #    gecikirdi (Juan Arguello kart bug'i). DB-driven + idempotent + hizli.
   if echo "$FLASH_OUT" | grep -qE 'islenecek=[1-9]'; then
     if FS_MAP_SEASON="2026/2027" "$VENV" "$PIPE/src/football/build_flashscore_sofa_player_map.py" >/dev/null; then
+      # yeni oyuncularin fotolarini FS ham verisinden sofascore_player_info'ya
+      "$VENV" "$PIPE/src/football/sync_player_photos_tff1.py"
+      # kart overlay'i icin player season mat tazele
       "$VENV" -c "import psycopg2; from dotenv import dotenv_values; e=dotenv_values('$PIPE/.env'); c=psycopg2.connect(e['DATABASE_URL'].strip().strip(chr(34))); c.autocommit=True; c.cursor().execute('refresh materialized view analytics.tff1_player_season_stats_mat')"
-      echo "===== $(date -u '+%F %T UTC') FS-MAP + MAT OK ====="
+      echo "===== $(date -u '+%F %T UTC') FS-MAP + PHOTO + MAT OK ====="
     fi
   fi
 } >> "$LOG" 2>&1
