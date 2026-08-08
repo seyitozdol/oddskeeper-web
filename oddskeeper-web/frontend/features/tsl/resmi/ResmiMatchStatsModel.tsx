@@ -4,8 +4,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useI18n } from "../../../lib/i18n/LanguageProvider";
 import HistoryDropdown from "@/features/model-history/HistoryDropdown";
 import RetentionConfig from "@/features/model-history/RetentionConfig";
+import SuspendMissingConfig from "@/features/model-history/SuspendMissingConfig";
 import {
   postModelHistory,
+  fetchMsmSuspend,
+  saveMsmSuspend,
   type ModelHistoryDraft,
   type ModelHistoryRecord,
 } from "@/lib/model-history";
@@ -119,6 +122,9 @@ type MsmSnapshot = {
   manAway: string;
   manTotal: string;
   refereeName: string;
+  // Bu mac+market icin export edilen line'lar (SU duzeltme diff'i icin). Sadece
+  // export aninda doldurulur; input state restore'unda kullanilmaz.
+  exportedRows?: ImportRow[];
 };
 
 const NO_SPINNER =
@@ -355,6 +361,10 @@ export default function ResmiMatchStatsModel({
     { mode: "full" } | { mode: "fixed"; selWeek: number; lastX: number }
   >({ mode: "full" });
   const restoringRef = useRef(false);
+  // SU özelliği: Config toggle (aç/kapa) + geçmişten restore edilen mac+market'in
+  // önceki export line'ları (diff tabanı). Anahtar = dupKey.
+  const [suspendMissing, setSuspendMissing] = useState(false);
+  const [correctionBaseByKey, setCorrectionBaseByKey] = useState<Record<string, ImportRow[]>>({});
 
   // Config yükleme (mount + Config sekmesinde kaydedince yeniden).
   const loadConfig = useCallback(() => {
@@ -387,8 +397,9 @@ export default function ResmiMatchStatsModel({
     fetchReferees(LEAGUE).then(setReferees);
     fetchFixtures(LEAGUE).then(setFixtures);
     fetchFixtureInputs(LEAGUE).then(setFixtureInputs);
+    fetchMsmSuspend(LEAGUE).then(setSuspendMissing);
     loadConfig();
-  }, [loadConfig]);
+  }, [loadConfig, LEAGUE]);
 
   // Takımlar SADECE fikstürden gelir: fikstürler yüklenince ilkini otomatik seç.
   useEffect(() => {
@@ -577,6 +588,41 @@ export default function ResmiMatchStatsModel({
   const alreadyIn = (fixtureId: string, mLabel: string, mkt: string) =>
     importList.some((r) => dupKey(r.fixtureId, r.matchLabel, r.market) === dupKey(fixtureId, mLabel, mkt));
 
+  // SU satırları: toggle açıksa, geçmişten restore edilen mac+market'lerde
+  // önceki export'ta olup şu anki importList'te (template+line) bulunmayan
+  // line'lar Market Status = SU ile yazılır. Line/oran düzeltmesi ve export
+  // yalnızca bu türev listeyle birlikte yapılır.
+  const suRows = useMemo<ImportRow[]>(() => {
+    if (!suspendMissing) return [];
+    // importList'i dupKey'e göre grupla → aktif (template|line) kümesi.
+    const activeByKey = new Map<string, Set<string>>();
+    for (const r of importList) {
+      const k = dupKey(r.fixtureId, r.matchLabel, r.market);
+      let set = activeByKey.get(k);
+      if (!set) { set = new Set(); activeByKey.set(k, set); }
+      set.add(`${r.template}|${r.line}`);
+    }
+    const out: ImportRow[] = [];
+    for (const [k, active] of activeByKey) {
+      const base = correctionBaseByKey[k];
+      if (!base || base.length === 0) continue;
+      for (const b of base) {
+        if (!active.has(`${b.template}|${b.line}`)) {
+          out.push({ ...b, status: "SU" });
+        }
+      }
+    }
+    return out;
+  }, [suspendMissing, importList, correctionBaseByKey]);
+
+  // Config toggle: parent'ta tutulur (export/suRows ile senkron), API'ye yazar.
+  const toggleSuspend = async (next: boolean): Promise<boolean> => {
+    setSuspendMissing(next);
+    const ok = await saveMsmSuspend(LEAGUE, next);
+    if (!ok) setSuspendMissing(!next);
+    return ok;
+  };
+
   async function addCurrentMarket() {
     if (currentRows.length === 0) return;
     if (alreadyIn(externalFixtureId, matchLabel, market)) {
@@ -602,8 +648,10 @@ export default function ResmiMatchStatsModel({
 
   async function exportXlsx() {
     if (importList.length === 0) return;
+    // Aktif satırlar + (toggle açıksa) eksik line'lar için SU satırları.
+    const exportRows = [...importList, ...suRows];
     // Excel Import formatı: 8 kolon (market YAZILMAZ).
-    const data = importList.map((r) => ({
+    const data = exportRows.map((r) => ({
       "Fixture ID": r.fixtureId,
       "Market Template": r.template,
       Line: r.line,
@@ -618,21 +666,34 @@ export default function ResmiMatchStatsModel({
     XLSX.utils.book_append_sheet(wb, ws, "Input");
     XLSX.writeFile(wb, `${matchLabel || "input"}.xlsx`);
 
-    // Export gecmisi: mac+market bazinda tek kayit (snapshot ile). Sadece burada yazilir.
+    // Export gecmisi: mac+market bazinda tek kayit. snapshot = input state +
+    // exportedRows (o grubun AKTIF line'lari; sonraki SU diff'inin tabani).
     const seen = new Set<string>();
     const entries: ModelHistoryDraft[] = [];
+    const newBase: Record<string, ImportRow[]> = {};
     for (const r of importList) {
       const k = dupKey(r.fixtureId, r.matchLabel, r.market);
       if (seen.has(k)) continue;
       seen.add(k);
+      const groupRows = importList.filter(
+        (x) => dupKey(x.fixtureId, x.matchLabel, x.market) === k
+      );
+      newBase[k] = groupRows;
+      const inputSnap = snapshotByKey[k];
+      const snapshot = inputSnap
+        ? { ...inputSnap, exportedRows: groupRows }
+        : { exportedRows: groupRows };
       entries.push({
         kind: "match",
         fixtureExtId: r.fixtureId,
         matchLabel: r.matchLabel,
         market: r.market,
-        snapshot: snapshotByKey[k] ?? null,
+        snapshot,
       });
     }
+    // SU diff tabanini bu export'ta gonderilen aktif line'lara guncelle: sonraki
+    // (restore olmadan da) yeniden export'ta eksilen line'lar SU'lanabilsin.
+    setCorrectionBaseByKey((m) => ({ ...m, ...newBase }));
     if (entries.length > 0) {
       await postModelHistory("football_msm", LEAGUE, entries);
       setHistoryReloadKey((k) => k + 1);
@@ -654,6 +715,13 @@ export default function ResmiMatchStatsModel({
       setImportNotice(t("modelHistory.fixtureGone"));
       setTimeout(() => setImportNotice(""), 3000);
       return;
+    }
+    // SU düzeltmesi için: bu mac+market'in önceki export line'larını diff tabanı
+    // olarak sakla (toggle açıksa export'ta eksik line'lar SU ile yazılır).
+    if (snap?.exportedRows && snap.exportedRows.length > 0) {
+      const baseKey = dupKey(rec.fixtureExtId ?? "", rec.matchLabel, rec.market);
+      const base = snap.exportedRows;
+      setCorrectionBaseByKey((m) => ({ ...m, [baseKey]: base }));
     }
     // restoringRef: seçim değişimi effect'inin manuel/pencereyi sıfırlamasını engelle.
     restoringRef.current = true;
@@ -747,6 +815,7 @@ export default function ResmiMatchStatsModel({
       {tab === "config" ? (
         <div className="space-y-4">
           <ConfigTab league={LEAGUE} focus={configFocus} onSaved={loadConfig} />
+          <SuspendMissingConfig value={suspendMissing} onChange={toggleSuspend} />
           <RetentionConfig sport="football_msm" league={LEAGUE} />
         </div>
       ) : tab === "fixtures" ? (
@@ -754,7 +823,10 @@ export default function ResmiMatchStatsModel({
       ) : tab === "input" ? (
         <div className="space-y-4">
           <div className="flex flex-wrap items-center gap-2 rounded-xl border border-line bg-card p-3 text-sm">
-            <span className="text-xs text-ink-3">{importList.length} {t("msm.rows")}</span>
+            <span className="text-xs text-ink-3">
+              {importList.length} {t("msm.rows")}
+              {suRows.length > 0 && <span className="text-neg"> · +{suRows.length} SU</span>}
+            </span>
             <div className="ml-auto flex items-center gap-2">
               <button onClick={exportXlsx} disabled={importList.length === 0}
                 className="rounded-md bg-accent px-3 py-1.5 text-xs font-semibold text-accent-ink hover:opacity-90 disabled:opacity-50">
@@ -804,6 +876,20 @@ export default function ResmiMatchStatsModel({
                         </button>
                       )}
                     </td>
+                  </tr>
+                ))}
+                {/* SU satırları (türev; export'ta eklenir): salt-okunur, silinemez. */}
+                {suRows.map((r, i) => (
+                  <tr key={`su-${i}`} className="border-t border-line/60 bg-veil/40 text-neg">
+                    <td className="px-2 py-1 whitespace-nowrap">{r.fixtureId || "—"}</td>
+                    <td className="px-2 py-1 whitespace-nowrap">{r.matchLabel}</td>
+                    <td className="px-2 py-1">{r.market}</td>
+                    <td className="px-2 py-1">{r.template}</td>
+                    <td className="px-2 py-1">{r.line}</td>
+                    <td className="px-2 py-1 font-semibold">SU</td>
+                    <td className="px-2 py-1">{r.sel1Price.toFixed(2)}</td>
+                    <td className="px-2 py-1">{r.sel2Price.toFixed(2)}</td>
+                    <td className="px-2 py-1"></td>
                   </tr>
                 ))}
                 {importList.length === 0 && (
