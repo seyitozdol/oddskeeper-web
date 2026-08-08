@@ -156,7 +156,7 @@ export default function UpcomingEventsPanel({
     if (count <= 0) return null;
     return (
       <span
-        className="flex max-w-[40px] flex-wrap justify-center gap-[1px]"
+        className="flex flex-nowrap items-center justify-center gap-[1px]"
         title={t("upcomingEvents.priorityStars", { count })}
       >
         {Array.from({ length: count }).map((_, i) => (
@@ -164,7 +164,7 @@ export default function UpcomingEventsPanel({
             key={i}
             viewBox="0 0 24 24"
             fill="currentColor"
-            className="h-3 w-3 text-amber-400"
+            className="h-2.5 w-2.5 shrink-0 text-amber-400"
             aria-hidden="true"
           >
             <path d="M12 2.5l2.9 6.06 6.6.79-4.86 4.53 1.28 6.52L12 17.9l-5.92 3.5 1.28-6.52L2.5 9.35l6.6-.79L12 2.5z" />
@@ -362,7 +362,7 @@ export default function UpcomingEventsPanel({
         <div className="mt-3 overflow-x-auto rounded-lg border border-line">
           <table className="min-w-[560px] table-auto border-collapse text-[13px]">
             <colgroup>
-              <col className="w-[42px]" />
+              <col className="w-[66px]" />
               <col className="w-[46px]" />
               <col className="w-[74px]" />
               <col />
