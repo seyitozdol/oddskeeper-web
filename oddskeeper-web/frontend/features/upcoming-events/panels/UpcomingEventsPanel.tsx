@@ -231,15 +231,10 @@ export default function UpcomingEventsPanel({
     if (value) {
       return (
         <span
-          className="inline-flex items-center gap-0.5"
+          className="inline-flex items-center"
           title={t("upcomingEvents.marketCountTitle", { count: marketCount })}
         >
           {brandBadge(site)}
-          {marketCount > 0 ? (
-            <span className="text-[10px] tabular-nums text-ink-3">
-              {marketCount}
-            </span>
-          ) : null}
         </span>
       );
     }
