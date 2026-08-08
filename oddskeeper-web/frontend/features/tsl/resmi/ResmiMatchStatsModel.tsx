@@ -254,12 +254,17 @@ function SegmentBlock({
 export default function ResmiMatchStatsModel({
   league: LEAGUE = "tsl",
   isAdmin = false,
+  canGSheet = true,
 }: {
   league?: string;
   isAdmin?: boolean;
+  // GSheet alt sekmesi erişimi (admin access listesindeki "msm-gsheet" izni).
+  canGSheet?: boolean;
 }) {
   const { t } = useI18n();
   const [tab, setTab] = useState<Tab>("model");
+  // İzni olmayan kullanıcıya GSheet sekmesi hiç gösterilmez.
+  const visibleTabs = canGSheet ? TABS : TABS.filter((tb) => tb !== "gsheet");
   const [configFocus, setConfigFocus] = useState<string | null>(null);
   // Model'deki dişli → Config sekmesine geç + ilgili bölüme kaydır.
   const goConfig = (section: string) => {
@@ -572,7 +577,7 @@ export default function ResmiMatchStatsModel({
     <div className="space-y-4">
       {/* Alt sekmeler + (Model'de) Add to Input / Reset sağda */}
       <div className="flex items-center gap-1 border-b border-line">
-        {TABS.map((tb) => (
+        {visibleTabs.map((tb) => (
           <button
             key={tb}
             onClick={() => setTab(tb)}
@@ -671,7 +676,7 @@ export default function ResmiMatchStatsModel({
             </table>
           </div>
         </div>
-      ) : tab === "gsheet" ? (
+      ) : tab === "gsheet" && canGSheet ? (
         <GSheetTab league={LEAGUE} />
       ) : tab !== "model" ? (
         <div className="rounded-xl border border-line bg-card px-5 py-16 text-center text-sm text-ink-3">

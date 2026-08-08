@@ -20,6 +20,10 @@ export const NAV_KEYS = [
   "league-tbl",
   "volleyball",
   "tff-1-lig",
+  // Match Stats Model içindeki GSheet alt sekmesi. Bir header/route DEĞİL, salt
+  // erişim bayrağı: admin panelindeki access listesinde görünür, MSM içindeki
+  // GSheet sekmesi bu izne göre gösterilir/gizlenir (proxy path kilidi yok).
+  "msm-gsheet",
 ] as const;
 
 export type NavKey = (typeof NAV_KEYS)[number];
@@ -105,6 +109,17 @@ export const NAV_PERMISSION_ITEMS: NavPermissionItem[] = [
     labelKey: "nav.tff1Lig",
     href: "/dashboard/tff-1-lig",
     pathPrefixes: ["/dashboard/tff-1-lig"],
+  },
+  {
+    key: "msm-gsheet",
+    labelKey: "nav.msmGsheet",
+    // Gerçek bir sayfa değil (GSheet, Match Stats Model'de query-param'lı bir alt
+    // sekme). href yalnızca "sadece bu izni olan" nadir kullanıcının /dashboard
+    // yönlendirmesi için MSM sayfasına gider. pathPrefixes hiçbir gerçek yola
+    // eşleşmeyen inert bir değerdir: proxy bu anahtarla asla kilit/açış yapmaz;
+    // GSheet sekmesi gate'lemesi ResmiMatchStatsModel içinde yapılır.
+    href: "/dashboard/stats-analysis/tsl/resmi?season=2026%2F2027&section=matchStatsModel",
+    pathPrefixes: ["/__msm-gsheet__"],
   },
 ];
 

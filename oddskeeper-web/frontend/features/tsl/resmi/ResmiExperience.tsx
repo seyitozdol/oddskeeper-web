@@ -28,6 +28,7 @@ import Tff1PlayerMarket from "@/app/dashboard/tff-1-lig/player-market/PlayerMark
 import { getAllFootballTeamLogos } from "@/lib/football-teams";
 import { getTff1TeamLogos } from "@/features/tff1/server/getTff1Stats";
 import { getNavAccess } from "@/lib/nav-access-server";
+import { isNavKeyAllowed } from "@/lib/nav-permissions";
 
 function first(v: string | string[] | undefined): string | undefined {
   return Array.isArray(v) ? v[0] : v;
@@ -69,8 +70,16 @@ export default async function ResmiExperience({
     content = <ResmiPlayerRankings data={await loadResmiPlayerRankings(config, season, metric)} />;
   else if (section === "teamRankings")
     content = <ResmiTeamRankings data={await loadResmiTeamRankings(config, season, metric)} />;
-  else if (section === "matchStatsModel")
-    content = <ResmiMatchStatsModel league={config.source} isAdmin={(await getNavAccess()).isAdmin} />;
+  else if (section === "matchStatsModel") {
+    const access = await getNavAccess();
+    content = (
+      <ResmiMatchStatsModel
+        league={config.source}
+        isAdmin={access.isAdmin}
+        canGSheet={isNavKeyAllowed("msm-gsheet", access.allowedKeys)}
+      />
+    );
+  }
   else if (section === "playerStatsModel") content = await renderPlayerStatsModel(config);
   else content = <ResmiPlayers data={await loadResmiPlayers(config, season)} />;
 
