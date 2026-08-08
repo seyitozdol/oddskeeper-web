@@ -410,10 +410,11 @@ export default function ResmiMatchStatsModel({
     loadConfig();
   }, [loadConfig, loadFixtures, LEAGUE]);
 
-  // Takımlar SADECE fikstürden gelir: fikstürler yüklenince ilkini otomatik seç.
+  // Takımlar SADECE fikstürden gelir: fikstürler yüklenince ilk RESMİ maçı seç
+  // (manuel fikstürler listenin başında ama açılışta stat'lı bir maç seçilsin).
   useEffect(() => {
     if (!selectedFixtureId && fixtures.length) {
-      const f = fixtures[0];
+      const f = fixtures.find((x) => !x.manual) ?? fixtures[0];
       setSelectedFixtureId(f.fixtureId);
       setHomeSlug(f.homeSlug);
       setAwaySlug(f.awaySlug);
@@ -473,8 +474,11 @@ export default function ResmiMatchStatsModel({
   }, [market, homeSlug, awaySlug, selectedFixtureId]);
 
   const marketCfg = marketCfgs[market] ?? null;
-  const homeName = teams.find((x) => x.slug === homeSlug)?.name ?? "";
-  const awayName = teams.find((x) => x.slug === awaySlug)?.name ?? "";
+  // İsimler önce seçili fikstürden (manuel fikstür takımları `teams`'te yok);
+  // yoksa takım listesinden.
+  const selFixture = fixtures.find((f) => f.fixtureId === selectedFixtureId) ?? null;
+  const homeName = selFixture?.homeName ?? teams.find((x) => x.slug === homeSlug)?.name ?? "";
+  const awayName = selFixture?.awayName ?? teams.find((x) => x.slug === awaySlug)?.name ?? "";
   // Logo: tsl → lokal path; tff1 → slug→url (yoksa null → TeamCrest baş harf).
   const logoFor = (slug: string): string | null =>
     teamLogos ? (teamLogos[slug] ?? null) : getTeamLogoPath(slug);

@@ -11,6 +11,7 @@ import {
   fetchManualFixtures,
   addManualFixture,
   deleteManualFixture,
+  manualSlug,
   saveFixtureInputs,
   type FixtureRow,
   type FixtureInput,
@@ -149,7 +150,9 @@ export default function FixtureIdTab({
   async function addManual() {
     if (!nh.name.trim() || !na.name.trim()) return;
     setAdding(true);
-    const id = await addManualFixture(league, nh.slug, nh.name.trim(), na.slug, na.name.trim());
+    const hSlug = nh.slug || manualSlug(nh.name);
+    const aSlug = na.slug || manualSlug(na.name);
+    const id = await addManualFixture(league, hSlug, nh.name.trim(), aSlug, na.name.trim());
     setAdding(false);
     if (id) {
       setNh({ name: "", slug: "" });

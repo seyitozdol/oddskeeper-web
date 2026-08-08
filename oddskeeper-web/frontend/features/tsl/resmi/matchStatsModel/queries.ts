@@ -194,6 +194,21 @@ export async function logImport(league: string, row: Record<string, unknown>): P
 }
 
 // ── Manuel fikstürler ──────────────────────────────────────────────────────
+// Serbest metin (slug'sız) takım için sentetik slug: model'in output guard'ı boş
+// slug'ı reddeder. "manual-" öneki gerçek takım slug'larıyla çakışmaz (stats boş
+// kalır, kullanicinin elle girdiği home/away değerleriyle line üretilir).
+export function manualSlug(name: string): string {
+  return (
+    "manual-" +
+    (name
+      .toLowerCase()
+      .replace(/[ıİ]/g, "i").replace(/[şŞ]/g, "s").replace(/[ğĞ]/g, "g")
+      .replace(/[çÇ]/g, "c").replace(/[öÖ]/g, "o").replace(/[üÜ]/g, "u")
+      .normalize("NFKD").replace(/[̀-ͯ]/g, "")
+      .replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "team")
+  );
+}
+
 export async function fetchManualFixtures(league: string): Promise<FixtureRow[]> {
   const { data, error } = await sb()
     .from("msm_manual_fixtures")
@@ -204,8 +219,9 @@ export async function fetchManualFixtures(league: string): Promise<FixtureRow[]>
   return (data ?? []).map((r) => ({
     fixtureId: String(r.id),
     round: 0,
-    homeSlug: (r.home_slug as string) ?? "",
-    awaySlug: (r.away_slug as string) ?? "",
+    // Boş slug (serbest metin / eski kayıt) -> sentetik slug (guard geçsin).
+    homeSlug: (r.home_slug as string) || manualSlug(r.home_name as string),
+    awaySlug: (r.away_slug as string) || manualSlug(r.away_name as string),
     homeName: r.home_name as string,
     awayName: r.away_name as string,
     label: `${r.home_name} - ${r.away_name}`,
