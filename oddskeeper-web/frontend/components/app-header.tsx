@@ -61,6 +61,20 @@ const UPCOMING_LOGO_SRC: Record<Theme, string> = {
   "calimla-dark": "/images/brand/upcoming-events-calimla-dark.svg",
 };
 
+// OddsKeeper markasi: her tema kendi renk varyantiyla (logo iki tonu = temanin
+// accent + accent-ink). night=mavi (transparent), calimla-light=duz kirmizi
+// (cream), calimla-dark=kirmizi+bakir (brown). Desktop'ta wordmark, mobilde mark.
+const BRAND_WORDMARK: Record<Theme, string> = {
+  night: "/logos/logo-header-40px@2x.png",
+  "calimla-light": "/logos/logo-header-cream-40px@2x.png",
+  "calimla-dark": "/logos/logo-header-brown-40px@2x.png",
+};
+const BRAND_MARK: Record<Theme, string> = {
+  night: "/logos/logo-mark-transparent-512.png",
+  "calimla-light": "/logos/logo-mark-cream-512.png",
+  "calimla-dark": "/logos/logo-mark-brown-512.png",
+};
+
 const LEAGUE_ITEMS: LeagueItem[] = [
   { key: "tsl", navKey: "league-tsl", label: "TSL", Icon: TslMark, href: TSL_HUB_HREF, group: "football" },
   { key: "1lig", navKey: "league-1lig", label: "1.Lig", Icon: Lig1Mark, href: TFF1_RESMI_HREF, group: "football" },
@@ -180,13 +194,24 @@ export default function AppHeader({
     <header className="sticky top-0 z-50 w-full border-b border-line bg-canvas/90 backdrop-blur-md">
       <div className="flex h-14 w-full items-center justify-between px-4 lg:px-8">
         <div className="flex min-w-0 items-center gap-5">
-          <Link href="/dashboard" className="flex shrink-0 items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-line-strong bg-card-2">
-              <span className="text-[13px] font-bold text-accent-ink">OK</span>
-            </div>
-            <span className="hidden text-sm font-semibold tracking-[0.14em] text-ink lg:block">
-              ODDSKEEPER
-            </span>
+          <Link href="/dashboard" className="flex shrink-0 items-center" aria-label="OddsKeeper">
+            {/* Mobilde kare marka, masaüstünde wordmark; her ikisi tema varyantı */}
+            <Image
+              src={BRAND_MARK[theme]}
+              alt="OddsKeeper"
+              width={512}
+              height={512}
+              className="h-8 w-8 object-contain lg:hidden"
+              priority
+            />
+            <Image
+              src={BRAND_WORDMARK[theme]}
+              alt="OddsKeeper"
+              width={463}
+              height={80}
+              className="hidden h-7 w-auto object-contain lg:block"
+              priority
+            />
           </Link>
 
           <nav className="hidden items-center gap-1 md:flex">
