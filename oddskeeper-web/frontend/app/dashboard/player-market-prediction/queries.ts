@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/client";
 import { knownDisplayName } from "@/lib/player-name";
+import { fetchAllPaged } from "@/lib/supabase/paginate";
 import { type StatusConfig, DEFAULT_STATUS_CONFIG } from "./compute";
 
 export type { StatusConfig };
@@ -122,33 +123,43 @@ export type DirectoryPlayer = {
 export async function fetchAllCurrentPlayers(): Promise<DirectoryPlayer[]> {
   const supabase = createClient();
 
-  const { data, error } = await supabase
-    .schema("analytics")
-    .from("player_current_info_v1")
-    .select(
-      "player_slug, player_name, full_name, first_name, last_name, current_team_slug, current_team_name, nationality, position"
-    )
-    .order("current_team_name", { ascending: true })
-    .order("player_name", { ascending: true })
-    .limit(2000);
-
-  if (error) {
-    console.error("fetchAllCurrentPlayers error:", error);
-    return [];
-  }
+  const data = await fetchAllPaged<{
+    player_slug: string | null;
+    player_name: string | null;
+    full_name: string | null;
+    first_name: string | null;
+    last_name: string | null;
+    current_team_slug: string | null;
+    current_team_name: string | null;
+    nationality: string | null;
+    position: string | null;
+  }>((from, to) =>
+    supabase
+      .schema("analytics")
+      .from("player_current_info_v1")
+      .select(
+        "player_slug, player_name, full_name, first_name, last_name, current_team_slug, current_team_name, nationality, position"
+      )
+      .order("current_team_name", { ascending: true })
+      .order("player_name", { ascending: true })
+      .order("player_slug", { ascending: true })
+      .range(from, to)
+  );
 
   // Slug bazinda mukerrer satirlar olabiliyor; ilkini al.
   const seen = new Set<string>();
   const result: DirectoryPlayer[] = [];
-  for (const row of data ?? []) {
-    if (!row.player_slug || seen.has(row.player_slug)) continue;
-    seen.add(row.player_slug);
+  for (const row of data) {
+    const slug = row.player_slug;
+    if (!slug || seen.has(slug)) continue;
+    seen.add(slug);
     result.push({
-      player_slug: row.player_slug,
+      player_slug: slug,
       full_name:
         knownDisplayName(row.player_name, row.first_name) ||
         row.full_name ||
-        row.player_name,
+        row.player_name ||
+        slug,
       team_slug: row.current_team_slug ?? null,
       team_name: row.current_team_name ?? null,
       nationality: row.nationality ?? null,

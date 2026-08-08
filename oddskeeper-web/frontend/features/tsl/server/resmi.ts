@@ -1,4 +1,5 @@
 import { createClient } from "../../../lib/supabase/server";
+import { fetchAllPaged } from "../../../lib/supabase/paginate";
 import { TSL_COMPETITION } from "../constants";
 import { toNum } from "../lib";
 import type { TslMatch, TslStandingRow, TslTeamMeta } from "../types";
@@ -54,13 +55,21 @@ export async function getPlayerAssets(): Promise<Record<string, PlayerAsset>> {
   const supabase = await createClient();
   const out: Record<string, PlayerAsset> = {};
   // player_current_info_v1: opta id -> slug/photo/nationality (guncel kadro)
-  const { data } = await supabase
-    .schema("analytics")
-    .from("player_current_info_v1")
-    .select("opta_player_id, player_slug, photo_url, nationality")
-    .not("opta_player_id", "is", null)
-    .limit(2000);
-  for (const r of data ?? []) {
+  const data = await fetchAllPaged<{
+    opta_player_id: string | null;
+    player_slug: string | null;
+    photo_url: string | null;
+    nationality: string | null;
+  }>((from, to) =>
+    supabase
+      .schema("analytics")
+      .from("player_current_info_v1")
+      .select("opta_player_id, player_slug, photo_url, nationality")
+      .not("opta_player_id", "is", null)
+      .order("player_slug", { ascending: true })
+      .range(from, to)
+  );
+  for (const r of data) {
     out[String(r.opta_player_id)] = {
       slug: r.player_slug ?? null,
       photo: r.photo_url ?? null,
@@ -216,14 +225,22 @@ async function getPlayerNameAssetMap(): Promise<
   Record<string, { slug: string | null; photo: string | null }>
 > {
   const supabase = await createClient();
-  const { data } = await supabase
-    .schema("analytics")
-    .from("player_current_info_v1")
-    .select("player_slug, player_name, full_name, photo_url")
-    .limit(2000);
+  const data = await fetchAllPaged<{
+    player_slug: string | null;
+    player_name: string | null;
+    full_name: string | null;
+    photo_url: string | null;
+  }>((from, to) =>
+    supabase
+      .schema("analytics")
+      .from("player_current_info_v1")
+      .select("player_slug, player_name, full_name, photo_url")
+      .order("player_slug", { ascending: true })
+      .range(from, to)
+  );
   const out: Record<string, { slug: string | null; photo: string | null }> = {};
   const { normalizeSearch } = await import("../lib");
-  for (const r of data ?? []) {
+  for (const r of data) {
     const asset = { slug: r.player_slug ?? null, photo: r.photo_url ?? null };
     for (const nm of [r.full_name, r.player_name]) {
       if (!nm) continue;

@@ -1,6 +1,7 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
+import { fetchAllPaged } from "@/lib/supabase/paginate";
 import { type StatusConfig, DEFAULT_STATUS_CONFIG } from "../../player-market-prediction/compute";
 
 export type { StatusConfig };
@@ -134,28 +135,33 @@ export type DirectoryPlayer = {
 export async function fetchAllCurrentPlayers(): Promise<DirectoryPlayer[]> {
   const supabase = createClient();
 
-  const { data, error } = await supabase
-    .schema("analytics")
-    .from("tff1_squad_mat")
-    .select("team_id, team_name, player_id, player_name, position")
-    .order("team_name", { ascending: true })
-    .order("player_name", { ascending: true })
-    .limit(2000);
-
-  if (error) {
-    console.error("fetchAllCurrentPlayers error:", error);
-    return [];
-  }
+  const data = await fetchAllPaged<{
+    team_id: string | null;
+    team_name: string | null;
+    player_id: string | null;
+    player_name: string | null;
+    position: string | null;
+  }>((from, to) =>
+    supabase
+      .schema("analytics")
+      .from("tff1_squad_mat")
+      .select("team_id, team_name, player_id, player_name, position")
+      .order("team_name", { ascending: true })
+      .order("player_name", { ascending: true })
+      .order("player_id", { ascending: true })
+      .range(from, to)
+  );
 
   // Ayni oyuncu iki kadroda gorunebilir (sezon ici transfer); ilk satiri al.
   const seen = new Set<string>();
   const result: DirectoryPlayer[] = [];
-  for (const row of data ?? []) {
-    if (!row.player_id || seen.has(row.player_id)) continue;
-    seen.add(row.player_id);
+  for (const row of data) {
+    const pid = row.player_id;
+    if (!pid || seen.has(pid)) continue;
+    seen.add(pid);
     result.push({
-      player_id: row.player_id,
-      full_name: row.player_name,
+      player_id: pid,
+      full_name: row.player_name ?? "",
       team_id: row.team_id ?? null,
       team_name: row.team_name ?? null,
       position: row.position ? toPositionCode(row.position) : null,

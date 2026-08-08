@@ -40,21 +40,29 @@ export async function getTff1PlayerSeasonStats(): Promise<Tff1PlayerRow[]> {
 
 export async function getTff1Matches(): Promise<Tff1MatchRow[]> {
   const supabase = await createClient();
+  const rows: Tff1MatchRow[] = [];
 
-  const { data, error } = await supabase
-    .schema("analytics")
-    .from("tff1_matches_v1")
-    .select("*")
-    .order("match_datetime", { ascending: false })
-    .limit(1000)
-    .returns<Tff1MatchRow[]>();
+  // PostgREST 1000 cap: sezonlar biriktikce mac sayisi 1000'i asar -> sayfala.
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await supabase
+      .schema("analytics")
+      .from("tff1_matches_v1")
+      .select("*")
+      .order("match_datetime", { ascending: false })
+      .order("match_id", { ascending: true })
+      .range(from, from + PAGE_SIZE - 1)
+      .returns<Tff1MatchRow[]>();
 
-  if (error) {
-    console.error("getTff1Matches error:", error.message);
-    return [];
+    if (error) {
+      console.error("getTff1Matches error:", error.message);
+      return rows;
+    }
+
+    rows.push(...(data ?? []));
+    if (!data || data.length < PAGE_SIZE) {
+      return rows;
+    }
   }
-
-  return data ?? [];
 }
 
 export async function getTff1PlayerInfo(): Promise<Tff1PlayerInfo[]> {

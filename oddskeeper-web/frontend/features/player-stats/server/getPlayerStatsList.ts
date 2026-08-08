@@ -1,5 +1,6 @@
 import { createClient } from "../../../lib/supabase/server";
 import { knownDisplayName } from "../../../lib/player-name";
+import { fetchAllPaged } from "../../../lib/supabase/paginate";
 import type { PlayerStatsListRow } from "../types";
 
 type CurrentInfoDbRow = {
@@ -61,107 +62,90 @@ function toNumberOrNull(value: number | string | null): number | null {
 export async function getPlayerStatsList(): Promise<PlayerStatsListRow[]> {
   const supabase = await createClient();
 
-  const [currentInfoResult, profileResult, marketValueResult, flashscoreResult] =
+  const [currentInfoRows, profileRows, marketValueRows, flashscoreRows] =
     await Promise.all([
-    supabase
-      .schema("analytics")
-      .from("player_current_info_v1")
-      .select(
-        `
-          player_slug,
-          opta_player_id,
-          player_name,
-          full_name,
-          first_name,
-          last_name,
-          current_team_slug,
-          current_team_name,
-          position,
-          age,
-          shirt_number,
-          nationality,
-          photo_url
-        `
-      )
-      .limit(2000)
-      .returns<CurrentInfoDbRow[]>(),
+    fetchAllPaged<CurrentInfoDbRow>((from, to) =>
+      supabase
+        .schema("analytics")
+        .from("player_current_info_v1")
+        .select(
+          `
+            player_slug,
+            opta_player_id,
+            player_name,
+            full_name,
+            first_name,
+            last_name,
+            current_team_slug,
+            current_team_name,
+            position,
+            age,
+            shirt_number,
+            nationality,
+            photo_url
+          `
+        )
+        .order("player_slug", { ascending: true })
+        .range(from, to)
+        .returns<CurrentInfoDbRow[]>()
+    ),
 
-    supabase
-      .schema("analytics")
-      .from("player_profile_v1")
-      .select(
-        `
-          player_slug,
-          player_name,
-          team_slug,
-          team_name,
-          primary_position_code,
-          position_group,
-          appearances,
-          starts,
-          goals,
-          assists,
-          total_minutes,
-          avg_minutes
-        `
-      )
-      .limit(2000)
-      .returns<ProfileDbRow[]>(),
+    fetchAllPaged<ProfileDbRow>((from, to) =>
+      supabase
+        .schema("analytics")
+        .from("player_profile_v1")
+        .select(
+          `
+            player_slug,
+            player_name,
+            team_slug,
+            team_name,
+            primary_position_code,
+            position_group,
+            appearances,
+            starts,
+            goals,
+            assists,
+            total_minutes,
+            avg_minutes
+          `
+        )
+        .order("player_slug", { ascending: true })
+        .range(from, to)
+        .returns<ProfileDbRow[]>()
+    ),
 
-    supabase
-      .schema("analytics")
-      .from("player_market_value_v1")
-      .select("player_slug, market_value_eur")
-      .limit(2000)
-      .returns<{ player_slug: string; market_value_eur: number | null }[]>(),
+    fetchAllPaged<{ player_slug: string; market_value_eur: number | null }>((from, to) =>
+      supabase
+        .schema("analytics")
+        .from("player_market_value_v1")
+        .select("player_slug, market_value_eur")
+        .order("player_slug", { ascending: true })
+        .range(from, to)
+        .returns<{ player_slug: string; market_value_eur: number | null }[]>()
+    ),
 
-    supabase
-      .schema("analytics")
-      .from("tsl_player_flashscore_season_mat")
-      .select("opta_player_id, xg, xgot, xa, yellow_cards, red_cards")
-      .limit(1000)
-      .returns<FlashscoreDbRow[]>(),
+    fetchAllPaged<FlashscoreDbRow>((from, to) =>
+      supabase
+        .schema("analytics")
+        .from("tsl_player_flashscore_season_mat")
+        .select("opta_player_id, xg, xgot, xa, yellow_cards, red_cards")
+        .order("opta_player_id", { ascending: true })
+        .range(from, to)
+        .returns<FlashscoreDbRow[]>()
+    ),
   ]);
 
-  if (currentInfoResult.error) {
-    console.error("player stats list current info fetch error:", {
-      message: currentInfoResult.error.message,
-      details: currentInfoResult.error.details,
-      code: currentInfoResult.error.code,
-    });
-  }
-
-  if (profileResult.error) {
-    console.error("player stats list profile fetch error:", {
-      message: profileResult.error.message,
-      details: profileResult.error.details,
-      code: profileResult.error.code,
-    });
-  }
-
-  const currentInfoRows = currentInfoResult.data ?? [];
-  const profileRows = profileResult.data ?? [];
   const marketValueBySlug = new Map(
-    (marketValueResult.data ?? []).map((row) => [
-      row.player_slug,
-      row.market_value_eur,
-    ])
+    marketValueRows.map((row) => [row.player_slug, row.market_value_eur])
   );
 
   const profileBySlug = new Map(
     profileRows.map((row) => [row.player_slug, row])
   );
 
-  if (flashscoreResult.error) {
-    console.error("player stats list flashscore fetch error:", {
-      message: flashscoreResult.error.message,
-      details: flashscoreResult.error.details,
-      code: flashscoreResult.error.code,
-    });
-  }
-
   const flashscoreByOptaId = new Map<string, FlashscoreDbRow>();
-  for (const row of flashscoreResult.data ?? []) {
+  for (const row of flashscoreRows) {
     if (row.opta_player_id) {
       flashscoreByOptaId.set(row.opta_player_id, row);
     }
