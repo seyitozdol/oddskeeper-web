@@ -117,3 +117,31 @@ export async function saveRetention(
     return false;
   }
 }
+
+// MSM: "eksik line'lari SU'la" bayragini getir (sadece football_msm).
+export async function fetchMsmSuspend(league: string): Promise<boolean> {
+  const qs = new URLSearchParams({ sport: "football_msm", league, config: "1" });
+  const res = await fetch(`/api/model-history?${qs.toString()}`, {
+    cache: "no-store",
+  });
+  if (!res.ok) return false;
+  const data = (await res.json()) as { msmSuspendMissing?: boolean };
+  return data.msmSuspendMissing === true;
+}
+
+// MSM: "eksik line'lari SU'la" bayragini kaydet.
+export async function saveMsmSuspend(
+  league: string,
+  value: boolean
+): Promise<boolean> {
+  try {
+    const res = await fetch(`/api/model-history`, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ sport: "football_msm", league, msmSuspendMissing: value }),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}

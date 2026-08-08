@@ -17,6 +17,10 @@ export const modelHistory = defineMessages({
     cfgSave: "Save",
     cfgSaved: "Saved",
     cfgSaveFailed: "Save failed",
+    suspendTitle: "Suspend missing lines (SU)",
+    suspendLabel: "On correction, suspend previously-sent lines that are gone",
+    suspendNote:
+      "When you continue from history and re-export, lines you sent before but are no longer present are added to the new file with Market Status = SU.",
   },
   tr: {
     button: "Geçmiş",
@@ -31,5 +35,9 @@ export const modelHistory = defineMessages({
     cfgSave: "Kaydet",
     cfgSaved: "Kaydedildi",
     cfgSaveFailed: "Kayıt başarısız",
+    suspendTitle: "Eksik line'ları askıya al (SU)",
+    suspendLabel: "Düzeltmede, önceki gönderilip kaybolan line'ları askıya al",
+    suspendNote:
+      "Geçmişten devam edip yeniden export ettiğinde, önceden gönderdiğin ama artık bulunmayan line'lar yeni dosyaya Market Status = SU ile eklenir.",
   },
 });

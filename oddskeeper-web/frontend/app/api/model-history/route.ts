@@ -5,9 +5,11 @@ import { resolveAuthorName } from "@/lib/team-notes";
 import {
   applyRetention,
   clampRetention,
+  getMsmSuspend,
   getRetention,
   insertHistory,
   listHistory,
+  setMsmSuspend,
   setRetention,
 } from "@/lib/model-history-server";
 import type { ModelHistoryDraft } from "@/lib/model-history";
@@ -51,8 +53,11 @@ export async function GET(request: NextRequest) {
   const admin = createAdminClient();
 
   if (params.get("config") === "1") {
-    const retentionDays = await getRetention(admin, target.sport, target.league);
-    return NextResponse.json({ retentionDays });
+    const [retentionDays, msmSuspendMissing] = await Promise.all([
+      getRetention(admin, target.sport, target.league),
+      getMsmSuspend(admin, target.sport, target.league),
+    ]);
+    return NextResponse.json({ retentionDays, msmSuspendMissing });
   }
 
   const limit = Number(params.get("limit")) || 50;
@@ -132,14 +137,20 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({ inserted }, { status: 201 });
 }
 
-// PUT /api/model-history  body: { sport, league, retentionDays } -> { retentionDays }
+// PUT /api/model-history  body: { sport, league, retentionDays?, msmSuspendMissing? }
+// Verilen alan(lar) guncellenir; digerlerine dokunulmaz.
 export async function PUT(request: NextRequest) {
   const access = await getNavAccess();
   if (!access.userId && !access.isAdmin) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  let payload: { sport?: unknown; league?: unknown; retentionDays?: unknown };
+  let payload: {
+    sport?: unknown;
+    league?: unknown;
+    retentionDays?: unknown;
+    msmSuspendMissing?: unknown;
+  };
   try {
     payload = await request.json();
   } catch {
@@ -151,16 +162,23 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ error: "invalid_target" }, { status: 400 });
   }
 
-  const retentionDays = clampRetention(payload.retentionDays);
   const admin = createAdminClient();
-  const ok = await setRetention(
-    admin,
-    target.sport,
-    target.league,
-    retentionDays
-  );
+  let ok = true;
+  const out: { retentionDays?: number; msmSuspendMissing?: boolean } = {};
+
+  if (payload.retentionDays !== undefined) {
+    const retentionDays = clampRetention(payload.retentionDays);
+    ok = ok && (await setRetention(admin, target.sport, target.league, retentionDays));
+    out.retentionDays = retentionDays;
+  }
+  if (payload.msmSuspendMissing !== undefined) {
+    const value = payload.msmSuspendMissing === true;
+    ok = ok && (await setMsmSuspend(admin, target.sport, target.league, value));
+    out.msmSuspendMissing = value;
+  }
+
   if (!ok) {
     return NextResponse.json({ error: "save_failed" }, { status: 500 });
   }
-  return NextResponse.json({ retentionDays });
+  return NextResponse.json(out);
 }

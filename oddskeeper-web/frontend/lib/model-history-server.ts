@@ -126,6 +126,49 @@ export async function getRetention(
   return typeof days === "number" ? days : DEFAULT_RETENTION_DAYS;
 }
 
+// MSM "eksik line'lari SU'la" bayragini dondurur (spor+lig basina).
+export async function getMsmSuspend(
+  admin: SupabaseClient,
+  sport: string,
+  league: string
+): Promise<boolean> {
+  const { data, error } = await admin
+    .from("model_history_config")
+    .select("msm_suspend_missing")
+    .eq("sport", sport)
+    .eq("league", league)
+    .maybeSingle();
+  if (error) {
+    console.error("getMsmSuspend error:", error);
+    return false;
+  }
+  return data?.msm_suspend_missing === true;
+}
+
+// MSM "eksik line'lari SU'la" bayragini kaydeder. Diger kolonlara dokunmaz
+// (upsert yalnizca verilen kolonlari gunceller; retention korunur).
+export async function setMsmSuspend(
+  admin: SupabaseClient,
+  sport: string,
+  league: string,
+  value: boolean
+): Promise<boolean> {
+  const { error } = await admin.from("model_history_config").upsert(
+    {
+      sport,
+      league,
+      msm_suspend_missing: value,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "sport,league" }
+  );
+  if (error) {
+    console.error("setMsmSuspend error:", error);
+    return false;
+  }
+  return true;
+}
+
 // Saklama suresini kaydeder (spor+lig basina).
 export async function setRetention(
   admin: SupabaseClient,
