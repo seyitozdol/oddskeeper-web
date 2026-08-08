@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useI18n } from "../lib/i18n/LanguageProvider";
 import {
@@ -14,8 +13,13 @@ type ThemeSelectProps = {
   currentTheme: Theme;
 };
 
+// Cookie yazimi modul seviyesinde (component body'sinde global atama lint
+// kuralini tetiklemesin). Tema bir sonraki SSR'de bu cookie'den okunur.
+function persistTheme(next: Theme) {
+  document.cookie = `${THEME_COOKIE}=${next}; path=/; max-age=31536000; samesite=lax`;
+}
+
 export default function ThemeSelect({ currentTheme }: ThemeSelectProps) {
-  const router = useRouter();
   const { t } = useI18n();
   const [isOpen, setIsOpen] = useState(false);
   const [theme, setTheme] = useState<Theme>(currentTheme);
@@ -23,10 +27,13 @@ export default function ThemeSelect({ currentTheme }: ThemeSelectProps) {
   function applyTheme(next: Theme) {
     setTheme(next);
     setIsOpen(false);
-    // Anında görsel geçiş; cookie ile sunucu tarafı da kalıcı olur.
+    // Tamamen client-side + anlık: data-theme takası renkleri, CSS ise logoları
+    // (uc varyant da DOM'da) tek karede degistirir. Cookie bir sonraki sayfa
+    // yuklemesinde SSR'i dogru temayla render eder. router.refresh() YOK: koca
+    // sayfayi sunucuda yeniden render edip veri cekmesini tekrarlatmaya (ve
+    // logolari parca parca yeniden indirmeye) gerek yok.
     document.documentElement.setAttribute("data-theme", next);
-    document.cookie = `${THEME_COOKIE}=${next}; path=/; max-age=31536000; samesite=lax`;
-    router.refresh();
+    persistTheme(next);
   }
 
   return (

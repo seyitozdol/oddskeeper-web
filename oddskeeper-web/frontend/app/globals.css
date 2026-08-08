@@ -123,3 +123,18 @@ select option {
 [data-theme="calimla-light"] .tsl-league-mark {
   filter: none;
 }
+
+/* Tema-bagimli header logolari (Upcoming Events + OddsKeeper): uc tema varyanti
+   da DOM'da, yalnizca aktif tema gorunur. Tema degisince data-theme takasi
+   aninda (renklerle ayni karede) dogru logoyu gosterir; server refresh yok,
+   parca parca indirme yok (hepsi ilk yuklemede cache'lenir). display:contents
+   ile sarmalayici kutu kaybolur, ic <img>'lerin kendi (responsive) display'i
+   gecerli kalir. */
+[data-theme-show] {
+  display: none;
+}
+[data-theme="night"] [data-theme-show="night"],
+[data-theme="calimla-light"] [data-theme-show="calimla-light"],
+[data-theme="calimla-dark"] [data-theme-show="calimla-dark"] {
+  display: contents;
+}

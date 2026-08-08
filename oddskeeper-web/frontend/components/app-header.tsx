@@ -7,7 +7,7 @@ import { useState, type ReactElement } from "react";
 import { createClient } from "../lib/supabase/client";
 import { useI18n } from "../lib/i18n/LanguageProvider";
 import { LOCALES, type Locale } from "../lib/i18n/config";
-import type { Theme } from "../lib/theme";
+import { THEMES, type Theme } from "../lib/theme";
 import { isNavKeyAllowed, type NavKey } from "../lib/nav-permissions";
 import ThemeSelect from "./ThemeSelect";
 
@@ -74,6 +74,35 @@ const BRAND_MARK: Record<Theme, string> = {
   "calimla-light": "/logos/logo-mark-cream-512.png",
   "calimla-dark": "/logos/logo-mark-brown-512.png",
 };
+
+// Tema-bagimli logolar: uc varyanti da render et; aktif olan CSS ile gorunur
+// (globals.css [data-theme-show] + display:contents). Boylece tema degisince
+// data-theme takasi aninda ve tek karede dogru logoyu gosterir (server refresh
+// yok, parca parca indirme yok; hepsi ilk yuklemede on-bellege alinir).
+function ThemedBrand() {
+  return (
+    <>
+      {THEMES.map((th) => (
+        <span key={th} data-theme-show={th}>
+          <Image src={BRAND_MARK[th]} alt="OddsKeeper" width={512} height={512} className="h-8 w-8 object-contain lg:hidden" priority />
+          <Image src={BRAND_WORDMARK[th]} alt="OddsKeeper" width={463} height={80} className="hidden h-7 w-auto object-contain lg:block" priority />
+        </span>
+      ))}
+    </>
+  );
+}
+
+function ThemedUpcomingLogo({ imgClassName, alt }: { imgClassName: string; alt: string }) {
+  return (
+    <>
+      {THEMES.map((th) => (
+        <span key={th} data-theme-show={th}>
+          <Image src={UPCOMING_LOGO_SRC[th]} alt={alt} width={24} height={24} className={imgClassName} priority />
+        </span>
+      ))}
+    </>
+  );
+}
 
 const LEAGUE_ITEMS: LeagueItem[] = [
   { key: "tsl", navKey: "league-tsl", label: "TSL", Icon: TslMark, href: TSL_HUB_HREF, group: "football" },
@@ -195,23 +224,9 @@ export default function AppHeader({
       <div className="flex h-14 w-full items-center justify-between px-4 lg:px-8">
         <div className="flex min-w-0 items-center gap-5">
           <Link href="/dashboard" className="flex shrink-0 items-center" aria-label="OddsKeeper">
-            {/* Mobilde kare marka, masaüstünde wordmark; her ikisi tema varyantı */}
-            <Image
-              src={BRAND_MARK[theme]}
-              alt="OddsKeeper"
-              width={512}
-              height={512}
-              className="h-8 w-8 object-contain lg:hidden"
-              priority
-            />
-            <Image
-              src={BRAND_WORDMARK[theme]}
-              alt="OddsKeeper"
-              width={463}
-              height={80}
-              className="hidden h-7 w-auto object-contain lg:block"
-              priority
-            />
+            {/* Mobilde kare marka, masaüstünde wordmark; tüm tema varyantları
+                DOM'da, aktif olan CSS ile anlık gösterilir */}
+            <ThemedBrand />
           </Link>
 
           <nav className="hidden items-center gap-1 md:flex">
@@ -224,13 +239,9 @@ export default function AppHeader({
                   isUpcomingActive
                 )}`}
               >
-                <Image
-                  src={UPCOMING_LOGO_SRC[theme]}
+                <ThemedUpcomingLogo
+                  imgClassName="ue-logo h-6 w-6 shrink-0 rounded-full object-contain"
                   alt={t("nav.upcomingEvents")}
-                  width={24}
-                  height={24}
-                  className="ue-logo h-6 w-6 shrink-0 rounded-full object-contain"
-                  priority
                 />
                 <span className="max-w-0 overflow-hidden whitespace-nowrap opacity-0 transition-all duration-200 group-hover/ue:ml-2 group-hover/ue:max-w-[160px] group-hover/ue:opacity-100">
                   {t("nav.upcomingEvents")}
@@ -460,12 +471,9 @@ export default function AppHeader({
                 isUpcomingActive
               )}`}
             >
-              <Image
-                src={UPCOMING_LOGO_SRC[theme]}
+              <ThemedUpcomingLogo
+                imgClassName="ue-logo h-[22px] w-[22px] shrink-0 rounded-full object-contain"
                 alt={t("nav.upcomingEvents")}
-                width={22}
-                height={22}
-                className="ue-logo h-[22px] w-[22px] shrink-0 rounded-full object-contain"
               />
               <span>{t("nav.upcomingEvents")}</span>
             </Link>
