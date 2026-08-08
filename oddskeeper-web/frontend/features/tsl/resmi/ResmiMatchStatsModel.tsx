@@ -284,7 +284,7 @@ export default function ResmiMatchStatsModel({
   const [awaySlug, setAwaySlug] = useState("");
   // Takım notları (slug → notlar): 1X2 logolarındaki rozet + hover için.
   const [teamNotes, setTeamNotes] = useState<Record<string, TeamNote[]>>({});
-  const [market, setMarket] = useState<string>("SOT");
+  const [market, setMarket] = useState<string>("Shot");
   const [oddsHome, setOddsHome] = useState("");
   const [oddsDraw, setOddsDraw] = useState("");
   const [oddsAway, setOddsAway] = useState("");
@@ -557,7 +557,7 @@ export default function ResmiMatchStatsModel({
 
   // Reset: ilk fikstüre + varsayılan markete dön, ayarları config'ten yeniden yükle.
   function resetModel() {
-    setMarket("SOT");
+    setMarket("Shot");
     setManHome("");
     setManAway("");
     setManTotal("");
