@@ -31,14 +31,16 @@ SEASON = 2026
 BOOKMAKER_BET365 = 8
 # Turk takimlarinin oynadigi ligler (API-Football league id):
 #   2/3/848 = Sampiyonlar/Avrupa/Konferans Ligi ; 667 = Kulup Hazirlik maclari ;
-#   203 = Super Lig ; 204 = TFF 1. Lig.
+#   203 = Super Lig ; 204 = TFF 1. Lig ; 206 = Turkiye Kupasi.
 # NOT (2026-08-08): API-Football'un /leagues coverage.odds bayragi Turk domestic
 # ligleri icin false gorunse de asil /odds?bookmaker=8 endpoint'i hem Super Lig hem
 # 1. Lig maclari icin GERCEK bet365 orani donduruyor (canli dogrulandi: Bandirmaspor-
 # Istanbulspor 1X2 2.10/3.25/3.20, Galatasaray-Corum 1.18/6.00/12.00 + Alt/Ust).
+# Turkiye Kupasi (206) su an sezon disi (yaklasan mac yok, dogrulanamadi) ama ayni
+# domestic desende; kupa basladiginda dolar, o zamana kadar loader sessizce atlar.
 # Milli takim turnuvalari mac oldukca eklenebilir (10=uluslararasi hazirlik,
 # 5=Nations, 4=EURO elemeleri, 34=Dunya K. elemeleri UEFA).
-LEAGUES = [2, 3, 848, 667, 203, 204]
+LEAGUES = [2, 3, 848, 667, 203, 204, 206]
 MW_BET = "Match Winner"
 OU_BET = "Goals Over/Under"
 
