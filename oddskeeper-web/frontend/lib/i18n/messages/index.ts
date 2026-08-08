@@ -10,6 +10,7 @@ import { leagueDetail } from "./leagueDetail";
 import { matchDetail } from "./matchDetail";
 import { matchPredictions } from "./matchPredictions";
 import { metrics } from "./metrics";
+import { modelHistory } from "./modelHistory";
 import { msm } from "./msm";
 import { nav } from "./nav";
 import { notes } from "./notes";
@@ -38,6 +39,7 @@ const MESSAGES: Record<
   matchDetail,
   matchPredictions,
   metrics,
+  modelHistory,
   msm,
   nav,
   notes,
