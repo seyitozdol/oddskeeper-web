@@ -24,6 +24,9 @@ export const NAV_KEYS = [
   // erişim bayrağı: admin panelindeki access listesinde görünür, MSM içindeki
   // GSheet sekmesi bu izne göre gösterilir/gizlenir (proxy path kilidi yok).
   "msm-gsheet",
+  // Yenilikler (changelog) sayfasi: gercek bir route (/dashboard/changelog);
+  // gorunurlugu admin access'ten yonetilir.
+  "changelog",
 ] as const;
 
 export type NavKey = (typeof NAV_KEYS)[number];
@@ -120,6 +123,12 @@ export const NAV_PERMISSION_ITEMS: NavPermissionItem[] = [
     // GSheet sekmesi gate'lemesi ResmiMatchStatsModel içinde yapılır.
     href: "/dashboard/stats-analysis/tsl/resmi?season=2026%2F2027&section=matchStatsModel",
     pathPrefixes: ["/__msm-gsheet__"],
+  },
+  {
+    key: "changelog",
+    labelKey: "nav.changelog",
+    href: "/dashboard/changelog",
+    pathPrefixes: ["/dashboard/changelog"],
   },
 ];
 

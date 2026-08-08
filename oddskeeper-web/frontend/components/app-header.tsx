@@ -102,6 +102,7 @@ export default function AppHeader({
   const isUpcomingActive = pathname.startsWith("/dashboard/upcoming-events");
   const isStatsActive = pathname.startsWith("/dashboard/stats-analysis");
   const isTff1Active = pathname.startsWith("/dashboard/tff-1-lig");
+  const isChangelogActive = pathname.startsWith("/dashboard/changelog");
   const isAdminActive = pathname.startsWith("/dashboard/admin");
   const isPredictionsActive =
     pathname.startsWith("/dashboard/smart-prediction") ||
@@ -337,6 +338,15 @@ export default function AppHeader({
               </Link>
             ) : null}
 
+            {can("changelog") ? (
+              <Link
+                href="/dashboard/changelog"
+                className={navLinkClass(isChangelogActive)}
+              >
+                {t("nav.changelog")}
+              </Link>
+            ) : null}
+
             {isAdmin ? (
               <Link
                 href="/dashboard/admin/users"
@@ -534,6 +544,15 @@ export default function AppHeader({
               className={navLinkClass(isTff1Active)}
             >
               {t("nav.tff1Lig")}
+            </Link>
+          ) : null}
+
+          {can("changelog") ? (
+            <Link
+              href="/dashboard/changelog"
+              className={navLinkClass(isChangelogActive)}
+            >
+              {t("nav.changelog")}
             </Link>
           ) : null}
 
