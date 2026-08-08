@@ -1,7 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useI18n } from "@/lib/i18n/LanguageProvider";
+import HistoryDropdown from "@/features/model-history/HistoryDropdown";
+import RetentionConfig from "@/features/model-history/RetentionConfig";
+import {
+  postModelHistory,
+  type ModelHistoryDraft,
+  type ModelHistoryRecord,
+} from "@/lib/model-history";
 import {
   fetchUpcomingFixtures,
   fetchTeamPlayers,
@@ -74,6 +81,27 @@ type PlayerState = {
   last5Avg: number | null;
   lyAvg: number | null;
   manualValue: string;
+};
+
+// Export gecmisi: bu kopya Super Lig (tsl). 1. Lig kopyasi "tff1" kullanir.
+const HISTORY_LEAGUE = "tsl";
+
+// Restore snapshot'i: bir maci Excel'e export ettigimizde o anki tum kullanici
+// girdileri. player_source_id -> {tik, durum, elle deger}; ayrica line tikleri,
+// elle oranlar ve fikstur/market/dagitim ayarlari. Sadece export'ta yazilir.
+type PsmSnapshot = {
+  fixtureId: number;
+  marketKey: string;
+  homeDistExp: string;
+  awayDistExp: string;
+  paybackPct: string;
+  distributeEnabled: boolean;
+  players: Record<
+    string,
+    { checked: boolean; status: InferredStatus; manualValue: string }
+  >;
+  lineTicks: Record<string, boolean>;
+  oddsEdit: Record<string, string>;
 };
 
 // Number input'larda tarayici spinner'lari tema renkleriyle uyusmuyor; gizle.
@@ -696,6 +724,18 @@ export default function PlayerMarketPredictionPage({
   const [adding, setAdding] = useState(false);
   const [addedCount, setAddedCount] = useState<number | null>(null);
   const [dupWarning, setDupWarning] = useState<string | null>(null);
+
+  // ── Export gecmisi ──
+  // Add aninda mac+market bazinda snapshot toplanir; SADECE export'ta yazilir.
+  const [snapshotByKey, setSnapshotByKey] = useState<Record<string, PsmSnapshot>>({});
+  const [historyReloadKey, setHistoryReloadKey] = useState(0);
+  const [restoreNotice, setRestoreNotice] = useState<string | null>(null);
+  // Restore sirasinda: pendingRestore loader'larin snapshot'i bindirmesini
+  // saglar; restoreNonce ayni fikstur secilse bile yeniden yuklemeyi zorlar;
+  // skipMarketRef market-effect'in restore'u ezmesini engeller.
+  const [pendingRestore, setPendingRestore] = useState<PsmSnapshot | null>(null);
+  const [restoreNonce, setRestoreNonce] = useState(0);
+  const skipMarketRef = useRef(false);
   // Oyuncu adina tiklaninca sagda acilan profil paneli.
   const [selectedPlayer, setSelectedPlayer] = useState<{
     slug: string;
@@ -860,17 +900,44 @@ export default function PlayerMarketPredictionPage({
         return states;
       }
 
-      setHomePlayers(buildStates(homeRaw));
-      setAwayPlayers(buildStates(awayRaw));
+      // Geçmişten restore: bu fikstür için snapshot varsa oyuncu
+      // tik/durum/elle-değerlerini bindir, line tik + oranları geri yükle.
+      const snap =
+        pendingRestore && pendingRestore.fixtureId === selectedFixture!.fixture_id
+          ? pendingRestore
+          : null;
+      const overlay = (states: PlayerState[]) =>
+        snap
+          ? states.map((p) => {
+              const o = snap.players[p.player_source_id];
+              return o
+                ? { ...p, checked: o.checked, status: o.status, manualValue: o.manualValue }
+                : p;
+            })
+          : states;
+
+      setHomePlayers(overlay(buildStates(homeRaw)));
+      setAwayPlayers(overlay(buildStates(awayRaw)));
+      if (snap) {
+        setLineTicks(snap.lineTicks);
+        setOddsEdit(snap.oddsEdit);
+        setPendingRestore(null);
+      }
       setLoading(false);
     }
 
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedFixtureId, currentSeason, statusConfig]);
+  }, [selectedFixtureId, currentSeason, statusConfig, restoreNonce]);
 
   // ── Refresh metric stats when market changes (keep players) ──
   useEffect(() => {
+    // Restore market'i de değiştiriyor; bu tek seferi atla (fixture-load zaten
+    // doğru market verisini yükleyip snapshot'ı bindiriyor, aksi halde ezerdi).
+    if (skipMarketRef.current) {
+      skipMarketRef.current = false;
+      return;
+    }
     if (!selectedFixture || !currentSeason || (homePlayers.length === 0 && awayPlayers.length === 0)) return;
 
     const allIds = [...homePlayers, ...awayPlayers].map((p) => p.player_source_id);
@@ -1051,6 +1118,31 @@ export default function PlayerMarketPredictionPage({
     }
 
     if (selections.length > 0) {
+      // Restore snapshot'i (mac+market bazinda). Yalnizca export'ta yazilir.
+      const snapPlayers: PsmSnapshot["players"] = {};
+      for (const p of [...homePlayers, ...awayPlayers]) {
+        snapPlayers[p.player_source_id] = {
+          checked: p.checked,
+          status: p.status,
+          manualValue: p.manualValue,
+        };
+      }
+      const snap: PsmSnapshot = {
+        fixtureId: selectedFixture.fixture_id,
+        marketKey: selectedMarketKey,
+        homeDistExp,
+        awayDistExp,
+        paybackPct,
+        distributeEnabled,
+        players: snapPlayers,
+        lineTicks: { ...lineTicks },
+        oddsEdit: { ...oddsEdit },
+      };
+      setSnapshotByKey((m) => ({
+        ...m,
+        [`${fixtureKey}::${selectedMarket.label}`]: snap,
+      }));
+
       if (marketType === "dynamic") {
         setDynamicRows((prev) => [
           ...prev,
@@ -1084,6 +1176,58 @@ export default function PlayerMarketPredictionPage({
     }
     setAdding(false);
     setAddedCount(selections.length);
+  }
+
+  // ── Export gecmisi: yazdirilan segment kayitlarini mac+market bazinda yaz ──
+  async function handleExported(type: MarketType) {
+    const rows = type === "dynamic" ? dynamicRows : staticRows;
+    const seen = new Set<string>();
+    const entries: ModelHistoryDraft[] = [];
+    for (const r of rows) {
+      const key = `${r.fixtureKey}::${r.marketLabel}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      entries.push({
+        kind: "player",
+        fixtureExtId: r.fixtureId || null,
+        matchLabel: r.fixtureLabel,
+        market: r.marketLabel,
+        snapshot: snapshotByKey[key] ?? null,
+      });
+    }
+    if (entries.length > 0) {
+      await postModelHistory("football_psm", HISTORY_LEAGUE, entries);
+      setHistoryReloadKey((k) => k + 1);
+    }
+  }
+
+  // ── Geçmişten restore: fixture hâlâ listede olmalı ──
+  function restoreFromHistory(rec: ModelHistoryRecord) {
+    const snap = rec.snapshot as PsmSnapshot | null;
+    if (!snap || !fixtures.some((f) => f.fixture_id === snap.fixtureId)) {
+      setRestoreNotice(t("modelHistory.fixtureGone"));
+      setTimeout(() => setRestoreNotice(null), 3000);
+      return;
+    }
+    // Market-effect'i atla; snapshot'i loader'a bindir; aynı fixture olsa bile
+    // restoreNonce ile yeniden yükle. Ayarlar doğrudan set edilir.
+    skipMarketRef.current = true;
+    setPendingRestore(snap);
+    setSelectedMarketKey(snap.marketKey);
+    setSelectedFixtureId(snap.fixtureId);
+    setHomeDistExp(snap.homeDistExp);
+    setAwayDistExp(snap.awayDistExp);
+    setPaybackPct(snap.paybackPct);
+    setDistributeEnabled(snap.distributeEnabled);
+    setActiveTab("model");
+    setRestoreNonce((n) => n + 1);
+    // Güvenlik ağı: aynı market restore edilirse market-effect hiç tetiklenmez;
+    // takılı kalan ref'i tick sonunda temizle.
+    setTimeout(() => {
+      skipMarketRef.current = false;
+    }, 0);
+    setRestoreNotice(t("modelHistory.restored"));
+    setTimeout(() => setRestoreNotice(null), 3000);
   }
 
   const TABS = [
@@ -1151,6 +1295,7 @@ export default function PlayerMarketPredictionPage({
             <div className="space-y-4">
               <DistributeConfig weights={distWeights} onSaved={setDistWeights} />
               <StatusConfigCard config={statusConfig} onSaved={setStatusConfig} />
+              <RetentionConfig sport="football_psm" league={HISTORY_LEAGUE} />
             </div>
           )}
         </div>
@@ -1160,6 +1305,7 @@ export default function PlayerMarketPredictionPage({
         <InputTab
           staticRows={staticRows}
           dynamicRows={dynamicRows}
+          onExported={handleExported}
           onClear={(type) =>
             type === "dynamic" ? setDynamicRows([]) : setStaticRows([])
           }
@@ -1266,6 +1412,16 @@ export default function PlayerMarketPredictionPage({
             />
           </div>
 
+          {/* Geçmiş dropdown'u: Ekle'nin hemen solunda */}
+          <div className="pb-0.5">
+            <HistoryDropdown
+              sport="football_psm"
+              league={HISTORY_LEAGUE}
+              reloadKey={historyReloadKey}
+              onRestore={restoreFromHistory}
+            />
+          </div>
+
           {/* Ekle: tikli oyuncu/line'lardan input satirlari uretir */}
           <button
             type="button"
@@ -1275,6 +1431,9 @@ export default function PlayerMarketPredictionPage({
           >
             {t("playerMarket.addLabel")}
           </button>
+          {restoreNotice && (
+            <span className="pb-2.5 text-[12px] text-teal-400">{restoreNotice}</span>
+          )}
           {addedCount !== null && !dupWarning && (
             <span className="pb-2.5 text-[12px] text-teal-400">
               {t("playerMarket.addedLabel", { count: String(addedCount) })}

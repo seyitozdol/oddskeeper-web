@@ -526,11 +526,14 @@ export function InputTab({
   dynamicRows,
   onClear,
   onDeleteRow,
+  onExported,
 }: {
   staticRows: StaticInputRow[];
   dynamicRows: DynamicInputRow[];
   onClear: (type: MarketType) => void;
   onDeleteRow: (type: MarketType, index: number) => void;
+  // Export tamamlaninca cagrilir: parent export gecmisini (history) yazar.
+  onExported?: (type: MarketType) => void;
 }) {
   const { t } = useI18n();
   const [segment, setSegment] = useState<MarketType>("dynamic");
@@ -553,6 +556,8 @@ export function InputTab({
         ? dynamicRows[dynamicRows.length - 1].fixtureLabel
         : staticRows[staticRows.length - 1].fixtureLabel;
     XLSX.writeFile(wb, `${sanitizeFileLabel(lastLabel)}.xlsx`);
+    // Export gecmisi: sadece yazdirilan segment kaydedilir.
+    onExported?.(segment);
   }
 
   const thClass = "px-2 py-2 whitespace-nowrap";
