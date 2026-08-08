@@ -816,11 +816,14 @@ export default function ResmiMatchStatsModel({
 
           {/* Nihai beklenti (expectancy) — büyük */}
           {exp && (
-            <div className="grid grid-cols-3 gap-2">
+            <div className={`grid gap-2 ${market === "Card" || market === "Corner" ? "grid-cols-4" : "grid-cols-3"}`}>
               {([
                 [t("msm.homeExp"), exp.ft.homeMean, exp.h1.homeMean, exp.h2.homeMean],
                 [t("msm.awayExp"), exp.ft.awayMean, exp.h1.awayMean, exp.h2.awayMean],
                 [t("msm.totalExp"), exp.ft.totalMean, exp.h1.totalMean, exp.h2.totalMean],
+                ...((market === "Card" || market === "Corner")
+                  ? [[t("msm.supremacy"), exp.ft.homeMean - exp.ft.awayMean, exp.h1.homeMean - exp.h1.awayMean, exp.h2.homeMean - exp.h2.awayMean]] as const
+                  : []),
               ] as const).map(([lbl, ft, h1, h2]) => (
                 <div key={lbl} className="rounded-xl border border-line bg-card p-3 text-center">
                   <div className="text-[10px] uppercase tracking-wide text-ink-3">{lbl}</div>
