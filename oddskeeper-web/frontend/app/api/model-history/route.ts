@@ -5,6 +5,7 @@ import { resolveAuthorName } from "@/lib/team-notes";
 import {
   applyRetention,
   clampRetention,
+  deleteHistory,
   getMsmSuspend,
   getRetention,
   insertHistory,
@@ -61,8 +62,45 @@ export async function GET(request: NextRequest) {
   }
 
   const limit = Number(params.get("limit")) || 50;
-  const records = await listHistory(admin, target.sport, target.league, limit);
+  const match = params.get("match")?.slice(0, MAX_LABEL) || undefined;
+  const viewer = { userId: access.userId, isAdmin: access.isAdmin };
+  const records = await listHistory(
+    admin,
+    target.sport,
+    target.league,
+    limit,
+    viewer,
+    match
+  );
   return NextResponse.json({ records });
+}
+
+// DELETE /api/model-history?id=<uuid>  -> { deleted: true }
+// Yetki: admin veya kaydin sahibi. Aksi halde 403.
+export async function DELETE(request: NextRequest) {
+  const access = await getNavAccess();
+  if (!access.userId && !access.isAdmin) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+  const id = request.nextUrl.searchParams.get("id") ?? "";
+  if (!id) {
+    return NextResponse.json({ error: "invalid_id" }, { status: 400 });
+  }
+  const admin = createAdminClient();
+  const result = await deleteHistory(admin, id, {
+    userId: access.userId,
+    isAdmin: access.isAdmin,
+  });
+  if (result === "forbidden") {
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  }
+  if (result === "not_found") {
+    return NextResponse.json({ error: "not_found" }, { status: 404 });
+  }
+  if (result === "error") {
+    return NextResponse.json({ error: "delete_failed" }, { status: 500 });
+  }
+  return NextResponse.json({ deleted: true });
 }
 
 // POST /api/model-history  body: { sport, league, entries[] } -> { inserted }

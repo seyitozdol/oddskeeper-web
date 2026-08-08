@@ -10,6 +10,9 @@ export const modelHistory = defineMessages({
     loading: "Loading…",
     restored: "Loaded from history.",
     fixtureGone: "This fixture is no longer in the list.",
+    deleteConfirm: "Delete?",
+    deleteYes: "Yes",
+    deleteNo: "No",
     cfgTitle: "Export history",
     cfgRetention: "Keep export history (days)",
     cfgRetentionNote:
@@ -28,6 +31,9 @@ export const modelHistory = defineMessages({
     loading: "Yükleniyor…",
     restored: "Geçmişten yüklendi.",
     fixtureGone: "Bu fikstür artık listede yok.",
+    deleteConfirm: "Sil?",
+    deleteYes: "Evet",
+    deleteNo: "Vazgeç",
     cfgTitle: "Export geçmişi",
     cfgRetention: "Export geçmişi saklama (gün)",
     cfgRetentionNote:

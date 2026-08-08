@@ -23,6 +23,8 @@ export type ModelHistoryRecord = {
   authorName: string;
   createdAt: string;
   snapshot: unknown;
+  // Goruntuleyen bu kaydi silebilir mi (admin veya kaydin sahibi).
+  canDelete: boolean;
 };
 
 // Export aninda yazilacak bir kayit (id/yazar/tarih server tarafinda eklenir).
@@ -52,19 +54,47 @@ export function formatHistoryDate(iso: string): string {
   return `${p(d.getDate())}_${p(d.getMonth() + 1)}_${d.getFullYear()}`;
 }
 
-// Verili spor/lig icin son export kayitlarini getirir (ortak liste; herkes gorur).
+// Verili spor/lig (ve varsa mac) icin son export kayitlarini getirir. matchLabel
+// verilirse yalnizca o macin kayitlari doner (fixture secilince o maca ait liste).
 export async function fetchModelHistory(
   sport: HistorySport,
   league: string,
-  limit = 50
+  limit = 50,
+  matchLabel?: string
 ): Promise<ModelHistoryRecord[]> {
-  const qs = new URLSearchParams({ sport, league, limit: String(limit) });
+  const params: Record<string, string> = { sport, league, limit: String(limit) };
+  if (matchLabel) params.match = matchLabel;
+  const qs = new URLSearchParams(params);
   const res = await fetch(`/api/model-history?${qs.toString()}`, {
     cache: "no-store",
   });
   if (!res.ok) return [];
   const data = (await res.json()) as { records?: ModelHistoryRecord[] };
   return data.records ?? [];
+}
+
+// Bir gecmis kaydini siler (yetki server tarafinda: admin veya kaydin sahibi).
+export async function deleteModelHistory(id: string): Promise<boolean> {
+  try {
+    const res = await fetch(
+      `/api/model-history?id=${encodeURIComponent(id)}`,
+      { method: "DELETE" }
+    );
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+// Export dosya adi: "Fixture ismi_8_8_2026_16_57" (sorunlu karakter yok).
+export function exportFileName(label: string, now: Date = new Date()): string {
+  const clean = (label || "input")
+    .replace(/[\\/:*?"<>|.]+/g, "")
+    .replace(/\s+/g, " ")
+    .trim() || "input";
+  const p = (n: number) => String(n).padStart(2, "0");
+  const stamp = `${now.getDate()}_${now.getMonth() + 1}_${now.getFullYear()}_${p(now.getHours())}_${p(now.getMinutes())}`;
+  return `${clean}_${stamp}`;
 }
 
 // Export aninda cagrilir: kayitlari yazar, ardindan sunucu eski kayitlari siler.

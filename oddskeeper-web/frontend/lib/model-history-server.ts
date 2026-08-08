@@ -22,12 +22,15 @@ type HistoryRow = {
   fixture_ext_id: string | null;
   match_label: string;
   market: string;
+  author_id: string | null;
   author_name: string;
   created_at: string;
   snapshot: unknown;
 };
 
-function toRecord(row: HistoryRow): ModelHistoryRecord {
+export type HistoryViewer = { userId: string | null; isAdmin: boolean };
+
+function toRecord(row: HistoryRow, viewer: HistoryViewer): ModelHistoryRecord {
   return {
     id: row.id,
     sport: row.sport as HistorySport,
@@ -39,6 +42,7 @@ function toRecord(row: HistoryRow): ModelHistoryRecord {
     authorName: row.author_name,
     createdAt: row.created_at,
     snapshot: row.snapshot,
+    canDelete: viewer.isAdmin || (row.author_id != null && row.author_id === viewer.userId),
   };
 }
 
@@ -49,20 +53,25 @@ export function clampRetention(days: unknown): number {
   return Math.min(MAX_RETENTION_DAYS, Math.max(MIN_RETENTION_DAYS, n));
 }
 
-// Verili spor/lig icin son kayitlari getirir (ortak liste, en yeni ustte).
+// Verili spor/lig (ve varsa mac) icin son kayitlari getirir (ortak liste, en
+// yeni ustte). Her kayda goruntuleyene gore canDelete eklenir.
 export async function listHistory(
   admin: SupabaseClient,
   sport: string,
   league: string,
-  limit: number
+  limit: number,
+  viewer: HistoryViewer,
+  matchLabel?: string
 ): Promise<ModelHistoryRecord[]> {
-  const { data, error } = await admin
+  let q = admin
     .from("model_export_history")
     .select(
-      "id, sport, league, kind, fixture_ext_id, match_label, market, author_name, created_at, snapshot"
+      "id, sport, league, kind, fixture_ext_id, match_label, market, author_id, author_name, created_at, snapshot"
     )
     .eq("sport", sport)
-    .eq("league", league)
+    .eq("league", league);
+  if (matchLabel) q = q.eq("match_label", matchLabel);
+  const { data, error } = await q
     .order("created_at", { ascending: false })
     .limit(Math.min(Math.max(1, limit), 200));
 
@@ -70,7 +79,38 @@ export async function listHistory(
     console.error("listHistory error:", error);
     return [];
   }
-  return (data ?? []).map((r) => toRecord(r as HistoryRow));
+  return (data ?? []).map((r) => toRecord(r as HistoryRow, viewer));
+}
+
+// Bir kaydi siler. Yetki: admin veya kaydin sahibi (author_id). Yetkisizse false.
+export async function deleteHistory(
+  admin: SupabaseClient,
+  id: string,
+  viewer: HistoryViewer
+): Promise<"ok" | "forbidden" | "not_found" | "error"> {
+  const { data, error } = await admin
+    .from("model_export_history")
+    .select("author_id")
+    .eq("id", id)
+    .maybeSingle();
+  if (error) {
+    console.error("deleteHistory lookup error:", error);
+    return "error";
+  }
+  if (!data) return "not_found";
+  const authorId = (data as { author_id: string | null }).author_id;
+  const allowed = viewer.isAdmin || (authorId != null && authorId === viewer.userId);
+  if (!allowed) return "forbidden";
+
+  const { error: delErr } = await admin
+    .from("model_export_history")
+    .delete()
+    .eq("id", id);
+  if (delErr) {
+    console.error("deleteHistory delete error:", delErr);
+    return "error";
+  }
+  return "ok";
 }
 
 // Export edilen kayitlari yazar. author_id dev/bypass'ta null olabilir.
