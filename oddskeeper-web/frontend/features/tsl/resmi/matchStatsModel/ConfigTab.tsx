@@ -80,7 +80,7 @@ export default function ConfigTab({
 
   async function saveAll() {
     if (!model) return;
-    if (!confirmPermanentSave()) return;
+    if (!(await confirmPermanentSave())) return;
     setStatus("saving");
     const okModel = await saveModelConfig(league, model);
     const results = await Promise.all(markets.map((m) => saveMarketConfig(league, m.market, m)));

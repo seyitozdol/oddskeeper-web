@@ -308,7 +308,7 @@ function PlayerRolesConfig({ modelConfig, reload, t }: {
   const save = async () => {
     const payload = Object.entries(edits).map(([key, value]) => ({ key, value }));
     if (payload.length === 0) return;
-    if (!confirmPermanentSave()) return;
+    if (!(await confirmPermanentSave())) return;
     setSaving(true);
     const ok = await saveModelConfig(payload);
     setSaving(false);
@@ -395,7 +395,7 @@ function ModelWeightsConfig({ modelConfig, reload, t }: {
   const pTotal = pv("player_model_w10", 20) + pv("player_model_w5", 30) + pv("player_model_wall", 50);
 
   const saveTeam = async () => {
-    if (!confirmPermanentSave()) return;
+    if (!(await confirmPermanentSave())) return;
     setSavingT(true);
     const ok = await saveModelConfig([
       { key: "team_model_wavg", value: tv("team_model_wavg", 50) },
@@ -405,7 +405,7 @@ function ModelWeightsConfig({ modelConfig, reload, t }: {
     if (ok) { setTEdits({}); reload(); }
   };
   const savePlayer = async () => {
-    if (!confirmPermanentSave()) return;
+    if (!(await confirmPermanentSave())) return;
     setSavingP(true);
     const ok = await saveModelConfig([
       { key: "player_model_w10", value: pv("player_model_w10", 20) },
@@ -508,7 +508,7 @@ function ConfigTab({ config, reload, modelConfig, reloadModelConfig, inputType, 
       return { market_group, market_key, ...p };
     });
     if (rows.length === 0) return;
-    if (!confirmPermanentSave()) return;
+    if (!(await confirmPermanentSave())) return;
     setSaving(true);
     const ok = await upsertMarketConfig(rows, league);
     setSaving(false);

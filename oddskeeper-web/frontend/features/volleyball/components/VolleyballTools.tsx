@@ -753,7 +753,7 @@ function ConfigTab({ config, reload, t }: { config: PmMarketConfig[]; reload: ()
   const save = async () => {
     const out = Object.entries(edits).map(([k, p]) => { const [market_group, market_key] = k.split(":"); return { market_group, market_key, ...p }; });
     if (out.length === 0) return;
-    if (!confirmPermanentSave()) return;
+    if (!(await confirmPermanentSave())) return;
     setSaving(true); const ok = await upsertMarketConfig(out, LEAGUE); setSaving(false); if (ok) { setEdits({}); reload(); }
   };
   const numCell = (c: PmMarketConfig, k: keyof PmMarketConfig, w = "w-12") => (

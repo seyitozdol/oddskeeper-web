@@ -224,7 +224,7 @@ function DistributeConfig({
 
   async function handleSave() {
     if (over) return;
-    if (!confirmPermanentSave()) return;
+    if (!(await confirmPermanentSave())) return;
     setSaving(true);
     const w: DistWeights = { ly: num(ly), last5: num(last5), avg: num(avg) };
     const ok = await saveDistWeights(w);
@@ -320,7 +320,7 @@ function StatusConfigCard({
   };
 
   async function handleSave() {
-    if (!confirmPermanentSave()) return;
+    if (!(await confirmPermanentSave())) return;
     setSaving(true);
     const ok = await saveStatusConfig(draft);
     setSaving(false);

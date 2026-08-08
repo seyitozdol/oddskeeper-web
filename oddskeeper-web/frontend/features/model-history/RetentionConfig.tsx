@@ -37,7 +37,7 @@ export default function RetentionConfig({
   async function save() {
     const n = parseInt(days, 10);
     if (!Number.isFinite(n)) return;
-    if (!confirmPermanentSave()) return;
+    if (!(await confirmPermanentSave())) return;
     setStatus("saving");
     const ok = await saveRetention(sport, league, n);
     setStatus(ok ? "saved" : "error");
