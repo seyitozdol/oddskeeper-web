@@ -37,8 +37,9 @@ export const upcomingEvents = defineMessages({
     refreshDone: "Updated",
     refreshError: "Failed",
     refreshHint: "Runs the pipeline once now (admin). Scheduled runs are unaffected.",
-    priorityStar:
-      "Priority match (Süper Lig / 1. Lig club, or Türkiye national football/basketball/women's volleyball)",
+    priorityStars: "Priority score: {count} stars",
+    hideLowProfile: "Hide Low Profile",
+    hideLowProfileHint: "Hide matches with no priority stars",
   },
   tr: {
     title: "Yaklaşan Maçlar",
@@ -76,7 +77,8 @@ export const upcomingEvents = defineMessages({
     refreshDone: "Güncellendi",
     refreshError: "Hata",
     refreshHint: "Pipeline'ı şimdi bir kez çalıştırır (admin). Zamanlanmış koşular etkilenmez.",
-    priorityStar:
-      "Öncelikli maç (Süper Lig / 1. Lig kulübü ya da Türkiye A Milli futbol/basketbol/kadın voleybol)",
+    priorityStars: "Öncelik puanı: {count} yıldız",
+    hideLowProfile: "Low Profile Gizle",
+    hideLowProfileHint: "Yıldızı olmayan maçları listeden gizler",
   },
 });

@@ -1,15 +1,38 @@
-// Yaklaşan maçlar öncelik listesi: aşağıdaki takımların maçları sarı yıldızla
-// işaretlenir.
-//   1) Süper Lig (TSL) kulüplerinin futbol maçları (her turnuvada)
-//   2) A Milli Takım futbol ve basketbol maçları
-//   3) Kadın Voleybol Milli Takım maçları
+// Yaklaşan maçlar öncelik puanı: her maça bir YILDIZ SAYISI verilir. Yıldızlar
+// birden çok kaynaktan gelir ve TOPLANIR (lig + turnuva + takım + milli), toplam
+// en fazla 5 ile sınırlıdır. Puanı 0 olan maç öncelikli değildir.
 //
-// Kulüp eşleştirmesi öncelikli olarak SofaScore takım id'si ile yapılır
-// (ref.sofascore_team_logos'taki curated Süper Lig id'leri); id boşsa isim
-// içeriğiyle yedeklenir. Milli takımlar national bayrağı + "Türkiye/Turkey"
-// ülke/isim eşleşmesiyle bulunur, alt yaş (U19 vb.) hariç tutulur.
+// Yıldız kaynakları (kullanıcı tanımı):
+//   Futbol
+//     Süper Lig maçı ................. 2
+//     4 büyük takım (GS/FB/BJK/TS) ... her biri +1 (maçta ikisi de varsa +2)
+//     Champions League ............... 2
+//     Europa League .................. 2
+//     Conference League .............. 1
+//     1. Lig ......................... 1
+//     Türkiye Kupası ................. 1
+//     A Milli (erkek) ................ 3
+//   Basketbol
+//     BSL (Süper Lig) ................ 2
+//     TBL (2. lig) ................... 1
+//     EuroLeague ..................... 1
+//     EuroCup ........................ 1
+//     Fenerbahçe / Efes / Beşiktaş ... her biri +2
+//     Bahçeşehir / Türk Telekom / Tofaş  her biri +1
+//     A Milli (erkek) ................ 3
+//   Voleybol
+//     Kadın A Milli .................. 3
+//
+// Alt yaş (U16/U18/U19/U21, PAF, youth) takımlarının maçları ve kadın KULÜP
+// takımlarının maçları yıldız almaz. Milli takım cinsiyet kuralı: futbol/basketbol
+// yalnız erkek, voleybol yalnız kadın (kullanıcı tercihi). Turnuva eşleşmesi
+// SofaScore tournament_name üstünden yapılır (ör. "Trendyol Süper Lig",
+// "UEFA Champions League, Qualification").
 
 import type { UpcomingEventRow } from "./types";
+
+// Toplam yıldız üst sınırı (kullanıcı tercihi).
+const MAX_STARS = 5;
 
 // Süper Lig SofaScore takım id'leri (ref.sofascore_team_logos).
 const SUPER_LIG_TEAM_IDS = new Set<number>([
@@ -32,37 +55,24 @@ const SUPER_LIG_TEAM_IDS = new Set<number>([
   7802, // Gençlerbirliği (2025/26 çıkan)
 ]);
 
-// 1. Lig (TFF 1. Lig) SofaScore takım id'leri — bu takımların maçları da
-// (her turnuvada, hazırlık dahil) öncelikli sayılır. Kaynak: 2025/26 "1. Lig"
-// fikstürleri (tracker.upcoming_events) + Amed. Sezon başı kadro değişirse
-// buradan güncellenir.
-const FIRST_LIG_TEAM_IDS = new Set<number>([
-  44320, // Bandırmaspor
-  3099, // Batman Petrolspor
-  202390, // Bodrum FK
-  6414, // Boluspor
-  3055, // Bursaspor
-  262480, // Esenler Erokspor
-  4954, // Fatih Karagümrük
-  388264, // Iğdır FK
-  3066, // İstanbulspor
-  6366, // Keçiörengücü
-  202391, // Manisa FK
-  296730, // Mardin 1969 Spor
-  7034, // Muğlaspor
-  7032, // Pendikspor
-  4952, // Sarıyer
-  3076, // Sivasspor
-  55625, // Ümraniyespor
-  24750, // Vanspor FK
-  207011, // Amed Sportif Faaliyetler (1. Lig'e yeni çıkan)
+// 4 büyük futbol kulübü (SofaScore id'leri) — maçta her biri +1 yıldız.
+const BIG_FOUR_TEAM_IDS = new Set<number>([
+  3061, // Galatasaray
+  3052, // Fenerbahçe
+  3050, // Beşiktaş
+  3051, // Trabzonspor
 ]);
+
+const BIG_FOUR_NAME_TOKENS = [
+  "galatasaray",
+  "fenerbahce",
+  "besiktas",
+  "trabzonspor",
+];
 
 // İsim bazlı yedek eşleşme (id boş gelirse). Normalize edilmiş isimde bu
 // belirteçlerden biri geçerse Süper Lig kulübü sayılır. SADECE 2025/26 Süper
-// Lig takımları: yukarıdaki 15 id'li kulüp + id'si listede olmayan çıkanlar
-// (Kocaelispor, Gençlerbirliği). NOT: Fatih Karagümrük / Sivasspor / Bodrum
-// gibi 1. Lig takımları BİLEREK dışarıda; yıldız yalnızca gerçek Süper Lig.
+// Lig takımları.
 const SUPER_LIG_NAME_TOKENS = [
   "galatasaray",
   "fenerbahce",
@@ -81,6 +91,18 @@ const SUPER_LIG_NAME_TOKENS = [
   "goztepe",
   "kocaelispor",
   "genclerbirligi",
+];
+
+// Basketbol yıldızlı takımları (isim belirteci -> yıldız). SofaScore takım
+// isimleri sponsorlu olabilir (ör. "Fenerbahçe Beko", "Beşiktaş GAİN"), bu
+// yüzden normalize edilmiş isimde belirteç aranır.
+const BASKETBALL_TEAM_STARS: Array<{ token: string; stars: number }> = [
+  { token: "fenerbahce", stars: 2 },
+  { token: "efes", stars: 2 }, // Anadolu Efes
+  { token: "besiktas", stars: 2 },
+  { token: "bahcesehir", stars: 1 }, // Bahçeşehir Koleji
+  { token: "turktelekom", stars: 1 },
+  { token: "tofas", stars: 1 },
 ];
 
 // Türkçe karakterleri sadeleştirip yalnızca harf/rakam bırakır.
@@ -126,10 +148,23 @@ export function superLigTeamSlug(teamId: number | null): string | null {
   return SUPER_LIG_TEAM_SLUGS[teamId] ?? null;
 }
 
-// Alt yaş / genç milli takımlarını ayıklar (U15..U23, "youth").
-function isYouthTeam(name: string | null | undefined): boolean {
-  if (!name) return false;
-  return /\bu-?\d{2}\b/i.test(name) || /youth/i.test(name);
+// Alt yaş / genç takımı mı (U15..U23, "youth", "PAF"). NOT: "gençler" belirteci
+// KULLANILMAZ — "Gençlerbirliği" (kıdemli Süper Lig kulübü) ile çakışır. SofaScore
+// alt yaş takımlarını daima U-numarası / PAF ile adlandırır.
+function isYouthText(value: string | null | undefined): boolean {
+  if (!value) return false;
+  if (/\bu-?\d{2}\b/i.test(value)) return true;
+  const n = normalize(value);
+  return n.includes("youth") || n.includes("paf");
+}
+
+function isYouthEvent(e: UpcomingEventRow): boolean {
+  return (
+    isYouthText(e.home_team_name) ||
+    isYouthText(e.away_team_name) ||
+    isYouthText(e.tournament_name) ||
+    isYouthText(e.round_info)
+  );
 }
 
 // Türkiye milli takımı mı (isim veya ülke "Türkiye/Turkey" içeriyor).
@@ -137,61 +172,95 @@ function isTurkiye(name: string | null, country: string | null): boolean {
   return normalize(name).includes("turk") || normalize(country).includes("turk");
 }
 
-function isSuperLigClub(
-  teamId: number | null,
-  teamName: string | null
-): boolean {
-  if (teamId != null && SUPER_LIG_TEAM_IDS.has(teamId)) return true;
+function isSeniorTurkNational(e: UpcomingEventRow): boolean {
+  const side = (
+    name: string | null,
+    country: string | null,
+    national: boolean
+  ) => national && isTurkiye(name, country);
+  return (
+    side(e.home_team_name, e.home_team_country, e.home_team_national) ||
+    side(e.away_team_name, e.away_team_country, e.away_team_national)
+  );
+}
+
+// Bir takımın 4 büyükten olup olmadığı (id veya isim ile), her biri +1.
+function bigFourStars(teamId: number | null, teamName: string | null): number {
+  if (teamId != null && BIG_FOUR_TEAM_IDS.has(teamId)) return 1;
   const n = normalize(teamName);
-  return n.length > 0 && SUPER_LIG_NAME_TOKENS.some((token) => n.includes(token));
+  return n.length > 0 && BIG_FOUR_NAME_TOKENS.some((tok) => n.includes(tok))
+    ? 1
+    : 0;
 }
 
-// Süper Lig veya 1. Lig kulübü (id/isim ile). Her ikisinin de maçları öncelikli.
-function isTurkishLeagueClub(
-  teamId: number | null,
-  teamName: string | null
-): boolean {
-  if (teamId != null && FIRST_LIG_TEAM_IDS.has(teamId)) return true;
-  return isSuperLigClub(teamId, teamName);
+// Bir basketbol takımının yıldızı (isim belirteci ile), yoksa 0.
+function basketballTeamStars(teamName: string | null): number {
+  const n = normalize(teamName);
+  if (!n) return 0;
+  for (const { token, stars } of BASKETBALL_TEAM_STARS) {
+    if (n.includes(token)) return stars;
+  }
+  return 0;
 }
 
-function isSeniorTurkNational(
-  name: string | null,
-  country: string | null,
-  national: boolean
-): boolean {
-  return national && isTurkiye(name, country) && !isYouthTeam(name);
+// Futbol turnuva yıldızı (maç tek bir turnuvaya ait, o yüzden tek değer döner).
+function footballTournamentStars(tournamentName: string): number {
+  const raw = tournamentName;
+  const n = normalize(raw);
+  // Kadın CL/EL turnuvaları çağrı öncesi zaten elenir (kadın kulüp = 0).
+  if (n.includes("conferenceleague")) return 1; // UEFA (Europa) Conference League
+  if (n.includes("europaleague")) return 2;
+  if (n.includes("championsleague")) return 2;
+  if (n.includes("superlig")) return 2; // Trendyol Süper Lig
+  if (/(^|[^\d])1\.\s*lig/i.test(raw)) return 1; // "1. Lig" (3./2. Lig hariç)
+  if (n.includes("turkiyekupasi") || n.includes("turkishcup")) return 1;
+  return 0;
 }
 
-// Maç öncelik listesinde mi (sarı yıldız gösterilecek mi).
+// Basketbol turnuva yıldızı.
+function basketballTournamentStars(tournamentName: string): number {
+  const n = normalize(tournamentName);
+  if (n.includes("euroleague")) return 1;
+  if (n.includes("eurocup")) return 1;
+  if (n.includes("superlig")) return 2; // Basketbol Süper Ligi (BSL)
+  if (n.includes("basketbolligi") || n.includes("tbl")) return 1; // Türkiye Basketbol Ligi
+  return 0;
+}
+
+// Maçın toplam yıldız puanı (0 = öncelikli değil), üst sınır MAX_STARS.
+export function eventStarCount(e: UpcomingEventRow): number {
+  // Alt yaş takımlarının maçları hiç yıldız almaz.
+  if (isYouthEvent(e)) return 0;
+
+  const women = e.gender === "F";
+
+  // Milli takım: futbol/basketbol yalnız erkek, voleybol yalnız kadın.
+  if (isSeniorTurkNational(e)) {
+    if ((e.sport === "football" || e.sport === "basketball") && !women) return 3;
+    if (e.sport === "volleyball" && women) return 3;
+    return 0; // diğer milli maçlar (ör. kadın futbol milli) yıldızsız
+  }
+
+  // Kadın kulüp takımlarının maçları yıldız almaz.
+  if (women) return 0;
+
+  let stars = 0;
+
+  if (e.sport === "football") {
+    stars += footballTournamentStars(e.tournament_name);
+    stars += bigFourStars(e.home_team_id, e.home_team_name);
+    stars += bigFourStars(e.away_team_id, e.away_team_name);
+  } else if (e.sport === "basketball") {
+    stars += basketballTournamentStars(e.tournament_name);
+    stars += basketballTeamStars(e.home_team_name);
+    stars += basketballTeamStars(e.away_team_name);
+  }
+  // Voleybol kulüp maçları yıldız almaz.
+
+  return Math.min(stars, MAX_STARS);
+}
+
+// Geriye dönük yardımcı: maç öncelikli mi (en az bir yıldız).
 export function isPriorityEvent(e: UpcomingEventRow): boolean {
-  // 1) Süper Lig + 1. Lig kulüplerinin futbol maçları.
-  if (
-    e.sport === "football" &&
-    (isTurkishLeagueClub(e.home_team_id, e.home_team_name) ||
-      isTurkishLeagueClub(e.away_team_id, e.away_team_name))
-  ) {
-    return true;
-  }
-
-  // 2) & 3) Türkiye milli takımı maçları.
-  const turkNational =
-    isSeniorTurkNational(
-      e.home_team_name,
-      e.home_team_country,
-      e.home_team_national
-    ) ||
-    isSeniorTurkNational(
-      e.away_team_name,
-      e.away_team_country,
-      e.away_team_national
-    );
-
-  if (turkNational) {
-    // Futbol + basketbol: A Milli (her cinsiyet). Voleybol: yalnızca kadın.
-    if (e.sport === "football" || e.sport === "basketball") return true;
-    if (e.sport === "volleyball" && e.gender === "F") return true;
-  }
-
-  return false;
+  return eventStarCount(e) > 0;
 }

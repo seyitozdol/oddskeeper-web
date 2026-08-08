@@ -9,7 +9,7 @@ import {
   type TrackedSport,
   type UpcomingEventRow,
 } from "../types";
-import { isPriorityEvent } from "../priority";
+import { eventStarCount } from "../priority";
 
 // Kullanıcı Malta'da; tüm saatler Malta saatine göre gösterilir.
 const TZ = "Europe/Malta";
@@ -45,6 +45,8 @@ export default function UpcomingEventsPanel({
 }) {
   const { t, locale } = useI18n();
   const [sportFilter, setSportFilter] = useState<TrackedSport | "all">("all");
+  // "Low Profile Gizle": yıldızı olmayan (öncelik puanı 0) maçları listeden çıkar.
+  const [hideLowProfile, setHideLowProfile] = useState(false);
   // Hydration uyusmazligini onlemek icin geri sayim yalnizca mount sonrasi
   // hesaplanir; her 30 sn'de bir tazelenir.
   const [now, setNow] = useState<number | null>(null);
@@ -55,20 +57,27 @@ export default function UpcomingEventsPanel({
     return () => clearInterval(id);
   }, []);
 
+  // Low Profile gizliyken yıldızsız maçlar sayımlardan da düşülür.
+  const visibleEvents = useMemo(
+    () =>
+      hideLowProfile ? events.filter((e) => eventStarCount(e) > 0) : events,
+    [events, hideLowProfile]
+  );
+
   const counts = useMemo(() => {
-    const c: Record<string, number> = { all: events.length };
+    const c: Record<string, number> = { all: visibleEvents.length };
     for (const sport of TRACKED_SPORTS) {
-      c[sport] = events.filter((e) => e.sport === sport).length;
+      c[sport] = visibleEvents.filter((e) => e.sport === sport).length;
     }
     return c;
-  }, [events]);
+  }, [visibleEvents]);
 
   const filtered = useMemo(
     () =>
       sportFilter === "all"
-        ? events
-        : events.filter((e) => e.sport === sportFilter),
-    [events, sportFilter]
+        ? visibleEvents
+        : visibleEvents.filter((e) => e.sport === sportFilter),
+    [visibleEvents, sportFilter]
   );
 
   const dayGroups = useMemo(() => {
@@ -141,17 +150,26 @@ export default function UpcomingEventsPanel({
     (e.bet365_has_odds === true || e.oddsportal_has_odds === true) &&
     e.bets10_has_odds !== true;
 
-  function StarIcon() {
+  // Öncelik yıldızları: puan kadar (1..5) küçük sarı yıldız, satır başına 3'lük
+  // sararak. Tooltip toplam puanı gösterir.
+  function Stars({ count }: { count: number }) {
+    if (count <= 0) return null;
     return (
-      <span className="shrink-0" title={t("upcomingEvents.priorityStar")}>
-        <svg
-          viewBox="0 0 24 24"
-          fill="currentColor"
-          className="h-3.5 w-3.5 text-amber-400"
-          aria-hidden="true"
-        >
-          <path d="M12 2.5l2.9 6.06 6.6.79-4.86 4.53 1.28 6.52L12 17.9l-5.92 3.5 1.28-6.52L2.5 9.35l6.6-.79L12 2.5z" />
-        </svg>
+      <span
+        className="flex max-w-[40px] flex-wrap justify-center gap-[1px]"
+        title={t("upcomingEvents.priorityStars", { count })}
+      >
+        {Array.from({ length: count }).map((_, i) => (
+          <svg
+            key={i}
+            viewBox="0 0 24 24"
+            fill="currentColor"
+            className="h-3 w-3 text-amber-400"
+            aria-hidden="true"
+          >
+            <path d="M12 2.5l2.9 6.06 6.6.79-4.86 4.53 1.28 6.52L12 17.9l-5.92 3.5 1.28-6.52L2.5 9.35l6.6-.79L12 2.5z" />
+          </svg>
+        ))}
       </span>
     );
   }
@@ -296,6 +314,44 @@ export default function UpcomingEventsPanel({
             </span>
           </button>
         ))}
+
+        {/* Low Profile Gizle: yıldızsız maçları listeden çıkarır. */}
+        <button
+          type="button"
+          role="checkbox"
+          aria-checked={hideLowProfile}
+          onClick={() => setHideLowProfile((v) => !v)}
+          title={t("upcomingEvents.hideLowProfileHint")}
+          className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[13px] font-medium transition ${
+            hideLowProfile
+              ? "border-amber-500/50 bg-amber-500/15 text-amber-500"
+              : "border-line bg-veil text-ink-2 hover:text-ink"
+          }`}
+        >
+          <span
+            className={`flex h-3.5 w-3.5 items-center justify-center rounded-[3px] border ${
+              hideLowProfile
+                ? "border-amber-500 bg-amber-500 text-white"
+                : "border-line-strong bg-transparent"
+            }`}
+            aria-hidden="true"
+          >
+            {hideLowProfile ? (
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="3"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="h-2.5 w-2.5"
+              >
+                <path d="M20 6 9 17l-5-5" />
+              </svg>
+            ) : null}
+          </span>
+          <span>{t("upcomingEvents.hideLowProfile")}</span>
+        </button>
       </div>
 
       {dayGroups.length === 0 ? (
@@ -306,7 +362,7 @@ export default function UpcomingEventsPanel({
         <div className="mt-3 overflow-x-auto rounded-lg border border-line">
           <table className="min-w-[560px] table-auto border-collapse text-[13px]">
             <colgroup>
-              <col className="w-[26px]" />
+              <col className="w-[42px]" />
               <col className="w-[46px]" />
               <col className="w-[74px]" />
               <col />
@@ -351,7 +407,7 @@ export default function UpcomingEventsPanel({
                   {rows.map((e) => {
                     const cd = countdown(e);
                     const alert = needsAlert(e);
-                    const priority = isPriorityEvent(e);
+                    const stars = eventStarCount(e);
                     return (
                       <tr
                         key={e.event_id}
@@ -363,7 +419,7 @@ export default function UpcomingEventsPanel({
                       >
                         <td className="px-1 py-1">
                           <span className="flex flex-col items-center gap-0.5">
-                            {priority ? <StarIcon /> : null}
+                            <Stars count={stars} />
                             {alert ? <AlertIcon /> : null}
                           </span>
                         </td>
