@@ -3,12 +3,12 @@
 
 NEDEN: bet365 dogrudan otomasyonla oran vermiyor (anti-bot; VPS spike'inda
 kupon bos, zap WS payload'siz - 2026-07-30). API-Football'da bet365 bookmaker
-id=8 hem Avrupa kupalari (Sampiyonlar/Avrupa/Konferans Ligi) hem de TFF 1. Lig
-icin oran veriyor (LEAGUES). KISIT: Oranlar maca ~1-3 gun kala yuklenir, uzak
-maclar bos; bu loader takipteki maclarin bet365 kolonunu maca yaklastikca doldurur.
-NOT: /leagues coverage.odds bayragi Turk domestic ligleri icin false gorunur ama
-asil /odds endpoint'i 1. Lig icin gercek bet365 orani doner (2026-08-08 dogrulandi);
-Super Lig (203) de ayni sekilde alinabilir, su an Bets10'dan geliyor.
+id=8 hem Avrupa kupalari (Sampiyonlar/Avrupa/Konferans Ligi) hem de Turk domestic
+ligleri (Super Lig, 1. Lig) icin oran veriyor (LEAGUES). KISIT: Oranlar maca ~1-3
+gun kala yuklenir, uzak maclar bos; bu loader takipteki maclarin bet365 kolonunu
+maca yaklastikca doldurur. NOT: /leagues coverage.odds bayragi Turk domestic ligleri
+icin false gorunur ama asil /odds endpoint'i hem Super Lig hem 1. Lig icin gercek
+bet365 orani doner (2026-08-08 dogrulandi).
 
 Tarayici/proxy YOK; mevcut API_FOOTBALL_KEY (.env) + kota ile calisir.
 Eslestirme takim adiyla (load_site_odds mantigi). Kullanim: python fetch_apifootball_odds.py [--dry-run]
@@ -31,15 +31,14 @@ SEASON = 2026
 BOOKMAKER_BET365 = 8
 # Turk takimlarinin oynadigi ligler (API-Football league id):
 #   2/3/848 = Sampiyonlar/Avrupa/Konferans Ligi ; 667 = Kulup Hazirlik maclari ;
-#   204 = TFF 1. Lig.
+#   203 = Super Lig ; 204 = TFF 1. Lig.
 # NOT (2026-08-08): API-Football'un /leagues coverage.odds bayragi Turk domestic
-# ligleri icin false gorunse de asil /odds?bookmaker=8 endpoint'i 1. Lig maclari
-# icin GERCEK bet365 orani donduruyor (canli dogrulandi: Bandirmaspor-Istanbulspor
-# 1X2 2.10/3.25/3.20 + Alt/Ust). Bu yuzden 204 eklendi; Super Lig (203) de ayni
-# sekilde alinabilir (su an Bets10'dan geliyor, gerekirse eklenir).
+# ligleri icin false gorunse de asil /odds?bookmaker=8 endpoint'i hem Super Lig hem
+# 1. Lig maclari icin GERCEK bet365 orani donduruyor (canli dogrulandi: Bandirmaspor-
+# Istanbulspor 1X2 2.10/3.25/3.20, Galatasaray-Corum 1.18/6.00/12.00 + Alt/Ust).
 # Milli takim turnuvalari mac oldukca eklenebilir (10=uluslararasi hazirlik,
 # 5=Nations, 4=EURO elemeleri, 34=Dunya K. elemeleri UEFA).
-LEAGUES = [2, 3, 848, 667, 204]
+LEAGUES = [2, 3, 848, 667, 203, 204]
 MW_BET = "Match Winner"
 OU_BET = "Goals Over/Under"
 
