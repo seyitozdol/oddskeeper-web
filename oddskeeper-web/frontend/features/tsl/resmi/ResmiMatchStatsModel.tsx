@@ -9,6 +9,7 @@ import {
   postModelHistory,
   fetchMsmSuspend,
   saveMsmSuspend,
+  exportFileName,
   type ModelHistoryDraft,
   type ModelHistoryRecord,
 } from "@/lib/model-history";
@@ -40,6 +41,7 @@ import {
   fetchRawMarketConfigs,
   fetchTemplates,
   fetchFixtures,
+  fetchManualFixtures,
   fetchFixtureInputs,
   logImport,
   resolveReferee,
@@ -390,16 +392,23 @@ export default function ResmiMatchStatsModel({
     });
   }, [LEAGUE]);
 
+  // Fikstürler: manuel (en üstte) + resmi. Manuel eklen/silinince tekrar çağrılır.
+  const loadFixtures = useCallback(() => {
+    Promise.all([fetchManualFixtures(LEAGUE), fetchFixtures(LEAGUE)]).then(
+      ([man, reg]) => setFixtures([...man, ...reg])
+    );
+  }, [LEAGUE]);
+
   // Mount: referans veriler.
   useEffect(() => {
     fetchTeams(LEAGUE).then(setTeams);
     fetchTeamLogos(LEAGUE).then(setTeamLogos);
     fetchReferees(LEAGUE).then(setReferees);
-    fetchFixtures(LEAGUE).then(setFixtures);
+    loadFixtures();
     fetchFixtureInputs(LEAGUE).then(setFixtureInputs);
     fetchMsmSuspend(LEAGUE).then(setSuspendMissing);
     loadConfig();
-  }, [loadConfig, LEAGUE]);
+  }, [loadConfig, loadFixtures, LEAGUE]);
 
   // Takımlar SADECE fikstürden gelir: fikstürler yüklenince ilkini otomatik seç.
   useEffect(() => {
@@ -664,7 +673,7 @@ export default function ResmiMatchStatsModel({
     const ws = XLSX.utils.json_to_sheet(data);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Input");
-    XLSX.writeFile(wb, `${matchLabel || "input"}.xlsx`);
+    XLSX.writeFile(wb, `${exportFileName(matchLabel)}.xlsx`);
 
     // Export gecmisi: mac+market bazinda tek kayit. snapshot = input state +
     // exportedRows (o grubun AKTIF line'lari; sonraki SU diff'inin tabani).
@@ -792,6 +801,7 @@ export default function ResmiMatchStatsModel({
             <HistoryDropdown
               sport="football_msm"
               league={LEAGUE}
+              matchLabel={matchLabel}
               reloadKey={historyReloadKey}
               onRestore={restoreFromHistory}
             />
@@ -819,7 +829,7 @@ export default function ResmiMatchStatsModel({
           <RetentionConfig sport="football_msm" league={LEAGUE} />
         </div>
       ) : tab === "fixtures" ? (
-        <FixtureIdTab league={LEAGUE} isAdmin={isAdmin} onSaved={() => fetchFixtureInputs(LEAGUE).then(setFixtureInputs)} />
+        <FixtureIdTab league={LEAGUE} isAdmin={isAdmin} onSaved={() => fetchFixtureInputs(LEAGUE).then(setFixtureInputs)} onManualChanged={loadFixtures} />
       ) : tab === "input" ? (
         <div className="space-y-4">
           <div className="flex flex-wrap items-center gap-2 rounded-xl border border-line bg-card p-3 text-sm">
@@ -829,7 +839,7 @@ export default function ResmiMatchStatsModel({
             </span>
             <div className="ml-auto flex items-center gap-2">
               <button onClick={exportXlsx} disabled={importList.length === 0}
-                className="rounded-md bg-accent px-3 py-1.5 text-xs font-semibold text-accent-ink hover:opacity-90 disabled:opacity-50">
+                className="rounded-md bg-accent px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-50">
                 {t("msm.exportXlsx")}
               </button>
               <button onClick={() => setImportList([])} disabled={importList.length === 0}
@@ -934,7 +944,7 @@ export default function ResmiMatchStatsModel({
                   <select className={`${selCls} w-full`} value={selectedFixtureId} onChange={(e) => selectFixture(e.target.value)}>
                     {fixtures.map((f) => (
                       <option key={f.fixtureId} value={f.fixtureId} className="bg-field text-ink">
-                        R{f.round} · {f.label}
+                        {f.manual ? "M" : `R${f.round}`} · {f.label}
                       </option>
                     ))}
                   </select>

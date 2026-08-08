@@ -8,6 +8,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useI18n } from "@/lib/i18n/LanguageProvider";
+import { exportFileName } from "@/lib/model-history";
 import {
   fetchAllCurrentPlayers,
   fetchFixtureInputs,
@@ -94,7 +95,7 @@ export function PlayerListTab({
           type="button"
           onClick={handleSave}
           disabled={saving || loading}
-          className="ml-auto rounded-lg border border-teal-500/30 bg-teal-500/10 px-4 py-1.5 text-[13px] font-semibold text-teal-300 transition hover:bg-teal-500/20 disabled:opacity-50"
+          className="ml-auto rounded-lg border border-teal-600 bg-teal-600 px-4 py-1.5 text-[13px] font-semibold text-white transition hover:bg-teal-500 disabled:opacity-50"
         >
           {saving ? t("playerMarket.sendingLabel") : t("playerMarket.saveLabel")}
         </button>
@@ -423,7 +424,7 @@ export function MarketListTab({
         <button
           type="button"
           onClick={() => setDraftName("")}
-          className="rounded-lg border border-teal-500/30 bg-teal-500/10 px-4 py-1.5 text-[13px] font-semibold text-teal-300 transition hover:bg-teal-500/20"
+          className="rounded-lg border border-teal-600 bg-teal-600 px-4 py-1.5 text-[13px] font-semibold text-white transition hover:bg-teal-500"
         >
           {t("playerMarket.newLabel")}
         </button>
@@ -431,7 +432,7 @@ export function MarketListTab({
           type="button"
           onClick={handleSaveAll}
           disabled={saving}
-          className="rounded-lg border border-teal-500/30 bg-teal-500/10 px-4 py-1.5 text-[13px] font-semibold text-teal-300 transition hover:bg-teal-500/20 disabled:opacity-50"
+          className="rounded-lg border border-teal-600 bg-teal-600 px-4 py-1.5 text-[13px] font-semibold text-white transition hover:bg-teal-500 disabled:opacity-50"
         >
           {saving ? t("playerMarket.sendingLabel") : t("playerMarket.saveLabel")}
         </button>
@@ -555,7 +556,7 @@ export function InputTab({
       segment === "dynamic"
         ? dynamicRows[dynamicRows.length - 1].fixtureLabel
         : staticRows[staticRows.length - 1].fixtureLabel;
-    XLSX.writeFile(wb, `${sanitizeFileLabel(lastLabel)}.xlsx`);
+    XLSX.writeFile(wb, `${exportFileName(sanitizeFileLabel(lastLabel))}.xlsx`);
     // Export gecmisi: sadece yazdirilan segment kaydedilir.
     onExported?.(segment);
   }
@@ -588,7 +589,7 @@ export function InputTab({
             type="button"
             onClick={handleExport}
             disabled={rowCount === 0}
-            className="rounded-lg border border-teal-500/30 bg-teal-500/10 px-4 py-1.5 text-[13px] font-semibold text-teal-300 transition hover:bg-teal-500/20 disabled:opacity-50"
+            className="rounded-lg border border-teal-600 bg-teal-600 px-4 py-1.5 text-[13px] font-semibold text-white transition hover:bg-teal-500 disabled:opacity-50"
           >
             {t("playerMarket.printLabel")}
           </button>
@@ -753,7 +754,7 @@ export function FixtureIdTab({ fixtures }: { fixtures: UpcomingFixture[] }) {
           type="button"
           onClick={handleSave}
           disabled={saving || loading}
-          className="rounded-lg border border-teal-500/30 bg-teal-500/10 px-4 py-1.5 text-[13px] font-semibold text-teal-300 transition hover:bg-teal-500/20 disabled:opacity-50"
+          className="rounded-lg border border-teal-600 bg-teal-600 px-4 py-1.5 text-[13px] font-semibold text-white transition hover:bg-teal-500 disabled:opacity-50"
         >
           {saving ? t("playerMarket.sendingLabel") : t("playerMarket.saveLabel")}
         </button>

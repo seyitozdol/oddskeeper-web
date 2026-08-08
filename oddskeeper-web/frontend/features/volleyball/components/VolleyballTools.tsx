@@ -4,7 +4,8 @@ import { useEffect, useMemo, useState, type ReactNode, type Dispatch, type SetSt
 import { useI18n } from "@/lib/i18n/LanguageProvider";
 import HistoryDropdown from "@/features/model-history/HistoryDropdown";
 import RetentionConfig from "@/features/model-history/RetentionConfig";
-import { postModelHistory, type ModelHistoryDraft, type ModelHistoryRecord } from "@/lib/model-history";
+import { postModelHistory, exportFileName, type ModelHistoryDraft, type ModelHistoryRecord } from "@/lib/model-history";
+import { confirmPermanentSave } from "@/lib/confirm-save";
 import { buildConfiguredLines, buildLadder, type LineConfig } from "@/features/basketball/odds";
 import {
   fetchPmFixtures, insertFixture, deleteFixture, type PmFixture,
@@ -48,7 +49,7 @@ function marketList(config: PmMarketConfig[], grp: "team" | "player"): VbMkt[] {
   }));
 }
 
-const btnSave = "rounded-md border border-teal-500/30 bg-teal-500/10 px-3 py-1.5 text-[12px] font-semibold text-teal-300 hover:bg-teal-500/20";
+const btnSave = "rounded-md border border-teal-600 bg-teal-600 px-3 py-1.5 text-[12px] font-semibold text-white hover:bg-teal-500";
 const btnGhost = "rounded-md border border-line px-3 py-1.5 text-[12px] font-semibold text-ink-2 hover:text-ink";
 const accentBtn = "rounded-lg bg-accent px-5 py-2.5 text-[14px] font-semibold text-white shadow-sm hover:opacity-90";
 
@@ -226,7 +227,7 @@ function ModelTab({ teamMatches, playerMatches, players, teams, fixtures, config
     setTimeout(() => setHistoryNotice(""), 3000);
   };
   const historyDropdown = (
-    <HistoryDropdown sport="volleyball" league={LEAGUE} reloadKey={historyReloadKey} onRestore={restoreFromHistory} />
+    <HistoryDropdown sport="volleyball" league={LEAGUE} matchLabel={historyMatchLabel} reloadKey={historyReloadKey} onRestore={restoreFromHistory} />
   );
 
   const addTeam = () => {
@@ -752,6 +753,7 @@ function ConfigTab({ config, reload, t }: { config: PmMarketConfig[]; reload: ()
   const save = async () => {
     const out = Object.entries(edits).map(([k, p]) => { const [market_group, market_key] = k.split(":"); return { market_group, market_key, ...p }; });
     if (out.length === 0) return;
+    if (!confirmPermanentSave()) return;
     setSaving(true); const ok = await upsertMarketConfig(out, LEAGUE); setSaving(false); if (ok) { setEdits({}); reload(); }
   };
   const numCell = (c: PmMarketConfig, k: keyof PmMarketConfig, w = "w-12") => (
@@ -828,7 +830,7 @@ function InputTab({ rows, setRows, onExported, t }: { rows: VbInputRow[]; setRow
       ? [r.fixtureExtId, r.template, r.line, "", "Over", r.over, "Under", r.under ?? ""]
       : [r.fixtureExtId, r.template, r.participant, r.line, "", "Over", r.over, "Under", r.under ?? ""])];
     const ws = XLSX.utils.aoa_to_sheet(aoa); const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "input"); XLSX.writeFile(wb, `voleybol_input_${type}.xlsx`);
+    XLSX.utils.book_append_sheet(wb, ws, "input"); XLSX.writeFile(wb, `${exportFileName(`voleybol_input_${type}`)}.xlsx`);
     // Export gecmisi: sadece yazdirilan tip kaydedilir.
     onExported?.(type);
   };

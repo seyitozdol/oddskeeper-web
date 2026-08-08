@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useI18n } from "../../../../lib/i18n/LanguageProvider";
+import { confirmPermanentSave } from "@/lib/confirm-save";
 import {
   HIST_SEASONS,
   CURRENT_SEASON,
@@ -79,6 +80,7 @@ export default function ConfigTab({
 
   async function saveAll() {
     if (!model) return;
+    if (!confirmPermanentSave()) return;
     setStatus("saving");
     const okModel = await saveModelConfig(league, model);
     const results = await Promise.all(markets.map((m) => saveMarketConfig(league, m.market, m)));
@@ -127,7 +129,7 @@ export default function ConfigTab({
         <button
           onClick={saveAll}
           disabled={status === "saving"}
-          className="rounded-md bg-accent px-3.5 py-1.5 text-sm font-semibold text-accent-ink hover:opacity-90 disabled:opacity-50"
+          className="rounded-md bg-accent px-3.5 py-1.5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
         >
           {t("msm.save")}
         </button>

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useI18n } from "@/lib/i18n/LanguageProvider";
 import HistoryDropdown from "@/features/model-history/HistoryDropdown";
 import RetentionConfig from "@/features/model-history/RetentionConfig";
+import { confirmPermanentSave } from "@/lib/confirm-save";
 import {
   postModelHistory,
   type ModelHistoryDraft,
@@ -219,6 +220,7 @@ function DistributeConfig({
 
   async function handleSave() {
     if (over) return;
+    if (!confirmPermanentSave()) return;
     setSaving(true);
     const w: DistWeights = { ly: num(ly), last5: num(last5), avg: num(avg) };
     const ok = await saveDistWeights(w);
@@ -256,7 +258,7 @@ function DistributeConfig({
           type="button"
           onClick={handleSave}
           disabled={saving || over}
-          className="rounded-lg border border-teal-500/30 bg-teal-500/10 px-4 py-1.5 text-[13px] font-semibold text-teal-300 transition hover:bg-teal-500/20 disabled:opacity-50"
+          className="rounded-lg border border-teal-600 bg-teal-600 px-4 py-1.5 text-[13px] font-semibold text-white transition hover:bg-teal-500 disabled:opacity-50"
         >
           {saving ? t("playerMarket.sendingLabel") : t("playerMarket.saveLabel")}
         </button>
@@ -314,6 +316,7 @@ function StatusConfigCard({
   };
 
   async function handleSave() {
+    if (!confirmPermanentSave()) return;
     setSaving(true);
     const ok = await saveStatusConfig(draft);
     setSaving(false);
@@ -369,7 +372,7 @@ function StatusConfigCard({
           type="button"
           onClick={handleSave}
           disabled={saving}
-          className="rounded-lg border border-teal-500/30 bg-teal-500/10 px-4 py-1.5 text-[13px] font-semibold text-teal-300 transition hover:bg-teal-500/20 disabled:opacity-50"
+          className="rounded-lg border border-teal-600 bg-teal-600 px-4 py-1.5 text-[13px] font-semibold text-white transition hover:bg-teal-500 disabled:opacity-50"
         >
           {saving ? t("playerMarket.sendingLabel") : t("playerMarket.saveLabel")}
         </button>
@@ -724,6 +727,8 @@ export default function PlayerMarketPredictionPage({
   const [adding, setAdding] = useState(false);
   const [addedCount, setAddedCount] = useState<number | null>(null);
   const [dupWarning, setDupWarning] = useState<string | null>(null);
+  // Ekle butonu geri bildirimi: basarili add'de kisa sure "Added X!" gosterir.
+  const [justAdded, setJustAdded] = useState<number | null>(null);
 
   // ── Export gecmisi ──
   // Add aninda mac+market bazinda snapshot toplanir; SADECE export'ta yazilir.
@@ -1176,6 +1181,10 @@ export default function PlayerMarketPredictionPage({
     }
     setAdding(false);
     setAddedCount(selections.length);
+    if (selections.length > 0) {
+      setJustAdded(selections.length);
+      setTimeout(() => setJustAdded(null), 1500);
+    }
   }
 
   // ── Export gecmisi: yazdirilan segment kayitlarini mac+market bazinda yaz ──
@@ -1417,6 +1426,7 @@ export default function PlayerMarketPredictionPage({
             <HistoryDropdown
               sport="football_psm"
               league={HISTORY_LEAGUE}
+              matchLabel={selectedFixture?.label}
               reloadKey={historyReloadKey}
               onRestore={restoreFromHistory}
             />
@@ -1427,9 +1437,13 @@ export default function PlayerMarketPredictionPage({
             type="button"
             onClick={handleAdd}
             disabled={adding || !selectedFixture}
-            className="rounded-lg border border-teal-500/30 bg-teal-500/10 px-4 py-2 text-[13px] font-semibold text-teal-300 transition hover:bg-teal-500/20 disabled:opacity-50"
+            className={`rounded-lg border px-4 py-2 text-[13px] font-semibold transition disabled:opacity-50 ${
+              justAdded != null
+                ? "border-emerald-600 bg-emerald-600 text-white"
+                : "border-teal-500/30 bg-teal-500/10 text-teal-300 hover:bg-teal-500/20"
+            }`}
           >
-            {t("playerMarket.addLabel")}
+            {justAdded != null ? `Added ${justAdded}!` : t("playerMarket.addLabel")}
           </button>
           {restoreNotice && (
             <span className="pb-2.5 text-[12px] text-teal-400">{restoreNotice}</span>

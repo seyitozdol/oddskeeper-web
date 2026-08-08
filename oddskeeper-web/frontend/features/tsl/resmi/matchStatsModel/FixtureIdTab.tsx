@@ -1,16 +1,21 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useI18n } from "../../../../lib/i18n/LanguageProvider";
 import {
   fetchFixtures,
   fetchFixtureInputs,
   fetchBets10Links,
   fetchTeamLogos,
+  fetchTeams,
+  fetchManualFixtures,
+  addManualFixture,
+  deleteManualFixture,
   saveFixtureInputs,
   type FixtureRow,
   type FixtureInput,
   type Bets10Link,
+  type TeamOption,
 } from "./queries";
 import TeamCrest from "@/features/tsl/shared/TeamCrest";
 import { getTeamLogoPath } from "@/features/player-detail/utils/getTeamLogoPath";
@@ -33,40 +38,132 @@ function oddsStale(v: FixtureInput | undefined, lk: Bets10Link | undefined): boo
   );
 }
 
+// Takım adı girişi: yazınca eşleşen takımlar önerilir (tıklayınca slug set edilir),
+// ama kullanıcı serbest metin de yazabilir (o zaman slug boş = isimsiz takım).
+function TeamNameField({
+  value,
+  teams,
+  placeholder,
+  onChange,
+}: {
+  value: string;
+  teams: TeamOption[];
+  placeholder: string;
+  onChange: (name: string, slug: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const boxRef = useRef<HTMLDivElement | null>(null);
+  const matches = useMemo(() => {
+    const q = value.trim().toLowerCase();
+    if (!q) return [];
+    return teams.filter((t) => t.name.toLowerCase().includes(q)).slice(0, 6);
+  }, [value, teams]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e: MouseEvent) => {
+      if (boxRef.current && !boxRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [open]);
+
+  return (
+    <div ref={boxRef} className="relative">
+      <input
+        type="text"
+        value={value}
+        placeholder={placeholder}
+        onChange={(e) => {
+          onChange(e.target.value, ""); // serbest metin: slug temizlenir
+          setOpen(true);
+        }}
+        onFocus={() => setOpen(true)}
+        className="w-40 rounded border border-line bg-field px-2 py-1 text-[12px] text-ink focus:border-accent focus:outline-none"
+      />
+      {open && matches.length > 0 && (
+        <div className="absolute left-0 top-full z-30 mt-0.5 w-48 overflow-hidden rounded-md border border-line bg-card shadow-lg">
+          {matches.map((tm) => (
+            <button
+              key={tm.slug}
+              type="button"
+              onClick={() => {
+                onChange(tm.name, tm.slug);
+                setOpen(false);
+              }}
+              className="block w-full truncate px-2 py-1 text-left text-[12px] text-ink-2 hover:bg-veil hover:text-ink"
+            >
+              {tm.name}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function FixtureIdTab({
   league,
   isAdmin = false,
   onSaved,
+  onManualChanged,
 }: {
   league: string;
   isAdmin?: boolean;
   onSaved?: () => void;
+  // Manuel fikstür eklen/silindiğinde model ekranının fikstür listesi tazelensin.
+  onManualChanged?: () => void;
 }) {
   const { t } = useI18n();
   const [round, setRound] = useState(1);
   const [fixtures, setFixtures] = useState<FixtureRow[]>([]);
+  const [manuals, setManuals] = useState<FixtureRow[]>([]);
+  const [teams, setTeams] = useState<TeamOption[]>([]);
   const [inputs, setInputs] = useState<Record<string, FixtureInput>>({});
   const [links, setLinks] = useState<Record<string, Bets10Link>>({});
   const [teamLogos, setTeamLogos] = useState<Record<string, string> | null>(null);
   const [status, setStatus] = useState<"" | "saving" | "ok" | "err">("");
+  // Manuel ekleme formu.
+  const [nh, setNh] = useState({ name: "", slug: "" });
+  const [na, setNa] = useState({ name: "", slug: "" });
+  const [adding, setAdding] = useState(false);
   const logoFor = (slug: string): string | null =>
     teamLogos ? (teamLogos[slug] ?? null) : getTeamLogoPath(slug);
 
-  // Kaydedilmiş oranları + güncel Bets10 önerilerini (yeniden) çek. Refresh
-  // butonu bitince çağrılır: FixtureIdTab verisi client-fetch olduğu için
-  // router.refresh() tek başına taze linkleri getirmez.
   function reloadOdds() {
     fetchFixtureInputs(league).then(setInputs);
     fetchBets10Links(league).then(setLinks);
   }
+  const reloadManuals = () => fetchManualFixtures(league).then(setManuals);
   useEffect(() => {
     reloadOdds();
     fetchTeamLogos(league).then(setTeamLogos);
+    fetchTeams(league).then(setTeams);
+    reloadManuals();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [league]);
   useEffect(() => {
     fetchFixtures(league, round).then(setFixtures);
   }, [league, round]);
+
+  async function addManual() {
+    if (!nh.name.trim() || !na.name.trim()) return;
+    setAdding(true);
+    const id = await addManualFixture(league, nh.slug, nh.name.trim(), na.slug, na.name.trim());
+    setAdding(false);
+    if (id) {
+      setNh({ name: "", slug: "" });
+      setNa({ name: "", slug: "" });
+      await reloadManuals();
+      onManualChanged?.();
+    }
+  }
+  async function removeManual(id: string) {
+    if (await deleteManualFixture(id)) {
+      await reloadManuals();
+      onManualChanged?.();
+    }
+  }
 
   function edit(fid: string, patch: Partial<FixtureInput>) {
     setInputs((prev) => {
@@ -80,8 +177,6 @@ export default function FixtureIdTab({
     });
   }
 
-  // Bets10 önerisini bir fikstüre uygula (id + 1X2 oran). Otomatik değil; buton
-  // tıklamasıyla. Bulunmayan alanlar mevcut değeri korur.
   function applyLink(fid: string, lk: Bets10Link) {
     edit(fid, {
       externalFixtureId: lk.bets10EventId ?? "",
@@ -90,7 +185,6 @@ export default function FixtureIdTab({
       awayOdds: lk.awayOdds,
     });
   }
-  // Görüntülenen turdaki tüm eşleşen fikstürlere uygula.
   function applyAllVisible() {
     for (const f of fixtures) {
       const lk = links[f.fixtureId];
@@ -113,6 +207,9 @@ export default function FixtureIdTab({
   }
 
   const inp = `rounded border border-line bg-field px-1.5 py-0.5 text-[11px] text-ink focus:outline-none focus:border-accent ${NO_SPINNER}`;
+
+  // Manuel fikstürler her zaman en üstte + round'dan bağımsız.
+  const rows: FixtureRow[] = [...manuals, ...fixtures];
 
   return (
     <div className="space-y-3">
@@ -143,7 +240,7 @@ export default function FixtureIdTab({
         <button
           onClick={save}
           disabled={status === "saving"}
-          className="rounded-md bg-accent px-3.5 py-1.5 text-sm font-semibold text-accent-ink hover:opacity-90 disabled:opacity-50"
+          className="rounded-md bg-accent px-3.5 py-1.5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
         >
           {t("msm.save")}
         </button>
@@ -151,47 +248,76 @@ export default function FixtureIdTab({
         {status === "err" && <span className="text-sm text-neg">{t("msm.saveFailed")}</span>}
       </div>
 
+      {/* Manuel fikstür ekleme: takım adı yazınca öneri çıkar, serbest metin de olur */}
+      <div className="flex flex-wrap items-center gap-2 rounded-lg border border-line bg-card-2/40 px-3 py-2">
+        <span className="text-[10px] font-semibold uppercase tracking-wide text-ink-3">{t("msm.manualFixture")}</span>
+        <TeamNameField value={nh.name} teams={teams} placeholder={t("msm.home")} onChange={(name, slug) => setNh({ name, slug })} />
+        <span className="text-ink-3">-</span>
+        <TeamNameField value={na.name} teams={teams} placeholder={t("msm.away")} onChange={(name, slug) => setNa({ name, slug })} />
+        <button
+          onClick={addManual}
+          disabled={adding || !nh.name.trim() || !na.name.trim()}
+          className="rounded-md bg-accent px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-50"
+        >
+          {t("msm.addFixture")}
+        </button>
+      </div>
+
       <div className="overflow-x-auto rounded-xl border border-line bg-card">
-        <table className="min-w-[640px] w-full text-left text-[12px]">
+        <table className="text-left text-[12px]">
           <thead className="bg-card-2 text-[10px] uppercase tracking-wide text-ink-3">
             <tr>
               <th className="px-2 py-2">Maç</th>
-              <th className="px-2 py-2 w-20">{t("msm.oddsHome")}</th>
-              <th className="px-2 py-2 w-20">{t("msm.oddsDraw")}</th>
-              <th className="px-2 py-2 w-20">{t("msm.oddsAway")}</th>
-              <th className="px-2 py-2 w-44">{t("msm.tab_fixtures")}</th>
+              <th className="px-1.5 py-2">{t("msm.oddsHome")}</th>
+              <th className="px-1.5 py-2">{t("msm.oddsDraw")}</th>
+              <th className="px-1.5 py-2">{t("msm.oddsAway")}</th>
+              <th className="px-2 py-2">{t("msm.tab_fixtures")}</th>
             </tr>
           </thead>
           <tbody>
-            {fixtures.map((f) => {
+            {rows.map((f) => {
               const v = inputs[f.fixtureId];
               const lk = links[f.fixtureId];
               return (
                 <tr key={f.fixtureId} className="border-t border-line/60 hover:bg-veil">
                   <td className="px-2 py-1.5 whitespace-nowrap text-ink">
                     <span className="flex items-center gap-1.5">
+                      {f.manual && (
+                        <button
+                          onClick={() => removeManual(f.fixtureId)}
+                          title={t("msm.clear")}
+                          className="mr-0.5 shrink-0 rounded px-1 text-[13px] leading-none text-ink-3 hover:text-neg"
+                        >
+                          ×
+                        </button>
+                      )}
                       <TeamCrest logo={logoFor(f.homeSlug)} name={f.homeName} size="xs" />
                       <span>{f.homeName}</span>
                       <span className="text-ink-3">-</span>
                       <TeamCrest logo={logoFor(f.awaySlug)} name={f.awayName} size="xs" />
                       <span>{f.awayName}</span>
+                      {f.manual && (
+                        <span className="ml-1 rounded bg-veil px-1 py-0.5 text-[9px] font-semibold uppercase text-ink-3">
+                          {t("msm.manualBadge")}
+                        </span>
+                      )}
                     </span>
                   </td>
-                  <td className="px-2 py-1.5">
-                    <input type="number" step="0.01" className={`${inp} w-16`} value={v?.homeOdds ?? ""}
+                  <td className="px-1.5 py-1.5">
+                    <input type="number" step="0.01" className={`${inp} w-14`} value={v?.homeOdds ?? ""}
                       onChange={(e) => edit(f.fixtureId, { homeOdds: e.target.value === "" ? null : parseFloat(e.target.value) })} />
                   </td>
-                  <td className="px-2 py-1.5">
-                    <input type="number" step="0.01" className={`${inp} w-16`} value={v?.drawOdds ?? ""}
+                  <td className="px-1.5 py-1.5">
+                    <input type="number" step="0.01" className={`${inp} w-14`} value={v?.drawOdds ?? ""}
                       onChange={(e) => edit(f.fixtureId, { drawOdds: e.target.value === "" ? null : parseFloat(e.target.value) })} />
                   </td>
-                  <td className="px-2 py-1.5">
-                    <input type="number" step="0.01" className={`${inp} w-16`} value={v?.awayOdds ?? ""}
+                  <td className="px-1.5 py-1.5">
+                    <input type="number" step="0.01" className={`${inp} w-14`} value={v?.awayOdds ?? ""}
                       onChange={(e) => edit(f.fixtureId, { awayOdds: e.target.value === "" ? null : parseFloat(e.target.value) })} />
                   </td>
                   <td className="px-2 py-1.5">
                     <div className="flex items-center gap-1.5">
-                      <input type="text" className={`${inp} w-40`} value={v?.externalFixtureId ?? ""}
+                      <input type="text" className={`${inp} w-32`} value={v?.externalFixtureId ?? ""}
                         placeholder="fixture id"
                         onChange={(e) => edit(f.fixtureId, { externalFixtureId: e.target.value })} />
                       {lk && (

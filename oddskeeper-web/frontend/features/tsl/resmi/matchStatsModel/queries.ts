@@ -70,6 +70,8 @@ export interface FixtureRow {
   awayName: string;
   label: string;
   datetime: string | null;
+  // Kullanicinin elle olusturdugu fikstür (round'dan bagimsiz, en ustte, silinebilir).
+  manual?: boolean;
 }
 export interface FixtureInput {
   externalFixtureId: string;
@@ -188,6 +190,51 @@ export async function saveFixtureInputs(
 export async function logImport(league: string, row: Record<string, unknown>): Promise<boolean> {
   const { error } = await createClient().rpc("msm_log_import", { p_league: league, p_row: row });
   if (error) { console.error("logImport", error); return false; }
+  return true;
+}
+
+// ── Manuel fikstürler ──────────────────────────────────────────────────────
+export async function fetchManualFixtures(league: string): Promise<FixtureRow[]> {
+  const { data, error } = await sb()
+    .from("msm_manual_fixtures")
+    .select("id, home_slug, home_name, away_slug, away_name, created_at")
+    .eq("league", league)
+    .order("created_at", { ascending: false });
+  if (error) { console.error("fetchManualFixtures", error); return []; }
+  return (data ?? []).map((r) => ({
+    fixtureId: String(r.id),
+    round: 0,
+    homeSlug: (r.home_slug as string) ?? "",
+    awaySlug: (r.away_slug as string) ?? "",
+    homeName: r.home_name as string,
+    awayName: r.away_name as string,
+    label: `${r.home_name} - ${r.away_name}`,
+    datetime: null,
+    manual: true,
+  }));
+}
+
+export async function addManualFixture(
+  league: string,
+  homeSlug: string,
+  homeName: string,
+  awaySlug: string,
+  awayName: string
+): Promise<string | null> {
+  const { data, error } = await createClient().rpc("msm_add_manual_fixture", {
+    p_league: league,
+    p_home_slug: homeSlug,
+    p_home_name: homeName,
+    p_away_slug: awaySlug,
+    p_away_name: awayName,
+  });
+  if (error) { console.error("addManualFixture", error); return null; }
+  return (data as string) ?? null;
+}
+
+export async function deleteManualFixture(id: string): Promise<boolean> {
+  const { error } = await createClient().rpc("msm_delete_manual_fixture", { p_id: id });
+  if (error) { console.error("deleteManualFixture", error); return false; }
   return true;
 }
 

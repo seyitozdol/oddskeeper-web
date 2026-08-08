@@ -11,6 +11,17 @@ type Entry = {
 
 const ENTRIES: Entry[] = [
   {
+    date: "8 Ağustos",
+    title: "İyileştirmeler",
+    items: [
+      "Excel'e aktarılan dosyalar artık fikstür adı ve tarih/saat ile adlandırılıyor (ör. \"Galatasaray - Fenerbahçe_8_8_2026_16_57\"); aynı maçı farklı zamanlarda çıkarınca dosyalar birbirine karışmıyor.",
+      "Geçmiş listesi artık yalnızca seçili maçın kayıtlarını gösteriyor; başka maçların kayıtları araya karışmıyor.",
+      "Geçmiş kayıtlarını listeden silebiliyorsun: kendi kayıtlarını herkes, tüm kayıtları adminler. Silmeden önce onay soruluyor.",
+      "Maç İstatistik Modeli Fixture sekmesinde elle maç oluşturup silebiliyorsun; takım adı yazınca öneri çıkıyor ama istediğin ismi de yazabiliyorsun. Manuel maçlar listenin en üstünde ve round değişse de kalıyor.",
+      "Config'te bir ayarı kaydederken, kalıcı uygulanacağına dair onay isteniyor.",
+    ],
+  },
+  {
     date: "6-8 Ağustos",
     title: "Maç İstatistik Modeli",
     tag: "Yeni araç",

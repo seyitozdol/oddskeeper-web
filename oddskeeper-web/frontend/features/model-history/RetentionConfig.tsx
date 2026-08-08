@@ -7,6 +7,7 @@ import {
   saveRetention,
   type HistorySport,
 } from "@/lib/model-history";
+import { confirmPermanentSave } from "@/lib/confirm-save";
 
 // Config sekmesindeki "Export gecmisi saklama (gun)" ayari. Her spor/lig icin
 // ayri deger. Sure otomatik temizlikte kullanilir (bkz. /api/model-history).
@@ -36,6 +37,7 @@ export default function RetentionConfig({
   async function save() {
     const n = parseInt(days, 10);
     if (!Number.isFinite(n)) return;
+    if (!confirmPermanentSave()) return;
     setStatus("saving");
     const ok = await saveRetention(sport, league, n);
     setStatus(ok ? "saved" : "error");
@@ -68,7 +70,7 @@ export default function RetentionConfig({
           type="button"
           onClick={save}
           disabled={status === "saving"}
-          className="rounded-md bg-accent px-3 py-1.5 text-xs font-semibold text-accent-ink hover:opacity-90 disabled:opacity-50"
+          className="rounded-md bg-accent px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-50"
         >
           {t("modelHistory.cfgSave")}
         </button>

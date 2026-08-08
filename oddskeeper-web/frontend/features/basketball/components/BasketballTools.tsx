@@ -388,6 +388,7 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
     <HistoryDropdown
       sport="basketball"
       league={historyLeague}
+      matchLabel={historyMatchLabel}
       reloadKey={historyReloadKey}
       onRestore={restoreFromHistory}
     />

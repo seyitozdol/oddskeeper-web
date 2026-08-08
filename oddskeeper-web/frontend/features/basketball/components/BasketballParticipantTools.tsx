@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { useI18n } from "@/lib/i18n/LanguageProvider";
 import BasketballTools, { type HistorySnapEntry } from "./BasketballTools";
 import RetentionConfig from "@/features/model-history/RetentionConfig";
-import { postModelHistory, type ModelHistoryDraft } from "@/lib/model-history";
+import { postModelHistory, exportFileName, type ModelHistoryDraft } from "@/lib/model-history";
+import { confirmPermanentSave } from "@/lib/confirm-save";
 import { configLabel, METRIC_LABELS, metricLabel } from "../marketConfig";
 import { ALL_ROLES, roleBadgeClass, roleLabelKey, roleDescKey } from "../lib";
 import {
@@ -34,7 +35,7 @@ type Props = {
 type Tab = "model" | "players" | "fixtures" | "config" | "input";
 type InputType = "player" | "team";
 
-const btnSave = "rounded-md border border-teal-500/30 bg-teal-500/10 px-3 py-1.5 text-[12px] font-semibold text-teal-300 hover:bg-teal-500/20";
+const btnSave = "rounded-md border border-teal-600 bg-teal-600 px-3 py-1.5 text-[12px] font-semibold text-white hover:bg-teal-500";
 const btnGhost = "rounded-md border border-line px-3 py-1.5 text-[12px] font-semibold text-ink-2 hover:text-ink";
 
 export default function BasketballParticipantTools({ splits, forms, windows, teamLogs, players, roles = [], league = "basketball" }: Props) {
@@ -307,6 +308,7 @@ function PlayerRolesConfig({ modelConfig, reload, t }: {
   const save = async () => {
     const payload = Object.entries(edits).map(([key, value]) => ({ key, value }));
     if (payload.length === 0) return;
+    if (!confirmPermanentSave()) return;
     setSaving(true);
     const ok = await saveModelConfig(payload);
     setSaving(false);
@@ -393,6 +395,7 @@ function ModelWeightsConfig({ modelConfig, reload, t }: {
   const pTotal = pv("player_model_w10", 20) + pv("player_model_w5", 30) + pv("player_model_wall", 50);
 
   const saveTeam = async () => {
+    if (!confirmPermanentSave()) return;
     setSavingT(true);
     const ok = await saveModelConfig([
       { key: "team_model_wavg", value: tv("team_model_wavg", 50) },
@@ -402,6 +405,7 @@ function ModelWeightsConfig({ modelConfig, reload, t }: {
     if (ok) { setTEdits({}); reload(); }
   };
   const savePlayer = async () => {
+    if (!confirmPermanentSave()) return;
     setSavingP(true);
     const ok = await saveModelConfig([
       { key: "player_model_w10", value: pv("player_model_w10", 20) },
@@ -504,6 +508,7 @@ function ConfigTab({ config, reload, modelConfig, reloadModelConfig, inputType, 
       return { market_group, market_key, ...p };
     });
     if (rows.length === 0) return;
+    if (!confirmPermanentSave()) return;
     setSaving(true);
     const ok = await upsertMarketConfig(rows, league);
     setSaving(false);
@@ -666,7 +671,7 @@ function InputTab({ allRows, setRows, initialType, onExported, t }: {
     const ws = XLSX.utils.aoa_to_sheet(aoa);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "input");
-    XLSX.writeFile(wb, `basketbol_input_${type}.xlsx`);
+    XLSX.writeFile(wb, `${exportFileName(`basketbol_input_${type}`)}.xlsx`);
     // Export gecmisi: sadece yazdirilan tip kaydedilir.
     onExported?.(type);
   };
