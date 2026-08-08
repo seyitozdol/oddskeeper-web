@@ -145,8 +145,10 @@ export default function ConfigTab({
           <div><label className={lbl}>{t("msm.refereeWeight")}</label>{numField(model.referee_weight, (v) => setM("referee_weight", v))}</div>
           <div><label className={lbl}>{t("msm.suLow")}</label>{numField(model.su_low, (v) => setM("su_low", v))}</div>
           <div><label className={lbl}>{t("msm.suHigh")}</label>{numField(model.su_high, (v) => setM("su_high", v))}</div>
+          <div><label className={lbl}>{t("msm.refMinMatches")}</label>{numField(model.referee_min_matches, (v) => setM("referee_min_matches", v), "1")}</div>
         </div>
         <p className="mt-2 text-[11px] text-ink-3">{t("msm.suNote")}</p>
+        <p className="mt-1 text-[11px] text-ink-3">{t("msm.refMinMatchesNote")}</p>
         <h4 className="mb-2 mt-4 text-[11px] font-semibold uppercase tracking-wide text-ink-3">{t("msm.equation")}</h4>
         <table className="text-[12px]">
           <thead>

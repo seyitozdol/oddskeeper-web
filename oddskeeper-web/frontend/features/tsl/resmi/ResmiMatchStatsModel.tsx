@@ -32,6 +32,7 @@ import {
   fetchFixtures,
   fetchFixtureInputs,
   logImport,
+  resolveReferee,
   type TeamOption,
   type RefereeRow,
   type HistBySlug,
@@ -448,7 +449,9 @@ export default function ResmiMatchStatsModel({
     };
     const oH = num(oddsHome);
     const oA = num(oddsAway);
-    const ref = referees.find((r) => r.referee_name === refereeName);
+    // Hakem: güncel sezonda X maç varsa güncel, yoksa geçmiş sezon, o da yoksa veri yok.
+    const refRow = referees.find((r) => r.referee_name === refereeName);
+    const refResolved = resolveReferee(refRow, modelCfg?.refereeMinMatches ?? 5);
     // 26-27 weighted 4. sezon = tüm oynanmış maç ortalaması (sezon-başı-bugüne).
     const homeFull = currentHFAA(matchLog[homeSlug], 99, 99, big4H, redcH);
     const awayFull = currentHFAA(matchLog[awaySlug], 99, 99, big4A, redcA);
@@ -468,8 +471,8 @@ export default function ResmiMatchStatsModel({
       manualHome: num(manHome),
       manualAway: num(manAway),
       manualTotal: num(manTotal),
-      refereeCardsPg: ref?.cards_pg ?? null,
-      refereeFoulsPg: ref?.fouls_pg ?? null,
+      refereeCardsPg: refResolved?.stat.cards_pg ?? null,
+      refereeFoulsPg: refResolved?.stat.fouls_pg ?? null,
     };
     try {
       return runModel(inputs, marketCfg, modelCfg);
@@ -795,11 +798,15 @@ export default function ResmiMatchStatsModel({
                 {(() => {
                   const rf = referees.find((r) => r.referee_name === refereeName);
                   if (!rf) return <div className="text-[11px] text-ink-3">{t("msm.refPick")}</div>;
+                  const res = resolveReferee(rf, modelCfg?.refereeMinMatches ?? 5);
+                  if (!res) return <div className="text-[11px] text-ink-3">{t("msm.refNoData")}</div>;
+                  const seasonBadge = res.used === "current" ? t("msm.refSeasonCurrent") : t("msm.refSeasonPrev");
                   return (
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px]">
-                      <span className="text-ink-2">{t("msm.refPlayed")} <b className="tabular-nums text-ink">{rf.played ?? "—"}</b></span>
-                      <span className="text-ink-2">{t("msm.refCards")} <b className="tabular-nums text-ink">{rf.cards_pg != null ? rf.cards_pg.toFixed(2) : "—"}</b></span>
-                      <span className="text-ink-2">{t("msm.refFouls")} <b className="tabular-nums text-ink">{rf.fouls_pg != null ? rf.fouls_pg.toFixed(2) : "—"}</b></span>
+                      <span className="rounded bg-veil px-1.5 py-0.5 text-[10px] font-medium text-ink-2">{seasonBadge}</span>
+                      <span className="text-ink-2">{t("msm.refPlayed")} <b className="tabular-nums text-ink">{res.stat.apps}</b></span>
+                      <span className="text-ink-2">{t("msm.refCards")} <b className="tabular-nums text-ink">{res.stat.cards_pg != null ? res.stat.cards_pg.toFixed(2) : "—"}</b></span>
+                      <span className="text-ink-2">{t("msm.refFouls")} <b className="tabular-nums text-ink">{res.stat.fouls_pg != null ? res.stat.fouls_pg.toFixed(2) : "—"}</b></span>
                       {exp?.refereeSuggestedTotal != null && (
                         <span className="ml-auto flex items-center gap-1.5">
                           <span className="text-ink-2">{t("msm.refereeSuggestion")}: <b className="tabular-nums text-ink">{exp.refereeSuggestedTotal.toFixed(2)}</b></span>

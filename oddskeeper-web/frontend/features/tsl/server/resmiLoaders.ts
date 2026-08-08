@@ -1,3 +1,4 @@
+import { createClient } from "../../../lib/supabase/server";
 import { getAllFootballTeamLogos } from "../../../lib/football-teams";
 import { getTeamDetailHref } from "../../../lib/routes";
 import {
@@ -461,4 +462,95 @@ export async function loadResmiTeamRankings(
     season, basePath: config.basePath, catalog, metricKey, metricLabel: catMap.get(metricKey)?.label ?? metricKey,
     rows, metaById: meta, teamHrefById,
   };
+}
+
+// =================== Referees ===================
+
+export type RefereeRow = {
+  referee: string;
+  apps: number;
+  foulsPg: number | null;
+  foulsPerTackle: number | null;
+  penPg: number | null;
+  yelPg: number | null;
+  yelTotal: number;
+  redPg: number | null;
+  redTotal: number;
+  cardsPg: number | null;
+};
+
+export type RefereeAverages = {
+  apps: number;
+  foulsPg: number | null;
+  foulsPerTackle: number | null;
+  penPg: number | null;
+  yelPg: number | null;
+  redPg: number | null;
+  cardsPg: number | null;
+};
+
+export type ResmiRefereesBundle = {
+  season: string;
+  rows: RefereeRow[];
+  averages: RefereeAverages | null;
+};
+
+const num = (v: unknown): number | null => (v == null ? null : Number(v));
+
+// Hakem sezon istatistikleri (o lige ait yönettiği maçları baz alır).
+// Kaynak: analytics.msm_referee_season_stats_v1 (lig+sezon başına tek kaynak).
+export async function loadResmiReferees(config: LeagueConfig, season: string): Promise<ResmiRefereesBundle> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .schema("analytics")
+    .from("msm_referee_season_stats_v1")
+    .select(
+      "referee, apps, fouls_total, tackles_total, yellow_total, red_total, pen_total, fouls_pg, fouls_per_tackle, pen_pg, yel_pg, red_pg, cards_pg"
+    )
+    .eq("league", config.source)
+    .eq("season", season)
+    .order("apps", { ascending: false });
+  if (error) {
+    console.error("loadResmiReferees", error.message);
+    return { season, rows: [], averages: null };
+  }
+  const raw = data ?? [];
+  const rows: RefereeRow[] = raw.map((r) => ({
+    referee: r.referee as string,
+    apps: Number(r.apps),
+    foulsPg: num(r.fouls_pg),
+    foulsPerTackle: num(r.fouls_per_tackle),
+    penPg: num(r.pen_pg),
+    yelPg: num(r.yel_pg),
+    yelTotal: Number(r.yellow_total ?? 0),
+    redPg: num(r.red_pg),
+    redTotal: Number(r.red_total ?? 0),
+    cardsPg: num(r.cards_pg),
+  }));
+
+  // Genel ortalamalar (lig geneli, maç ağırlıklı): Σtotal / Σapps.
+  let averages: RefereeAverages | null = null;
+  if (rows.length) {
+    let apps = 0, fouls = 0, tackles = 0, yellow = 0, red = 0, pens = 0;
+    let tacklesSeen = false, pensSeen = false;
+    for (const r of raw) {
+      apps += Number(r.apps);
+      fouls += Number(r.fouls_total ?? 0);
+      yellow += Number(r.yellow_total ?? 0);
+      red += Number(r.red_total ?? 0);
+      if (r.tackles_total != null) { tackles += Number(r.tackles_total); tacklesSeen = true; }
+      if (r.pen_total != null) { pens += Number(r.pen_total); pensSeen = true; }
+    }
+    const r2 = (v: number) => Math.round(v * 100) / 100;
+    averages = {
+      apps,
+      foulsPg: apps ? r2(fouls / apps) : null,
+      foulsPerTackle: tacklesSeen && tackles > 0 ? r2(fouls / tackles) : null,
+      penPg: pensSeen && apps ? r2(pens / apps) : null,
+      yelPg: apps ? r2(yellow / apps) : null,
+      redPg: apps ? r2(red / apps) : null,
+      cardsPg: apps ? r2((yellow + red * 2) / apps) : null,
+    };
+  }
+  return { season, rows, averages };
 }

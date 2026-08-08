@@ -41,6 +41,7 @@ export const RESMI_SECTIONS = [
   "players",
   "teams",
   "results",
+  "referees",
   "playerRankings",
   "teamRankings",
   // Team Rankings sağındaki iki model sekmesi. matchStatsModel şimdilik boş;

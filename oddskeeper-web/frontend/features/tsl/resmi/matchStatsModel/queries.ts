@@ -24,11 +24,27 @@ export interface TeamOption {
   slug: string;
   name: string;
 }
-export interface RefereeRow {
-  referee_name: string;
+export interface RefereeSeasonStat {
+  apps: number;
   cards_pg: number | null;
   fouls_pg: number | null;
-  played: number | null;
+}
+// Hakem: güncel + bir önceki sezon istatistikleri (o lige ait maçlar).
+export interface RefereeRow {
+  referee_name: string;
+  current: RefereeSeasonStat | null; // güncel sezon (2026/2027)
+  prev: RefereeSeasonStat | null;    // bir önceki sezon (2025/2026)
+}
+// Seçili hakemin efektif verisi: güncel sezonda apps>=minMatches ise güncel,
+// değilse geçmiş sezon, o da yoksa null (veri yok). "used" hangi sezonun kullanıldığı.
+export function resolveReferee(
+  row: RefereeRow | undefined,
+  minMatches: number
+): { stat: RefereeSeasonStat; used: "current" | "prev" } | null {
+  if (!row) return null;
+  if (row.current && row.current.apps >= minMatches) return { stat: row.current, used: "current" };
+  if (row.prev) return { stat: row.prev, used: "prev" };
+  return null;
 }
 // slug -> season -> HFAA
 export type HistBySlug = Record<string, Record<string, HFAA>>;
@@ -238,7 +254,7 @@ export async function fetchModelConfig(league: string): Promise<ModelConfig> {
     return {
       margin: 0.93, refereeWeight: 0.3, supremacyDivisor: 5.5,
       xmatrixWOwnFor: 0.65, xmatrixWOwnAlt: 0.05, xmatrixWOppAlt: 0.05, xmatrixWOppAgainst: 0.25,
-      suLow: 1.17, suHigh: 4.51,
+      suLow: 1.17, suHigh: 4.51, refereeMinMatches: 5,
     };
   }
   return {
@@ -247,20 +263,39 @@ export async function fetchModelConfig(league: string): Promise<ModelConfig> {
     xmatrixWOwnFor: Number(data.xmatrix_w_own_for), xmatrixWOwnAlt: Number(data.xmatrix_w_own_alt),
     xmatrixWOppAlt: Number(data.xmatrix_w_opp_alt), xmatrixWOppAgainst: Number(data.xmatrix_w_opp_against),
     suLow: Number(data.su_low), suHigh: Number(data.su_high),
+    refereeMinMatches: data.referee_min_matches != null ? Number(data.referee_min_matches) : 5,
   };
 }
 
+// Güncel + bir önceki sezonun (slash formatı) hakem istatistikleri; hakem başına
+// birleştirilir. Kaynak: analytics.msm_referee_season_stats_v1 (o lige ait maçlar).
 export async function fetchReferees(league: string): Promise<RefereeRow[]> {
+  const cur = CURRENT_SEASON.replace("-", "/"); // "2026/2027"
+  const prev = HIST_SEASONS[0].replace("-", "/"); // "2025/2026"
   const { data, error } = await sb()
-    .from("msm_referee_v1")
-    .select("referee_name, cards_pg, fouls_pg, played")
+    .from("msm_referee_season_stats_v1")
+    .select("referee, season, apps, cards_pg, fouls_pg")
     .eq("league", league)
-    .order("played", { ascending: false });
+    .in("season", [cur, prev]);
   if (error) {
     console.error("fetchReferees", error);
     return [];
   }
-  return (data ?? []) as RefereeRow[];
+  const byName: Record<string, RefereeRow> = {};
+  for (const r of data ?? []) {
+    const name = r.referee as string;
+    const stat: RefereeSeasonStat = {
+      apps: Number(r.apps),
+      cards_pg: r.cards_pg != null ? Number(r.cards_pg) : null,
+      fouls_pg: r.fouls_pg != null ? Number(r.fouls_pg) : null,
+    };
+    const row = (byName[name] ??= { referee_name: name, current: null, prev: null });
+    if (r.season === cur) row.current = stat;
+    else if (r.season === prev) row.prev = stat;
+  }
+  return Object.values(byName).sort((a, b) =>
+    a.referee_name.localeCompare(b.referee_name, "tr")
+  );
 }
 
 export async function fetchHistData(
@@ -297,6 +332,7 @@ export interface RawModelConfig {
   su_low: number; su_high: number;
   engine: "analytic" | "montecarlo"; mc_samples: number;
   weight_s1: number; weight_s2: number; weight_s3: number; weight_s4: number; default_etki: number;
+  referee_min_matches: number;
 }
 export interface RawMarketConfig {
   market: string;
@@ -323,6 +359,7 @@ export async function fetchRawModelConfig(league: string): Promise<RawModelConfi
     engine: (data.engine as "analytic" | "montecarlo") ?? "analytic", mc_samples: n(data.mc_samples),
     weight_s1: n(data.weight_s1), weight_s2: n(data.weight_s2), weight_s3: n(data.weight_s3), weight_s4: n(data.weight_s4),
     default_etki: n(data.default_etki),
+    referee_min_matches: data.referee_min_matches != null ? n(data.referee_min_matches) : 5,
   };
 }
 

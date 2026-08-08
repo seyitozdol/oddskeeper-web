@@ -6,6 +6,7 @@ import {
 import type { LeagueConfig } from "../leagues";
 import {
   loadResmiLig,
+  loadResmiReferees,
   loadResmiPlayerRankings,
   loadResmiPlayers,
   loadResmiResults,
@@ -16,6 +17,7 @@ import ResmiControlBar from "./ResmiControlBar";
 import SectionTransition from "../shared/SectionTransition";
 import ResmiLig from "./ResmiLig";
 import ResmiResults from "./ResmiResults";
+import ResmiReferees from "./ResmiReferees";
 import ResmiTeams from "./ResmiTeams";
 import ResmiPlayers from "./ResmiPlayers";
 import ResmiPlayerRankings from "./ResmiPlayerRankings";
@@ -65,6 +67,7 @@ export default async function ResmiExperience({
   let content: React.ReactNode = null;
   if (section === "league") content = <ResmiLig data={await loadResmiLig(config, season, leaderMetric)} />;
   else if (section === "results") content = <ResmiResults data={await loadResmiResults(config, season)} />;
+  else if (section === "referees") content = <ResmiReferees data={await loadResmiReferees(config, season)} />;
   else if (section === "teams") content = <ResmiTeams data={await loadResmiTeams(config, season)} />;
   else if (section === "playerRankings")
     content = <ResmiPlayerRankings data={await loadResmiPlayerRankings(config, season, metric)} />;

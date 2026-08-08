@@ -41,6 +41,7 @@ export interface ModelConfig {
   xmatrixWOppAgainst: number; // 0.25
   suLow: number; // 1.17
   suHigh: number; // 4.51
+  refereeMinMatches?: number; // X: hakem güncel-sezon eşiği (motor kullanmaz, UI lookup için)
 }
 
 // Bir fikstür + market için tüm model girdileri.

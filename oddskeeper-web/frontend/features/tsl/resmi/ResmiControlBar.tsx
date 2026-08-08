@@ -14,6 +14,7 @@ const SECTION_KEY: Record<ResmiSection, string> = {
   players: "tsl.sectionPlayers",
   teams: "tsl.sectionTeams",
   results: "tsl.sectionResults",
+  referees: "tsl.sectionReferees",
   playerRankings: "tsl.sectionPlayerRankings",
   teamRankings: "tsl.sectionTeamRankings",
   matchStatsModel: "tsl.sectionMatchStatsModel",

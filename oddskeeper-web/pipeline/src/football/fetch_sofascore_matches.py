@@ -138,6 +138,13 @@ def process_league(cfg: dict):
         except Exception as e:  # noqa
             print(f"  ATLANDI event {eid}: {e}", flush=True)
             continue
+        # Hakem SADECE tam event-detayinda gelir (events-list ev'inde yok) -> cek + enjekte.
+        try:
+            det = get(f"{API}/event/{eid}")["event"]
+            if det.get("referee"):
+                ev["referee"] = det["referee"]
+        except Exception as e:  # noqa
+            print(f"  hakem cekilemedi {eid}: {repr(e)[:80]}", flush=True)
         m_rows.append(loader.match_row(ev, playoff=False))
         p_rows.extend(loader.player_rows(ev, lineup))
         # Takim-mac statlari (statistics + incidents -> match_team_stats, source='sofascore').
