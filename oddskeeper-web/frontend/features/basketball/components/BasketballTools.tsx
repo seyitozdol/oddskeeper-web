@@ -1,7 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { useI18n } from "@/lib/i18n/LanguageProvider";
+import HistoryDropdown from "@/features/model-history/HistoryDropdown";
+import type { ModelHistoryRecord } from "@/lib/model-history";
 import { buildLadder, buildConfiguredLines, moneyline, type LineConfig } from "../odds";
 import { PLAYER_MARKETS, TEAM_MARKETS, teamStd, playerStd, metricLabel, metricInfo, isDistributable } from "../marketConfig";
 import { formatMatchDate, normalizePositionCode, positionLabel, roleLabelKey, roleBadgeClass, LEADER_METRICS, playerPhotoUrl, teamLogoPath } from "../lib";
@@ -13,6 +15,31 @@ import type {
   BktHomeAwaySplitRow, BktTeamMetricFormRow, BktPlayerWindowRow,
   BktTeamLogRow, BktInputRow, BktPlayerRoleRow,
 } from "../types";
+
+// Export gecmisi: container'a lift edilen snapshot girisi (Add aninda uretilir).
+export type HistorySnapEntry = {
+  key: string;         // "<fixtureExtId>::<kind>"
+  matchLabel: string;  // "Ev - Deplasman"
+  market: string;      // "Takim metrikleri" | "Oyuncu dagitimi"
+  fixtureExtId: string;
+  kind: string;        // "team" | "player"
+  snapshot: BktSnapshot;
+};
+
+// Restore icin gereken parent-seviye kullanici girdileri (hepsi bu bilesende;
+// veri prop'lardan geldigi icin restore dogrudan setState ile yarissiz calisir).
+type BktSnapshot = {
+  fixSel: string;
+  homeSlug: string;
+  awaySlug: string;
+  tab: "team" | "player";
+  ptsOv: { h: number | null; a: number | null };
+  traderMetric: Record<string, number>;
+  totalOverride: Record<string, number>;
+  teamTicks: Record<string, boolean>;
+  playerVal: Record<string, number>;
+  ticks: Record<string, boolean>;
+};
 
 type Props = {
   pmFixtures: PmFixture[];
@@ -26,7 +53,9 @@ type Props = {
   roles?: BktPlayerRoleRow[];   // BSL oyuncu rol+pozisyon (Player Dist etiketi)
   modelConfig?: PmModelConfig[];   // lider rozet toggle'ları (leader_*)
   competition?: "E" | "U";   // EL/EC ise drawer euro veriye bağlanır
-  onAdd: (rows: BktInputRow[]) => void;
+  historyLeague?: string;   // export gecmisi ligi (basketball | euroleague | eurocup)
+  historyReloadKey?: number;   // export sonrasi dropdown'i tazelemek icin
+  onAdd: (rows: BktInputRow[], snap?: HistorySnapEntry) => void;
 };
 
 const PROP_PAYBACK = 0.915;
@@ -76,7 +105,7 @@ function NumInput({ value, onChange, step = 0.1, w = "w-16", warn = false }: { v
   );
 }
 
-export default function BasketballTools({ pmFixtures, splits, forms, windows, teamLogs, playerIds, config, inputRows, roles = [], modelConfig = [], competition, onAdd }: Props) {
+export default function BasketballTools({ pmFixtures, splits, forms, windows, teamLogs, playerIds, config, inputRows, roles = [], modelConfig = [], competition, historyLeague = "basketball", historyReloadKey = 0, onAdd }: Props) {
   const { t, locale } = useI18n();
   // Model ağırlıkları (Config > Model). Player: son10/son5/sezon karışımı (saf).
   // Team: AVG + L10 WTD karışımı (sonra pace çarpanı). Config'ten değişince canlı.
@@ -120,6 +149,7 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
   const existingPlayerMkt = useMemo(() => new Set(inputRows.filter((r) => r.kind === "player").map((r) => `${r.template}|${r.participant}`)), [inputRows]);
   const [totalOverride, setTotalOverride] = useState<Record<string, number>>({});
   const [teamStatus, setTeamStatus] = useState<string>("");
+  const [historyNotice, setHistoryNotice] = useState<string>("");
   // market_key → config (oyuncu / takım ayrı). Takım key'i "{side}_{metric}".
   const playerCfg = useMemo(() => new Map(config.filter((c) => c.market_group === "player").map((c) => [c.market_key, c])), [config]);
   const teamCfg = useMemo(() => config.filter((c) => c.market_group === "team"), [config]);
@@ -317,6 +347,52 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
     const tpl = teamCfg.find((c) => c.side === side && c.base_metric === base)?.template_id;
     return tpl ? existingTeamTpl.has(tpl) : false;
   };
+  // ── Export gecmisi: snapshot topla + Add'e ekle; ayrica restore ──
+  const historyMatchLabel = home && away ? `${home.team_name} - ${away.team_name}` : `${homeSlug} - ${awaySlug}`;
+  const buildSnapshot = (): BktSnapshot => ({
+    fixSel, homeSlug, awaySlug, tab, ptsOv, traderMetric, totalOverride, teamTicks, playerVal, ticks,
+  });
+  const addWithHistory = (rows: BktInputRow[], kind: "team" | "player") => {
+    onAdd(rows, {
+      key: `${fixExtId}::${kind}`,
+      matchLabel: historyMatchLabel,
+      market: kind === "team" ? t("basketball.tabTeamMetrics") : t("basketball.tabPlayerDist"),
+      fixtureExtId: fixExtId,
+      kind,
+      snapshot: buildSnapshot(),
+    });
+  };
+  // Gecmisten restore: veri prop'lardan geldigi icin dogrudan setState (yarissiz).
+  const restoreFromHistory = (rec: ModelHistoryRecord) => {
+    const s = rec.snapshot as BktSnapshot | null;
+    if (!s || !splitBy.get(s.homeSlug) || !splitBy.get(s.awaySlug)) {
+      setHistoryNotice(t("modelHistory.fixtureGone"));
+      setTimeout(() => setHistoryNotice(""), 3000);
+      return;
+    }
+    setHomeSlug(s.homeSlug);
+    setAwaySlug(s.awaySlug);
+    // fixSel sadece hala mevcut fikst. arasindaysa geri yukle.
+    setFixSel(pmFixtures.some((f) => String(f.id) === s.fixSel) ? s.fixSel : "");
+    setTab(s.tab ?? "team");
+    setPtsOv(s.ptsOv ?? { h: null, a: null });
+    setTraderMetric(s.traderMetric ?? {});
+    setTotalOverride(s.totalOverride ?? {});
+    setTeamTicks(s.teamTicks ?? {});
+    setPlayerVal(s.playerVal ?? {});
+    setTicks(s.ticks ?? {});
+    setHistoryNotice(t("modelHistory.restored"));
+    setTimeout(() => setHistoryNotice(""), 3000);
+  };
+  const historyDropdown = (
+    <HistoryDropdown
+      sport="basketball"
+      league={historyLeague}
+      reloadKey={historyReloadKey}
+      onRestore={restoreFromHistory}
+    />
+  );
+
   const addTeams = () => {
     if (!home || !away) return;
     const rows: BktInputRow[] = [];
@@ -341,7 +417,7 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
       }
       sent++;
     }
-    if (rows.length) onAdd(rows);
+    if (rows.length) addWithHistory(rows, "team");
     setTeamStatus(addStatusMsg(t, sent, dup, noTpl, zero));
   };
 
@@ -423,7 +499,9 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
               <div className="mb-3 flex items-center gap-3">
                 <span className="text-[11px] text-ink-3">{t("basketball.addTeamHint")}</span>
                 {teamStatus ? <span className="rounded-md bg-veil px-2 py-1 text-[11px] font-semibold text-ink-2">{teamStatus}</span> : null}
-                <button onClick={resetTeam} className="ml-auto rounded-md border border-line px-3 py-2 text-[12px] font-semibold text-ink-2 hover:text-ink">{t("basketball.reset")}</button>
+                {historyNotice ? <span className="rounded-md bg-veil px-2 py-1 text-[11px] font-semibold text-accent-ink">{historyNotice}</span> : null}
+                <div className="ml-auto">{historyDropdown}</div>
+                <button onClick={resetTeam} className="rounded-md border border-line px-3 py-2 text-[12px] font-semibold text-ink-2 hover:text-ink">{t("basketball.reset")}</button>
                 <button onClick={addTeams} className="rounded-lg bg-accent px-5 py-2.5 text-[14px] font-semibold text-white shadow-sm hover:opacity-90">{t("basketball.addToInput")}</button>
               </div>
               {/* Home | Away | Total yan yana (compact) */}
@@ -449,7 +527,8 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
               effHome={effHome} effAway={effAway} winBy={winBy} isTicked={isTicked} setTick={(k, v) => setTicks((p) => ({ ...p, [k]: v }))}
               playerValue={playerValue} setVal={(k, v) => setPlayerVal((p) => ({ ...p, [k]: v }))} playerModel={playerModel}
               teamTarget={(slug, mk) => teamTrader(slug, mk, slug === homeSlug ? effHome : effAway)}
-              onAdd={onAdd} playerIds={playerIds} playerCfg={playerCfg} playerMarkets={playerMarkets}
+              onAdd={(rows) => addWithHistory(rows, "player")} historySlot={historyDropdown} historyNotice={historyNotice}
+              playerIds={playerIds} playerCfg={playerCfg} playerMarkets={playerMarkets}
               existingKeys={existingKeys} existingPlayerMkt={existingPlayerMkt} onReset={resetPlayer} competition={competition} fixExtId={fixExtId}
               roleBy={roleBy} euroTeamSlugs={euroTeamSlugs} leaderBy={leaderBy} locale={locale} t={t} />
           )}
@@ -596,7 +675,7 @@ function TeamRecent({ name, logs, locale, t }: { name: string; logs: BktTeamLogR
 }
 
 /* ---------- Player distribution panel ---------- */
-function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effAway, winBy, isTicked, setTick, playerValue, setVal, playerModel, teamTarget, onAdd, playerIds, playerCfg, playerMarkets, existingKeys, existingPlayerMkt, onReset, competition, fixExtId, roleBy, euroTeamSlugs, leaderBy, locale, t }: {
+function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effAway, winBy, isTicked, setTick, playerValue, setVal, playerModel, teamTarget, onAdd, historySlot, historyNotice, playerIds, playerCfg, playerMarkets, existingKeys, existingPlayerMkt, onReset, competition, fixExtId, roleBy, euroTeamSlugs, leaderBy, locale, t }: {
   homeSlug: string; awaySlug: string; homeName: string; awayName: string; effHome: number; effAway: number;
   winBy: Map<string, Map<string, BktPlayerWindowRow[]>>;
   isTicked: (s: string, mk: string, w: BktPlayerWindowRow) => boolean;
@@ -606,6 +685,8 @@ function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effA
   playerModel: (w: BktPlayerWindowRow) => number;
   teamTarget: (s: string, mk: string) => number;
   onAdd: (rows: BktInputRow[]) => void;
+  historySlot?: ReactNode;
+  historyNotice?: string;
   playerIds: Record<string, string>;
   playerCfg: Map<string, PmMarketConfig>;
   playerMarkets: { key: string; base: string; label: string; std: number; tpl: string; distributable: boolean }[];
@@ -730,6 +811,8 @@ function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effA
             <span title={t("basketball.distributeInfo")} className="inline-flex h-4 w-4 cursor-help items-center justify-center rounded-full border border-current text-[10px] font-bold leading-none">i</span>
           </label>
           {playerStatus ? <span className="rounded-md bg-veil px-2 py-1 text-[11px] font-semibold text-ink-2">{playerStatus}</span> : null}
+          {historyNotice ? <span className="rounded-md bg-veil px-2 py-1 text-[11px] font-semibold text-accent-ink">{historyNotice}</span> : null}
+          {historySlot}
           <button onClick={onReset} className="rounded-md border border-line px-3 py-2 text-[12px] font-semibold text-ink-2 hover:text-ink">{t("basketball.reset")}</button>
           <button onClick={addCurrent} className="rounded-lg bg-accent px-5 py-2.5 text-[14px] font-semibold text-white shadow-sm hover:opacity-90">
             {t("basketball.addToInput")}

@@ -3,7 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useI18n } from "@/lib/i18n/LanguageProvider";
-import BasketballTools from "./BasketballTools";
+import BasketballTools, { type HistorySnapEntry } from "./BasketballTools";
+import RetentionConfig from "@/features/model-history/RetentionConfig";
+import { postModelHistory, type ModelHistoryDraft } from "@/lib/model-history";
 import { configLabel, METRIC_LABELS, metricLabel } from "../marketConfig";
 import { ALL_ROLES, roleBadgeClass, roleLabelKey, roleDescKey } from "../lib";
 import {
@@ -44,6 +46,38 @@ export default function BasketballParticipantTools({ splits, forms, windows, tea
   const [modelConfig, setModelConfig] = useState<PmModelConfig[]>([]);
   const [inputType, setInputType] = useState<InputType>("player");
   const [inputRows, setInputRows] = useState<BktInputRow[]>([]);
+  // Export gecmisi: Add aninda snapshot toplanir (key -> entry), export'ta yazilir.
+  const [snapshotByKey, setSnapshotByKey] = useState<Record<string, HistorySnapEntry>>({});
+  const [historyReloadKey, setHistoryReloadKey] = useState(0);
+
+  // Add: satirlari ekle + (varsa) restore snapshot'ini sakla.
+  const handleAdd = (rows: BktInputRow[], snap?: HistorySnapEntry) => {
+    setInputRows((p) => [...p, ...rows]);
+    if (snap) setSnapshotByKey((m) => ({ ...m, [snap.key]: snap }));
+  };
+
+  // Export gecmisi: yazdirilan tip (player/team) satirlarini fixture bazinda yaz.
+  const handleExported = async (type: InputType) => {
+    const seen = new Set<string>();
+    const entries: ModelHistoryDraft[] = [];
+    for (const r of inputRows.filter((x) => x.kind === type)) {
+      const key = `${r.fixtureExtId}::${type}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const snap = snapshotByKey[key];
+      entries.push({
+        kind: type,
+        fixtureExtId: r.fixtureExtId || null,
+        matchLabel: snap?.matchLabel ?? (r.teamName || r.playerName || "—"),
+        market: snap?.market ?? type,
+        snapshot: snap?.snapshot ?? null,
+      });
+    }
+    if (entries.length > 0) {
+      await postModelHistory("basketball", league, entries);
+      setHistoryReloadKey((k) => k + 1);
+    }
+  };
 
   const reloadFixtures = () => fetchPmFixtures(league).then(setFixtures);
   const reloadConfig = () => fetchMarketConfig(league).then(setConfig);
@@ -74,12 +108,18 @@ export default function BasketballParticipantTools({ splits, forms, windows, tea
         <BasketballTools pmFixtures={fixtures} splits={splits} forms={forms} windows={windows} teamLogs={teamLogs}
           playerIds={playerIds} config={config} inputRows={inputRows} roles={roles} modelConfig={modelConfig}
           competition={league === "euroleague" ? "E" : league === "eurocup" ? "U" : undefined}
-          onAdd={(rows) => setInputRows((p) => [...p, ...rows])} />
+          historyLeague={league} historyReloadKey={historyReloadKey}
+          onAdd={handleAdd} />
       </div>
       {tab === "players" && <PlayerListTab players={players} playerIds={playerIds} onSaved={setPlayerIds} league={league} t={t} />}
       {tab === "fixtures" && <FixturesTab fixtures={fixtures} teams={teams} reload={reloadFixtures} league={league} t={t} />}
-      {tab === "config" && <ConfigTab config={config} reload={reloadConfig} modelConfig={modelConfig} reloadModelConfig={reloadModelConfig} inputType={inputType} setInputType={setInputType} league={league} locale={locale} t={t} />}
-      {tab === "input" && <InputTab allRows={inputRows} setRows={setInputRows} initialType={inputType} t={t} />}
+      {tab === "config" && (
+        <div className="space-y-4">
+          <ConfigTab config={config} reload={reloadConfig} modelConfig={modelConfig} reloadModelConfig={reloadModelConfig} inputType={inputType} setInputType={setInputType} league={league} locale={locale} t={t} />
+          <RetentionConfig sport="basketball" league={league} />
+        </div>
+      )}
+      {tab === "input" && <InputTab allRows={inputRows} setRows={setInputRows} initialType={inputType} onExported={handleExported} t={t} />}
     </div>
   );
 }
@@ -609,9 +649,9 @@ function ConfigTab({ config, reload, modelConfig, reloadModelConfig, inputType, 
 const PLAYER_IN_HEADERS = ["Fixture ID", "Market Template", "Market Participant", "Market Participant Sort Order", "Line", "Market Status", "Selection_1_Name", "Selection_1_Price", "Selection_2_Name", "Selection_2_Price"];
 const TEAM_IN_HEADERS = ["Fixture ID", "Market Template", "Line", "Market Status", "Selection_1_Name", "Selection_1_Price", "Selection_2_Name", "Selection_2_Price"];
 
-function InputTab({ allRows, setRows, initialType, t }: {
+function InputTab({ allRows, setRows, initialType, onExported, t }: {
   allRows: BktInputRow[]; setRows: (r: BktInputRow[]) => void;
-  initialType: "player" | "team"; t: (k: string) => string;
+  initialType: "player" | "team"; onExported?: (type: "player" | "team") => void; t: (k: string) => string;
 }) {
   const [type, setType] = useState<"player" | "team">(initialType);
   const isTeam = type === "team";
@@ -627,6 +667,8 @@ function InputTab({ allRows, setRows, initialType, t }: {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "input");
     XLSX.writeFile(wb, `basketbol_input_${type}.xlsx`);
+    // Export gecmisi: sadece yazdirilan tip kaydedilir.
+    onExported?.(type);
   };
   // Temizle sadece aktif tipteki satırları siler; sil belirli satırı allRows'tan çıkarır.
   const clear = () => setRows(allRows.filter((r) => r.kind !== type));

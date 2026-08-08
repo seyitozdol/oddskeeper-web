@@ -1,7 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode, type Dispatch, type SetStateAction } from "react";
 import { useI18n } from "@/lib/i18n/LanguageProvider";
+import HistoryDropdown from "@/features/model-history/HistoryDropdown";
+import RetentionConfig from "@/features/model-history/RetentionConfig";
+import { postModelHistory, type ModelHistoryDraft, type ModelHistoryRecord } from "@/lib/model-history";
 import { buildConfiguredLines, buildLadder, type LineConfig } from "@/features/basketball/odds";
 import {
   fetchPmFixtures, insertFixture, deleteFixture, type PmFixture,
@@ -21,6 +24,18 @@ type Tab = "model" | "players" | "fixtures" | "config" | "input";
 type Side = "home" | "away" | "total";
 
 type VbInputRow = { kind: "team" | "player"; fixtureExtId: string; template: string; participant: string; side: number; line: number; over: number; under: number | null; label: string; name: string };
+
+// Export gecmisi: Add aninda uretilen snapshot girisi (container'da saklanir).
+type VbSnapshot = {
+  fixSel: string;
+  sub: "team" | "player";
+  trader: Record<string, number>;
+  totalOv: Record<string, number>;
+  teamTicks: Record<string, boolean>;
+  vals: Record<string, number>;
+  ticks: Record<string, boolean>;
+};
+type VbHistoryEntry = { key: string; matchLabel: string; market: string; fixtureExtId: string; kind: string; snapshot: VbSnapshot };
 
 // Model market'i: config'ten (varsa) yoksa VB_MARKETS default. base = veri anahtari (points/ace/...).
 type VbMkt = { key: string; base: string; label: string; std: number; tpl: string };
@@ -68,10 +83,36 @@ export default function VolleyballTools({ teamMatches, playerMatches, players, t
   const [config, setConfig] = useState<PmMarketConfig[]>([]);
   const [playerIds, setPlayerIds] = useState<Record<string, string>>({});
   const [inputRows, setInputRows] = useState<VbInputRow[]>([]);
+  // Export gecmisi: Add aninda snapshot toplanir (key -> entry), export'ta yazilir.
+  const [snapshotByKey, setSnapshotByKey] = useState<Record<string, VbHistoryEntry>>({});
+  const [historyReloadKey, setHistoryReloadKey] = useState(0);
 
   const reloadFixtures = () => fetchPmFixtures(LEAGUE).then(setFixtures);
   const reloadConfig = () => fetchMarketConfig(LEAGUE).then(setConfig);
   useEffect(() => { reloadFixtures(); reloadConfig(); fetchPlayerIds(LEAGUE).then(setPlayerIds); }, []);
+
+  // Export gecmisi: yazdirilan tip satirlarini fixture bazinda yaz.
+  const handleExported = async (type: "team" | "player") => {
+    const seen = new Set<string>();
+    const entries: ModelHistoryDraft[] = [];
+    for (const r of inputRows.filter((x) => x.kind === type)) {
+      const key = `${r.fixtureExtId}::${type}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const snap = snapshotByKey[key];
+      entries.push({
+        kind: type,
+        fixtureExtId: r.fixtureExtId || null,
+        matchLabel: snap?.matchLabel ?? (r.name || "—"),
+        market: snap?.market ?? type,
+        snapshot: snap?.snapshot ?? null,
+      });
+    }
+    if (entries.length > 0) {
+      await postModelHistory("volleyball", LEAGUE, entries);
+      setHistoryReloadKey((k) => k + 1);
+    }
+  };
 
   const TABS: { id: Tab; label: string }[] = [
     { id: "model", label: t("volleyball.tabModel") },
@@ -81,7 +122,10 @@ export default function VolleyballTools({ teamMatches, playerMatches, players, t
     { id: "input", label: `${t("volleyball.tabInput")}${inputRows.length ? ` (${inputRows.length})` : ""}` },
   ];
 
-  const onAdd = (rows: VbInputRow[]) => setInputRows((p) => [...p, ...rows]);
+  const onAdd = (rows: VbInputRow[], snap?: VbHistoryEntry) => {
+    setInputRows((p) => [...p, ...rows]);
+    if (snap) setSnapshotByKey((m) => ({ ...m, [snap.key]: snap }));
+  };
 
   return (
     <div>
@@ -93,21 +137,26 @@ export default function VolleyballTools({ teamMatches, playerMatches, players, t
       </div>
 
       <div className={tab === "model" ? "" : "hidden"}>
-        <ModelTab teamMatches={teamMatches} playerMatches={playerMatches} players={players} teams={teams} fixtures={fixtures} config={config} playerIds={playerIds} onAdd={onAdd} inputRows={inputRows} t={t} locale={locale} />
+        <ModelTab teamMatches={teamMatches} playerMatches={playerMatches} players={players} teams={teams} fixtures={fixtures} config={config} playerIds={playerIds} onAdd={onAdd} inputRows={inputRows} historyReloadKey={historyReloadKey} t={t} locale={locale} />
       </div>
       {tab === "players" && <PlayerListTab players={players} playerIds={playerIds} onSaved={setPlayerIds} t={t} />}
       {tab === "fixtures" && <FixturesTab fixtures={fixtures} teams={teams} reload={reloadFixtures} t={t} />}
-      {tab === "config" && <ConfigTab config={config} reload={reloadConfig} t={t} />}
-      {tab === "input" && <InputTab rows={inputRows} setRows={setInputRows} t={t} />}
+      {tab === "config" && (
+        <div className="space-y-4">
+          <ConfigTab config={config} reload={reloadConfig} t={t} />
+          <RetentionConfig sport="volleyball" league={LEAGUE} />
+        </div>
+      )}
+      {tab === "input" && <InputTab rows={inputRows} setRows={setInputRows} onExported={handleExported} t={t} />}
     </div>
   );
 }
 
 /* ================= MODEL ================= */
-function ModelTab({ teamMatches, playerMatches, players, teams, fixtures, config, playerIds, onAdd, inputRows, t, locale }: {
+function ModelTab({ teamMatches, playerMatches, players, teams, fixtures, config, playerIds, onAdd, inputRows, historyReloadKey = 0, t, locale }: {
   teamMatches: VbTeamMatch[]; playerMatches: VbPlayerMatch[]; players: VbToolsPlayer[]; teams: VbTeam[];
   fixtures: PmFixture[]; config: PmMarketConfig[]; playerIds: Record<string, string>;
-  onAdd: (r: VbInputRow[]) => void; inputRows: VbInputRow[]; t: (k: string) => string; locale: string;
+  onAdd: (r: VbInputRow[], snap?: VbHistoryEntry) => void; inputRows: VbInputRow[]; historyReloadKey?: number; t: (k: string) => string; locale: string;
 }) {
   const [sub, setSub] = useState<"team" | "player">("team");
   const [fixSel, setFixSel] = useState("");
@@ -115,6 +164,11 @@ function ModelTab({ teamMatches, playerMatches, players, teams, fixtures, config
   const [totalOv, setTotalOv] = useState<Record<string, number>>({});     // `${mk}`
   const [teamTicks, setTeamTicks] = useState<Record<string, boolean>>({}); // `${col}:${mk}` col=code|total
   const [teamStatus, setTeamStatus] = useState("");
+  const [historyNotice, setHistoryNotice] = useState("");
+  // Oyuncu dagitim degerleri/tikleri ModelTab'da (PlayerDist prop olarak alir) →
+  // tek snapshot hem takim hem oyuncu girdisini tasir. Anahtar: `${fivb_id}`.
+  const [pVals, setPVals] = useState<Record<string, number>>({});
+  const [pTicks, setPTicks] = useState<Record<string, boolean>>({});
 
   const teamNameOf = useMemo(() => new Map(teams.map((tm) => [tm.team_code, tm.team_name ?? tm.team_code])), [teams]);
   const fixture = fixtures.find((f) => String(f.id) === fixSel);
@@ -137,6 +191,43 @@ function ModelTab({ teamMatches, playerMatches, players, teams, fixtures, config
   const traderOf = (code: string | null, m: VbMkt) => (code && trader[`${code}:${m.key}`] != null) ? trader[`${code}:${m.key}`] : Math.round(teamAgg(code, m.base).model * 10) / 10;
   const totalOf = (m: VbMkt) => totalOv[m.key] ?? Math.round((traderOf(homeCode, m) + traderOf(awayCode, m)) * 10) / 10;
   const isTeamTicked = (col: string, key: string) => teamTicks[`${col}:${key}`] !== false;
+
+  // ── Export gecmisi: snapshot + Add + restore ──
+  const historyMatchLabel = homeCode && awayCode
+    ? `${teamNameOf.get(homeCode) ?? homeCode} - ${teamNameOf.get(awayCode) ?? awayCode}`
+    : "—";
+  const buildSnapshot = (): VbSnapshot => ({ fixSel, sub, trader, totalOv, teamTicks, vals: pVals, ticks: pTicks });
+  const addWithHistory = (rows: VbInputRow[], kind: "team" | "player") => {
+    onAdd(rows, {
+      key: `${fixExtId}::${kind}`,
+      matchLabel: historyMatchLabel,
+      market: kind === "team" ? t("volleyball.tabTeamMetrics") : t("volleyball.tabPlayerDist"),
+      fixtureExtId: fixExtId,
+      kind,
+      snapshot: buildSnapshot(),
+    });
+  };
+  const restoreFromHistory = (rec: ModelHistoryRecord) => {
+    const s = rec.snapshot as VbSnapshot | null;
+    // Voleybolda takimlar fixstur'den turer; fixtur yoksa restore edilemez.
+    if (!s || !fixtures.some((f) => String(f.id) === s.fixSel)) {
+      setHistoryNotice(t("modelHistory.fixtureGone"));
+      setTimeout(() => setHistoryNotice(""), 3000);
+      return;
+    }
+    setFixSel(s.fixSel);
+    setSub(s.sub ?? "team");
+    setTrader(s.trader ?? {});
+    setTotalOv(s.totalOv ?? {});
+    setTeamTicks(s.teamTicks ?? {});
+    setPVals(s.vals ?? {});
+    setPTicks(s.ticks ?? {});
+    setHistoryNotice(t("modelHistory.restored"));
+    setTimeout(() => setHistoryNotice(""), 3000);
+  };
+  const historyDropdown = (
+    <HistoryDropdown sport="volleyball" league={LEAGUE} reloadKey={historyReloadKey} onRestore={restoreFromHistory} />
+  );
 
   const addTeam = () => {
     if (!homeCode || !awayCode) return;
@@ -162,7 +253,7 @@ function ModelTab({ teamMatches, playerMatches, players, teams, fixtures, config
         sent++;
       }
     }
-    if (rows.length) onAdd(rows);
+    if (rows.length) addWithHistory(rows, "team");
     setTeamStatus(`${t("volleyball.statSent").replace("{n}", String(sent))}${dup ? " · " + t("volleyball.statDup").replace("{n}", String(dup)) : ""}${noTpl ? " · " + t("volleyball.statNoTpl").replace("{n}", String(noTpl)) : ""}`);
   };
   const resetTeam = () => { setTrader({}); setTotalOv({}); setTeamTicks({}); };
@@ -203,7 +294,9 @@ function ModelTab({ teamMatches, playerMatches, players, teams, fixtures, config
               <div className="mb-3 flex items-center gap-3">
                 <span className="text-[11px] text-ink-3">{t("volleyball.addTeamHint")}</span>
                 {teamStatus ? <span className="rounded-md bg-veil px-2 py-1 text-[11px] font-semibold text-ink-2">{teamStatus}</span> : null}
-                <button onClick={resetTeam} className="ml-auto rounded-md border border-line px-3 py-2 text-[12px] font-semibold text-ink-2 hover:text-ink">{t("volleyball.reset")}</button>
+                {historyNotice ? <span className="rounded-md bg-veil px-2 py-1 text-[11px] font-semibold text-accent-ink">{historyNotice}</span> : null}
+                <div className="ml-auto">{historyDropdown}</div>
+                <button onClick={resetTeam} className="rounded-md border border-line px-3 py-2 text-[12px] font-semibold text-ink-2 hover:text-ink">{t("volleyball.reset")}</button>
                 <button onClick={addTeam} className={accentBtn}>{t("volleyball.addToInput")}</button>
               </div>
               <div className="grid gap-4 lg:grid-cols-3">
@@ -224,7 +317,9 @@ function ModelTab({ teamMatches, playerMatches, players, teams, fixtures, config
           ) : (
             <PlayerDist playerMatches={playerMatches} players={players} markets={playerMkts} playerCfg={playerCfg} playerIds={playerIds}
               homeCode={homeCode} awayCode={awayCode} homeName={homeName} awayName={awayName} fixExtId={fixExtId}
-              onAdd={onAdd} inputRows={inputRows} t={t} />
+              vals={pVals} setVals={setPVals} ticks={pTicks} setTicks={setPTicks}
+              onAdd={(rows) => addWithHistory(rows, "player")} historySlot={historyDropdown} historyNotice={historyNotice}
+              inputRows={inputRows} t={t} />
           )}
         </>
       )}
@@ -341,18 +436,19 @@ function TeamRecent({ title, rows, locale, t }: { title: string; rows: VbTeamMat
 }
 
 /* ================= PLAYER DIST ================= */
-function PlayerDist({ playerMatches, players, markets, playerCfg, playerIds, fixExtId, homeCode, awayCode, homeName, awayName, onAdd, inputRows, t }: {
+function PlayerDist({ playerMatches, players, markets, playerCfg, playerIds, fixExtId, homeCode, awayCode, homeName, awayName, vals, setVals, ticks, setTicks, onAdd, historySlot, historyNotice, inputRows, t }: {
   playerMatches: VbPlayerMatch[]; players: VbToolsPlayer[]; markets: VbMkt[]; playerCfg: Map<string, PmMarketConfig>; playerIds: Record<string, string>;
   fixExtId: string;
   homeCode: string | null; awayCode: string | null; homeName: string; awayName: string;
-  onAdd: (r: VbInputRow[]) => void; inputRows: VbInputRow[]; t: (k: string) => string;
+  // Deger/tik state'i ModelTab'da (snapshot/restore tek yerden); PlayerDist prop olarak alir.
+  vals: Record<string, number>; setVals: Dispatch<SetStateAction<Record<string, number>>>;
+  ticks: Record<string, boolean>; setTicks: Dispatch<SetStateAction<Record<string, boolean>>>;
+  onAdd: (r: VbInputRow[]) => void; historySlot?: ReactNode; historyNotice?: string; inputRows: VbInputRow[]; t: (k: string) => string;
 }) {
   const [side, setSide] = useState<"home" | "away">("home");
   const teamCode = side === "home" ? homeCode : awayCode;
   const teamSideNum = side === "home" ? 1 : 2;
   const [mk, setMk] = useState(markets[0]?.key ?? "");
-  const [vals, setVals] = useState<Record<string, number>>({});
-  const [ticks, setTicks] = useState<Record<string, boolean>>({});
   const [preview, setPreview] = useState<string | null>(null);
   const [status, setStatus] = useState("");
   const [sort, setSort] = useState<{ k: string; d: "asc" | "desc" }>({ k: "avg", d: "desc" });
@@ -443,7 +539,9 @@ function PlayerDist({ playerMatches, players, markets, playerCfg, playerIds, fix
           ))}
         </div>
         {status ? <span className="rounded-md bg-veil px-2 py-1 text-[11px] font-semibold text-ink-2">{status}</span> : null}
-        <button onClick={() => setVals({})} className="ml-auto rounded-md border border-line px-3 py-2 text-[12px] font-semibold text-ink-2 hover:text-ink">{t("volleyball.reset")}</button>
+        {historyNotice ? <span className="rounded-md bg-veil px-2 py-1 text-[11px] font-semibold text-accent-ink">{historyNotice}</span> : null}
+        <div className="ml-auto">{historySlot}</div>
+        <button onClick={() => setVals({})} className="rounded-md border border-line px-3 py-2 text-[12px] font-semibold text-ink-2 hover:text-ink">{t("volleyball.reset")}</button>
         <button onClick={add} className={accentBtn}>{t("volleyball.addToInput")}</button>
       </div>
       <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-line bg-card-2/40 px-2.5 py-2">
@@ -718,7 +816,7 @@ function ConfigTab({ config, reload, t }: { config: PmMarketConfig[]; reload: ()
 const TEAM_HEADERS = ["Fixture ID", "Market Template", "Line", "Market Status", "Selection_1_Name", "Selection_1_Price", "Selection_2_Name", "Selection_2_Price"];
 const PLAYER_HEADERS = ["Fixture ID", "Market Template", "Market Participant", "Line", "Market Status", "Selection_1_Name", "Selection_1_Price", "Selection_2_Name", "Selection_2_Price"];
 
-function InputTab({ rows, setRows, t }: { rows: VbInputRow[]; setRows: (r: VbInputRow[]) => void; t: (k: string) => string }) {
+function InputTab({ rows, setRows, onExported, t }: { rows: VbInputRow[]; setRows: (r: VbInputRow[]) => void; onExported?: (type: "team" | "player") => void; t: (k: string) => string }) {
   const [type, setType] = useState<"team" | "player">("team");
   const isTeam = type === "team";
   const shown = rows.filter((r) => r.kind === type);
@@ -731,6 +829,8 @@ function InputTab({ rows, setRows, t }: { rows: VbInputRow[]; setRows: (r: VbInp
       : [r.fixtureExtId, r.template, r.participant, r.line, "", "Over", r.over, "Under", r.under ?? ""])];
     const ws = XLSX.utils.aoa_to_sheet(aoa); const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "input"); XLSX.writeFile(wb, `voleybol_input_${type}.xlsx`);
+    // Export gecmisi: sadece yazdirilan tip kaydedilir.
+    onExported?.(type);
   };
   return (
     <div>
