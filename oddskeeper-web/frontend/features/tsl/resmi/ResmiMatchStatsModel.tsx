@@ -1,7 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useI18n } from "../../../lib/i18n/LanguageProvider";
+import HistoryDropdown from "@/features/model-history/HistoryDropdown";
+import RetentionConfig from "@/features/model-history/RetentionConfig";
+import {
+  postModelHistory,
+  type ModelHistoryDraft,
+  type ModelHistoryRecord,
+} from "@/lib/model-history";
 import ConfigTab from "./matchStatsModel/ConfigTab";
 import GSheetTab from "./matchStatsModel/GSheetTab";
 import FixtureIdTab from "./matchStatsModel/FixtureIdTab";
@@ -94,6 +101,25 @@ function windowRows(
   return lastX > 0 ? rows.slice(-lastX) : rows;
 }
 type Tab = (typeof TABS)[number];
+
+// Export gecmisi snapshot'i: bir maci restore etmek icin gereken kullanici
+// girdileri. Oran (fixtureInputs'tan) ve sezon agirliklari (config'ten) turev
+// oldugu icin saklanmaz; fixture secilince otomatik dolar.
+type MsmSnapshot = {
+  selectedFixtureId: string;
+  market: string;
+  selWeek: number;
+  lastX: number;
+  big4H: boolean;
+  redcH: boolean;
+  big4A: boolean;
+  redcA: boolean;
+  etki: number;
+  manHome: string;
+  manAway: string;
+  manTotal: string;
+  refereeName: string;
+};
 
 const NO_SPINNER =
   "appearance-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none";
@@ -318,6 +344,18 @@ export default function ResmiMatchStatsModel({
   const [importList, setImportList] = useState<ImportRow[]>([]);
   const [importNotice, setImportNotice] = useState("");
 
+  // Export gecmisi: Add to Input aninda mac+market bazinda snapshot toplanir,
+  // SADECE export'ta sunucuya yazilir. reloadKey export sonrasi dropdown'i
+  // tazeler. windowMode "full" (maxWeek'e uy) veya restore'da "fixed" (snapshot
+  // penceresi) olur; restoringRef restore secim degisiminin normal reset'i
+  // tetiklemesini engeller.
+  const [snapshotByKey, setSnapshotByKey] = useState<Record<string, MsmSnapshot>>({});
+  const [historyReloadKey, setHistoryReloadKey] = useState(0);
+  const [windowMode, setWindowMode] = useState<
+    { mode: "full" } | { mode: "fixed"; selWeek: number; lastX: number }
+  >({ mode: "full" });
+  const restoringRef = useRef(false);
+
   // Config yükleme (mount + Config sekmesinde kaydedince yeniden).
   const loadConfig = useCallback(() => {
     fetchMarketConfigs(LEAGUE).then(setMarketCfgs);
@@ -400,11 +438,18 @@ export default function ResmiMatchStatsModel({
     };
   }, [homeSlug, awaySlug]);
 
-  // Market / fixture / takım değişince elle override'lar (home/away/total) sıfırlanır.
+  // Market / fixture / takım değişince elle override'lar sıfırlanır + pencere
+  // full'a döner. Geçmişten restore ise (restoringRef) bu tek seferi atla:
+  // snapshot değerleri handler'da set edildi, korunmalı.
   useEffect(() => {
+    if (restoringRef.current) {
+      restoringRef.current = false;
+      return;
+    }
     setManHome("");
     setManAway("");
     setManTotal("");
+    setWindowMode({ mode: "full" });
   }, [market, homeSlug, awaySlug, selectedFixtureId]);
 
   const marketCfg = marketCfgs[market] ?? null;
@@ -419,10 +464,19 @@ export default function ResmiMatchStatsModel({
     const idx = [...(matchLog[homeSlug] ?? []), ...(matchLog[awaySlug] ?? [])].map((r) => r.index);
     return idx.length ? Math.max(...idx) : 0;
   }, [matchLog, homeSlug, awaySlug]);
-  // Veri geldiğinde Hafta / Son-x varsayılanı = oynanmış tüm haftalar (99 değil).
+  // Veri geldiğinde Hafta / Son-x: normalde tüm oynanmış haftalar (full);
+  // geçmişten restore'da snapshot penceresi (fixed), maxWeek'e kelepçelenir.
   useEffect(() => {
-    if (maxWeek > 0) { setSelWeek(maxWeek); setLastX(maxWeek); }
-  }, [maxWeek]);
+    if (maxWeek <= 0) return;
+    if (windowMode.mode === "fixed") {
+      const clamp = (v: number) => Math.min(maxWeek, Math.max(1, v || maxWeek));
+      setSelWeek(clamp(windowMode.selWeek));
+      setLastX(clamp(windowMode.lastX));
+    } else {
+      setSelWeek(maxWeek);
+      setLastX(maxWeek);
+    }
+  }, [maxWeek, windowMode]);
   // Hafta girişi oynanmış maks. haftayı aşamaz (12 oynandıysa 13 seçilemez).
   const clampWeek = (raw: string) => {
     const n = parseInt(raw);
@@ -531,6 +585,13 @@ export default function ResmiMatchStatsModel({
       return;
     }
     setImportList((l) => [...l, ...currentRows]);
+    // Restore için snapshot topla (mac+market bazinda). Yalnizca export'ta yazilir.
+    const snap: MsmSnapshot = {
+      selectedFixtureId, market, selWeek, lastX,
+      big4H, redcH, big4A, redcA, etki,
+      manHome, manAway, manTotal, refereeName,
+    };
+    setSnapshotByKey((m) => ({ ...m, [dupKey(externalFixtureId, matchLabel, market)]: snap }));
     await logImport(LEAGUE, {
       fixture_id: externalFixtureId, match: matchLabel, market,
       home_exp: exp?.ft.homeMean ?? null, away_exp: exp?.ft.awayMean ?? null, total_exp: exp?.ft.totalMean ?? null,
@@ -539,7 +600,7 @@ export default function ResmiMatchStatsModel({
     });
   }
 
-  function exportXlsx() {
+  async function exportXlsx() {
     if (importList.length === 0) return;
     // Excel Import formatı: 8 kolon (market YAZILMAZ).
     const data = importList.map((r) => ({
@@ -556,6 +617,70 @@ export default function ResmiMatchStatsModel({
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Input");
     XLSX.writeFile(wb, `${matchLabel || "input"}.xlsx`);
+
+    // Export gecmisi: mac+market bazinda tek kayit (snapshot ile). Sadece burada yazilir.
+    const seen = new Set<string>();
+    const entries: ModelHistoryDraft[] = [];
+    for (const r of importList) {
+      const k = dupKey(r.fixtureId, r.matchLabel, r.market);
+      if (seen.has(k)) continue;
+      seen.add(k);
+      entries.push({
+        kind: "match",
+        fixtureExtId: r.fixtureId,
+        matchLabel: r.matchLabel,
+        market: r.market,
+        snapshot: snapshotByKey[k] ?? null,
+      });
+    }
+    if (entries.length > 0) {
+      await postModelHistory("football_msm", LEAGUE, entries);
+      setHistoryReloadKey((k) => k + 1);
+    }
+  }
+
+  // Geçmiş dropdown'undan bir kaydı geri yükle. Fixture hâlâ listede olmalı.
+  function restoreFromHistory(rec: ModelHistoryRecord) {
+    const snap = rec.snapshot as MsmSnapshot | null;
+    // Snapshot'taki fixture id (yoksa dış id ile eşleştir) hâlâ fikstürde mi?
+    let fid = snap?.selectedFixtureId ?? "";
+    if (!fid || !fixtures.some((f) => f.fixtureId === fid)) {
+      const byExt = Object.entries(fixtureInputs).find(
+        ([, fi]) => fi.externalFixtureId && fi.externalFixtureId === rec.fixtureExtId
+      );
+      fid = byExt?.[0] ?? "";
+    }
+    if (!fid || !fixtures.some((f) => f.fixtureId === fid)) {
+      setImportNotice(t("modelHistory.fixtureGone"));
+      setTimeout(() => setImportNotice(""), 3000);
+      return;
+    }
+    // restoringRef: seçim değişimi effect'inin manuel/pencereyi sıfırlamasını engelle.
+    restoringRef.current = true;
+    selectFixture(fid);
+    if (snap) {
+      setMarket(snap.market);
+      setManHome(snap.manHome);
+      setManAway(snap.manAway);
+      setManTotal(snap.manTotal);
+      setBig4H(snap.big4H);
+      setRedcH(snap.redcH);
+      setBig4A(snap.big4A);
+      setRedcA(snap.redcA);
+      setEtki(snap.etki);
+      setRefereeName(snap.refereeName);
+      setWindowMode({ mode: "fixed", selWeek: snap.selWeek, lastX: snap.lastX });
+    } else {
+      setMarket(rec.market);
+    }
+    setTab("model");
+    // Güvenlik ağı: aynı seçim restore edilirse seçim-effect'i hiç tetiklenmez
+    // ve ref takılı kalabilir; tick sonunda temizle (effect zaten öne geçer).
+    setTimeout(() => {
+      restoringRef.current = false;
+    }, 0);
+    setImportNotice(t("modelHistory.restored"));
+    setTimeout(() => setImportNotice(""), 3000);
   }
 
   // Reset: ilk fikstüre + varsayılan markete dön, ayarları config'ten yeniden yükle.
@@ -596,6 +721,12 @@ export default function ResmiMatchStatsModel({
         {tab === "model" && (
           <div className="ml-auto flex items-center gap-2 pb-1">
             {importNotice && <span className="text-[11px] text-neg">{importNotice}</span>}
+            <HistoryDropdown
+              sport="football_msm"
+              league={LEAGUE}
+              reloadKey={historyReloadKey}
+              onRestore={restoreFromHistory}
+            />
             <button
               onClick={addCurrentMarket}
               disabled={currentRows.length === 0}
@@ -614,7 +745,10 @@ export default function ResmiMatchStatsModel({
       </div>
 
       {tab === "config" ? (
-        <ConfigTab league={LEAGUE} focus={configFocus} onSaved={loadConfig} />
+        <div className="space-y-4">
+          <ConfigTab league={LEAGUE} focus={configFocus} onSaved={loadConfig} />
+          <RetentionConfig sport="football_msm" league={LEAGUE} />
+        </div>
       ) : tab === "fixtures" ? (
         <FixtureIdTab league={LEAGUE} isAdmin={isAdmin} onSaved={() => fetchFixtureInputs(LEAGUE).then(setFixtureInputs)} />
       ) : tab === "input" ? (
