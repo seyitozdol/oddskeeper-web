@@ -101,8 +101,17 @@ export async function tff1TeamMeta(): Promise<Record<string, TslTeamMeta>> {
 async function playerInfoMap(): Promise<Record<string, { photo: string | null; country: string | null }>> {
   const sb = await createClient();
   const out: Record<string, { photo: string | null; country: string | null }> = {};
-  const { data } = await sb.schema("analytics").from("tff1_player_info_v1").select("player_id, photo_url, country").limit(3000);
-  for (const r of data ?? []) out[String(r.player_id)] = { photo: r.photo_url ?? null, country: r.country ?? null };
+  // PostgREST 1000 satir/istek ust siniri (db-max-rows). .limit(3000) capleniyordu ->
+  // 2050 oyuncudan yalniz ~1000'i geliyordu, yeni oyuncularin fotosu haritada olmuyordu.
+  // Sayfalayarak tumunu cek.
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await sb.schema("analytics").from("tff1_player_info_v1")
+      .select("player_id, photo_url, country").order("player_id", { ascending: true })
+      .range(from, from + 999);
+    if (error || !data || data.length === 0) break;
+    for (const r of data) out[String(r.player_id)] = { photo: r.photo_url ?? null, country: r.country ?? null };
+    if (data.length < 1000) break;
+  }
   return out;
 }
 
