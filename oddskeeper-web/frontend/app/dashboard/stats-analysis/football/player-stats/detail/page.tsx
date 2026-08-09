@@ -5,12 +5,15 @@ import { PlayerMatchLogPanel } from "@/features/player-detail/panels/PlayerMatch
 import PlayerAdvancedOverviewPanel from "@/features/player-detail/panels/PlayerAdvancedOverviewPanel";
 import PlayerBenchmarksPanel from "@/features/player-detail/panels/PlayerBenchmarksPanel";
 import { PlayerOverviewPanel } from "@/features/player-detail/panels/PlayerOverviewPanel";
+import { PlayerShowcasePanel } from "@/features/player-detail/panels/PlayerShowcasePanel";
 import { getPlayerAdvancedOverview } from "@/features/player-detail/server/getPlayerAdvancedOverview";
 import { getPlayerDetailedMetrics } from "@/features/player-detail/server/getPlayerDetailedMetrics";
 import { getPlayerMatchLog } from "@/features/player-detail/server/getPlayerMatchLog";
 import { getPlayerMetricBenchmarks } from "@/features/player-detail/server/getPlayerMetricBenchmarks";
 import { getPlayerProfile } from "@/features/player-detail/server/getPlayerProfile";
 import { getPlayerCurrentInfo } from "@/features/player-detail/server/getPlayerCurrentInfo";
+import { getTeamAliases } from "@/features/player-detail/server/getTeamAliases";
+import { getLeagueLastMatchDate } from "@/features/player-detail/server/getLeagueLastMatchDate";
 import { getPlayerMarketValue } from "@/features/player-detail/server/getPlayerMarketValue";
 import type {
   PlayerCurrentInfoRow,
@@ -24,6 +27,7 @@ type PageProps = {
   searchParams?: Promise<{
     player?: string;
     tab?: string;
+    design?: string;
   }>;
 };
 
@@ -88,6 +92,10 @@ export default async function FootballPlayerDetailPage({
     ? requestedTab
     : "overview";
 
+  // design=v2: overview sekmesinin vitrin (showcase) tasarım önizlemesi
+  const showcaseDesign =
+    resolvedSearchParams.design === "v2" && activeTab === "overview";
+
   if (!playerSlug) {
     const t = await getT();
 
@@ -131,18 +139,38 @@ export default async function FootballPlayerDetailPage({
   const seasonLabel = profile.season_label ?? null;
 
   const [advancedOverview, detailedMetricRows] = await Promise.all([
-    activeTab === "advanced" && playerSourceId
+    (activeTab === "advanced" || showcaseDesign) && playerSourceId
       ? getPlayerAdvancedOverview(playerSourceId)
       : Promise.resolve(null),
 
 
 
-    activeTab === "detailed-stats"
+    activeTab === "detailed-stats" || showcaseDesign
       ? getPlayerDetailedMetrics(playerSlug, {
           seasonLabel: seasonLabel ?? undefined,
         })
       : Promise.resolve([]),
   ]);
+
+  if (showcaseDesign) {
+    const [teamAliases, leagueLastMatchDate] = await Promise.all([
+      getTeamAliases(),
+      getLeagueLastMatchDate(profile.competition),
+    ]);
+
+    return (
+      <PlayerShowcasePanel
+        profile={profile}
+        currentInfo={currentInfo}
+        marketValueEur={marketValueEur}
+        matchLog={matchLog}
+        advancedOverview={advancedOverview}
+        detailedMetrics={detailedMetricRows}
+        teamAliases={teamAliases}
+        leagueLastMatchDate={leagueLastMatchDate}
+      />
+    );
+  }
 
   return (
     <section className="w-full space-y-3">
