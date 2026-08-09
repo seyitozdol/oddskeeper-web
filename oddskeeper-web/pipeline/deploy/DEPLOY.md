@@ -75,6 +75,12 @@ chmod +x /opt/oddskeeper/run_upcoming_events.sh /opt/oddskeeper/run_odds_capture
 #    TBF_LEAGUE_ID/TBF_SEASON_ID/TBF_SEASON_LABEL'i yeni sezona göre güncelle,
 #    sonra bu satırı aç (günde bir yeter; maçlar haftalık, idempotent upsert).
 # 0 6 * * *   /opt/oddskeeper/run_tbf_basketball.sh
+
+# 7) TSL kadro tazeleme (apifootball squads -> team_squad_current -> player_mapping
+#    -> TM piyasa değeri): yeni transferler kadroya girsin. Proxy/tarayıcı YOK.
+#    GEÇİCİ: TSL maçları BAŞLAYANA KADAR günlük; sezon başlayınca bu satırı kaldır
+#    (maçlar başlayınca kadrolar maç scrape'inden zaten güncellenir). 05:00 (CEST).
+0 5 * * *     /opt/oddskeeper/run_tsl_squad_refresh.sh
 ```
 `public.pipeline_triggers` tablosu gerekir (sql/2026-07-31_pipeline_triggers.sql).
 Wrapper'ları kopyala: `cp oddskeeper-web/pipeline/deploy/run_*.sh /opt/oddskeeper/ && chmod +x /opt/oddskeeper/run_*.sh`

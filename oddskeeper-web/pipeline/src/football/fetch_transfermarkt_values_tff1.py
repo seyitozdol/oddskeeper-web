@@ -48,10 +48,18 @@ def norm(text):
 
 
 def fetch(url):
-    resp = requests.get(url, headers=HEADERS, timeout=30)
-    resp.raise_for_status()
-    time.sleep(DELAY)
-    return resp.text
+    # Site ara ara zaman asimi veriyor; birkac kez tekrar dene.
+    last = None
+    for attempt in range(4):
+        try:
+            resp = requests.get(url, headers=HEADERS, timeout=45)
+            resp.raise_for_status()
+            time.sleep(DELAY)
+            return resp.text
+        except requests.RequestException as e:
+            last = e
+            time.sleep(5 * (attempt + 1))
+    raise last
 
 
 def parse_market_value(text):

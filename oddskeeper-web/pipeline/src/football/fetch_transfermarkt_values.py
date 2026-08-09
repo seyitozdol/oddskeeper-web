@@ -43,14 +43,49 @@ def norm(text):
     text = unicodedata.normalize("NFKD", text)
     text = "".join(c for c in text if not unicodedata.combining(c))
     text = text.replace("ı", "i").replace("ø", "o").replace("ß", "ss")
-    return re.sub(r"[^a-z0-9 ]", "", text.lower()).strip()
+    return re.sub(r"[^a-z0-9 ]", " ", text.lower()).strip()
+
+
+def _name_match(tm_name, our_name):
+    """Kisaltmali ad uyumu: TM tam ad ("Batista Mendy") vs bizim "B. Mendy".
+    Soyad (son token) ayni VE ad-basi uyumlu (biri otekinin on-eki / bas harf)."""
+    a, b = norm(tm_name).split(), norm(our_name).split()
+    if not a or not b:
+        return False
+    if a[-1] != b[-1]:
+        # cok-kelimeli soyad (skov olsen) icin son iki token
+        if not (len(a) >= 2 and len(b) >= 2 and a[-2:] == b[-2:]):
+            return False
+    fa, fb = a[0], b[0]
+    return fa == fb or fa.startswith(fb) or fb.startswith(fa)
+
+
+def _our_name_variants(c):
+    """Bizim oyuncu satirindaki (row) kullanilabilir ad varyantlari.
+    row = (apif_id, slug, player_name, full_name, first_name, last_name, birth)."""
+    out = []
+    if c[3]:
+        out.append(c[3])                       # full_name
+    if c[4] or c[5]:
+        out.append(f"{c[4]} {c[5]}".strip())   # first + last
+    if c[2]:
+        out.append(c[2])                       # player_name (kisaltmali olabilir)
+    return out
 
 
 def fetch(url):
-    resp = requests.get(url, headers=HEADERS, timeout=30)
-    resp.raise_for_status()
-    time.sleep(REQUEST_DELAY_SECONDS)
-    return resp.text
+    # Site ara ara zaman asimi veriyor; birkac kez tekrar dene.
+    last = None
+    for attempt in range(4):
+        try:
+            resp = requests.get(url, headers=HEADERS, timeout=45)
+            resp.raise_for_status()
+            time.sleep(REQUEST_DELAY_SECONDS)
+            return resp.text
+        except requests.RequestException as e:
+            last = e
+            time.sleep(5 * (attempt + 1))
+    raise last
 
 
 def parse_market_value(text):
@@ -168,30 +203,25 @@ def main():
                 continue
             target = None
 
-            # a) doğum tarihi + isim kesişimi
-            if p["birth"] and p["birth"] in by_birth:
-                candidates = by_birth[p["birth"]]
-                if len(candidates) == 1:
-                    target = candidates[0]
-                else:
-                    tm_tokens = set(norm(p["name"]).split())
-                    for c in candidates:
-                        our_tokens = set(norm(f"{c[4]} {c[5]} {c[3]} {c[2]}").split())
-                        if tm_tokens & our_tokens:
-                            target = c
-                            break
+            # Kisaltma-toleransli ad eslesmesi (soyad + ad-basi). Bizim guncel
+            # kadro adlari cogu zaman kisaltmali ("B. Mendy"); TM tam ad verir.
+            name_cands = [c for c in ours
+                          if any(_name_match(p["name"], v) for v in _our_name_variants(c))]
 
-            # b) normalize tam isim eşitliği / soyad+ad kesişimi
-            if target is None:
-                tm_tokens = set(norm(p["name"]).split())
-                best, best_score = None, 0
-                for c in ours:
-                    our_tokens = set(norm(f"{c[4]} {c[5]} {c[3]} {c[2]}").split())
-                    score = len(tm_tokens & our_tokens)
-                    if score > best_score:
-                        best, best_score = c, score
-                if best is not None and best_score >= 2:
-                    target = best
+            # a) dogum tarihi varsa: ad adaylari icinde dogum tarihiyle dogrula
+            if p["birth"]:
+                bc = [c for c in name_cands if c[6] == p["birth"]]
+                if bc:
+                    target = bc[0]
+
+            # b) ad adayi benzersizse dogrudan al
+            if target is None and len(name_cands) == 1:
+                target = name_cands[0]
+
+            # c) son care: yalnizca dogum tarihi benzersiz eslesiyorsa
+            if target is None and p["birth"] and p["birth"] in by_birth \
+                    and len(by_birth[p["birth"]]) == 1:
+                target = by_birth[p["birth"]][0]
 
             if target is None:
                 total_unmatched += 1
