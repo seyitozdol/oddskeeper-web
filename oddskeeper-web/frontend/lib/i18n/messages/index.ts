@@ -4,11 +4,9 @@ import { auth } from "./auth";
 import { basketball } from "./basketball";
 import { common } from "./common";
 import { dashboardHome } from "./dashboardHome";
-import { deepPrediction } from "./deepPrediction";
 import { landing } from "./landing";
 import { leagueDetail } from "./leagueDetail";
 import { matchDetail } from "./matchDetail";
-import { matchPredictions } from "./matchPredictions";
 import { metrics } from "./metrics";
 import { modelHistory } from "./modelHistory";
 import { msm } from "./msm";
@@ -16,7 +14,6 @@ import { nav } from "./nav";
 import { notes } from "./notes";
 import { playerDetail } from "./playerDetail";
 import { playerMarket } from "./playerMarket";
-import { smartPrediction } from "./smartPrediction";
 import { statsHub } from "./statsHub";
 import { teamDetail } from "./teamDetail";
 import { tff1 } from "./tff1";
@@ -33,11 +30,9 @@ const MESSAGES: Record<
   basketball,
   common,
   dashboardHome,
-  deepPrediction,
   landing,
   leagueDetail,
   matchDetail,
-  matchPredictions,
   metrics,
   modelHistory,
   msm,
@@ -45,7 +40,6 @@ const MESSAGES: Record<
   notes,
   playerDetail,
   playerMarket,
-  smartPrediction,
   statsHub,
   teamDetail,
   tff1,

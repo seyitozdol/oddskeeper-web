@@ -4,10 +4,6 @@ export const nav = defineMessages({
   en: {
     workspace: "Prediction Workspace",
     upcomingEvents: "Upcoming Events",
-    predictions: "Predictions",
-    smartPrediction: "Smart Prediction",
-    deepPredictionMl: "Deep Prediction ML",
-    matchPredictions: "Match Predictions",
     playerMarket: "Player Participant Tools",
     statsAnalysis: "Stats",
     leagueTsl: "TSL",
@@ -51,10 +47,6 @@ export const nav = defineMessages({
   tr: {
     workspace: "Tahmin Merkezi",
     upcomingEvents: "Yaklaşan Maçlar",
-    predictions: "Tahminler",
-    smartPrediction: "Akıllı Tahmin",
-    deepPredictionMl: "Derin Tahmin ML",
-    matchPredictions: "Maç Tahminleri",
     playerMarket: "Oyuncu Katılım Araçları",
     statsAnalysis: "İstatistik",
     leagueTsl: "TSL",

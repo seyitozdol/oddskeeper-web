@@ -6,9 +6,6 @@
 
 export const NAV_KEYS = [
   "upcoming-events",
-  "smart-prediction",
-  "deep-prediction-ml",
-  "match-predictions",
   "player-market",
   "stats-analysis",
   // Header'daki lig kisayollari (Stats & Analysis'ten bagimsiz kontrol edilir).
@@ -44,25 +41,6 @@ export const NAV_PERMISSION_ITEMS: NavPermissionItem[] = [
     labelKey: "nav.upcomingEvents",
     href: "/dashboard/upcoming-events",
     pathPrefixes: ["/dashboard/upcoming-events"],
-  },
-  {
-    key: "smart-prediction",
-    labelKey: "nav.smartPrediction",
-    href: "/dashboard/smart-prediction",
-    pathPrefixes: ["/dashboard/smart-prediction"],
-  },
-  {
-    key: "deep-prediction-ml",
-    labelKey: "nav.deepPredictionMl",
-    href: "/dashboard/deep-prediction-ml2",
-    // ml ve ml2 rotalarinin ikisini de kapsar
-    pathPrefixes: ["/dashboard/deep-prediction-ml"],
-  },
-  {
-    key: "match-predictions",
-    labelKey: "nav.matchPredictions",
-    href: "/dashboard/match-predictions",
-    pathPrefixes: ["/dashboard/match-predictions"],
   },
   {
     key: "player-market",
