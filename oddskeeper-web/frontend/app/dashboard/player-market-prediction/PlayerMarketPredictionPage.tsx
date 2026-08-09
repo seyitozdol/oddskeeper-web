@@ -1181,10 +1181,10 @@ export default function PlayerMarketPredictionPage({
     }
     setAdding(false);
     setAddedCount(selections.length);
-    if (selections.length > 0) {
-      setJustAdded(selections.length);
-      setTimeout(() => setJustAdded(null), 1500);
-    }
+    // Her Add'de görünür geri bildirim: satır eklendiyse yeşil sayı, hiçbir şey
+    // eklenmediyse (line tiklenmemiş) amber uyarı. 2.5sn sonra eski haline döner.
+    setJustAdded(selections.length);
+    setTimeout(() => setJustAdded(null), 2500);
   }
 
   // ── Export gecmisi: yazdirilan segment kayitlarini mac+market bazinda yaz ──
@@ -1438,12 +1438,18 @@ export default function PlayerMarketPredictionPage({
             onClick={handleAdd}
             disabled={adding || !selectedFixture}
             className={`rounded-lg border px-4 py-2 text-[13px] font-semibold transition disabled:opacity-50 ${
-              justAdded != null
+              justAdded == null
+                ? "border-teal-500/30 bg-teal-500/10 text-teal-300 hover:bg-teal-500/20"
+                : justAdded > 0
                 ? "border-emerald-600 bg-emerald-600 text-white"
-                : "border-teal-500/30 bg-teal-500/10 text-teal-300 hover:bg-teal-500/20"
+                : "border-amber-600 bg-amber-600 text-white"
             }`}
           >
-            {justAdded != null ? `Added ${justAdded}!` : t("playerMarket.addLabel")}
+            {justAdded == null
+              ? t("playerMarket.addLabel")
+              : justAdded > 0
+              ? `Added ${justAdded}!`
+              : "Tick a line first"}
           </button>
           {restoreNotice && (
             <span className="pb-2.5 text-[12px] text-teal-400">{restoreNotice}</span>
