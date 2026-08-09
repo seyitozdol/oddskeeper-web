@@ -1,14 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import {
-  formatMarketValue,
-  formatMatchDate,
-  playerAge,
-  positionLabel,
-  ROLE_CHIP_CLASS,
-  ROLE_LABEL_KEYS,
-  squadRole,
-} from "@/features/tff1/lib";
+import { formatMatchDate } from "@/features/tff1/lib";
+import { Tff1PlayerShowcase } from "@/features/tff1/components/Tff1PlayerShowcase";
 import {
   getTff1MarketValues,
   getTff1PlayerInfo,
@@ -122,295 +115,212 @@ export default async function Tff1PlayerPage({
   if (seasonRows.length === 0) notFound();
 
   const latest = seasonRows[0];
-  const info = infoRows.find((r) => r.player_id === playerId);
-  const mv = mvRows.find((r) => r.player_id === playerId);
+  const info = infoRows.find((r) => r.player_id === playerId) ?? null;
+  const mv = mvRows.find((r) => r.player_id === playerId) ?? null;
   const logoByTeam: Record<string, string> = {};
   for (const l of logos) if (l.logo_url) logoByTeam[l.team_id] = l.logo_url;
 
-  const teamRow = teams.find(
-    (tr) => tr.season_label === latest.season_label && tr.team_id === latest.team_id
+  const teamRow =
+    teams.find(
+      (tr) =>
+        tr.season_label === latest.season_label && tr.team_id === latest.team_id
+    ) ?? null;
+
+  // Radar/güçlü yön yüzdelikleri için aynı sezonun lig havuzu.
+  // Sezon başında (5 maç altı) örneklem gürültülü olacağından yeterli
+  // maçı olan en güncel sezon esas alınır.
+  const leagueRows = players.filter(
+    (p) => p.season_label === latest.season_label
   );
-  const role = squadRole(latest, num(teamRow?.played) ?? 38);
-  const age = playerAge(info?.birth_date);
+  const radarRow =
+    seasonRows.find((r) => (num(r.appearances) ?? 0) >= 5) ?? latest;
+  const radarLeagueRows =
+    radarRow.season_label === latest.season_label
+      ? leagueRows
+      : players.filter((p) => p.season_label === radarRow.season_label);
+
   const isKeeper = latest.position_code === "G";
 
-  const facts: Array<[string, string]> = [
-    [t("tff1.drawerAge"), age !== null ? String(age) : "—"],
-    [t("tff1.drawerHeight"), info?.height_cm ? `${info.height_cm} cm` : "—"],
-    [t("tff1.drawerCountry"), info?.country ?? "—"],
-    [t("tff1.drawerMarketValue"), formatMarketValue(mv?.market_value_eur)],
-  ];
-
   return (
-    <section className="w-full">
-      <div className="rounded-2xl border border-line bg-card p-8">
-        <Link
-          href="/dashboard/tff-1-lig"
-          className="text-[13px] text-ink-3 transition hover:text-ink"
-        >
-          ← {t("tff1.backToLeague")}
-        </Link>
+    <div className="w-full space-y-3">
+      <Tff1PlayerShowcase
+        latest={latest}
+        seasonRows={seasonRows}
+        leagueRows={leagueRows}
+        radarRow={radarRow}
+        radarLeagueRows={radarLeagueRows}
+        info={info}
+        marketValue={mv}
+        teamRow={teamRow}
+        logoByTeam={logoByTeam}
+        matchLog={matchLog}
+        t={t}
+        locale={locale}
+      />
 
-        <div className="mt-4 flex flex-wrap items-start gap-5">
-          {info?.photo_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={info.photo_url}
-              alt={latest.player_name ?? ""}
-              className="h-20 w-20 rounded-2xl border border-line bg-veil object-cover"
-            />
-          ) : (
-            <div className="flex h-20 w-20 items-center justify-center rounded-2xl border border-line bg-veil text-2xl font-semibold text-ink-3">
-              {(latest.player_name ?? "?").slice(0, 1)}
-            </div>
-          )}
-
-          <div className="min-w-0 flex-1">
-            <h1 className="text-2xl font-semibold text-ink lg:text-3xl">
-              {latest.player_name}
-            </h1>
-            <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[13px] text-ink-2">
-              <span>{positionLabel(latest, locale)}</span>
-              <span
-                className={`rounded-md border px-1.5 py-0.5 text-[11px] ${ROLE_CHIP_CLASS[role]}`}
-              >
-                {t(ROLE_LABEL_KEYS[role])}
-              </span>
-              <Link
-                href={`/dashboard/tff-1-lig/team/${latest.team_id}?season=${encodeURIComponent(latest.season_label)}`}
-                className="flex items-center gap-1.5 transition hover:text-accent-ink hover:underline"
-              >
-                {latest.team_id && logoByTeam[latest.team_id] ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={logoByTeam[latest.team_id]}
-                    alt=""
-                    style={{ width: 16, height: 16 }}
-                    className="object-contain"
-                  />
-                ) : null}
-                {latest.teams && latest.teams !== latest.team_name
-                  ? latest.teams
-                  : latest.team_name}
-              </Link>
-            </div>
-
-            <div className="mt-4 grid max-w-xl grid-cols-2 gap-2 sm:grid-cols-4">
-              {facts.map(([label, value]) => (
-                <div key={label} className="rounded-lg border border-line bg-veil px-3 py-2">
-                  <p className="text-[10px] uppercase tracking-[0.14em] text-ink-3">{label}</p>
-                  <p className="mt-0.5 text-sm font-semibold text-ink">{value}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        <h2 className="mt-8 text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-3">
-          {t("tff1.drawerSeasons")}
-        </h2>
-        <div className="mt-2 overflow-x-auto rounded-lg border border-line">
-          <table className="min-w-full border-collapse text-[13px]">
-            <thead>
-              <tr className="text-left text-[10px] uppercase tracking-[0.12em] text-ink-3">
-                <th className="px-3 py-2 font-medium">{t("tff1.seasonLabel")}</th>
-                <th className="px-3 py-2 font-medium">{t("tff1.colTeam")}</th>
-                <th className="px-3 py-2 text-right font-medium">{t("tff1.colAppearances")}</th>
-                <th className="px-3 py-2 text-right font-medium">{t("tff1.colStarts")}</th>
-                <th className="px-3 py-2 text-right font-medium">{t("tff1.colMinutes")}</th>
-                <th className="px-3 py-2 text-right font-medium">
-                  {isKeeper ? t("tff1.colSaves") : t("tff1.colGoals")}
-                </th>
-                <th className="px-3 py-2 text-right font-medium">{t("tff1.colAssists")}</th>
-                <th className="px-3 py-2 text-right font-medium">{t("tff1.colXg")}</th>
-                <th className="px-3 py-2 text-right font-medium">{t("tff1.colRating")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {seasonRows.map((row) => (
-                <tr key={row.season_label} className="border-t border-line text-ink">
-                  <td className="px-3 py-2">{row.season_label}</td>
-                  <td className="whitespace-nowrap px-3 py-2 text-ink-2">
-                    {row.teams && row.teams !== row.team_name ? row.teams : row.team_name}
-                  </td>
-                  <td className="px-3 py-2 text-right tabular-nums">{fmt(row.appearances)}</td>
-                  <td className="px-3 py-2 text-right tabular-nums">{fmt(row.starts)}</td>
-                  <td className="px-3 py-2 text-right tabular-nums">{fmt(row.minutes)}</td>
-                  <td className="px-3 py-2 text-right tabular-nums">
-                    {isKeeper ? fmt(row.saves) : fmt(row.goals)}
-                  </td>
-                  <td className="px-3 py-2 text-right tabular-nums">{fmt(row.assists)}</td>
-                  <td className="px-3 py-2 text-right tabular-nums">
-                    {row.xg === null ? "—" : fmt(row.xg, 2)}
-                  </td>
-                  <td className="px-3 py-2 text-right tabular-nums">
-                    {row.rating_avg === null ? "—" : fmt(row.rating_avg, 2)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {seasonRows.map((row) => (
-          <div key={row.season_label}>
-            <h2 className="mt-8 text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-3">
-              {t("tff1.drawerSeasonDetail", { season: row.season_label })}
-            </h2>
-            <div className="mt-2 overflow-x-auto rounded-lg border border-line">
-              <table className="min-w-full border-collapse text-[13px]">
-                <thead>
-                  <tr className="text-left text-[10px] uppercase tracking-[0.12em] text-ink-3">
-                    <th className="px-3 py-2 font-medium">{t("tff1.metricCol")}</th>
-                    <th className="px-3 py-2 text-right font-medium">{t("tff1.valueModeTotal")}</th>
-                    <th className="px-3 py-2 text-right font-medium">{t("tff1.valueModePerMatch")}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {metricLines(row, t).map((line) => (
-                    <tr key={line.label} className="border-t border-line text-ink">
-                      <td className="px-3 py-1.5 text-ink-2">{line.label}</td>
-                      <td className="px-3 py-1.5 text-right tabular-nums">{line.value}</td>
-                      <td className="px-3 py-1.5 text-right tabular-nums">{line.perMatch}</td>
+      {/* sezon bazlı ayrıntılı metrik tabloları + tam maç logu */}
+      <section className="w-full">
+        <div className="rounded-2xl border border-line bg-card p-6">
+          {seasonRows.map((row) => (
+            <div key={row.season_label}>
+              <h2 className="mt-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-3 first:mt-0">
+                {t("tff1.drawerSeasonDetail", { season: row.season_label })}
+              </h2>
+              <div className="mb-6 mt-2 overflow-x-auto rounded-lg border border-line">
+                <table className="min-w-full border-collapse text-[13px]">
+                  <thead>
+                    <tr className="text-left text-[10px] uppercase tracking-[0.12em] text-ink-3">
+                      <th className="px-3 py-2 font-medium">{t("tff1.metricCol")}</th>
+                      <th className="px-3 py-2 text-right font-medium">{t("tff1.valueModeTotal")}</th>
+                      <th className="px-3 py-2 text-right font-medium">{t("tff1.valueModePerMatch")}</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {metricLines(row, t).map((line) => (
+                      <tr key={line.label} className="border-t border-line text-ink">
+                        <td className="px-3 py-1.5 text-ink-2">{line.label}</td>
+                        <td className="px-3 py-1.5 text-right tabular-nums">{line.value}</td>
+                        <td className="px-3 py-1.5 text-right tabular-nums">{line.perMatch}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
 
-        {matchLog.length > 0 ? (
-          <>
-            <h2 className="mt-8 text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-3">
-              {t("tff1.matchLogSection")}
-            </h2>
-            <div className="mt-2 max-h-[560px] overflow-auto rounded-lg border border-line">
-              <table className="min-w-full border-collapse text-[13px]">
-                <thead className="sticky top-0 bg-card">
-                  <tr className="text-left text-[10px] uppercase tracking-[0.12em] text-ink-3">
-                    <th className="px-3 py-2 font-medium">{t("tff1.colDate")}</th>
-                    <th className="px-3 py-2 font-medium">{t("tff1.colOpponent")}</th>
-                    <th className="px-3 py-2 font-medium">{t("tff1.colScore")}</th>
-                    <th className="px-3 py-2 font-medium">{t("tff1.colResult")}</th>
-                    <th className="px-3 py-2 text-right font-medium">{t("tff1.colMinutes")}</th>
-                    <th className="px-3 py-2 text-right font-medium">{t("tff1.colRating")}</th>
-                    {isKeeper ? (
-                      <th className="px-3 py-2 text-right font-medium">{t("tff1.colSaves")}</th>
-                    ) : (
-                      <>
-                        <th className="px-3 py-2 text-right font-medium">{t("tff1.colGoals")}</th>
-                        <th className="px-3 py-2 text-right font-medium">{t("tff1.colAssists")}</th>
-                        <th className="px-3 py-2 text-right font-medium">{t("tff1.colShots")}</th>
-                        <th className="px-3 py-2 text-right font-medium">
-                          {t("tff1.colShotsOnTarget")}
-                        </th>
-                      </>
-                    )}
-                    <th className="px-3 py-2 text-right font-medium">{t("tff1.colPasses")}</th>
-                    <th className="px-3 py-2 text-right font-medium">{t("tff1.colKeyPasses")}</th>
-                    <th className="px-3 py-2 text-right font-medium">{t("tff1.colTackles")}</th>
-                    <th className="px-3 py-2 text-right font-medium">{t("tff1.colFouls")}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {matchLog.map((m) => {
-                    const gf = m.is_home ? m.home_score : m.away_score;
-                    const ga = m.is_home ? m.away_score : m.home_score;
-                    const res =
-                      gf === null || ga === null
-                        ? null
-                        : gf > ga
-                          ? "G"
-                          : gf < ga
-                            ? "M"
-                            : "B";
-                    const resClass =
-                      res === "G"
-                        ? "bg-pos/15 text-pos"
-                        : res === "M"
-                          ? "bg-neg/15 text-neg"
-                          : "bg-veil text-ink-2";
-                    const played = num(m.minutes) !== null && num(m.minutes)! > 0;
-                    return (
-                      <tr
-                        key={`${m.match_id}-${m.team_id}`}
-                        className={`border-t border-line ${played ? "text-ink" : "text-ink-3"}`}
-                      >
-                        <td className="whitespace-nowrap px-3 py-1.5 text-[12px] text-ink-3">
-                          {formatMatchDate(m.match_datetime, locale)}
-                          {m.competition !== "Trendyol 1. Lig" ? (
-                            <span className="ml-1.5 rounded bg-veil px-1 py-0.5 text-[10px] uppercase">
-                              {m.competition.includes("Play-off") ? "PO" : m.competition}
-                            </span>
-                          ) : null}
-                        </td>
-                        <td className="whitespace-nowrap px-3 py-1.5">
-                          {m.competition.startsWith("Trendyol 1. Lig") ? (
-                            <Link
-                              href={`/dashboard/tff-1-lig/match/${m.match_id}`}
-                              className="transition hover:text-accent-ink hover:underline"
-                            >
-                              <span className="mr-1 text-[11px] text-ink-3">
-                                {m.is_home ? t("tff1.homeShort") : t("tff1.awayShort")}
+          {matchLog.length > 0 ? (
+            <>
+              <h2 className="mt-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-3">
+                {t("tff1.matchLogSection")}
+              </h2>
+              <div className="mt-2 max-h-[560px] overflow-auto rounded-lg border border-line">
+                <table className="min-w-full border-collapse text-[13px]">
+                  <thead className="sticky top-0 bg-card">
+                    <tr className="text-left text-[10px] uppercase tracking-[0.12em] text-ink-3">
+                      <th className="px-3 py-2 font-medium">{t("tff1.colDate")}</th>
+                      <th className="px-3 py-2 font-medium">{t("tff1.colOpponent")}</th>
+                      <th className="px-3 py-2 font-medium">{t("tff1.colScore")}</th>
+                      <th className="px-3 py-2 font-medium">{t("tff1.colResult")}</th>
+                      <th className="px-3 py-2 text-right font-medium">{t("tff1.colMinutes")}</th>
+                      <th className="px-3 py-2 text-right font-medium">{t("tff1.colRating")}</th>
+                      {isKeeper ? (
+                        <th className="px-3 py-2 text-right font-medium">{t("tff1.colSaves")}</th>
+                      ) : (
+                        <>
+                          <th className="px-3 py-2 text-right font-medium">{t("tff1.colGoals")}</th>
+                          <th className="px-3 py-2 text-right font-medium">{t("tff1.colAssists")}</th>
+                          <th className="px-3 py-2 text-right font-medium">{t("tff1.colShots")}</th>
+                          <th className="px-3 py-2 text-right font-medium">
+                            {t("tff1.colShotsOnTarget")}
+                          </th>
+                        </>
+                      )}
+                      <th className="px-3 py-2 text-right font-medium">{t("tff1.colPasses")}</th>
+                      <th className="px-3 py-2 text-right font-medium">{t("tff1.colKeyPasses")}</th>
+                      <th className="px-3 py-2 text-right font-medium">{t("tff1.colTackles")}</th>
+                      <th className="px-3 py-2 text-right font-medium">{t("tff1.colFouls")}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {matchLog.map((m) => {
+                      const gf = m.is_home ? m.home_score : m.away_score;
+                      const ga = m.is_home ? m.away_score : m.home_score;
+                      const res =
+                        gf === null || ga === null
+                          ? null
+                          : gf > ga
+                            ? "G"
+                            : gf < ga
+                              ? "M"
+                              : "B";
+                      const resClass =
+                        res === "G"
+                          ? "bg-pos/15 text-pos"
+                          : res === "M"
+                            ? "bg-neg/15 text-neg"
+                            : "bg-veil text-ink-2";
+                      const played = num(m.minutes) !== null && num(m.minutes)! > 0;
+                      return (
+                        <tr
+                          key={`${m.match_id}-${m.team_id}`}
+                          className={`border-t border-line ${played ? "text-ink" : "text-ink-3"}`}
+                        >
+                          <td className="whitespace-nowrap px-3 py-1.5 text-[12px] text-ink-3">
+                            {formatMatchDate(m.match_datetime, locale)}
+                            {m.competition !== "Trendyol 1. Lig" ? (
+                              <span className="ml-1.5 rounded bg-veil px-1 py-0.5 text-[10px] uppercase">
+                                {m.competition.includes("Play-off") ? "PO" : m.competition}
                               </span>
-                              {m.opponent_name}
-                            </Link>
+                            ) : null}
+                          </td>
+                          <td className="whitespace-nowrap px-3 py-1.5">
+                            {m.competition.startsWith("Trendyol 1. Lig") ? (
+                              <Link
+                                href={`/dashboard/tff-1-lig/match/${m.match_id}`}
+                                className="transition hover:text-accent-ink hover:underline"
+                              >
+                                <span className="mr-1 text-[11px] text-ink-3">
+                                  {m.is_home ? t("tff1.homeShort") : t("tff1.awayShort")}
+                                </span>
+                                {m.opponent_name}
+                              </Link>
+                            ) : (
+                              <>
+                                <span className="mr-1 text-[11px] text-ink-3">
+                                  {m.is_home ? t("tff1.homeShort") : t("tff1.awayShort")}
+                                </span>
+                                {m.opponent_name}
+                              </>
+                            )}
+                          </td>
+                          <td className="whitespace-nowrap px-3 py-1.5 tabular-nums">
+                            {m.home_score ?? "-"}:{m.away_score ?? "-"}
+                          </td>
+                          <td className="px-3 py-1.5">
+                            <span
+                              className={`inline-flex h-5 w-5 items-center justify-center rounded text-[11px] font-semibold ${res ? resClass : "bg-veil text-ink-3"}`}
+                            >
+                              {res ?? "—"}
+                            </span>
+                          </td>
+                          <td className="px-3 py-1.5 text-right tabular-nums">{fmt(m.minutes)}</td>
+                          <td className="px-3 py-1.5 text-right tabular-nums">
+                            {m.rating === null || !played ? "—" : fmt(m.rating, 2)}
+                          </td>
+                          {isKeeper ? (
+                            <td className="px-3 py-1.5 text-right tabular-nums">{fmt(m.saves)}</td>
                           ) : (
                             <>
-                              <span className="mr-1 text-[11px] text-ink-3">
-                                {m.is_home ? t("tff1.homeShort") : t("tff1.awayShort")}
-                              </span>
-                              {m.opponent_name}
+                              <td className="px-3 py-1.5 text-right tabular-nums">{fmt(m.goals)}</td>
+                              <td className="px-3 py-1.5 text-right tabular-nums">{fmt(m.assists)}</td>
+                              <td className="px-3 py-1.5 text-right tabular-nums">{fmt(m.shots)}</td>
+                              <td className="px-3 py-1.5 text-right tabular-nums">
+                                {fmt(m.shots_on_target)}
+                              </td>
                             </>
                           )}
-                        </td>
-                        <td className="whitespace-nowrap px-3 py-1.5 tabular-nums">
-                          {m.home_score ?? "-"}:{m.away_score ?? "-"}
-                        </td>
-                        <td className="px-3 py-1.5">
-                          <span
-                            className={`inline-flex h-5 w-5 items-center justify-center rounded text-[11px] font-semibold ${res ? resClass : "bg-veil text-ink-3"}`}
-                          >
-                            {res ?? "—"}
-                          </span>
-                        </td>
-                        <td className="px-3 py-1.5 text-right tabular-nums">{fmt(m.minutes)}</td>
-                        <td className="px-3 py-1.5 text-right tabular-nums">
-                          {m.rating === null || !played ? "—" : fmt(m.rating, 2)}
-                        </td>
-                        {isKeeper ? (
-                          <td className="px-3 py-1.5 text-right tabular-nums">{fmt(m.saves)}</td>
-                        ) : (
-                          <>
-                            <td className="px-3 py-1.5 text-right tabular-nums">{fmt(m.goals)}</td>
-                            <td className="px-3 py-1.5 text-right tabular-nums">{fmt(m.assists)}</td>
-                            <td className="px-3 py-1.5 text-right tabular-nums">{fmt(m.shots)}</td>
-                            <td className="px-3 py-1.5 text-right tabular-nums">
-                              {fmt(m.shots_on_target)}
-                            </td>
-                          </>
-                        )}
-                        <td className="px-3 py-1.5 text-right tabular-nums">
-                          {fmt(m.total_passes)}
-                        </td>
-                        <td className="px-3 py-1.5 text-right tabular-nums">{fmt(m.key_passes)}</td>
-                        <td className="px-3 py-1.5 text-right tabular-nums">{fmt(m.tackles)}</td>
-                        <td className="px-3 py-1.5 text-right tabular-nums">{fmt(m.fouls)}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-            <p className="mt-2 text-[12px] text-ink-3">{t("tff1.matchLogNote")}</p>
-          </>
-        ) : null}
+                          <td className="px-3 py-1.5 text-right tabular-nums">
+                            {fmt(m.total_passes)}
+                          </td>
+                          <td className="px-3 py-1.5 text-right tabular-nums">{fmt(m.key_passes)}</td>
+                          <td className="px-3 py-1.5 text-right tabular-nums">{fmt(m.tackles)}</td>
+                          <td className="px-3 py-1.5 text-right tabular-nums">{fmt(m.fouls)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              <p className="mt-2 text-[12px] text-ink-3">{t("tff1.matchLogNote")}</p>
+            </>
+          ) : null}
 
-        <p className="mt-4 text-[12px] text-ink-3">
-          {t("tff1.playoffNote")} {t("tff1.fsNote")} {t("tff1.drawerValueNote")}
-        </p>
-      </div>
-    </section>
+          <p className="mt-4 text-[12px] text-ink-3">
+            {t("tff1.playoffNote")} {t("tff1.fsNote")} {t("tff1.drawerValueNote")}
+          </p>
+        </div>
+      </section>
+    </div>
   );
 }
