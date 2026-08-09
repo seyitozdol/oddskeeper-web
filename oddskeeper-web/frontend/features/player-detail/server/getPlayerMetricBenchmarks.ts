@@ -1,5 +1,6 @@
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
+import { slugForSofascoreTeam } from "@/lib/sofascore-team-map";
 import type { PlayerMetricBenchmarkRow } from "../types";
 
 const DEFAULT_LIMIT = 24;
@@ -44,7 +45,7 @@ function mapRow(row: PlayerMetricBenchmarksDbRow): PlayerMetricBenchmarkRow {
     source_team_id: row.source_team_id,
     team_source_id: row.source_team_id,
 
-    team_slug: row.team_slug,
+    team_slug: row.team_slug ?? slugForSofascoreTeam(row.source_team_id),
     team_name: row.team_name,
 
     player_source_id: row.player_source_id,
@@ -89,7 +90,7 @@ export const getPlayerMetricBenchmarks = cache(
 
     let query = supabase
       .schema("analytics")
-      .from("player_metric_benchmarks_v1")
+      .from("tsl_ss_player_metric_benchmarks_mat")
       .select(
         `
           season_label,

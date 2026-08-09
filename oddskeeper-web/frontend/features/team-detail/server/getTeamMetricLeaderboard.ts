@@ -1,5 +1,6 @@
 import { cache } from "react";
 import { createClient } from "../../../lib/supabase/server";
+import { slugForSofascoreTeam } from "@/lib/sofascore-team-map";
 import type { TeamMetricLeaderboardRow } from "../types";
 
 type TeamMetricLeaderboardDbRow = {
@@ -41,7 +42,7 @@ function mapRow(row: TeamMetricLeaderboardDbRow): TeamMetricLeaderboardRow {
     season_label: row.season_label,
     competition: row.competition,
 
-    team_slug: row.team_slug,
+    team_slug: row.team_slug ?? slugForSofascoreTeam(row.source_team_id),
     source_team_id: row.source_team_id,
     team_name: row.team_name,
 
@@ -86,7 +87,7 @@ export const getTeamMetricLeaderboard = cache(
 
     let query = supabase
       .schema("analytics")
-      .from("team_detailed_metrics_v2_1")
+      .from("tsl_ss_team_detailed_metrics_mat")
       .select(
         `
           season_label,

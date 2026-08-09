@@ -44,9 +44,13 @@ type DisplayValueColumn =
 
 type MetricDisplayProfile = "count" | "pct" | "xg" | "ratio";
 
+// SofaScore (tsl_ss) kataloğu attacking/defending anahtarlarını kullanır;
+// eski Opta anahtarları geriye dönük uyum için listede kalır.
 const CATEGORY_ORDER: TeamDetailedCategoryKey[] = [
   "attack",
+  "attacking",
   "defence",
+  "defending",
   "build_up",
   "discipline",
   "set_piece",
@@ -55,7 +59,9 @@ const CATEGORY_ORDER: TeamDetailedCategoryKey[] = [
 
 const CATEGORY_LABEL_KEYS: Record<TeamDetailedCategoryKey, string> = {
   attack: "teamDetail.categoryAttack",
+  attacking: "teamDetail.categoryAttack",
   defence: "teamDetail.categoryDefence",
+  defending: "teamDetail.categoryDefence",
   build_up: "teamDetail.categoryBuildUp",
   discipline: "teamDetail.categoryDiscipline",
   set_piece: "teamDetail.categorySetPiece",

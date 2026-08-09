@@ -188,7 +188,7 @@ def main():
 
 
 def refresh_mats():
-    """tff1 mat'larini tazele (frontend mat okur)."""
+    """tff1 + tsl_ss mat'larini tazele (frontend mat okur)."""
     try:
         import psycopg2
         conn = psycopg2.connect((ENV.get("DATABASE_URL") or "").strip().strip('"'))
@@ -200,6 +200,19 @@ def refresh_mats():
         cur.execute("refresh materialized view analytics.tff1_pm_player_season_mat")
         cur.execute("refresh materialized view analytics.tff1_squad_mat")
         print("[mat] tff1 materialized view'lar tazelendi", flush=True)
+        # TSL SofaScore analytics zinciri (frontend 2026-08-09'dan beri
+        # bunlari okur; siralama dogru kalsin diye her yuklemede tazelenir).
+        # Sira onemli: detailed_metrics_global -> benchmarks/leaderboard/
+        # overview ondan tureyen mat'lar.
+        cur.execute("refresh materialized view analytics.tsl_ss_player_detailed_metrics_global_mat")
+        cur.execute("refresh materialized view analytics.tsl_ss_player_metric_benchmarks_mat")
+        cur.execute("refresh materialized view analytics.tsl_ss_player_overview_advanced_mat")
+        cur.execute("refresh materialized view analytics.tsl_ss_player_metric_leaderboard_mat")
+        cur.execute("refresh materialized view analytics.tsl_ss_team_detailed_metrics_mat")
+        cur.execute("refresh materialized view analytics.tsl_ss_team_metric_benchmarks_mat")
+        cur.execute("refresh materialized view analytics.tsl_ss_team_overview_advanced_mat")
+        cur.execute("refresh materialized view analytics.tsl_ss_squad_mat")
+        print("[mat] tsl_ss materialized view'lar tazelendi", flush=True)
     except Exception as e:  # noqa
         print(f"UYARI: mat refresh basarisiz: {e}", flush=True)
 

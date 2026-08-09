@@ -1,4 +1,5 @@
 import { createClient } from "../../../lib/supabase/server";
+import { slugForSofascoreTeamName } from "@/lib/sofascore-team-map";
 
 type LeagueTeamCategoryKey =
   | "attack"
@@ -47,7 +48,9 @@ function mapRow(row: TeamLeaderboardDbRow): LeagueTeamLeaderboardRow {
     metric_key: row.metric_key,
     metric_label: row.metric_label,
 
-    team_slug: row.team_slug,
+    // tsl_ss view'ında team_slug ve takım id'si yok; slug SofaScore kanonik
+    // takım adından çözülür (düşen eski sezon takımları null kalır).
+    team_slug: row.team_slug ?? slugForSofascoreTeamName(row.team_name),
     team_name: row.team_name,
 
     total_value: row.total_value,
@@ -72,7 +75,7 @@ export async function getLeagueTeamLeaderboard(
 
   const { data, error } = await supabase
     .schema("analytics")
-    .from("team_leaderboard_rows_v1")
+    .from("tsl_ss_team_leaderboard_rows_v1")
     .select(
       `
         competition,

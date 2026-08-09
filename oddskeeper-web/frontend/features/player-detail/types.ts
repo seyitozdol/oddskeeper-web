@@ -173,7 +173,16 @@ export type PlayerDetailedCategoryKey =
   | "defence"
   | "discipline"
   | "usage"
-  | "goalkeeper";
+  | "goalkeeper"
+  // SofaScore (tsl_ss) katalog kategorileri
+  | "playing_time"
+  | "creation"
+  | "duels"
+  | "possession"
+  | "defending"
+  | "goalkeeping"
+  | "physical"
+  | "overall";
 
 export type PlayerDetailedValueFormat =
   | "integer"

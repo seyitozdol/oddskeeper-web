@@ -1,5 +1,10 @@
 import { createClient } from "../../../lib/supabase/server";
 import { getPlayerDisplayNameMap } from "../../../lib/player-display-names";
+import { getPlayerSlugMap } from "@/features/player-detail/server/getPlayerSlugMap";
+import {
+  slugForSofascoreTeam,
+  sofascoreIdForTeamSlug,
+} from "@/lib/sofascore-team-map";
 
 export type LeaguePlayerMetricOption = {
   metric_key: string;
@@ -105,7 +110,7 @@ export async function getLeaguePlayerLeaderboardMeta(
 
   const { data, error } = await supabase
     .schema("analytics")
-    .from("player_leaderboard_metric_catalog_v1")
+    .from("tsl_ss_player_leaderboard_metric_catalog_v1")
     .select(
       `
         metric_key,
@@ -152,7 +157,7 @@ export async function getLeaguePlayerLeaderboard({
 
   let query = supabase
     .schema("analytics")
-    .from("player_leaderboard_rows_v1")
+    .from("tsl_ss_player_leaderboard_rows_v1")
     .select(
       `
         competition,
@@ -186,14 +191,18 @@ export async function getLeaguePlayerLeaderboard({
     .gte("sample_matches", minApps)
     .order("league_rank", { ascending: true, nullsFirst: false });
 
-  if (role === "starter_core" || role === "starters") {
-    query = query.neq("role_group", "SUBSTITUTE");
-  } else if (role === "substitutes") {
-    query = query.eq("role_group", "SUBSTITUTE");
-  }
+  // SofaScore (tsl_ss) satırlarında role_group mevki grubudur
+  // (forward/midfielder/...), ilk 11/yedek ayrımı taşımaz; havuz zaten
+  // kalifiye oyunculardan oluşur. Rol filtresi bu kaynakta uygulanmaz.
+  void role;
 
   if (teamSlug && teamSlug !== "all") {
-    query = query.eq("team_slug", teamSlug);
+    // View team_slug taşımaz; slug SofaScore takım id'sine çevrilip filtrelenir.
+    const sofascoreTeamId = sofascoreIdForTeamSlug(teamSlug);
+    if (!sofascoreTeamId) {
+      return [];
+    }
+    query = query.eq("source_team_id", sofascoreTeamId);
   }
 
   const { data, error } = await query.returns<LeaderboardDbRow[]>();
@@ -202,7 +211,17 @@ export async function getLeaguePlayerLeaderboard({
     return [];
   }
 
-  const rows = (data ?? []).map(mapLeaderboardRow);
+  // Kimlik doldurma: player_slug (opta id haritasından) + team_slug
+  // (SofaScore takım id'sinden); view'larda ikisi de NULL gelir.
+  const slugMap = await getPlayerSlugMap();
+  const rows = (data ?? []).map(mapLeaderboardRow).map((row) => ({
+    ...row,
+    player_slug:
+      row.player_slug ??
+      (row.player_source_id ? slugMap[String(row.player_source_id)] ?? null : null),
+    team_slug: row.team_slug ?? slugForSofascoreTeam(row.source_team_id),
+  }));
+
   const nameMap = await getPlayerDisplayNameMap(
     rows.map((row) => row.player_slug)
   );

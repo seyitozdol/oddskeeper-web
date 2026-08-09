@@ -1,5 +1,6 @@
 import { cache } from "react";
 import { createClient } from "../../../lib/supabase/server";
+import { slugForSofascoreTeam } from "@/lib/sofascore-team-map";
 import type {
   PlayerDetailedCategoryKey,
   PlayerDetailedMetricRow,
@@ -60,7 +61,8 @@ function mapRow(row: PlayerDetailedMetricsDbRow): PlayerDetailedMetricRow {
     role_group: row.role_group,
 
     source_team_id: row.source_team_id,
-    team_slug: row.team_slug,
+    // tsl_ss view'ları team_slug taşımaz; SofaScore takım id'sinden çözülür
+    team_slug: row.team_slug ?? slugForSofascoreTeam(row.source_team_id),
     team_name: row.team_name,
 
     metric_key: row.metric_key,
@@ -112,7 +114,7 @@ export const getPlayerDetailedMetrics = cache(
 
     let query = supabase
       .schema("analytics")
-      .from("player_detailed_metrics_global_v1")
+      .from("tsl_ss_player_detailed_metrics_global_mat")
       .select(
         `
           season_label,

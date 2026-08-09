@@ -37,14 +37,25 @@ type SortConfig = {
   direction: SortDirection;
 } | null;
 
+// SofaScore kataloğu (tsl_ss) yeni kategori uzayını kullanır; eski Opta
+// anahtarları (shooting/defence/usage/goalkeeper) geriye dönük uyum için
+// listede kalır.
 const CATEGORY_ORDER: PlayerDetailedCategoryKey[] = [
+  "playing_time",
   "attacking",
   "shooting",
+  "creation",
   "passing",
+  "duels",
+  "possession",
+  "defending",
   "defence",
   "discipline",
-  "usage",
+  "goalkeeping",
   "goalkeeper",
+  "physical",
+  "overall",
+  "usage",
 ];
 
 // Kategori görünür etiketleri: render sırasında t() ile çözülür (bkz.
@@ -57,6 +68,14 @@ const CATEGORY_LABEL_KEYS: Record<PlayerDetailedCategoryKey, string> = {
   discipline: "playerDetail.categoryDiscipline",
   usage: "playerDetail.categoryUsage",
   goalkeeper: "common.goalkeeper",
+  playing_time: "playerDetail.categoryPlayingTime",
+  creation: "playerDetail.categoryCreation",
+  duels: "playerDetail.categoryDuels",
+  possession: "playerDetail.categoryPossession",
+  defending: "playerDetail.categoryDefence",
+  goalkeeping: "common.goalkeeper",
+  physical: "playerDetail.categoryPhysical",
+  overall: "playerDetail.categoryOverall",
 };
 
 function formatRawNumber(value: number, digits = 1) {

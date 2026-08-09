@@ -1,4 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
+import {
+  slugForSofascoreTeam,
+  sofascoreIdForTeamSlug,
+} from "@/lib/sofascore-team-map";
 import type { TeamAdvancedOverviewRow } from "../types";
 
 type TeamAdvancedOverviewDbRow = {
@@ -44,7 +48,7 @@ function mapRow(row: TeamAdvancedOverviewDbRow): TeamAdvancedOverviewRow {
     source_team_id: row.source_team_id,
     team_source_id: row.source_team_id,
 
-    team_slug: row.team_slug,
+    team_slug: row.team_slug ?? slugForSofascoreTeam(row.source_team_id),
     team_name: row.team_name,
 
     attack_profile_label: row.attack_profile_label,
@@ -95,7 +99,7 @@ export async function getTeamAdvancedOverview(
 
   let query = supabase
     .schema("analytics")
-    .from("team_overview_advanced_v1")
+    .from("tsl_ss_team_overview_advanced_mat")
     .select(
       `
         season_label,
@@ -127,7 +131,8 @@ export async function getTeamAdvancedOverview(
         home_away_gap_abs
       `
     )
-    .eq("team_slug", teamSlug)
+    // tsl_ss mat'ı team_slug taşımaz; slug SofaScore takım id'sine çevrilir
+    .eq("source_team_id", sofascoreIdForTeamSlug(teamSlug) ?? "-1")
     .order("season_label", { ascending: false })
     .limit(1);
 

@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { slugForSofascoreTeam } from "@/lib/sofascore-team-map";
 import type { PlayerAdvancedOverviewRow } from "../types";
 
 type PlayerAdvancedOverviewDbRow = {
@@ -48,7 +49,7 @@ function mapRow(row: PlayerAdvancedOverviewDbRow): PlayerAdvancedOverviewRow {
     source_team_id: row.source_team_id,
     team_source_id: row.source_team_id,
 
-    team_slug: row.team_slug,
+    team_slug: row.team_slug ?? slugForSofascoreTeam(row.source_team_id),
     team_name: row.team_name,
 
     player_source_id: row.player_source_id,
@@ -96,7 +97,7 @@ export async function getPlayerAdvancedOverview(
 
   const { data, error } = await supabase
     .schema("analytics")
-    .from("player_overview_advanced_v1")
+    .from("tsl_ss_player_overview_advanced_mat")
     .select(
       `
         season_label,

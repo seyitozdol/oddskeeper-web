@@ -1,5 +1,9 @@
 import { cache } from "react";
 import { createClient } from "../../../lib/supabase/server";
+import {
+  slugForSofascoreTeam,
+  sofascoreIdForTeamSlug,
+} from "@/lib/sofascore-team-map";
 import type {
   TeamDetailedCategoryKey,
   TeamDetailedMetricRow,
@@ -49,7 +53,7 @@ function mapRow(row: TeamDetailedMetricsDbRow): TeamDetailedMetricRow {
     source_team_id: row.source_team_id,
     team_source_id: row.source_team_id,
 
-    team_slug: row.team_slug,
+    team_slug: row.team_slug ?? slugForSofascoreTeam(row.source_team_id),
     team_name: row.team_name,
 
     metric_key: row.metric_key,
@@ -97,7 +101,7 @@ export const getTeamDetailedMetrics = cache(
 
     let query = supabase
       .schema("analytics")
-      .from("team_detailed_metrics_v2_1")
+      .from("tsl_ss_team_detailed_metrics_mat")
       .select(
         `
           season_label,
@@ -128,7 +132,8 @@ export const getTeamDetailedMetrics = cache(
           coverage_flag
         `
       )
-      .eq("team_slug", teamSlug)
+      // tsl_ss mat'ı team_slug taşımaz; slug SofaScore takım id'sine çevrilir
+      .eq("source_team_id", sofascoreIdForTeamSlug(teamSlug) ?? "-1")
       .order("category_key", { ascending: true })
       .order("display_priority", { ascending: true })
       .order("metric_label", { ascending: true });

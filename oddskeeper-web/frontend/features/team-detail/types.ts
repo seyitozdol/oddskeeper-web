@@ -264,7 +264,10 @@ export type TeamDetailedCategoryKey =
   | "build_up"
   | "discipline"
   | "set_piece"
-  | "goal_composition";
+  | "goal_composition"
+  // SofaScore (tsl_ss) katalog kategorileri
+  | "attacking"
+  | "defending";
 
 export type TeamDetailedValueFormat =
   | "integer"

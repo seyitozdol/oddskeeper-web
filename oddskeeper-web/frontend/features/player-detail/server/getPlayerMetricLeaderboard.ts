@@ -1,5 +1,6 @@
 import { cache } from "react";
 import { createClient } from "../../../lib/supabase/server";
+import { slugForSofascoreTeam } from "@/lib/sofascore-team-map";
 import type {
   PlayerDetailedCategoryKey,
   PlayerMetricLeaderboardRow,
@@ -50,7 +51,6 @@ type PlayerMetricLeaderboardDbRow = {
   ranking_pool: string | null;
   ranking_value: number | null;
   is_qualified: boolean | null;
-  recent_activity_flag: boolean | null;
   qualification_minutes_threshold: number | null;
   qualification_apps_threshold: number | null;
   qualification_reason: string | null;
@@ -67,7 +67,7 @@ function mapRow(row: PlayerMetricLeaderboardDbRow): PlayerMetricLeaderboardRow {
     role_group: row.role_group,
 
     source_team_id: row.source_team_id,
-    team_slug: row.team_slug,
+    team_slug: row.team_slug ?? slugForSofascoreTeam(row.source_team_id),
     team_name: row.team_name,
 
     metric_key: row.metric_key,
@@ -102,7 +102,8 @@ function mapRow(row: PlayerMetricLeaderboardDbRow): PlayerMetricLeaderboardRow {
     ranking_pool: row.ranking_pool,
     ranking_value: row.ranking_value,
     is_qualified: row.is_qualified,
-    recent_activity_flag: row.recent_activity_flag,
+    // tsl_ss mat'ında bu bayrak yok; kalifikasyon is_qualified ile taşınır
+    recent_activity_flag: null,
     qualification_minutes_threshold: row.qualification_minutes_threshold,
     qualification_apps_threshold: row.qualification_apps_threshold,
     qualification_reason: row.qualification_reason,
@@ -123,7 +124,7 @@ export const getPlayerMetricLeaderboard = cache(
 
     let query = supabase
       .schema("analytics")
-      .from("player_metric_leaderboard_current")
+      .from("tsl_ss_player_metric_leaderboard_mat")
       .select(
         `
           season_label,
@@ -161,18 +162,14 @@ export const getPlayerMetricLeaderboard = cache(
           ranking_pool,
           ranking_value,
           is_qualified,
-          recent_activity_flag,
           qualification_minutes_threshold,
           qualification_apps_threshold,
           qualification_reason
         `
       )
       .eq("metric_key", options.metricKey)
-      // Her oyuncu v1'de havuz basina bir satir tasir (OUTFIELD_PLAYERS/
-      // GOALKEEPERS + ALL_PLAYERS). ranking_pool filtresi olmadan her oyuncu
-      // iki kez (ayni isim + ayni deger) listeleniyordu; genel siralama icin
-      // herkesin birlikte siralandigi ALL_PLAYERS havuzunu kullan.
-      .eq("ranking_pool", "ALL_PLAYERS")
+      // Genel sıralama havuzu: tsl_ss mat'ında tek havuz var ('all').
+      .eq("ranking_pool", "all")
       .order("league_rank", { ascending: true, nullsFirst: false })
       .order("player_name", { ascending: true });
 
@@ -200,6 +197,23 @@ export const getPlayerMetricLeaderboard = cache(
       return [];
     }
 
-    return (data ?? []).map(mapRow);
+    let rows = data ?? [];
+
+    // tsl_ss mat'ı birden çok sezonu birlikte taşır; sezon verilmemişse
+    // sıralama en güncel sezona daraltılır (eski current-only davranışı).
+    if (!options.seasonLabel && rows.length > 0) {
+      const latestSeason = rows.reduce<string | null>(
+        (max, row) =>
+          row.season_label && (!max || row.season_label > max)
+            ? row.season_label
+            : max,
+        null
+      );
+      if (latestSeason) {
+        rows = rows.filter((row) => row.season_label === latestSeason);
+      }
+    }
+
+    return rows.map(mapRow);
   }
 );
