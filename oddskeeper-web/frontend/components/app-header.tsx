@@ -136,7 +136,6 @@ export default function AppHeader({
 
   const initials = userEmail ? userEmail.slice(0, 1).toUpperCase() : "U";
   const isUpcomingActive = pathname.startsWith("/dashboard/upcoming-events");
-  const isTff1Active = pathname.startsWith("/dashboard/tff-1-lig");
   const isChangelogActive = pathname.startsWith("/dashboard/changelog");
   const isAdminActive = pathname.startsWith("/dashboard/admin");
 
@@ -235,15 +234,6 @@ export default function AppHeader({
                 </div>
               );
             })}
-
-            {can("tff-1-lig") ? (
-              <Link
-                href="/dashboard/tff-1-lig"
-                className={navLinkClass(isTff1Active)}
-              >
-                {t("nav.tff1Lig")}
-              </Link>
-            ) : null}
 
             {can("changelog") ? (
               <Link
@@ -362,15 +352,6 @@ export default function AppHeader({
               <span>{item.label}</span>
             </Link>
           ))}
-
-          {can("tff-1-lig") ? (
-            <Link
-              href="/dashboard/tff-1-lig"
-              className={navLinkClass(isTff1Active)}
-            >
-              {t("nav.tff1Lig")}
-            </Link>
-          ) : null}
 
           {can("changelog") ? (
             <Link

@@ -274,7 +274,7 @@ export async function PlayerDetailHeader({
           <Link
             href={`/dashboard/stats-analysis/football/player-stats/detail?player=${encodeURIComponent(
               profile.player_slug
-            )}&tab=overview&design=v2`}
+            )}&tab=overview`}
             className="rounded-xl border border-line-strong bg-accent-soft px-3 py-2 text-sm text-accent-ink transition hover:bg-accent-soft"
             title={t("playerDetail.showcaseViewLabel")}
           >

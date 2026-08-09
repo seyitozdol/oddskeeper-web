@@ -613,7 +613,7 @@ export function Tff1PlayerShowcase({
       {/* üst çubuk */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <Link
-          href="/dashboard/tff-1-lig"
+          href="/dashboard/stats-analysis/tff1/resmi?season=2026%2F2027&section=league"
           className="rounded-xl border border-line bg-card px-3 py-2 text-sm text-ink-2 transition hover:text-ink"
         >
           ← {t("tff1.backToLeague")}

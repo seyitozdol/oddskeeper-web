@@ -162,7 +162,7 @@ export default async function Tff1MatchPage({
     <section className="w-full">
       <div className="rounded-2xl border border-line bg-card p-8">
         <Link
-          href="/dashboard/tff-1-lig"
+          href="/dashboard/stats-analysis/tff1/resmi?season=2026%2F2027&section=league"
           className="text-[13px] text-ink-3 transition hover:text-ink"
         >
           ← {t("tff1.backToLeague")}

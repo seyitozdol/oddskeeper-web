@@ -16,7 +16,6 @@ export const NAV_KEYS = [
   "league-1lig",
   "league-tbl",
   "volleyball",
-  "tff-1-lig",
   // Match Stats Model içindeki GSheet alt sekmesi. Bir header/route DEĞİL, salt
   // erişim bayrağı: admin panelindeki access listesinde görünür, MSM içindeki
   // GSheet sekmesi bu izne göre gösterilir/gizlenir (proxy path kilidi yok).
@@ -90,12 +89,6 @@ export const NAV_PERMISSION_ITEMS: NavPermissionItem[] = [
     pathPrefixes: ["/dashboard/volleyball"],
   },
   {
-    key: "tff-1-lig",
-    labelKey: "nav.tff1Lig",
-    href: "/dashboard/tff-1-lig",
-    pathPrefixes: ["/dashboard/tff-1-lig"],
-  },
-  {
     key: "msm-gsheet",
     labelKey: "nav.msmGsheet",
     // Gerçek bir sayfa değil (GSheet, Match Stats Model'de query-param'lı bir alt
@@ -129,20 +122,17 @@ export function isNavKeyAllowed(
 
 // Bazi yollar birden fazla izinle acilabilir (OR mantigi). 1. Lig
 // player-market ekrani ve oradan gidilen detay sayfalari (team/player/match)
-// hem tff-1-lig hem player-market izniyle erisilebilir olmali; boylece
-// tff-1-lig menusu kullanicilara kapali olsa da player-market izni olanlar
-// Oyuncu Katilim Araclari toggle'i ile 1. Lig'e girip drill-down yapabilir.
-// tff-1-lig izni olan kullanicilar da bu sayfalara normalde erismeye devam eder.
-// Not: team/player/match prefix'leri sonunda "/" ile biter; boylece
-// "/dashboard/tff-1-lig/matches" (tff-1-lig'e ait mac listesi) yanlislikla
-// "match" prefix'ine dusup acilmaz, kapali kalir.
+// hem league-1lig hem player-market izniyle erisilebilir; eski tff-1-lig
+// basligi ve anahtari 2026-08-09'da kaldirildi (ana sayfa + matches silindi;
+// detay sayfalari 1. Lig Resmi deneyiminin drill-down hedefleri olarak yasar).
+// Not: team/player/match prefix'leri sonunda "/" ile biter.
 const SHARED_ACCESS_PREFIXES: { prefix: string; keys: NavKey[] }[] = [
-  { prefix: "/dashboard/tff-1-lig/player-market", keys: ["player-market", "tff-1-lig"] },
+  { prefix: "/dashboard/tff-1-lig/player-market", keys: ["player-market", "league-1lig"] },
   // 1. Lig Resmi deneyimi (league-1lig) takım/oyuncu/maç detaylarına link verir;
   // o deneyimi görebilen kullanıcı drill-down da yapabilmeli.
-  { prefix: "/dashboard/tff-1-lig/team/", keys: ["player-market", "tff-1-lig", "league-1lig"] },
-  { prefix: "/dashboard/tff-1-lig/player/", keys: ["player-market", "tff-1-lig", "league-1lig"] },
-  { prefix: "/dashboard/tff-1-lig/match/", keys: ["player-market", "tff-1-lig", "league-1lig"] },
+  { prefix: "/dashboard/tff-1-lig/team/", keys: ["player-market", "league-1lig"] },
+  { prefix: "/dashboard/tff-1-lig/player/", keys: ["player-market", "league-1lig"] },
+  { prefix: "/dashboard/tff-1-lig/match/", keys: ["player-market", "league-1lig"] },
   // TSL Resmi deneyimi (league-tsl) oyuncu/takım/maç detayları için ortak
   // Stats & Analysis sayfalarına gider; league-tsl izni bunlara erişim vermeli
   // (yoksa TSL'den takıma/oyuncuya tıklayan kullanıcı /dashboard'a atılıyordu).

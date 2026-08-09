@@ -92,9 +92,11 @@ export default async function FootballPlayerDetailPage({
     ? requestedTab
     : "overview";
 
-  // design=v2: overview sekmesinin vitrin (showcase) tasarım önizlemesi
+  // Vitrin (showcase) tasarımı overview sekmesinin VARSAYILANI (2026-08-09);
+  // eski düzen design=classic ile hâlâ açılabilir. design=v2 de vitrine gider
+  // (eski linkler kırılmasın).
   const showcaseDesign =
-    resolvedSearchParams.design === "v2" && activeTab === "overview";
+    activeTab === "overview" && resolvedSearchParams.design !== "classic";
 
   if (!playerSlug) {
     const t = await getT();

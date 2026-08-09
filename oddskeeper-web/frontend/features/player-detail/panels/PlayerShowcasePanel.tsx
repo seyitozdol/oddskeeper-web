@@ -487,7 +487,7 @@ export async function PlayerShowcasePanel({
   const detailHrefBase = `/dashboard/stats-analysis/football/player-stats/detail?player=${encodeURIComponent(
     profile.player_slug
   )}`;
-  const overviewReturnTo = `${detailHrefBase}&tab=overview&design=v2`;
+  const overviewReturnTo = `${detailHrefBase}&tab=overview`;
 
   const backToTeamHref = getTeamDetailHref(displayTeamSlug)
     ? `${getTeamDetailHref(displayTeamSlug)}&tab=squad`
@@ -644,9 +644,6 @@ export async function PlayerShowcasePanel({
           >
             {t("playerDetail.backButton")}
           </Link>
-          <span className="rounded-full border border-line-strong bg-accent-soft px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.12em] text-accent-ink">
-            {t("playerDetail.designPreviewBadge")}
-          </span>
         </div>
 
         <div className="flex flex-wrap items-center gap-1.5">
@@ -670,7 +667,7 @@ export async function PlayerShowcasePanel({
             );
           })}
           <Link
-            href={`${detailHrefBase}&tab=overview`}
+            href={`${detailHrefBase}&tab=overview&design=classic`}
             className="rounded-xl border border-line bg-card px-3 py-2 text-sm text-ink-2 transition hover:text-ink"
             title={t("playerDetail.classicViewLabel")}
           >
