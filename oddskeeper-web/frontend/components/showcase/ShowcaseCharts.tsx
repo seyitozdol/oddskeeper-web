@@ -119,6 +119,62 @@ export function ShowcaseRadarBars({ axes }: { axes: ShowcaseRadarAxis[] }) {
   );
 }
 
+// Maç vitrini: iki takımı ortadan bölünmüş barla kıyaslayan satırlar.
+export type ShowcaseVsRow = {
+  key: string;
+  label: string;
+  home: number | null;
+  away: number | null;
+  digits?: number;
+};
+
+function fmtVs(v: number | null, digits: number) {
+  if (v === null) return "—";
+  return digits > 0 ? v.toFixed(digits) : String(Math.round(v));
+}
+
+export function ShowcaseVsBars({ rows }: { rows: ShowcaseVsRow[] }) {
+  return (
+    <div className="space-y-3">
+      {rows.map((row) => {
+        const total = (row.home ?? 0) + (row.away ?? 0);
+        const homePct = total > 0 ? ((row.home ?? 0) / total) * 100 : 50;
+        const homeLeads = (row.home ?? 0) > (row.away ?? 0);
+        const awayLeads = (row.away ?? 0) > (row.home ?? 0);
+        return (
+          <div key={row.key}>
+            <div className="flex items-center justify-between gap-2 text-[12px]">
+              <span
+                className={`w-12 shrink-0 tabular-nums ${homeLeads ? "font-semibold text-accent-ink" : "text-ink"}`}
+              >
+                {fmtVs(row.home, row.digits ?? 0)}
+              </span>
+              <span className="min-w-0 truncate text-center text-[11px] text-ink-2">
+                {row.label}
+              </span>
+              <span
+                className={`w-12 shrink-0 text-right tabular-nums ${awayLeads ? "font-semibold text-accent-ink" : "text-ink"}`}
+              >
+                {fmtVs(row.away, row.digits ?? 0)}
+              </span>
+            </div>
+            <div className="mt-1 flex h-1.5 gap-0.5 overflow-hidden rounded-full bg-veil">
+              <div
+                className={`h-full rounded-l-full ${homeLeads ? "bg-accent" : "bg-line-strong"}`}
+                style={{ width: `${homePct}%` }}
+              />
+              <div
+                className={`h-full rounded-r-full ${awayLeads ? "bg-accent" : "bg-line-strong"}`}
+                style={{ width: `${100 - homePct}%` }}
+              />
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export type ShowcaseTrendPoint = {
   key: string;
   label: string;

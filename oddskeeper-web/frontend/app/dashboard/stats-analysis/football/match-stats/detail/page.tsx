@@ -8,6 +8,7 @@ import { getMatchProfile } from "@/features/match-detail/server/getMatchProfile"
 import { getMatchTeamStats } from "@/features/match-detail/server/getMatchTeamStats";
 import type { ValidMatchTab } from "@/features/match-detail/types";
 import { MatchLineupsPanel } from "@/features/match-detail/panels/MatchLineupsPanel";
+import { MatchShowcasePanel } from "@/features/match-detail/panels/MatchShowcasePanel";
 import { getMatchParticipants } from "@/features/match-detail/server/getMatchParticipants";
 import { getT } from "@/lib/i18n/server";
 
@@ -16,6 +17,7 @@ type PageProps = {
     match?: string;
     tab?: string;
     returnTo?: string;
+    design?: string;
   }>;
 };
 
@@ -62,14 +64,34 @@ export default async function FootballMatchDetailPage({
     );
   }
 
-  const incidents =
-    activeTab === "incidents" ? await getMatchIncidents(sourceMatchId) : [];
+  // Vitrin (showcase) tasarımı overview'in varsayılanı (2026-08-10);
+  // eski düzen design=classic ile açılır.
+  const showcaseDesign =
+    activeTab === "overview" && resolvedSearchParams.design !== "classic";
 
-  const teamStats =
-    activeTab === "team-stats" ? await getMatchTeamStats(sourceMatchId) : [];
+  const [incidents, teamStats, participants] = await Promise.all([
+    activeTab === "incidents" || showcaseDesign
+      ? getMatchIncidents(sourceMatchId)
+      : Promise.resolve([]),
+    activeTab === "team-stats" || showcaseDesign
+      ? getMatchTeamStats(sourceMatchId)
+      : Promise.resolve([]),
+    activeTab === "lineups" || showcaseDesign
+      ? getMatchParticipants(sourceMatchId)
+      : Promise.resolve([]),
+  ]);
 
-  const participants =
-    activeTab === "lineups" ? await getMatchParticipants(sourceMatchId) : [];
+  if (showcaseDesign) {
+    return (
+      <MatchShowcasePanel
+        profile={profile}
+        incidents={incidents}
+        teamStats={teamStats}
+        participants={participants}
+        backHref={returnTo}
+      />
+    );
+  }
 
   return (
     <section className="w-full space-y-4">

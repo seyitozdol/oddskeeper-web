@@ -1,6 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { CalendarDays } from "lucide-react";
 import { formatMatchDate } from "@/features/tff1/lib";
+import {
+  ShowcaseVsBars,
+  type ShowcaseVsRow,
+} from "@/components/showcase/ShowcaseCharts";
 import {
   getTff1Match,
   getTff1MatchPlayers,
@@ -131,58 +136,134 @@ export default async function Tff1MatchPage({
     playerRows.filter((p) => p.team_id === match.away_team_id)
   );
 
-  const teamBlock = (teamId: string | null, teamName: string | null) => (
-    <div className="flex items-center gap-3">
-      {teamId && logoByTeam[teamId] ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={logoByTeam[teamId]}
-          alt={teamName ?? ""}
-          className="h-12 w-12 object-contain"
-        />
-      ) : (
-        <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-line bg-veil text-lg font-semibold text-ink-3">
-          {(teamName ?? "?").slice(0, 1)}
-        </div>
-      )}
+  // Takım toplamları (oyuncu satırlarından): karşılaştırma barları için
+  const agg = (rows: Tff1MatchLogRow[], pick: (r: Tff1MatchLogRow) => number) =>
+    rows.reduce((sum, r) => sum + pick(r), 0);
+  const vsRow = (
+    key: string,
+    labelKey: string,
+    pick: (r: Tff1MatchLogRow) => number,
+    digits = 0
+  ): ShowcaseVsRow => ({
+    key,
+    label: t(labelKey),
+    home: agg(homeRows, pick),
+    away: agg(awayRows, pick),
+    digits,
+  });
+  const vsRows: ShowcaseVsRow[] =
+    playerRows.length === 0
+      ? []
+      : [
+          vsRow("shots", "tff1.colShots", (r) => num(r.shots)),
+          vsRow("sot", "tff1.colShotsOnTarget", (r) => num(r.shots_on_target)),
+          vsRow("passes", "tff1.colPasses", (r) => num(r.total_passes)),
+          vsRow("keypass", "tff1.colKeyPasses", (r) => num(r.key_passes)),
+          vsRow("duels", "tff1.colDuelsWon", (r) => num(r.duels_won)),
+          vsRow("tackles", "tff1.colTackles", (r) => num(r.tackles)),
+          vsRow("fouls", "tff1.colFouls", (r) => num(r.fouls)),
+          vsRow("saves", "tff1.colSaves", (r) => num(r.saves)),
+        ];
+
+  const teamBlock = (
+    teamId: string | null,
+    teamName: string | null,
+    align: "left" | "right"
+  ) => (
+    <div
+      className={`flex min-w-0 flex-1 flex-col items-center gap-3 ${align === "left" ? "sm:items-start" : "sm:items-end"}`}
+    >
+      <div className="flex h-[140px] w-[140px] items-center justify-center overflow-hidden rounded-2xl border border-line bg-gradient-to-b from-card-2 to-canvas p-4">
+        {teamId && logoByTeam[teamId] ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={logoByTeam[teamId]}
+            alt={teamName ?? ""}
+            className="h-full w-full object-contain"
+          />
+        ) : (
+          <span className="text-3xl font-semibold text-ink-3">
+            {(teamName ?? "?").slice(0, 1)}
+          </span>
+        )}
+      </div>
       {teamId ? (
         <Link
           href={`/dashboard/tff-1-lig/team/${teamId}?season=${encodeURIComponent(match.season_label)}`}
-          className="text-lg font-semibold text-ink transition hover:text-accent-ink hover:underline lg:text-xl"
+          className="max-w-full truncate text-lg font-bold text-ink transition hover:text-accent-ink hover:underline sm:text-xl"
         >
           {teamName}
         </Link>
       ) : (
-        <span className="text-lg font-semibold text-ink lg:text-xl">{teamName}</span>
+        <span className="max-w-full truncate text-lg font-bold text-ink sm:text-xl">
+          {teamName}
+        </span>
       )}
     </div>
   );
 
   return (
-    <section className="w-full">
-      <div className="rounded-2xl border border-line bg-card p-8">
+    <section className="w-full space-y-3">
+      {/* üst çubuk */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <Link
           href="/dashboard/stats-analysis/tff1/resmi?season=2026%2F2027&section=league"
-          className="text-[13px] text-ink-3 transition hover:text-ink"
+          className="rounded-xl border border-line bg-card px-3 py-2 text-sm text-ink-2 transition hover:text-ink"
         >
           ← {t("tff1.backToLeague")}
         </Link>
+        <span className="rounded-full border border-line-strong bg-accent-soft px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.12em] text-accent-ink">
+          Trendyol 1. Lig
+        </span>
+      </div>
 
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-4">
-          {teamBlock(match.home_team_id, match.home_team_name)}
-          <div className="text-center">
-            <p className="text-3xl font-semibold tabular-nums text-ink">
-              {match.home_score ?? "-"}:{match.away_score ?? "-"}
-            </p>
-            <p className="mt-1 text-[12px] text-ink-3">
-              {formatMatchDate(match.match_datetime, locale)} · {match.competition} ·{" "}
-              {match.season_label}
-            </p>
+      {/* hero */}
+      <div className="relative overflow-hidden rounded-2xl border border-line bg-card p-5 sm:p-6">
+        <div className="pointer-events-none absolute -left-16 -top-24 h-72 w-72 rounded-full bg-accent-soft blur-3xl" />
+        <div className="pointer-events-none absolute -right-16 -top-24 h-72 w-72 rounded-full bg-accent-soft blur-3xl" />
+
+        <p className="relative text-center text-[11px] font-medium uppercase tracking-[0.3em] text-accent-ink">
+          {t("tff1.matchDetailTitle")}
+        </p>
+
+        <div className="relative mt-4 flex flex-col items-center gap-6 sm:flex-row sm:items-start sm:justify-between">
+          {teamBlock(match.home_team_id, match.home_team_name, "left")}
+
+          <div className="flex shrink-0 flex-col items-center gap-2 sm:pt-8">
+            <div className="text-5xl font-bold tabular-nums tracking-tight text-ink sm:text-6xl">
+              {match.home_score ?? "-"}
+              <span className="mx-2 text-ink-3">:</span>
+              {match.away_score ?? "-"}
+            </div>
+            <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-[13px] text-ink-2">
+              <span className="inline-flex items-center gap-1">
+                <CalendarDays size={13} className="text-accent-ink" />
+                {formatMatchDate(match.match_datetime, locale)}
+              </span>
+              <span className="text-ink-3">•</span>
+              <span>{match.competition}</span>
+              <span className="text-ink-3">•</span>
+              <span>{match.season_label}</span>
+            </div>
           </div>
-          {teamBlock(match.away_team_id, match.away_team_name)}
+
+          {teamBlock(match.away_team_id, match.away_team_name, "right")}
         </div>
 
-        <h2 className="mt-8 text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-3">
+        {vsRows.length > 0 ? (
+          <div className="relative mx-auto mt-6 max-w-2xl rounded-xl border border-line bg-field px-4 py-3">
+            <div className="mb-2 flex items-center justify-between text-[11px] font-semibold text-ink">
+              <span className="truncate">{match.home_team_name}</span>
+              <span className="truncate text-right">{match.away_team_name}</span>
+            </div>
+            <ShowcaseVsBars rows={vsRows} />
+          </div>
+        ) : null}
+      </div>
+
+      {/* oyuncu performansları */}
+      <div className="rounded-2xl border border-line bg-card p-6">
+        <h2 className="text-[11px] font-semibold uppercase tracking-[0.2em] text-ink-3">
           {t("tff1.lineupsSection")}
         </h2>
 
@@ -191,7 +272,7 @@ export default async function Tff1MatchPage({
             {t("tff1.noMatchLog")}
           </div>
         ) : (
-          <div className="mt-2 grid gap-6 xl:grid-cols-2">
+          <div className="mt-3 grid gap-6 xl:grid-cols-2">
             <div>
               <h3 className="mb-2 text-sm font-semibold text-ink">
                 {match.home_team_name}
