@@ -36,23 +36,3 @@ export function getMatchDetailHref(
 
   return `/dashboard/stats-analysis/football/match-stats/detail?${params.toString()}`;
 }
-
-export function getLeagueDetailHref(
-  competition?: string | null,
-  season?: string | null,
-  tab?: string | null,
-): string | null {
-  if (!competition || !competition.trim() || !season || !season.trim()) {
-    return null;
-  }
-
-  const params = new URLSearchParams();
-  params.set("competition", competition);
-  params.set("season", season);
-
-  if (tab && tab.trim()) {
-    params.set("tab", tab);
-  }
-
-  return `/dashboard/stats-analysis/football/league-stats/detail?${params.toString()}`;
-}

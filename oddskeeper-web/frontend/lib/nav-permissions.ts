@@ -51,7 +51,11 @@ export const NAV_PERMISSION_ITEMS: NavPermissionItem[] = [
   {
     key: "stats-analysis",
     labelKey: "nav.statsAnalysis",
-    href: "/dashboard/stats-analysis",
+    // Hub sayfasi (/dashboard/stats-analysis) 2026-08-09'da kaldirildi;
+    // href, sadece bu izne sahip kullanicinin dusecegi mevcut bir sayfaya
+    // gider. pathPrefix ayni kalir: tum stats-analysis alt yollarini kilitler
+    // (TSL/1.Lig resmi deneyimleri daha uzun prefix'leriyle ayri anahtarda).
+    href: "/dashboard/stats-analysis/football/player-stats",
     pathPrefixes: ["/dashboard/stats-analysis"],
   },
   {

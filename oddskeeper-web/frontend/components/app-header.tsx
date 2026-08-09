@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState, type ReactElement } from "react";
 import { createClient } from "../lib/supabase/client";
 import { useI18n } from "../lib/i18n/LanguageProvider";
@@ -19,9 +19,6 @@ type AppHeaderProps = {
   isAdmin?: boolean;
 };
 
-const FOOTBALL_LEAGUE_DETAIL_HREF =
-  "/dashboard/stats-analysis/football/league-stats/detail?competition=S%C3%BCper%20Lig&season=2025%2F2026&tab=overview";
-
 // TSL kisayolu dogrudan "Resmi" deneyimine gider (ara secim ekrani yok).
 const TSL_HUB_HREF =
   "/dashboard/stats-analysis/tsl/resmi?season=2026%2F2027&section=league";
@@ -32,9 +29,6 @@ const TFF1_RESMI_HREF =
 
 // TBL (Türkiye Basketbol Süper Ligi) lig panosu.
 const BASKETBALL_LEAGUE_HREF = "/dashboard/basketball";
-
-const LEAGUE_DETAIL_PATH =
-  "/dashboard/stats-analysis/football/league-stats/detail";
 
 // Header'daki lig kisayollari: iki grup — Football (TSL, 1.Lig) ve Basketball
 // (BSL, EuroLeague, EuroCup). Simgeler inline SVG mark ya da public logo (logoSrc).
@@ -135,7 +129,6 @@ export default function AppHeader({
   isAdmin = false,
 }: AppHeaderProps) {
   const pathname = usePathname();
-  const searchParams = useSearchParams();
   const router = useRouter();
   const { t, locale, setLocale } = useI18n();
   const [isSigningOut, setIsSigningOut] = useState(false);
@@ -143,7 +136,6 @@ export default function AppHeader({
 
   const initials = userEmail ? userEmail.slice(0, 1).toUpperCase() : "U";
   const isUpcomingActive = pathname.startsWith("/dashboard/upcoming-events");
-  const isStatsActive = pathname.startsWith("/dashboard/stats-analysis");
   const isTff1Active = pathname.startsWith("/dashboard/tff-1-lig");
   const isChangelogActive = pathname.startsWith("/dashboard/changelog");
   const isAdminActive = pathname.startsWith("/dashboard/admin");
@@ -167,16 +159,7 @@ export default function AppHeader({
     if (item.key === "volleyball") {
       return pathname.startsWith("/dashboard/volleyball");
     }
-    if (item.competition != null) {
-      return (
-        pathname === LEAGUE_DETAIL_PATH &&
-        searchParams.get("competition") === item.competition
-      );
-    }
-    return (
-      pathname === "/dashboard/stats-analysis" &&
-      searchParams.get("sport") === item.sport
-    );
+    return false;
   };
 
   const can = (key: NavKey) => isNavKeyAllowed(key, allowedNavKeys);
@@ -232,52 +215,6 @@ export default function AppHeader({
                   {t("nav.upcomingEvents")}
                 </span>
               </Link>
-            ) : null}
-
-            {can("stats-analysis") ? (
-            <div className="group relative">
-              <Link
-                href="/dashboard/stats-analysis"
-                className={`flex items-center gap-1.5 ${navLinkClass(
-                  isStatsActive
-                )}`}
-              >
-                <span>{t("nav.statsAnalysis")}</span>
-                <ChevronDownIcon />
-              </Link>
-
-              <div className="pointer-events-none absolute left-0 top-full z-50 pt-2 opacity-0 transition duration-200 group-hover:pointer-events-auto group-hover:opacity-100">
-                <div className="w-[360px] rounded-xl border border-line bg-card p-2 shadow-lg">
-                  <StatsMenuItem
-                    title={t("nav.football")}
-                    subtitle={t("nav.footballSubtitle")}
-                    iconSrc="/icons/football.svg"
-                    playerHref="/dashboard/stats-analysis/football/player-stats"
-                    teamHref="/dashboard/stats-analysis/football/team-stats"
-                    leagueHref={FOOTBALL_LEAGUE_DETAIL_HREF}
-                    playerRankingsHref="/dashboard/stats-analysis/football/player-stats/metric"
-                    teamRankingsHref="/dashboard/stats-analysis/football/team-stats/metric"
-                    leagues={[
-                      { href: TSL_HUB_HREF, label: "TSL" },
-                      { href: TFF1_RESMI_HREF, label: "1.Lig" },
-                    ]}
-                  />
-
-                  <StatsMenuItem
-                    title={t("nav.basketball")}
-                    subtitle={t("nav.basketballSubtitle")}
-                    iconSrc="/icons/basketball.svg"
-                    playerHref="/dashboard/basketball?tab=players"
-                    teamHref="/dashboard/basketball"
-                    leagues={[
-                      { href: BASKETBALL_LEAGUE_HREF, label: "BSL" },
-                      { href: "/dashboard/euro/euroleague", label: "EuroLeague", logoSrc: "/images/leagues/euroleague.svg" },
-                      { href: "/dashboard/euro/eurocup", label: "EuroCup", logoSrc: "/images/leagues/eurocup.svg" },
-                    ]}
-                  />
-                </div>
-              </div>
-            </div>
             ) : null}
 
             {(["football", "basketball", "volleyball"] as const).map((grp) => {
@@ -426,52 +363,6 @@ export default function AppHeader({
             </Link>
           ))}
 
-          {can("stats-analysis") ? (
-            <>
-              <Link
-                href="/dashboard/stats-analysis"
-                className={navLinkClass(isStatsActive)}
-              >
-                {t("nav.statsAnalysis")}
-              </Link>
-
-              <Link
-                href="/dashboard/stats-analysis/football/player-stats"
-                className={navLinkClass(false)}
-              >
-                {t("nav.footballPlayerStats")}
-              </Link>
-
-              <Link
-                href="/dashboard/stats-analysis/football/team-stats"
-                className={navLinkClass(false)}
-              >
-                {t("nav.footballTeamStats")}
-              </Link>
-
-              <Link
-                href={FOOTBALL_LEAGUE_DETAIL_HREF}
-                className={navLinkClass(false)}
-              >
-                {t("nav.footballLeagueDetails")}
-              </Link>
-
-              <Link
-                href="/dashboard/stats-analysis/football/player-stats/metric"
-                className={navLinkClass(false)}
-              >
-                {t("nav.playerRankings")}
-              </Link>
-
-              <Link
-                href="/dashboard/stats-analysis/football/team-stats/metric"
-                className={navLinkClass(false)}
-              >
-                {t("nav.teamRankings")}
-              </Link>
-            </>
-          ) : null}
-
           {can("tff-1-lig") ? (
             <Link
               href="/dashboard/tff-1-lig"
@@ -501,91 +392,6 @@ export default function AppHeader({
         </div>
       </div>
     </header>
-  );
-}
-
-type StatsMenuItemProps = {
-  title: string;
-  subtitle: string;
-  iconSrc: string;
-  playerHref: string;
-  teamHref: string;
-  leagueHref?: string;
-  playerRankingsHref?: string;
-  teamRankingsHref?: string;
-  leagues?: { href: string; label: string; logoSrc?: string }[];
-};
-
-function StatsMenuItem({
-  title,
-  subtitle,
-  iconSrc,
-  playerHref,
-  teamHref,
-  leagueHref,
-  playerRankingsHref,
-  teamRankingsHref,
-  leagues,
-}: StatsMenuItemProps) {
-  const { t } = useI18n();
-
-  const links = [
-    { href: playerHref, label: t("nav.playerStats") },
-    { href: teamHref, label: t("nav.teamStats") },
-    ...(leagueHref ? [{ href: leagueHref, label: t("nav.leagueDetails") }] : []),
-    ...(playerRankingsHref
-      ? [{ href: playerRankingsHref, label: t("nav.playerRankings") }]
-      : []),
-    ...(teamRankingsHref
-      ? [{ href: teamRankingsHref, label: t("nav.teamRankings") }]
-      : []),
-  ];
-
-  return (
-    <div className="rounded-lg p-2 transition hover:bg-veil">
-      <div className="flex items-center gap-2.5 px-1 pb-1.5">
-        <Image
-          src={iconSrc}
-          alt={title}
-          width={16}
-          height={16}
-          className="opacity-85"
-        />
-        <div>
-          <span className="text-[13px] font-semibold text-ink">{title}</span>
-          <span className="ml-2 text-[11px] text-ink-3">{subtitle}</span>
-        </div>
-      </div>
-
-      {leagues && leagues.length > 0 ? (
-        <div className="mb-1 flex flex-wrap gap-1">
-          {leagues.map((lg) => (
-            <Link
-              key={lg.href}
-              href={lg.href}
-              className="flex items-center gap-1.5 rounded-md border border-line bg-card-2 px-2.5 py-1 text-[12px] font-medium text-ink transition hover:border-line-strong hover:bg-veil"
-            >
-              {lg.logoSrc ? (
-                <Image src={lg.logoSrc} alt={lg.label} width={14} height={14} className="h-3.5 w-3.5 object-contain" />
-              ) : null}
-              {lg.label}
-            </Link>
-          ))}
-        </div>
-      ) : null}
-
-      <div className="flex flex-wrap gap-1">
-        {links.map((link) => (
-          <Link
-            key={link.href}
-            href={link.href}
-            className="rounded-md border border-line bg-veil px-2.5 py-1 text-[12px] text-ink-2 transition hover:border-line-strong hover:text-ink"
-          >
-            {link.label}
-          </Link>
-        ))}
-      </div>
-    </div>
   );
 }
 
@@ -679,23 +485,6 @@ function LogOutIcon() {
       <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
       <path d="M16 17l5-5-5-5" />
       <path d="M21 12H9" />
-    </svg>
-  );
-}
-
-function ChevronDownIcon() {
-  return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 24 24"
-      className="h-3.5 w-3.5"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="m6 9 6 6 6-6" />
     </svg>
   );
 }
