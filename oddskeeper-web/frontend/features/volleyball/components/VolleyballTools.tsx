@@ -6,6 +6,7 @@ import HistoryDropdown from "@/features/model-history/HistoryDropdown";
 import RetentionConfig from "@/features/model-history/RetentionConfig";
 import { postModelHistory, exportFileName, type ModelHistoryDraft, type ModelHistoryRecord } from "@/lib/model-history";
 import { confirmPermanentSave } from "@/lib/confirm-save";
+import { useJustAdded } from "@/lib/use-just-added";
 import { buildConfiguredLines, buildLadder, type LineConfig } from "@/features/basketball/odds";
 import {
   fetchPmFixtures, insertFixture, deleteFixture, type PmFixture,
@@ -51,7 +52,6 @@ function marketList(config: PmMarketConfig[], grp: "team" | "player"): VbMkt[] {
 
 const btnSave = "rounded-md border border-teal-600 bg-teal-600 px-3 py-1.5 text-[12px] font-semibold text-white hover:bg-teal-500";
 const btnGhost = "rounded-md border border-line px-3 py-1.5 text-[12px] font-semibold text-ink-2 hover:text-ink";
-const accentBtn = "rounded-lg bg-accent px-5 py-2.5 text-[14px] font-semibold text-white shadow-sm hover:opacity-90";
 
 function fmt(v: number | null | undefined, d = 1) { if (v == null || Number.isNaN(v)) return "-"; return Number(v).toFixed(d); }
 const mean = (a: number[]) => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : NaN);
@@ -166,6 +166,7 @@ function ModelTab({ teamMatches, playerMatches, players, teams, fixtures, config
   const [teamTicks, setTeamTicks] = useState<Record<string, boolean>>({}); // `${col}:${mk}` col=code|total
   const [teamStatus, setTeamStatus] = useState("");
   const [historyNotice, setHistoryNotice] = useState("");
+  const [teamJustAdded, flashTeamAdded] = useJustAdded();
   // Oyuncu dagitim degerleri/tikleri ModelTab'da (PlayerDist prop olarak alir) →
   // tek snapshot hem takim hem oyuncu girdisini tasir. Anahtar: `${fivb_id}`.
   const [pVals, setPVals] = useState<Record<string, number>>({});
@@ -254,7 +255,7 @@ function ModelTab({ teamMatches, playerMatches, players, teams, fixtures, config
         sent++;
       }
     }
-    if (rows.length) addWithHistory(rows, "team");
+    if (rows.length) { addWithHistory(rows, "team"); flashTeamAdded(rows.length); }
     setTeamStatus(`${t("volleyball.statSent").replace("{n}", String(sent))}${dup ? " · " + t("volleyball.statDup").replace("{n}", String(dup)) : ""}${noTpl ? " · " + t("volleyball.statNoTpl").replace("{n}", String(noTpl)) : ""}`);
   };
   const resetTeam = () => { setTrader({}); setTotalOv({}); setTeamTicks({}); };
@@ -298,7 +299,7 @@ function ModelTab({ teamMatches, playerMatches, players, teams, fixtures, config
                 {historyNotice ? <span className="rounded-md bg-veil px-2 py-1 text-[11px] font-semibold text-accent-ink">{historyNotice}</span> : null}
                 <div className="ml-auto">{historyDropdown}</div>
                 <button onClick={resetTeam} className="rounded-md border border-line px-3 py-2 text-[12px] font-semibold text-ink-2 hover:text-ink">{t("volleyball.reset")}</button>
-                <button onClick={addTeam} className={accentBtn}>{t("volleyball.addToInput")}</button>
+                <button onClick={addTeam} className={`rounded-lg px-5 py-2.5 text-[14px] font-semibold text-white shadow-sm hover:opacity-90 ${teamJustAdded != null ? "bg-emerald-600" : "bg-accent"}`}>{teamJustAdded != null ? `Added ${teamJustAdded}!` : t("volleyball.addToInput")}</button>
               </div>
               <div className="grid gap-4 lg:grid-cols-3">
                 <TeamMetricTable title={homeName} markets={teamMkts} aggOf={(m) => teamAgg(homeCode, m.base)} traderOf={(m) => traderOf(homeCode, m)}
@@ -452,6 +453,7 @@ function PlayerDist({ playerMatches, players, markets, playerCfg, playerIds, fix
   const [mk, setMk] = useState(markets[0]?.key ?? "");
   const [preview, setPreview] = useState<string | null>(null);
   const [status, setStatus] = useState("");
+  const [justAdded, flashAdded] = useJustAdded();
   const [sort, setSort] = useState<{ k: string; d: "asc" | "desc" }>({ k: "avg", d: "desc" });
   const market = markets.find((m) => m.key === mk) ?? markets[0];
   const base = market?.base ?? mk;
@@ -524,7 +526,7 @@ function PlayerDist({ playerMatches, players, markets, playerCfg, playerIds, fix
       for (const ln of ladder(v)) out.push({ kind: "player", fixtureExtId: fixExtId, template: tpl, participant: participantOf(r.fivb_id), side: teamSideNum, line: ln.line, over: ln.overPrice, under: ln.underPrice, label: market?.label ?? mk, name: r.name });
       sent++;
     }
-    if (out.length) onAdd(out);
+    if (out.length) { onAdd(out); flashAdded(out.length); }
     setStatus(`${t("volleyball.statSent").replace("{n}", String(sent))}${dup ? " · " + t("volleyball.statDup").replace("{n}", String(dup)) : ""}${noTpl ? " · " + t("volleyball.statNoTpl").replace("{n}", String(noTpl)) : ""}`);
   };
   const toggleSort = (k: string) => setSort((s) => (s.k === k ? { k, d: s.d === "asc" ? "desc" : "asc" } : { k, d: k === "name" ? "asc" : "desc" }));
@@ -543,7 +545,7 @@ function PlayerDist({ playerMatches, players, markets, playerCfg, playerIds, fix
         {historyNotice ? <span className="rounded-md bg-veil px-2 py-1 text-[11px] font-semibold text-accent-ink">{historyNotice}</span> : null}
         <div className="ml-auto">{historySlot}</div>
         <button onClick={() => setVals({})} className="rounded-md border border-line px-3 py-2 text-[12px] font-semibold text-ink-2 hover:text-ink">{t("volleyball.reset")}</button>
-        <button onClick={add} className={accentBtn}>{t("volleyball.addToInput")}</button>
+        <button onClick={add} className={`rounded-lg px-5 py-2.5 text-[14px] font-semibold text-white shadow-sm hover:opacity-90 ${justAdded != null ? "bg-emerald-600" : "bg-accent"}`}>{justAdded != null ? `Added ${justAdded}!` : t("volleyball.addToInput")}</button>
       </div>
       <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-line bg-card-2/40 px-2.5 py-2">
         <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-3">{t("volleyball.pickMarket")}</span>

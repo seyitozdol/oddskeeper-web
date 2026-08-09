@@ -4,6 +4,7 @@ import { useMemo, useState, type ReactNode } from "react";
 import { useI18n } from "@/lib/i18n/LanguageProvider";
 import HistoryDropdown from "@/features/model-history/HistoryDropdown";
 import type { ModelHistoryRecord } from "@/lib/model-history";
+import { useJustAdded } from "@/lib/use-just-added";
 import { buildLadder, buildConfiguredLines, moneyline, type LineConfig } from "../odds";
 import { PLAYER_MARKETS, TEAM_MARKETS, teamStd, playerStd, metricLabel, metricInfo, isDistributable } from "../marketConfig";
 import { formatMatchDate, normalizePositionCode, positionLabel, roleLabelKey, roleBadgeClass, LEADER_METRICS, playerPhotoUrl, teamLogoPath } from "../lib";
@@ -150,6 +151,7 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
   const [totalOverride, setTotalOverride] = useState<Record<string, number>>({});
   const [teamStatus, setTeamStatus] = useState<string>("");
   const [historyNotice, setHistoryNotice] = useState<string>("");
+  const [teamJustAdded, flashTeamAdded] = useJustAdded();
   // market_key → config (oyuncu / takım ayrı). Takım key'i "{side}_{metric}".
   const playerCfg = useMemo(() => new Map(config.filter((c) => c.market_group === "player").map((c) => [c.market_key, c])), [config]);
   const teamCfg = useMemo(() => config.filter((c) => c.market_group === "team"), [config]);
@@ -418,7 +420,7 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
       }
       sent++;
     }
-    if (rows.length) addWithHistory(rows, "team");
+    if (rows.length) { addWithHistory(rows, "team"); flashTeamAdded(rows.length); }
     setTeamStatus(addStatusMsg(t, sent, dup, noTpl, zero));
   };
 
@@ -503,7 +505,7 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
                 {historyNotice ? <span className="rounded-md bg-veil px-2 py-1 text-[11px] font-semibold text-accent-ink">{historyNotice}</span> : null}
                 <div className="ml-auto">{historyDropdown}</div>
                 <button onClick={resetTeam} className="rounded-md border border-line px-3 py-2 text-[12px] font-semibold text-ink-2 hover:text-ink">{t("basketball.reset")}</button>
-                <button onClick={addTeams} className="rounded-lg bg-accent px-5 py-2.5 text-[14px] font-semibold text-white shadow-sm hover:opacity-90">{t("basketball.addToInput")}</button>
+                <button onClick={addTeams} className={`rounded-lg px-5 py-2.5 text-[14px] font-semibold text-white shadow-sm hover:opacity-90 ${teamJustAdded != null ? "bg-emerald-600" : "bg-accent"}`}>{teamJustAdded != null ? `Added ${teamJustAdded}!` : t("basketball.addToInput")}</button>
               </div>
               {/* Home | Away | Total yan yana (compact) */}
               <div className="grid gap-4 lg:grid-cols-3">
@@ -708,6 +710,7 @@ function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effA
   const [selPlayer, setSelPlayer] = useState<string | null>(null);
   const [preview, setPreview] = useState<BktPlayerWindowRow | null>(null); // göz → line önizleme drawer
   const [playerStatus, setPlayerStatus] = useState<string>("");
+  const [playerJustAdded, flashPlayerAdded] = useJustAdded();
   const [sort, setSort] = useState<{ key: string; dir: "asc" | "desc" }>({ key: "all", dir: "desc" });
   const slug = side === "home" ? homeSlug : awaySlug;
   const eff = side === "home" ? effHome : effAway;
@@ -772,7 +775,7 @@ function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effA
       }
       sent++;
     }
-    if (rows.length) onAdd(rows);
+    if (rows.length) { onAdd(rows); flashPlayerAdded(rows.length); }
     setPlayerStatus(addStatusMsg(t, sent, dup, noTpl, zero));
   };
 
@@ -815,8 +818,8 @@ function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effA
           {historyNotice ? <span className="rounded-md bg-veil px-2 py-1 text-[11px] font-semibold text-accent-ink">{historyNotice}</span> : null}
           {historySlot}
           <button onClick={onReset} className="rounded-md border border-line px-3 py-2 text-[12px] font-semibold text-ink-2 hover:text-ink">{t("basketball.reset")}</button>
-          <button onClick={addCurrent} className="rounded-lg bg-accent px-5 py-2.5 text-[14px] font-semibold text-white shadow-sm hover:opacity-90">
-            {t("basketball.addToInput")}
+          <button onClick={addCurrent} className={`rounded-lg px-5 py-2.5 text-[14px] font-semibold text-white shadow-sm hover:opacity-90 ${playerJustAdded != null ? "bg-emerald-600" : "bg-accent"}`}>
+            {playerJustAdded != null ? `Added ${playerJustAdded}!` : t("basketball.addToInput")}
           </button>
         </div>
         {/* market seçimi — ayrı kutu */}

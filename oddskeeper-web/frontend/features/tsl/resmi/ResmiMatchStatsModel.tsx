@@ -5,6 +5,7 @@ import { useI18n } from "../../../lib/i18n/LanguageProvider";
 import HistoryDropdown from "@/features/model-history/HistoryDropdown";
 import RetentionConfig from "@/features/model-history/RetentionConfig";
 import SuspendMissingConfig from "@/features/model-history/SuspendMissingConfig";
+import { useJustAdded } from "@/lib/use-just-added";
 import {
   postModelHistory,
   fetchMsmSuspend,
@@ -363,6 +364,8 @@ export default function ResmiMatchStatsModel({
     { mode: "full" } | { mode: "fixed"; selWeek: number; lastX: number }
   >({ mode: "full" });
   const restoringRef = useRef(false);
+  // Add to Input geri bildirimi (buton "Added N!").
+  const [justAdded, flashAdded] = useJustAdded();
   // SU özelliği: Config toggle (aç/kapa) + geçmişten restore edilen mac+market'in
   // önceki export line'ları (diff tabanı). Anahtar = dupKey.
   const [suspendMissing, setSuspendMissing] = useState(false);
@@ -644,6 +647,7 @@ export default function ResmiMatchStatsModel({
       return;
     }
     setImportList((l) => [...l, ...currentRows]);
+    flashAdded(currentRows.length);
     // Restore için snapshot topla (mac+market bazinda). Yalnizca export'ta yazilir.
     const snap: MsmSnapshot = {
       selectedFixtureId, market, selWeek, lastX,
@@ -812,9 +816,13 @@ export default function ResmiMatchStatsModel({
             <button
               onClick={addCurrentMarket}
               disabled={currentRows.length === 0}
-              className="rounded-lg border border-blue-500/50 bg-blue-500/15 px-4 py-1.5 text-[13px] font-semibold text-blue-600 transition hover:bg-blue-500/25 disabled:opacity-40 dark:text-blue-300"
+              className={`rounded-lg border px-4 py-1.5 text-[13px] font-semibold transition disabled:opacity-40 ${
+                justAdded != null
+                  ? "border-emerald-600 bg-emerald-600 text-white"
+                  : "border-blue-500/50 bg-blue-500/15 text-blue-600 hover:bg-blue-500/25 dark:text-blue-300"
+              }`}
             >
-              {t("msm.addToInput")} ({currentRows.length})
+              {justAdded != null ? `Added ${justAdded}!` : `${t("msm.addToInput")} (${currentRows.length})`}
             </button>
             <button
               onClick={resetModel}
