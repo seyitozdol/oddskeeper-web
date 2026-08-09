@@ -23,6 +23,7 @@ import { getNavAccess } from "@/lib/nav-access-server";
 import { getNotesForSlugs } from "@/lib/team-notes";
 import { tff1SlugForTeamId } from "@/lib/tff1-team-slugs";
 import Tff1TeamNotesHeader from "@/features/tff1/components/Tff1TeamNotesHeader";
+import { Tff1TeamShowcase } from "@/features/tff1/components/Tff1TeamShowcase";
 
 function num(v: number | string | null | undefined): number {
   const x = typeof v === "string" ? Number(v) : v;
@@ -240,7 +241,6 @@ export default async function Tff1TeamPage({
     r === "W" ? "G" : r === "L" ? "M" : r === "D" ? "B" : "—";
 
   const leagueMatches = teamMatches.filter((m) => !m.competition.includes("Play-off"));
-  const form = leagueMatches.slice(0, 5).map(resultFor);
 
   const now = new Date().toISOString();
   const teamFixtures = fixtures
@@ -252,80 +252,36 @@ export default async function Tff1TeamPage({
     )
     .slice(0, 8);
 
-  const summary: Array<[string, string]> = [
-    [t("tff1.drawerRank"), `${rank}.`],
-    [t("tff1.colPoints"), String(num(team.points))],
-    [t("tff1.drawerRecord"), `${num(team.wins)}G ${num(team.draws)}B ${num(team.losses)}M`],
-    [t("tff1.drawerGoals"), `${num(team.goals_for)}-${num(team.goals_against)}`],
-    [t("tff1.colRating"), team.rating_avg === null ? "—" : String(team.rating_avg)],
-    [t("tff1.drawerSquadValue"), formatMarketValue(squadValue || null)],
-  ];
+  // Radar için: seçili sezonda 5 maçtan az oynandıysa yeterli maçı olan
+  // en güncel sezon esas alınır (sezon başı gürültüsü).
+  const radarTeam =
+    teamSeasons.find((tr) => num(tr.played) >= 5) ?? team;
+  const radarSeasonTeams =
+    radarTeam.season_label === season
+      ? seasonTeams
+      : teams.filter((tr) => tr.season_label === radarTeam.season_label);
 
   return (
-    <section className="w-full">
-      <div className="rounded-2xl border border-line bg-card p-8">
-        <Link
-          href="/dashboard/stats-analysis/tff1/resmi?season=2026%2F2027&section=league"
-          className="text-[13px] text-ink-3 transition hover:text-ink"
-        >
-          ← {t("tff1.backToLeague")}
-        </Link>
+    <section className="w-full space-y-3">
+      <Tff1TeamShowcase
+        teamId={teamId}
+        team={team}
+        teamSeasons={teamSeasons}
+        seasonTeams={seasonTeams}
+        radarTeam={radarTeam}
+        radarSeasonTeams={radarSeasonTeams}
+        rank={rank}
+        logoUrl={logo ?? null}
+        noteSlug={noteSlug}
+        teamNotes={teamNotes}
+        leagueMatches={leagueMatches}
+        squadValue={squadValue}
+        resultFor={resultFor}
+        t={t}
+        locale={locale}
+      />
 
-        <div className="mt-4">
-          <Tff1TeamNotesHeader
-            teamSlug={noteSlug}
-            teamName={team.team_name ?? teamId}
-            logoUrl={logo ?? null}
-            initialNotes={teamNotes}
-            subtitle={
-              <div className="mt-1 flex items-center gap-2 text-[13px] text-ink-3">
-                <span>{t("tff1.kicker")}</span>
-                <span>·</span>
-                <div className="flex gap-1">
-                  {teamSeasons.map((tr) => (
-                    <Link
-                      key={tr.season_label}
-                      href={`/dashboard/tff-1-lig/team/${teamId}?season=${encodeURIComponent(tr.season_label)}`}
-                      className={`rounded-md border px-2 py-0.5 text-[12px] transition ${
-                        tr.season_label === season
-                          ? "border-line-strong bg-card-2 text-ink"
-                          : "border-line bg-veil text-ink-2 hover:text-ink"
-                      }`}
-                    >
-                      {tr.season_label}
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            }
-          />
-        </div>
-
-        <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
-          {summary.map(([label, value]) => (
-            <div key={label} className="rounded-lg border border-line bg-veil px-3 py-2">
-              <p className="text-[10px] uppercase tracking-[0.14em] text-ink-3">{label}</p>
-              <p className="mt-0.5 text-sm font-semibold text-ink">{value}</p>
-            </div>
-          ))}
-        </div>
-
-        <div className="mt-3 flex items-center gap-1.5">
-          <span className="text-[11px] uppercase tracking-[0.14em] text-ink-3">
-            {t("tff1.drawerForm")}
-          </span>
-          {form.map((r, i) => (
-            <span
-              key={i}
-              className={`flex h-6 w-6 items-center justify-center rounded-md text-[11px] font-semibold ${
-                r ? RESULT_CLASS[r] : "bg-veil text-ink-3"
-              }`}
-            >
-              {resultLetter(r)}
-            </span>
-          ))}
-        </div>
-
+      <div className="rounded-2xl border border-line bg-card p-6">
         {teamFixtures.length > 0 ? (
           <>
             <h2 className="mt-8 text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-3">

@@ -6,6 +6,11 @@ export const teamDetail = defineMessages({
     // TeamDetailHeader
     headerKicker: "Football Team Stats",
     backToTeams: "← Back to teams",
+    // Vitrin (showcase) tasarımı
+    snapshotPanelLabel: "Team Snapshot",
+    weaknessLabel: "Weakness",
+    pointsTrendNote: "Cumulative points, season to date",
+    standingsShort: "#{rank}",
 
     // constants.ts tab labels
     tabTeamStatistics: "Team Statistics",
@@ -241,6 +246,11 @@ export const teamDetail = defineMessages({
     // TeamDetailHeader
     headerKicker: "Futbol Takım İstatistikleri",
     backToTeams: "← Takımlara dön",
+    // Vitrin (showcase) tasarımı
+    snapshotPanelLabel: "Takım Özeti",
+    weaknessLabel: "Zayıf Yön",
+    pointsTrendNote: "Kümülatif puan, sezon boyunca",
+    standingsShort: "#{rank}",
 
     // constants.ts tab labels
     tabTeamStatistics: "Takım İstatistikleri",

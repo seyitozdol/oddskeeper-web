@@ -4,6 +4,7 @@ import { FixturePanel } from "../../../../../../features/team-detail/panels/Fixt
 import { ResultsPanel } from "../../../../../../features/team-detail/panels/ResultsPanel";
 import { SquadPanel } from "../../../../../../features/team-detail/panels/SquadPanel";
 import DetailedStatsPanel from "../../../../../../features/team-detail/panels/DetailedStatsPanel";
+import { TeamShowcasePanel } from "../../../../../../features/team-detail/panels/TeamShowcasePanel";
 import TeamAdvancedOverviewPanel from "../../../../../../features/team-detail/panels/TeamAdvancedOverviewPanel";
 import { TeamStatisticsPanel } from "../../../../../../features/team-detail/panels/TeamStatisticsPanel";
 import { VALID_TABS } from "../../../../../../features/team-detail/constants";
@@ -36,6 +37,7 @@ type TeamDetailPageProps = {
     tab?: string;
     opponent?: string;
     season?: string;
+    design?: string;
   }>;
 };
 
@@ -63,6 +65,12 @@ export default async function TeamDetailPage({
   const teamSlug = resolvedSearchParams.team;
   const activeTab = getValidTab(resolvedSearchParams.tab);
   const requestedSeason = resolvedSearchParams.season;
+
+  // Vitrin (showcase) tasarımı varsayılan takım görünümüdür (2026-08-10);
+  // eski düzen design=classic ile açılır.
+  const showcaseDesign =
+    activeTab === "team-statistics" &&
+    resolvedSearchParams.design !== "classic";
 
   const opponentSlug = resolvedSearchParams.opponent;
 
@@ -105,7 +113,7 @@ export default async function TeamDetailPage({
     fixtureRows,
   ] = await Promise.all([
     getTeamProfile(teamSlug),
-    activeTab === "results" || fixturePastSeason
+    activeTab === "results" || fixturePastSeason || showcaseDesign
       ? getTeamResults(teamSlug, requestedSeason ?? null)
       : Promise.resolve([]),
     getTeamSeasonHistory(teamSlug),
@@ -156,7 +164,7 @@ export default async function TeamDetailPage({
           statsSummary.season_label
         )
       : Promise.resolve([]),
-    (activeTab === "detailed-stats" || activeTab === "advanced") &&
+    (activeTab === "detailed-stats" || activeTab === "advanced" || showcaseDesign) &&
     statsSummary?.season_label
       ? getTeamDetailedMetrics(teamSlug, {
           seasonLabel: statsSummary.season_label,
@@ -203,6 +211,23 @@ export default async function TeamDetailPage({
     isAdmin: notesViewer.isAdmin,
   });
   const teamNotes = notesBySlug[localTeam.slug] ?? [];
+
+  if (showcaseDesign) {
+    return (
+      <TeamShowcasePanel
+        teamSlug={localTeam.slug}
+        teamName={teamProfile?.display_name ?? localTeam.name}
+        logoPath={localTeam.logoPath}
+        teamProfile={teamProfile}
+        summary={statsSummary}
+        seasonHistory={seasonHistoryRows}
+        recentForm={recentFormRows}
+        results={teamResults}
+        detailedMetrics={detailedMetricRows}
+        teamNotes={teamNotes}
+      />
+    );
+  }
 
   // Sezon seçici gösterilen sekmeler ve sekmeye göre seçili sezon.
   const SEASON_TABS: ValidTab[] = [
