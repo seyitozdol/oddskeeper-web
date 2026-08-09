@@ -10,6 +10,17 @@
 
 drop schema if exists prediction cascade;
 
+-- !! OLAY KAYDI (ayni gun): prediction, Supabase Data API'nin "exposed
+-- schemas" listesinde kayitliydi. Sema drop edilince PostgREST sema
+-- cache'ini kuramadi ve TUM REST API 503 dondu (PGRST002); sign-in'deki
+-- alias kontrolu dahil butun veri istekleri kirildi. Cozum: sema BOS olarak
+-- geri olusturuldu (asagida) ve cache reload edildi. Semayi gercekten
+-- silmek icin ONCE Dashboard > Settings > API > Exposed schemas'tan
+-- 'prediction' cikarilmali, SONRA drop edilmeli. Bos sema zararsizdir;
+-- listeden cikarilinca bu drop yeniden calistirilabilir.
+create schema if not exists prediction;
+grant usage on schema prediction to anon, authenticated, service_role;
+
 -- Kaldirilan header izin anahtarlarini kullanici izin dizilerinden ayikla.
 -- Bilinmeyen anahtar zaten hicbir seye izin vermiyordu; bu sadece temizlik.
 update public.user_nav_permissions
