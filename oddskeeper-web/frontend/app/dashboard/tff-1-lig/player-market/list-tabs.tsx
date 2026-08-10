@@ -322,8 +322,32 @@ export function MarketListTab({
 
   return (
     <div className="rounded-xl border border-line bg-card px-5 py-4">
-      <div className="overflow-x-auto rounded-lg border border-line max-w-md">
-        <table className="min-w-full border-collapse text-[12px]">
+      {/* Yeni: en alta ekler, kaydeder; Model'deki market listesine de girer */}
+      <div className="mb-3 flex items-center gap-3">
+        <button
+          type="button"
+          onClick={() => setDraftName("")}
+          className="rounded-lg border border-teal-600 bg-teal-600 px-4 py-1.5 text-[13px] font-semibold text-white transition hover:bg-teal-500"
+        >
+          {t("playerMarket.newLabel")}
+        </button>
+        <button
+          type="button"
+          onClick={handleSaveAll}
+          disabled={saving}
+          className="rounded-lg border border-teal-600 bg-teal-600 px-4 py-1.5 text-[13px] font-semibold text-white transition hover:bg-teal-500 disabled:opacity-50"
+        >
+          {saving ? t("playerMarket.sendingLabel") : t("playerMarket.saveLabel")}
+        </button>
+        {savedAt !== null && !saving && (
+          <span className="text-[12px] text-teal-400">{t("playerMarket.savedLabel")}</span>
+        )}
+      </div>
+
+      {/* Tek konteyner: ic kutuya max-genislik + overflow verilmez, yatay
+          kaydirma cubugu cikmaz; tablo icerigi kadar genisler. */}
+      <div className="w-fit rounded-lg border border-line">
+        <table className="border-collapse text-[12px]">
           <thead className="bg-card-2">
             <tr className="text-left text-[10px] uppercase tracking-[0.12em] text-ink-3">
               <th className="px-2 py-2 w-14 text-center">{t("playerMarket.modelColumnLabel")}</th>
@@ -441,26 +465,6 @@ export function MarketListTab({
       </div>
 
       {/* Yeni: en alta ekler, kaydeder; Model'deki market listesine de girer */}
-      <div className="mt-3 flex items-center gap-3">
-        <button
-          type="button"
-          onClick={() => setDraftName("")}
-          className="rounded-lg border border-teal-600 bg-teal-600 px-4 py-1.5 text-[13px] font-semibold text-white transition hover:bg-teal-500"
-        >
-          {t("playerMarket.newLabel")}
-        </button>
-        <button
-          type="button"
-          onClick={handleSaveAll}
-          disabled={saving}
-          className="rounded-lg border border-teal-600 bg-teal-600 px-4 py-1.5 text-[13px] font-semibold text-white transition hover:bg-teal-500 disabled:opacity-50"
-        >
-          {saving ? t("playerMarket.sendingLabel") : t("playerMarket.saveLabel")}
-        </button>
-        {savedAt !== null && !saving && (
-          <span className="text-[12px] text-teal-400">{t("playerMarket.savedLabel")}</span>
-        )}
-      </div>
     </div>
   );
 }
