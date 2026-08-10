@@ -263,22 +263,23 @@ export default function ConfigTab({
               <thead>
                 <tr className="text-ink-3">
                   <th rowSpan={2} className="px-1 py-1 align-bottom font-medium">{t("msm.market")}</th>
+                  <th colSpan={2} className="border-l border-line/60 px-1 py-1 text-center font-medium">{t("msm.halfShare")}</th>
                   <th rowSpan={2} className="border-l border-line/60 px-1 py-1 text-center align-bottom font-medium">{t("msm.supremacyCol")}</th>
                   <th rowSpan={2} className="px-1 py-1 text-center align-bottom font-medium">{t("msm.refereeCol")}</th>
                   <th rowSpan={2} className="px-1 py-1 text-center align-bottom font-medium">{t("msm.sendHalves")}</th>
                   <th rowSpan={2} className="px-1 py-1 text-center align-bottom font-medium">{t("msm.midOnly")}</th>
                   <th colSpan={1} className="border-l border-line/60 px-1 py-1 text-center font-medium">FT</th>
-                  <th colSpan={4} className="border-l border-line/60 px-1 py-1 text-center font-medium">{t("msm.firstHalf")}</th>
-                  <th colSpan={4} className="border-l border-line/60 px-1 py-1 text-center font-medium">{t("msm.secondHalf")}</th>
+                  <th colSpan={3} className="border-l border-line/60 px-1 py-1 text-center font-medium">{t("msm.firstHalf")}</th>
+                  <th colSpan={3} className="border-l border-line/60 px-1 py-1 text-center font-medium">{t("msm.secondHalf")}</th>
                 </tr>
                 <tr className="text-ink-3">
+                  <th className="border-l border-line/60 px-1 py-0.5 text-center font-normal">{t("msm.firstHalf")}</th>
+                  <th className="px-1 py-0.5 text-center font-normal">{t("msm.secondHalf")}</th>
                   <th className="border-l border-line/60 px-1 py-0.5 text-center font-normal">{t("msm.lineCount")}</th>
-                  <th className="border-l border-line/60 px-1 py-0.5 text-center font-normal">{t("msm.halfShare")}</th>
-                  <th className="px-1 py-0.5 text-center font-normal">{t("msm.lineCount")}</th>
+                  <th className="border-l border-line/60 px-1 py-0.5 text-center font-normal">{t("msm.lineCount")}</th>
                   <th className="px-1 py-0.5 text-center font-normal">{t("msm.underCol")}</th>
                   <th className="px-1 py-0.5 text-center font-normal">{t("msm.payback")}</th>
-                  <th className="border-l border-line/60 px-1 py-0.5 text-center font-normal">{t("msm.halfShare")}</th>
-                  <th className="px-1 py-0.5 text-center font-normal">{t("msm.lineCount")}</th>
+                  <th className="border-l border-line/60 px-1 py-0.5 text-center font-normal">{t("msm.lineCount")}</th>
                   <th className="px-1 py-0.5 text-center font-normal">{t("msm.underCol")}</th>
                   <th className="px-1 py-0.5 text-center font-normal">{t("msm.payback")}</th>
                 </tr>
@@ -308,17 +309,17 @@ export default function ConfigTab({
                   return (
                     <tr key={m.market} className="border-t border-line/60 text-ink-2">
                       <td className="px-1 py-0.5 font-medium text-ink">{m.market}</td>
+                      {cell(m.split_1h, (x) => setMk(i, { split_1h: x }), true)}
+                      {cell(m.split_2h, (x) => setMk(i, { split_2h: x }))}
                       {chk(m.supremacy_applies, (x) => setMk(i, { supremacy_applies: x }), true)}
                       {chk(m.referee_applies, (x) => setMk(i, { referee_applies: x }))}
                       {chk(m.send_halves, (x) => setMk(i, { send_halves: x }))}
                       {chk(m.mid_only, (x) => setMk(i, { mid_only: x }))}
                       {lines(m.line_count, (x) => setMk(i, { line_count: x }), true)}
-                      {cell(m.split_1h, (x) => setMk(i, { split_1h: x }), true)}
-                      {lines(m.line_count_1h, (x) => setMk(i, { line_count_1h: x }))}
+                      {lines(m.line_count_1h, (x) => setMk(i, { line_count_1h: x }), true)}
                       {chk(m.under_1h, (x) => setMk(i, { under_1h: x }))}
                       {cell(m.payback_1h, (x) => setMk(i, { payback_1h: x }))}
-                      {cell(m.split_2h, (x) => setMk(i, { split_2h: x }), true)}
-                      {lines(m.line_count_2h, (x) => setMk(i, { line_count_2h: x }))}
+                      {lines(m.line_count_2h, (x) => setMk(i, { line_count_2h: x }), true)}
                       {chk(m.under_2h, (x) => setMk(i, { under_2h: x }))}
                       {cell(m.payback_2h, (x) => setMk(i, { payback_2h: x }))}
                     </tr>
