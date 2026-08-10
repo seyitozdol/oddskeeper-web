@@ -36,7 +36,22 @@ run() {  # $1=etiket  $2=script  $3.. = ekstra env (VAR=val)
 {
   echo "===== $(date -u '+%F %T UTC') START ====="
   run "1) apifootball squads" fetch_apifootball_squads.py
+  # 1b) Sentetik kadro: TM'de olup API-Football'da olmayan kuratif oyuncular
+  #     (football.squad_synthetic_players). API yetisince otomatik emekli olur.
+  run "1b) sentetik kadro"    apply_synthetic_squad.py
   run "2) remap (additive)"   remap_players_additive.py APPLY=1
   run "3) TM market values"   fetch_transfermarkt_values.py
   echo "===== $(date -u '+%F %T UTC') DONE ====="
 } >> "$LOG" 2>&1
+
+# 4) TM kadro kiyas raporu: son rapor AYRI dosyaya (session-basi ozet bunu okur),
+#    ana loga da eklenir. Basarisiz olursa onceki rapor korunur.
+DIFF_LOG="/opt/oddskeeper/logs/tm_squad_diff.log"
+TMP_DIFF="$(mktemp)"
+if "$VENV" "$PIPE/src/football/report_tm_squad_diff.py" --min-value-k 200 > "$TMP_DIFF" 2>&1; then
+  { echo "===== $(date -u '+%F %T UTC') TM KADRO KIYAS RAPORU ====="; cat "$TMP_DIFF"; } > "$DIFF_LOG"
+  cat "$DIFF_LOG" >> "$LOG"
+else
+  echo "----- $(date -u '+%F %T UTC') TM diff raporu FAILED -----" >> "$LOG"
+fi
+rm -f "$TMP_DIFF"
