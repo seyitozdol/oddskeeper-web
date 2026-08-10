@@ -383,6 +383,66 @@ export async function fetchPlayerLast5Avg(
   return result;
 }
 
+// ─── Yurt disi gecmis sezon fallback'i ───────────────────────────────────────
+// Yeni transferlerin (Greenwood, Salah vb) TSL/1.Lig verisi yok; LY ortalamasi
+// analytics.player_foreign_season_v1'den (SofaScore yurt disi sezon toplamlari,
+// player_key ile) doldurulur. Yalniz birincil kaynakta BOS kalan oyuncular icin.
+const FOREIGN_METRIC_COLS: Record<string, string> = {
+  shots_on_target_total: "shots_on_target",
+  "log:shots_off_target": "shots_off_target",
+  "log:shots_blocked": "shots_blocked",
+  shots_total: "shots_total",
+  attempts_ibox_total: "attempts_ibox",
+  attempts_obox_total: "attempts_obox",
+  expected_goals_total: "expected_goals",
+  fouls_won_total: "fouls_won",
+  passes_total: "passes",
+  accurate_pass_total: "accurate_pass",
+  tackles_total: "tackles",
+  fouls_conceded_total: "fouls_conceded",
+  cards_yellow_total: "cards_yellow",
+  cards_red_total: "cards_red",
+  offsides_total: "offsides",
+  saves_total_total: "saves_total",
+  goals_total: "goals",
+  assists_total: "assists",
+};
+
+async function fillForeignSeasonAvg(
+  result: Record<string, PlayerMetricStat>,
+  playerSourceIds: string[],
+  metricKey: string,
+  seasonLabel: string
+): Promise<void> {
+  const col = FOREIGN_METRIC_COLS[metricKey];
+  if (!col) return;
+  const missing = playerSourceIds.filter(
+    (id) => result[id]?.per_match_value == null
+  );
+  if (missing.length === 0) return;
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .schema("analytics")
+    .from("player_foreign_season_v1")
+    .select(`player_key, ${col}`)
+    .eq("season_label", seasonLabel)
+    .in("player_key", missing);
+  if (error) {
+    console.error("fillForeignSeasonAvg error:", error);
+    return;
+  }
+  for (const row of (data ?? []) as unknown as Record<string, unknown>[]) {
+    const id = String(row.player_key);
+    const val = row[col];
+    if (val == null) continue;
+    result[id] = {
+      player_source_id: id,
+      per_match_value: Number(val),
+      last5_value: result[id]?.last5_value ?? null,
+    };
+  }
+}
+
 // ─── Fetch player metric stats (season avg + last5) ──────────────────────────
 // metricKey "log:<kolon>" ise sezon ortalamasi leaderboard yerine
 // player_log_season_avg_v1'den okunur (leaderboard'da olmayan metrikler).
@@ -422,6 +482,7 @@ export async function fetchPlayerMetricStats(
         last5_value: null,
       };
     }
+    await fillForeignSeasonAvg(shotResult, playerSourceIds, metricKey, seasonLabel);
     return shotResult;
   }
 
@@ -449,6 +510,7 @@ export async function fetchPlayerMetricStats(
         last5_value: null,
       };
     }
+    await fillForeignSeasonAvg(logResult, playerSourceIds, metricKey, seasonLabel);
     return logResult;
   }
 
@@ -473,6 +535,7 @@ export async function fetchPlayerMetricStats(
       last5_value: row.last5_value ?? null,
     };
   }
+  await fillForeignSeasonAvg(result, playerSourceIds, metricKey, seasonLabel);
   return result;
 }
 
