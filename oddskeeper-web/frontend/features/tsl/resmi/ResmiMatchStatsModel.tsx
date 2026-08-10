@@ -43,6 +43,7 @@ import {
   fetchTemplates,
   fetchFixtures,
   fetchManualFixtures,
+  setManualFixtureProxy,
   fetchFixtureInputs,
   logImport,
   resolveReferee,
@@ -458,8 +459,8 @@ export default function ResmiMatchStatsModel({
     if (!selectedFixtureId && fixtures.length) {
       const f = fixtures.find((x) => !x.manual) ?? fixtures[0];
       setSelectedFixtureId(f.fixtureId);
-      setHomeSlug(f.homeSlug);
-      setAwaySlug(f.awaySlug);
+      setHomeSlug(f.homeProxySlug || f.homeSlug);
+      setAwaySlug(f.awayProxySlug || f.awaySlug);
     }
   }, [fixtures, selectedFixtureId]);
 
@@ -635,10 +636,50 @@ export default function ResmiMatchStatsModel({
     setSelectedFixtureId(fid);
     const f = fixtures.find((x) => x.fixtureId === fid);
     if (f) {
-      setHomeSlug(f.homeSlug);
-      setAwaySlug(f.awaySlug);
+      // Manuel fikstürde "benzer takım" (proxy) atanmışsa model VERİSİ o
+      // takımdan akar (görünen isim manuel kalır).
+      setHomeSlug(f.homeProxySlug || f.homeSlug);
+      setAwaySlug(f.awayProxySlug || f.awaySlug);
     }
     // Oranlar [selectedFixtureId, fixtureInputs] effect'inde doldurulur.
+  }
+
+  // Manuel fikstürde ligde olmayan taraf(lar): "benzer takım" seçtir.
+  // Benzerlik önerisi: TR-normalize ad üzerinden bigram Dice benzerliği.
+  const normName = (s: string) =>
+    s.toLowerCase()
+      .replace(/[ıİ]/g, "i").replace(/[şŞ]/g, "s").replace(/[ğĞ]/g, "g")
+      .replace(/[çÇ]/g, "c").replace(/[öÖ]/g, "o").replace(/[üÜ]/g, "u")
+      .replace(/[^a-z0-9]+/g, " ").trim();
+  function nameSim(a: string, b: string): number {
+    const na = normName(a), nb = normName(b);
+    if (!na || !nb) return 0;
+    if (na === nb) return 1;
+    const grams = (s: string) => {
+      const t = s.replace(/ /g, "");
+      const out = new Set<string>();
+      for (let i = 0; i < t.length - 1; i++) out.add(t.slice(i, i + 2));
+      return out;
+    };
+    const ga = grams(na), gb = grams(nb);
+    if (!ga.size || !gb.size) return 0;
+    let inter = 0;
+    for (const g of ga) if (gb.has(g)) inter++;
+    return (2 * inter) / (ga.size + gb.size);
+  }
+  async function applyProxy(side: "home" | "away", proxySlug: string) {
+    if (!selFixture) return;
+    const ok = await setManualFixtureProxy(selFixture.fixtureId, side, proxySlug);
+    if (!ok) return;
+    setFixtures((prev) =>
+      prev.map((f) =>
+        f.fixtureId === selFixture.fixtureId
+          ? { ...f, [side === "home" ? "homeProxySlug" : "awayProxySlug"]: proxySlug || null }
+          : f
+      )
+    );
+    if (side === "home") setHomeSlug(proxySlug || selFixture.homeSlug);
+    else setAwaySlug(proxySlug || selFixture.awaySlug);
   }
 
   const externalFixtureId = selectedFixtureId
@@ -1026,6 +1067,62 @@ export default function ResmiMatchStatsModel({
                     ))}
                   </select>
                 </div>
+
+                {/* Manuel fikstür: ligde olmayan taraf(lar) için "benzer takım"
+                    eşleme. Model verileri seçilen takımdan akar; görünen isim
+                    manuel kalır. Benzerlik önerisi = ada göre en yakın 2 takım. */}
+                {selFixture?.manual && (() => {
+                  const sides = (["home", "away"] as const).filter((s) => {
+                    const own = s === "home" ? selFixture.homeSlug : selFixture.awaySlug;
+                    return own.startsWith("manual-") || !teams.some((tm) => tm.slug === own);
+                  });
+                  if (sides.length === 0) return null;
+                  return (
+                    <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-2.5 space-y-2">
+                      <div className="text-[10px] font-medium uppercase tracking-wide text-ink-3">
+                        {t("msm.proxyTitle")}
+                      </div>
+                      {sides.map((s) => {
+                        const name = s === "home" ? selFixture.homeName : selFixture.awayName;
+                        const cur = s === "home" ? selFixture.homeProxySlug : selFixture.awayProxySlug;
+                        const suggestions = [...teams]
+                          .map((tm) => ({ ...tm, sim: nameSim(name, tm.name) }))
+                          .sort((a, b) => b.sim - a.sim)
+                          .slice(0, 2)
+                          .filter((x) => x.sim >= 0.3);
+                        return (
+                          <div key={s} className="flex flex-wrap items-center gap-1.5 text-[11px]">
+                            <span className="font-medium text-ink">{name}</span>
+                            <span className="text-ink-3">→</span>
+                            <select
+                              className={`${selCls} !py-0.5 text-[11px]`}
+                              value={cur ?? ""}
+                              onChange={(e) => applyProxy(s, e.target.value)}
+                            >
+                              <option value="" className="bg-field text-ink">{t("msm.proxyPick")}</option>
+                              {teams.map((tm) => (
+                                <option key={tm.slug} value={tm.slug} className="bg-field text-ink">{tm.name}</option>
+                              ))}
+                            </select>
+                            {!cur && suggestions.map((sg) => (
+                              <button
+                                key={sg.slug}
+                                onClick={() => applyProxy(s, sg.slug)}
+                                title={t("msm.proxySuggested")}
+                                className="rounded border border-amber-500/50 bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-medium text-amber-500 hover:bg-amber-500/25"
+                              >
+                                {sg.name}?
+                              </button>
+                            ))}
+                            {cur && (
+                              <span className="text-[10px] text-ink-3">{t("msm.proxyActive")}</span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
                 <div>
                   <label className={`${lblCls} flex items-center gap-1`}>
                     {t("msm.market")}

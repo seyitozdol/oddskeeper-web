@@ -72,6 +72,10 @@ export interface FixtureRow {
   datetime: string | null;
   // Kullanicinin elle olusturdugu fikstür (round'dan bagimsiz, en ustte, silinebilir).
   manual?: boolean;
+  // Manuel fikstürde ligde olmayan taraf icin secilen "benzer takım" (proxy)
+  // slug'i; model verileri bu takımdan alinir, gorunen isim manuel kalir.
+  homeProxySlug?: string | null;
+  awayProxySlug?: string | null;
 }
 export interface FixtureInput {
   externalFixtureId: string;
@@ -212,7 +216,7 @@ export function manualSlug(name: string): string {
 export async function fetchManualFixtures(league: string): Promise<FixtureRow[]> {
   const { data, error } = await sb()
     .from("msm_manual_fixtures")
-    .select("id, home_slug, home_name, away_slug, away_name, created_at")
+    .select("id, home_slug, home_name, away_slug, away_name, home_proxy_slug, away_proxy_slug, created_at")
     .eq("league", league)
     .order("created_at", { ascending: false });
   if (error) { console.error("fetchManualFixtures", error); return []; }
@@ -227,7 +231,22 @@ export async function fetchManualFixtures(league: string): Promise<FixtureRow[]>
     label: `${r.home_name} - ${r.away_name}`,
     datetime: null,
     manual: true,
+    homeProxySlug: (r.home_proxy_slug as string) ?? null,
+    awayProxySlug: (r.away_proxy_slug as string) ?? null,
   }));
+}
+
+// Manuel fikstürün bir tarafina "benzer takım" (proxy) atar/temizler.
+export async function setManualFixtureProxy(
+  id: string,
+  side: "home" | "away",
+  proxySlug: string
+): Promise<boolean> {
+  const { error } = await createClient().rpc("msm_set_manual_fixture_proxy", {
+    p_id: id, p_side: side, p_proxy_slug: proxySlug,
+  });
+  if (error) { console.error("setManualFixtureProxy", error); return false; }
+  return true;
 }
 
 export async function addManualFixture(
