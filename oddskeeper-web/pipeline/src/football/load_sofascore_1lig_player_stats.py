@@ -203,6 +203,9 @@ def refresh_mats():
         cur.execute("refresh materialized view concurrently analytics.player_shot_zones_match_mat")
         # Kadro profil mat'i (PSM oyuncu listesi; agir tanim view'inden beslenir).
         cur.execute("refresh materialized view concurrently analytics.team_current_squad_profile_mat")
+        # PSM sicak view mat'lari (leaderboard + profil; unique key yok -> plain).
+        cur.execute("refresh materialized view analytics.player_metric_leaderboard_current_mat")
+        cur.execute("refresh materialized view analytics.player_profile_mat")
         print("[mat] tff1 materialized view'lar tazelendi", flush=True)
         # TSL SofaScore analytics zinciri (frontend 2026-08-09'dan beri
         # bunlari okur; siralama dogru kalsin diye her yuklemede tazelenir).

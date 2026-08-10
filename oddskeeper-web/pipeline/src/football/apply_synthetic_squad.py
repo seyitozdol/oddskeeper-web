@@ -253,9 +253,11 @@ def main() -> None:
     try:
         conn.autocommit = True
         cur.execute("refresh materialized view concurrently analytics.team_current_squad_profile_mat")
-        print("[mat] team_current_squad_profile_mat tazelendi", flush=True)
+        cur.execute("refresh materialized view analytics.player_metric_leaderboard_current_mat")
+        cur.execute("refresh materialized view analytics.player_profile_mat")
+        print("[mat] squad profile + leaderboard + profil mat'lari tazelendi", flush=True)
     except Exception as e:  # noqa
-        print(f"UYARI: squad profile mat refresh basarisiz: {e}", flush=True)
+        print(f"UYARI: mat refresh basarisiz: {e}", flush=True)
     conn.close()
 
 
