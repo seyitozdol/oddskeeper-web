@@ -199,6 +199,8 @@ def refresh_mats():
         cur.execute("refresh materialized view analytics.tff1_player_match_log_mat")
         cur.execute("refresh materialized view analytics.tff1_pm_player_season_mat")
         cur.execute("refresh materialized view analytics.tff1_squad_mat")
+        # Shot-zone katmani (PSM SOT In/Out Box): shotmap upsert'lerinden sonra.
+        cur.execute("refresh materialized view concurrently analytics.player_shot_zones_match_mat")
         print("[mat] tff1 materialized view'lar tazelendi", flush=True)
         # TSL SofaScore analytics zinciri (frontend 2026-08-09'dan beri
         # bunlari okur; siralama dogru kalsin diye her yuklemede tazelenir).
