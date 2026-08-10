@@ -592,7 +592,11 @@ export default function ResmiMatchStatsModel({
     const rc = rawMarketCfgs[market];
     const tpls = templatesByMarket[market] ?? [];
     if (!rc || tpls.length === 0) return [];
-    return buildImportRows(output, { lineCount: rc.line_count, sendHalves: rc.send_halves, midOnly: rc.mid_only }, tpls, externalFixtureId, market, matchLabel);
+    return buildImportRows(output, {
+      lineCount: rc.line_count, sendHalves: rc.send_halves, midOnly: rc.mid_only,
+      lineCount1h: rc.line_count_1h, lineCount2h: rc.line_count_2h,
+      under1h: rc.under_1h, under2h: rc.under_2h,
+    }, tpls, externalFixtureId, market, matchLabel);
   }, [output, rawMarketCfgs, templatesByMarket, market, externalFixtureId, matchLabel]);
 
   const num = (s: string): number | null => {
@@ -676,7 +680,7 @@ export default function ResmiMatchStatsModel({
       Selection_1_Name: r.sel1Name,
       Selection_1_Price: Number(r.sel1Price.toFixed(2)),
       Selection_2_Name: r.sel2Name,
-      Selection_2_Price: Number(r.sel2Price.toFixed(2)),
+      Selection_2_Price: r.sel2Price != null ? Number(r.sel2Price.toFixed(2)) : "",
     }));
     const ws = XLSX.utils.json_to_sheet(data);
     const wb = XLSX.utils.book_new();
@@ -886,7 +890,7 @@ export default function ResmiMatchStatsModel({
                     <td className="px-2 py-1">{r.line}</td>
                     <td className="px-2 py-1">{r.status}</td>
                     <td className="px-2 py-1">{r.sel1Price.toFixed(2)}</td>
-                    <td className="px-2 py-1">{r.sel2Price.toFixed(2)}</td>
+                    <td className="px-2 py-1">{r.sel2Price != null ? r.sel2Price.toFixed(2) : "—"}</td>
                     <td className="px-2 py-1 text-center">
                       {importList.length > 0 && (
                         <button
@@ -910,7 +914,7 @@ export default function ResmiMatchStatsModel({
                     <td className="px-2 py-1">{r.line}</td>
                     <td className="px-2 py-1 font-semibold">SU</td>
                     <td className="px-2 py-1">{r.sel1Price.toFixed(2)}</td>
-                    <td className="px-2 py-1">{r.sel2Price.toFixed(2)}</td>
+                    <td className="px-2 py-1">{r.sel2Price != null ? r.sel2Price.toFixed(2) : "—"}</td>
                     <td className="px-2 py-1"></td>
                   </tr>
                 ))}

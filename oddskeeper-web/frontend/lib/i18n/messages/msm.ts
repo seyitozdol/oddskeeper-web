@@ -101,6 +101,11 @@ export const msm = defineMessages({
     lineCount: "Lines",
     sendHalves: "Halves",
     midOnly: "Mid only",
+    underCol: "Under",
+    payback: "Payback",
+    halfShare: "Share",
+    marketsNote:
+      "Per-market controls. FT: number of lines (1-5). For each half: the halve share, how many lines open (1-5), whether Under is offered, and the half's own payback (price margin). FT prices always use the global margin from Model parameters.",
     supremacyCol: "Supr.",
     refereeCol: "Ref.",
     save: "Save",
@@ -221,6 +226,11 @@ export const msm = defineMessages({
     lineCount: "Çizgi",
     sendHalves: "Yarılar",
     midOnly: "Sadece mid",
+    underCol: "Under",
+    payback: "Payback",
+    halfShare: "Pay",
+    marketsNote:
+      "Market başına kontroller. FT: çizgi sayısı (1-5). Her yarı için: yarı payı, kaç çizgi açılacağı (1-5), Under açılıp açılmayacağı ve yarının kendi payback (fiyat marjı) değeri. FT fiyatları her zaman Model parametrelerindeki global marjı kullanır.",
     supremacyCol: "Supr.",
     refereeCol: "Hkm.",
     save: "Kaydet",

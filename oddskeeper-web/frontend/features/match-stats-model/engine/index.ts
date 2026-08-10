@@ -13,10 +13,18 @@ export function runModel(
   cfg: ModelConfig
 ): ModelOutput {
   const expectancy = computeExpectancy(inputs, mc, cfg);
+  // Yarılar market-bazlı payback (marj) + Under bayrağıyla fiyatlanır
+  // (Config Markets sekmesi); FT her zaman global margin + Under dahil.
   return {
     expectancy,
     ft: analyticSegment(expectancy.ft, cfg),
-    h1: analyticSegment(expectancy.h1, cfg),
-    h2: analyticSegment(expectancy.h2, cfg),
+    h1: analyticSegment(expectancy.h1, cfg, {
+      margin: mc.payback1h,
+      includeUnder: mc.under1h,
+    }),
+    h2: analyticSegment(expectancy.h2, cfg, {
+      margin: mc.payback2h,
+      includeUnder: mc.under2h,
+    }),
   };
 }

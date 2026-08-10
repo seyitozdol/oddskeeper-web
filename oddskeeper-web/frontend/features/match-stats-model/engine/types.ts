@@ -28,6 +28,12 @@ export interface MarketConfig {
   // 'positive' (Shot/SOT/Corner: favori DAHA ÇOK) | 'negative' (Foul/Card/Saves/GoalKick: favori DAHA AZ) | 'none'
   supremacySign: 'positive' | 'negative' | 'none';
   refereeApplies: boolean; // Card/Foul
+  // Yarı-bazlı derin kontrol (Config Markets sekmesi). Boşsa FT davranışı:
+  // payback = global margin, under dahil.
+  payback1h?: number; // 1H over/under fiyat marjı (yoksa modelCfg.margin)
+  payback2h?: number;
+  under1h?: boolean; // false → 1H'de Under açılmaz (SU kontrolü de yalnız Over'a bakar)
+  under2h?: boolean;
 }
 
 // Model global sabitleri (msm.model_config).

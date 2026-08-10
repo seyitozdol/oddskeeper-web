@@ -11,8 +11,8 @@ export interface ImportRow {
   status: string; // "" | "SU"
   sel1Name: string; // "Over"
   sel1Price: number;
-  sel2Name: string; // "Under"
-  sel2Price: number;
+  sel2Name: string; // "Under" | "" (yarıda Under kapalıysa boş)
+  sel2Price: number | null; // Under kapalıysa null
 }
 
 // Blok sırası (template listesiyle birebir): FT-T, FT-H, FT-A, 1H-T, 1H-H, 1H-A, 2H-T, 2H-H, 2H-A.
@@ -32,9 +32,20 @@ function centerLines(sel: SelectionLines, n: number) {
   return sel.lines.slice(start, end);
 }
 
+export interface ExportMarketCfg {
+  lineCount: number; // FT blokları
+  sendHalves: boolean;
+  midOnly: boolean;
+  // Yarı-bazlı kontrol (Config Markets): blok başına çizgi sayısı + Under.
+  lineCount1h: number;
+  lineCount2h: number;
+  under1h: boolean;
+  under2h: boolean;
+}
+
 export function buildImportRows(
   out: ModelOutput,
-  cfg: { lineCount: number; sendHalves: boolean; midOnly: boolean },
+  cfg: ExportMarketCfg,
   templates: string[], // markete ait template kodları, blok sırasında
   externalFixtureId: string,
   market: string,
@@ -47,8 +58,10 @@ export function buildImportRows(
     if (!template) continue; // market bu blok için template tanımlamamış (ör. Corner)
     const [seg, group] = BLOCKS[blk];
     const sel = out[seg][group];
-    // Çizgi sayısı: mid-only → 1; FT blokları (blk<3) → lineCount; 1H/2H → 3.
-    const nLines = cfg.midOnly ? 1 : blk < 3 ? cfg.lineCount : 3;
+    // Çizgi sayısı: mid-only → 1; FT (blk<3) → lineCount; 1H → lineCount1h; 2H → lineCount2h.
+    const nLines = cfg.midOnly ? 1 : blk < 3 ? cfg.lineCount : blk < 6 ? cfg.lineCount1h : cfg.lineCount2h;
+    // Under seçimi: FT'de her zaman; yarılarda markete göre açık/kapalı.
+    const withUnder = blk < 3 ? true : blk < 6 ? cfg.under1h : cfg.under2h;
     for (const ln of centerLines(sel, nLines)) {
       rows.push({
         fixtureId: externalFixtureId,
@@ -59,8 +72,8 @@ export function buildImportRows(
         status: ln.suspended ? "SU" : "",
         sel1Name: "Over",
         sel1Price: ln.overOdds,
-        sel2Name: "Under",
-        sel2Price: ln.underOdds,
+        sel2Name: withUnder ? "Under" : "",
+        sel2Price: withUnder ? ln.underOdds : null,
       });
     }
   }
@@ -76,7 +89,7 @@ export function importRowsToCsv(rows: ImportRow[]): string {
   for (const r of rows) {
     lines.push([
       r.fixtureId, r.template, r.line, r.status,
-      r.sel1Name, r.sel1Price.toFixed(2), r.sel2Name, r.sel2Price.toFixed(2),
+      r.sel1Name, r.sel1Price.toFixed(2), r.sel2Name, r.sel2Price != null ? r.sel2Price.toFixed(2) : "",
     ].join(","));
   }
   return lines.join("\n");

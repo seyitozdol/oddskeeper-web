@@ -300,6 +300,11 @@ export async function fetchMarketConfigs(league: string): Promise<Record<string,
       supremacyApplies: !!r.supremacy_applies,
       supremacySign: SUPREMACY_SIGN[market] ?? "none",
       refereeApplies: !!r.referee_applies,
+      // Yarı-bazlı fiyatlama (Config Markets); kolon yoksa (eski şema) global davranış.
+      payback1h: r.payback_1h != null ? Number(r.payback_1h) : undefined,
+      payback2h: r.payback_2h != null ? Number(r.payback_2h) : undefined,
+      under1h: r.under_1h != null ? !!r.under_1h : undefined,
+      under2h: r.under_2h != null ? !!r.under_2h : undefined,
     };
   }
   return out;
@@ -405,6 +410,9 @@ export interface RawMarketConfig {
   split_1h: number; split_2h: number;
   supremacy_applies: boolean; referee_applies: boolean;
   line_count: number; send_halves: boolean; mid_only: boolean;
+  line_count_1h: number; line_count_2h: number;
+  under_1h: boolean; under_2h: boolean;
+  payback_1h: number; payback_2h: number;
 }
 export interface TemplateRow {
   market: string; template_code: string; details: string | null; sort_order: number;
@@ -438,6 +446,12 @@ export async function fetchRawMarketConfigs(league: string): Promise<RawMarketCo
     split_1h: n(r.split_1h), split_2h: n(r.split_2h),
     supremacy_applies: !!r.supremacy_applies, referee_applies: !!r.referee_applies,
     line_count: n(r.line_count), send_halves: !!r.send_halves, mid_only: !!r.mid_only,
+    line_count_1h: r.line_count_1h != null ? n(r.line_count_1h) : 3,
+    line_count_2h: r.line_count_2h != null ? n(r.line_count_2h) : 3,
+    under_1h: r.under_1h != null ? !!r.under_1h : true,
+    under_2h: r.under_2h != null ? !!r.under_2h : true,
+    payback_1h: r.payback_1h != null ? n(r.payback_1h) : 0.93,
+    payback_2h: r.payback_2h != null ? n(r.payback_2h) : 0.93,
   })).sort((a, b) => MARKETS.indexOf(a.market as Market) - MARKETS.indexOf(b.market as Market));
 }
 
