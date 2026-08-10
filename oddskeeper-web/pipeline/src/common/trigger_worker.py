@@ -32,6 +32,7 @@ KIND_WRAPPERS = {
         "/opt/oddskeeper/run_upcoming_events.sh",
         "/opt/oddskeeper/run_bet365_odds.sh",
         "/opt/oddskeeper/run_oddsportal.sh",
+        "/opt/oddskeeper/run_bmbets.sh",
         "/opt/oddskeeper/run_odds_capture.sh",
     ],
     "bets10_odds": [

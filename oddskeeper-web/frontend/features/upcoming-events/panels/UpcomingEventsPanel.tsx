@@ -14,7 +14,7 @@ import { eventStarCount } from "../priority";
 // Kullanıcı Malta'da; tüm saatler Malta saatine göre gösterilir.
 const TZ = "Europe/Malta";
 
-type SiteKey = "bet365" | "bets10" | "oddsportal";
+type SiteKey = "bet365" | "bets10" | "oddsportal" | "bmbets";
 
 const SPORT_ICON: Record<TrackedSport, string> = {
   football: "/icons/football.svg",
@@ -144,10 +144,13 @@ export default function UpcomingEventsPanel({
         ? "bg-amber-500/15 text-amber-500"
         : "bg-veil text-ink-2";
 
-  // Uyari: rakip kaynakta (OddsPortal veya bet365) oran VAR ama Bets10'da YOK.
-  // Bets10 birincil kaynak; bu durum bir kapsam bosluğu/firsat isaretidir.
+  // Uyari: rakip kaynakta (OddsPortal, bet365 veya BMBets) oran VAR ama
+  // Bets10'da YOK. Bets10 birincil kaynak; bu durum bir kapsam
+  // bosluğu/firsat isaretidir.
   const needsAlert = (e: UpcomingEventRow) =>
-    (e.bet365_has_odds === true || e.oddsportal_has_odds === true) &&
+    (e.bet365_has_odds === true ||
+      e.oddsportal_has_odds === true ||
+      e.bmbets_has_odds === true) &&
     e.bets10_has_odds !== true;
 
   // Öncelik yıldızları: puan kadar (1..5) küçük sarı yıldız, satır başına 3'lük
@@ -208,6 +211,15 @@ export default function UpcomingEventsPanel({
       return (
         <span className="inline-flex h-4 items-center rounded-[3px] bg-[#027b5b] px-1 text-[10px] font-bold leading-none tracking-tight text-[#ffdf1a]">
           bet365
+        </span>
+      );
+    if (site === "bmbets")
+      // bmbets.com wordmark'i: koyu lacivert zemin, beyaz "BM" + altin "BETS",
+      // italik (logodaki hiz cizgilerini andirir).
+      return (
+        <span className="inline-flex h-4 items-center rounded-[3px] bg-[#19455e] px-1 text-[10px] font-bold italic leading-none tracking-tight">
+          <span className="text-white">BM</span>
+          <span className="text-[#d9b32b]">BETS</span>
         </span>
       );
     return (
@@ -365,6 +377,7 @@ export default function UpcomingEventsPanel({
               <col className="w-[48px]" />
               <col className="w-[48px]" />
               <col className="w-[48px]" />
+              <col className="w-[52px]" />
             </colgroup>
             <thead>
               <tr className="text-left text-[10px] uppercase tracking-[0.08em] text-ink-3">
@@ -386,6 +399,7 @@ export default function UpcomingEventsPanel({
                 <th className="px-1 py-1 text-center">
                   {brandBadge("oddsportal")}
                 </th>
+                <th className="px-1 py-1 text-center">{brandBadge("bmbets")}</th>
               </tr>
             </thead>
             <tbody>
@@ -393,7 +407,7 @@ export default function UpcomingEventsPanel({
                 <Fragment key={key}>
                   <tr>
                     <td
-                      colSpan={8}
+                      colSpan={9}
                       className="border-y border-line bg-veil px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-3"
                     >
                       {dayLabel(key, rows[0])}
@@ -492,6 +506,14 @@ export default function UpcomingEventsPanel({
                             value={e.oddsportal_has_odds}
                             marketCount={e.oddsportal_market_count}
                             listed={e.oddsportal_listed}
+                          />
+                        </td>
+                        <td className="px-1 py-1 text-center">
+                          <SiteMark
+                            site="bmbets"
+                            value={e.bmbets_has_odds}
+                            marketCount={e.bmbets_market_count}
+                            listed={e.bmbets_listed}
                           />
                         </td>
                       </tr>

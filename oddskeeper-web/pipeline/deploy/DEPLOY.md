@@ -65,6 +65,10 @@ chmod +x /opt/oddskeeper/run_upcoming_events.sh /opt/oddskeeper/run_odds_capture
 # 4) OddsPortal oranları (headful+xvfb, proxy YOK; domestic+Avrupa): 6 saatte bir
 30 */6 * * *  /opt/oddskeeper/run_oddsportal.sh
 
+# 4b) BMBets oranları (saf HTTP, tarayıcı/proxy YOK; domestic+Avrupa+hazırlık):
+#     3 saatte bir (ücretsiz, hafif)
+15 */3 * * *  /opt/oddskeeper/run_bmbets.sh
+
 # 5) Manuel tetik kontrolü (admin butonu): dakikada bir; bekleyen tetik varsa
 #    pipeline'ı bir kez çalıştırır (flock ile üst üste binmez). Scheduled 1-4
 #    işleri kendi sabit saatlerinde ETKİLENMEDEN devam eder.

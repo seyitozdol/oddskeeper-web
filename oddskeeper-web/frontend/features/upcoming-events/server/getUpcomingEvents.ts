@@ -47,8 +47,12 @@ function dedupe(rows: RawRow[]): RawRow[] {
     (e.bet365_has_odds ? 1 : 0) +
     (e.bets10_has_odds ? 1 : 0) +
     (e.oddsportal_has_odds ? 1 : 0) +
+    (e.bmbets_has_odds ? 1 : 0) +
     Math.sign(
-      e.bet365_market_count + e.bets10_market_count + e.oddsportal_market_count
+      e.bet365_market_count +
+        e.bets10_market_count +
+        e.oddsportal_market_count +
+        e.bmbets_market_count
     );
 
   const best = new Map<string, RawRow>();
