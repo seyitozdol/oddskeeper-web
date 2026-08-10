@@ -941,11 +941,17 @@ export default function ResmiMatchStatsModel({
       </div>
 
       {tab === "config" ? (
-        <div className="space-y-4">
-          <ConfigTab league={LEAGUE} focus={configFocus} onSaved={loadConfig} />
-          <SuspendMissingConfig value={suspendMissing} onChange={toggleSuspend} />
-          <RetentionConfig sport="football_msm" league={LEAGUE} />
-        </div>
+        <ConfigTab
+          league={LEAGUE}
+          focus={configFocus}
+          onSaved={loadConfig}
+          exportExtras={
+            <>
+              <SuspendMissingConfig value={suspendMissing} onChange={toggleSuspend} />
+              <RetentionConfig sport="football_msm" league={LEAGUE} />
+            </>
+          }
+        />
       ) : tab === "fixtures" ? (
         <FixtureIdTab league={LEAGUE} isAdmin={isAdmin} onSaved={() => fetchFixtureInputs(LEAGUE).then(setFixtureInputs)} onManualChanged={loadFixtures} />
       ) : tab === "input" ? (
