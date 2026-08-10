@@ -194,6 +194,7 @@ export function MarketListTab({
   const [templateIds, setTemplateIds] = useState<Record<string, string>>({});
   const [types, setTypes] = useState<Record<string, MarketType>>({});
   const [draftName, setDraftName] = useState<string | null>(null);
+  const [draftTemplate, setDraftTemplate] = useState("");
   const [draftType, setDraftType] = useState<MarketType>("static");
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<number | null>(null);
@@ -214,6 +215,11 @@ export function MarketListTab({
   async function handleSaveAll() {
     setSaving(true);
     let ok = true;
+    // Acik taslak satiri (Yeni ile eklenen) da kaydet: kullanici ✓ yerine
+    // dogrudan Kaydet'e basarsa taslak sessizce kaybolmasin.
+    if (draftName !== null && draftName.trim()) {
+      ok = (await saveDraftMarket()) && ok;
+    }
     for (const row of rows) {
       const stored = storedByKey.get(row.key);
       const tplTouched = templateIds[row.key] !== undefined;
@@ -276,11 +282,11 @@ export function MarketListTab({
     }
   }
 
-  async function saveDraftMarket() {
+  async function saveDraftMarket(): Promise<boolean> {
     const name = (draftName ?? "").trim();
     if (!name) {
       setDraftName(null);
-      return;
+      return true;
     }
     let key = slugifyMarketKey(name);
     if (!key.replace(/^custom_/, "")) key = `custom_market`;
@@ -294,16 +300,19 @@ export function MarketListTab({
     const ok = await upsertStoredMarket({
       market_key: unique,
       label: name,
-      template_id: null,
+      template_id: draftTemplate.trim() || null,
       is_custom: true,
       sort_order: maxSort + 1,
       market_type: draftType,
+      in_model: true,
     });
     if (ok) {
       setDraftName(null);
+      setDraftTemplate("");
       setDraftType("static");
       onChanged();
     }
+    return ok;
   }
 
   const rows: Array<{ key: string; label: string; isCustom: boolean }> = [
@@ -392,7 +401,19 @@ export function MarketListTab({
                     className="w-40 rounded border border-teal-500/40 bg-field px-1.5 py-0.5 text-[12px] text-ink placeholder-ink-3 focus:border-teal-500/70 focus:outline-none"
                   />
                 </td>
-                <td className="px-2 py-1.5 text-ink-3 text-[11px]"></td>
+                <td className="px-2 py-1.5">
+                  <input
+                    type="text"
+                    value={draftTemplate}
+                    placeholder={t("playerMarket.marketTemplateIdLabel")}
+                    onChange={(e) => setDraftTemplate(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") saveDraftMarket();
+                      if (e.key === "Escape") setDraftName(null);
+                    }}
+                    className="w-36 rounded border border-teal-500/40 bg-field px-1.5 py-0.5 text-[11px] text-ink placeholder-ink-3 focus:border-teal-500/70 focus:outline-none"
+                  />
+                </td>
                 <td className="px-2 py-1.5">
                   <select
                     value={draftType}
