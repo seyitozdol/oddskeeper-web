@@ -1,10 +1,17 @@
 import Image from "next/image";
 import Link from "next/link";
 import { getFootballTeams } from "../../../../../lib/football-teams";
+import { TFF1_TEAM_SLUG_BY_ID } from "@/lib/tff1-team-slugs";
 import { getT } from "@/lib/i18n/server";
 
 export default async function FootballTeamStatsPage() {
-  const [teams, t] = await Promise.all([getFootballTeams(), getT()]);
+  const [allTeams, t] = await Promise.all([getFootballTeams(), getT()]);
+  // Izgara = guncel Super Lig. Logo klasoru baska yuzeyler icin 1. Lig
+  // logolari da barindirir (MSM tff1 + kume dusenlerin kalintilari); bu
+  // sayfada 1. Lig takimlarini (tff1 slug haritasi) disarida tutariz.
+  // Harita sezon basinda guncellenir, filtre kendini takip eder.
+  const tff1Slugs = new Set(Object.values(TFF1_TEAM_SLUG_BY_ID));
+  const teams = allTeams.filter((team) => !tff1Slugs.has(team.slug));
 
   return (
     <section className="w-full">
