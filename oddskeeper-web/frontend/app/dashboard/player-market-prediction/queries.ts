@@ -53,6 +53,8 @@ export type MarketOption = {
   // key in player_metric_leaderboard_current; "" = istatistik yok;
   // "log:<kolon>" = sezon ortalamasi player_log_season_avg_v1'den (leaderboard'da
   // karsiligi olmayan metrikler icin, or. shots_off_target)
+  // "shots:<kolon>" = SofaScore shotmap turevleri (player_shot_zones_*_v1,
+  // opta_player_id koprusuyle; or. sot_ibox / sot_obox)
   metricKey: string;
   logField: string;  // field in player_match_log_v1 ("" = istatistik yok)
   includeGk: boolean; // false ise kaleciler listede gosterilmez
@@ -70,6 +72,8 @@ export const MARKET_OPTIONS: MarketOption[] = [
   { key: "total_shots",     label: "Total Shots",       metricKey: "shots_total",            logField: "shots_derived",    includeGk: false },
   { key: "attempts_ibox",   label: "Attempts In Box",   metricKey: "attempts_ibox_total",    logField: "shots_on_target",  includeGk: false },
   { key: "attempts_obox",   label: "Attempts Out Box",  metricKey: "attempts_obox_total",    logField: "shots_off_target", includeGk: false },
+  { key: "sot_ibox",        label: "SOT In Box",        metricKey: "shots:sot_ibox",         logField: "shots:sot_ibox",   includeGk: false },
+  { key: "sot_obox",        label: "SOT Out Box",       metricKey: "shots:sot_obox",         logField: "shots:sot_obox",   includeGk: false },
   { key: "xg",              label: "xG",                metricKey: "expected_goals_total",   logField: "expected_goals",   includeGk: false },
   { key: "fouls_suffered",  label: "Fouls Suffered",    metricKey: "fouls_won_total",        logField: "fouls_won",        includeGk: false },
   { key: "passes",          label: "Passes",            metricKey: "passes_total",           logField: "passes",           includeGk: true },
@@ -291,6 +295,44 @@ export async function fetchPlayerLast5Avg(
   if (playerSourceIds.length === 0 || !logField) return {};
   const supabase = createClient();
 
+  // Shotmap turevleri: son 5 mac player_shot_zones_match_v1'den (appearance
+  // tabanli, sut atmayan maclar 0 satiri olarak var -> ortalama dogru).
+  if (logField.startsWith("shots:")) {
+    const field = logField.slice(6);
+    const { data, error } = await supabase
+      .schema("analytics")
+      .from("player_shot_zones_match_v1")
+      .select(`opta_player_id, match_datetime, ${field}`)
+      .eq("season_label", seasonLabel)
+      .in("opta_player_id", playerSourceIds)
+      .order("match_datetime", { ascending: false })
+      .limit(Math.min(playerSourceIds.length * 5 * 2, 1000));
+
+    if (error) {
+      console.error("fetchPlayerLast5Avg (shots) error:", error);
+      return {};
+    }
+
+    const grouped: Record<string, number[]> = {};
+    for (const row of (data ?? []) as unknown as Record<string, unknown>[]) {
+      const id = String(row.opta_player_id);
+      if (!grouped[id]) grouped[id] = [];
+      if (grouped[id].length < 5) {
+        const val = row[field];
+        const num = val !== null && val !== undefined ? Number(val) : null;
+        if (num !== null && !isNaN(num)) grouped[id].push(num);
+      }
+    }
+    const shotResult: Record<string, number | null> = {};
+    for (const id of playerSourceIds) {
+      const vals = grouped[id] ?? [];
+      shotResult[id] = vals.length
+        ? vals.reduce((a, b) => a + b, 0) / vals.length
+        : null;
+    }
+    return shotResult;
+  }
+
   const { data, error } = await supabase
     .schema("analytics")
     .from("player_match_log_v1")
@@ -352,6 +394,36 @@ export async function fetchPlayerMetricStats(
 ): Promise<Record<string, PlayerMetricStat>> {
   if (playerSourceIds.length === 0 || !metricKey) return {};
   const supabase = createClient();
+
+  // Shotmap turevleri: sezon ortalamasi player_shot_zones_season_v1'den
+  // (appearance tabanli; sut atilmayan maclar 0 sayilir). TSL oyuncu id'si
+  // opta uzayinda -> view'daki opta_player_id koprusuyle eslenir.
+  if (metricKey.startsWith("shots:")) {
+    const field = metricKey.slice(6);
+    const { data, error } = await supabase
+      .schema("analytics")
+      .from("player_shot_zones_season_v1")
+      .select(`opta_player_id, ${field}`)
+      .eq("season_label", seasonLabel)
+      .in("opta_player_id", playerSourceIds);
+
+    if (error) {
+      console.error("fetchPlayerMetricStats (shots avg) error:", error);
+      return {};
+    }
+
+    const shotResult: Record<string, PlayerMetricStat> = {};
+    for (const row of (data ?? []) as unknown as Record<string, unknown>[]) {
+      const id = String(row.opta_player_id);
+      const val = row[field];
+      shotResult[id] = {
+        player_source_id: id,
+        per_match_value: val !== null && val !== undefined ? Number(val) : null,
+        last5_value: null,
+      };
+    }
+    return shotResult;
+  }
 
   if (metricKey.startsWith("log:")) {
     const field = metricKey.slice(4);

@@ -83,6 +83,10 @@ function toPositionCode(pos: string | null | undefined): string {
 export const MARKET_OPTIONS: MarketOption[] = [
   { key: "shots",           label: "Shots",            metricKey: "shots",            logField: "shots",            includeGk: false },
   { key: "shots_on_target", label: "Shots on Target",  metricKey: "shots_on_target",  logField: "shots_on_target",  includeGk: false },
+  // "shots:" oneki = SofaScore shotmap turevleri (player_shot_zones_*_v1,
+  // sofascore_player_id ile; kutu ici/disi isabetli sut).
+  { key: "sot_ibox",        label: "SOT In Box",       metricKey: "shots:sot_ibox",   logField: "shots:sot_ibox",   includeGk: false },
+  { key: "sot_obox",        label: "SOT Out Box",      metricKey: "shots:sot_obox",   logField: "shots:sot_obox",   includeGk: false },
   { key: "goals",           label: "Goals",            metricKey: "goals",            logField: "goals",            includeGk: false },
   { key: "assists",         label: "Assists",          metricKey: "assists",          logField: "assists",          includeGk: false },
   { key: "passes",          label: "Passes",           metricKey: "total_passes",     logField: "total_passes",     includeGk: false },
@@ -293,6 +297,44 @@ export async function fetchPlayerLast5Avg(
   if (playerSourceIds.length === 0 || !logField) return {};
   const supabase = createClient();
 
+  // Shotmap turevleri: son 5 mac player_shot_zones_match_v1'den (appearance
+  // tabanli, sut atmayan maclar 0 satiri olarak var; player_id = sofascore id).
+  if (logField.startsWith("shots:")) {
+    const field = logField.slice(6);
+    const { data, error } = await supabase
+      .schema("analytics")
+      .from("player_shot_zones_match_v1")
+      .select(`sofascore_player_id, match_datetime, ${field}`)
+      .eq("season_label", seasonLabel)
+      .in("sofascore_player_id", playerSourceIds)
+      .order("match_datetime", { ascending: false })
+      .limit(Math.min(playerSourceIds.length * 5 * 2, 1000));
+
+    if (error) {
+      console.error("fetchPlayerLast5Avg (shots) error:", error);
+      return {};
+    }
+
+    const sGrouped: Record<string, number[]> = {};
+    for (const row of (data ?? []) as unknown as Record<string, unknown>[]) {
+      const id = String(row.sofascore_player_id);
+      if (!sGrouped[id]) sGrouped[id] = [];
+      if (sGrouped[id].length < 5) {
+        const val = row[field];
+        const num = val !== null && val !== undefined ? Number(val) : null;
+        if (num !== null && !isNaN(num)) sGrouped[id].push(num);
+      }
+    }
+    const sResult: Record<string, number | null> = {};
+    for (const id of playerSourceIds) {
+      const vals = sGrouped[id] ?? [];
+      sResult[id] = vals.length
+        ? vals.reduce((a, b) => a + b, 0) / vals.length
+        : null;
+    }
+    return sResult;
+  }
+
   const { data, error } = await supabase
     .schema("analytics")
     .from("tff1_player_match_log_mat")
@@ -344,6 +386,35 @@ export async function fetchPlayerMetricStats(
 ): Promise<Record<string, PlayerMetricStat>> {
   if (playerSourceIds.length === 0 || !metricKey) return {};
   const supabase = createClient();
+
+  // Shotmap turevleri: sezon view'i zaten mac-basi ORTALAMA doner
+  // (appearance tabanli), appearances bolmesi gerekmez.
+  if (metricKey.startsWith("shots:")) {
+    const field = metricKey.slice(6);
+    const { data, error } = await supabase
+      .schema("analytics")
+      .from("player_shot_zones_season_v1")
+      .select(`sofascore_player_id, ${field}`)
+      .eq("season_label", seasonLabel)
+      .in("sofascore_player_id", playerSourceIds);
+
+    if (error) {
+      console.error("fetchPlayerMetricStats (shots) error:", error);
+      return {};
+    }
+
+    const sResult: Record<string, PlayerMetricStat> = {};
+    for (const row of (data ?? []) as unknown as Record<string, unknown>[]) {
+      const id = String(row.sofascore_player_id);
+      const val = row[field];
+      sResult[id] = {
+        player_source_id: id,
+        per_match_value: val !== null && val !== undefined ? Number(val) : null,
+        last5_value: null,
+      };
+    }
+    return sResult;
+  }
 
   const { data, error } = await supabase
     .schema("analytics")
