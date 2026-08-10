@@ -57,12 +57,14 @@ def map_position(tm_pos: str | None) -> str | None:
     p = (tm_pos or "").lower()
     if "keeper" in p:
         return "Goalkeeper"
-    if "back" in p or "defen" in p:
-        return "Defender"
+    # 'midfield' kontrolu 'defen'den ONCE: 'Defensive Midfield' orta saha,
+    # savunmaci degil.
     if "midfield" in p:
         return "Midfielder"
-    if any(k in p for k in ("winger", "forward", "striker", "attack")):
+    if "winger" in p or "forward" in p or "striker" in p or "attack" in p:
         return "Attacker"
+    if "back" in p or "defen" in p:
+        return "Defender"
     return None
 
 
@@ -78,7 +80,8 @@ def parse_squad_with_pos(html: str) -> list[dict]:
             continue
         tm = re.search(r"</table>", chunk)
         seg = chunk[: tm.start()] if tm else chunk
-        pp = re.findall(r"<td>([A-Za-z][A-Za-z /-]+)</td>", seg)
+        # Hucre cok satirli: <td>\n  Right Winger  </td>
+        pp = re.findall(r"<td>\s*([A-Za-z][A-Za-z /-]*[A-Za-z])\s*</td>", seg, re.S)
         if pp:
             pos_by_id[pm.group(1)] = pp[-1].strip()
     for p in players:
@@ -200,6 +203,13 @@ def apply(cur) -> None:
                values ('synthetic-tm', %s, %s, %s, %s, %s, now())
                on conflict do nothing""",
             (src_team_id, team_name, syn_pid, name, pos),
+        )
+        # Mevcut sentetik satirin pozisyonu/adi guncellenmis olabilir (seed tekrar kostu).
+        cur.execute(
+            """update football.team_squad_current
+               set position=%s, player_name=%s
+               where source='synthetic-tm' and source_player_id=%s""",
+            (pos, name, syn_pid),
         )
         # Dogum tarihi (TM deger eslesmesi + profil icin) - varsa dokunma.
         if birth:
