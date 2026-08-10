@@ -222,7 +222,31 @@ export default function PlayerProfileDrawer({
           return e;
         };
 
-        if (metricKey.startsWith("log:")) {
+        if (metricKey.startsWith("shots:")) {
+          // Shotmap turevleri (SOT In/Out Box): sezon gecmisi
+          // player_shot_zones_season_v1'den (mac-basi ortalama doner;
+          // toplam = ort x mac). TSL oyuncu id'si opta uzayinda.
+          const field = metricKey.slice(6);
+          const { data: shotRows } = await supabase
+            .schema("analytics")
+            .from("player_shot_zones_season_v1")
+            .select(`season_label, matches, ${field}`)
+            .eq("opta_player_id", playerSourceId);
+          for (const row of (shotRows ?? []) as unknown as Record<
+            string,
+            unknown
+          >[]) {
+            const e = ensure(String(row.season_label));
+            const m = Number(row.matches ?? 0);
+            const val = row[field] != null ? Number(row[field]) : null;
+            e.matches += m;
+            if (val != null) {
+              e.pmNum += val * m;
+              e.pmDen += m;
+              e.total += val * m;
+            }
+          }
+        } else if (metricKey.startsWith("log:")) {
           const field = metricKey.slice(4);
           const { data: logRows } = await supabase
             .schema("analytics")

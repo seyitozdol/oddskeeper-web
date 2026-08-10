@@ -121,7 +121,11 @@ export default function PlayerProfileDrawer({
     async function load() {
       const supabase = createClient();
 
-      const seasonSelect = metricKey
+      // "shots:" onekli metrikler tff1_pm_player_season_mat kolonu DEGIL
+      // (player_shot_zones_season_v1'den ayrica cekilir); select'e girerse
+      // sorgu gecersiz kolonla patlar.
+      const isShotsMetric = metricKey.startsWith("shots:");
+      const seasonSelect = metricKey && !isShotsMetric
         ? `season_label, team_id, team_name, appearances, starts, minutes, goals, assists, ${metricKey}`
         : "season_label, team_id, team_name, appearances, starts, minutes, goals, assists";
 
@@ -188,7 +192,31 @@ export default function PlayerProfileDrawer({
 
       // Secili marketin metrigi icin sezon tablosu: Mac | Toplam | Ort.
       // Ort. = toplam / appearances (appearances 0 ise null).
-      if (metricKey) {
+      if (isShotsMetric) {
+        // Shotmap turevleri (SOT In/Out Box): player_shot_zones_season_v1
+        // mac-basi ORTALAMA doner (appearance tabanli); toplam = ort x mac.
+        const field = metricKey.slice(6);
+        const { data: shotRows } = await supabase
+          .schema("analytics")
+          .from("player_shot_zones_season_v1")
+          .select(`season_label, matches, ${field}`)
+          .eq("sofascore_player_id", playerId);
+        if (cancelled) return;
+        const seasons: MetricSeason[] = (
+          (shotRows ?? []) as unknown as Record<string, unknown>[]
+        ).map((r) => {
+          const m = Number(r.matches ?? 0);
+          const avg = r[field] != null ? Number(r[field]) : null;
+          return {
+            seasonLabel: String(r.season_label),
+            matches: m || null,
+            total: avg != null ? Math.round(avg * m) : null,
+            perMatch: avg,
+          };
+        });
+        seasons.sort((a, b) => b.seasonLabel.localeCompare(a.seasonLabel));
+        setMetricSeasons(seasons);
+      } else if (metricKey) {
         const seasons: MetricSeason[] = seasonRows.map((r) => {
           const apps = Number(r.appearances ?? 0);
           const total =
