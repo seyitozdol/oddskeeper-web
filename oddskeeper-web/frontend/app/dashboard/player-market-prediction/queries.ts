@@ -387,7 +387,7 @@ export async function fetchPlayerLast5Avg(
 // Yeni transferlerin (Greenwood, Salah vb) TSL/1.Lig verisi yok; LY ortalamasi
 // analytics.player_foreign_season_v1'den (SofaScore yurt disi sezon toplamlari,
 // player_key ile) doldurulur. Yalniz birincil kaynakta BOS kalan oyuncular icin.
-const FOREIGN_METRIC_COLS: Record<string, string> = {
+export const FOREIGN_METRIC_COLS: Record<string, string> = {
   shots_on_target_total: "shots_on_target",
   "log:shots_off_target": "shots_off_target",
   "log:shots_blocked": "shots_blocked",

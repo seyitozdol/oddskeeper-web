@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useI18n } from "@/lib/i18n/LanguageProvider";
 import { getCountryFlagUrl } from "@/lib/country-flags";
 import { getPlayerDetailHref } from "@/lib/routes";
+import { FOREIGN_METRIC_COLS } from "./queries";
 
 // Model ekranindaki oyuncu adina tiklaninca sagdan acilan profil paneli.
 // Acilis sekli eski metrik leaderboard drawer'iyla ayni (sabit overlay +
@@ -178,10 +179,34 @@ export default function PlayerProfileDrawer({
       }
 
       const profileRows = (profileRes.data ?? []) as Record<string, unknown>[];
-      const pr =
+      let pr =
         profileRows.find((r) => String(r.season_label) === seasonLabel) ??
         profileRows[0] ??
         null;
+      // Yeni transfer: bizim profil view'unda sezon yoksa yurt disi sezon
+      // ozetine dus (mac/gol/asist/dakika; ilk-11 bilgisi yurt disinda yok).
+      if (!pr && playerSourceId) {
+        const { data: fp } = await supabase
+          .schema("analytics")
+          .from("player_foreign_season_v1")
+          .select("season_label, appearances, minutes_played, goals, assists")
+          .eq("player_key", playerSourceId)
+          .order("season_label", { ascending: false })
+          .limit(1);
+        const f = (fp?.[0] ?? null) as Record<string, unknown> | null;
+        if (f) {
+          const m = Number(f.appearances ?? 0);
+          pr = {
+            appearances: m,
+            starts: null,
+            total_minutes: f.minutes_played,
+            goals: f.goals != null ? Number(f.goals) * m : null,
+            assists: f.assists != null ? Number(f.assists) * m : null,
+            starter_rate_pct: null,
+            season_label: f.season_label,
+          } as Record<string, unknown>;
+        }
+      }
       if (pr) {
         setSummary({
           appearances: (pr.appearances as number) ?? null,
@@ -329,6 +354,29 @@ export default function PlayerProfileDrawer({
               (r) => !leaderboardSeasons.has(String(r.season_label))
             )
           );
+        }
+
+        // Yurt disi (yeni transfer) sezonlari: bizim kaynaklarda OLMAYAN
+        // sezonlar player_foreign_season_v1'den eklenir (mac-basi ortalama;
+        // toplam = ort x mac). Yalniz eslenebilir metriklerde.
+        const foreignCol = FOREIGN_METRIC_COLS[metricKey];
+        if (foreignCol) {
+          const { data: fRows } = await supabase
+            .schema("analytics")
+            .from("player_foreign_season_v1")
+            .select(`season_label, appearances, ${foreignCol}`)
+            .eq("player_key", playerSourceId);
+          for (const row of (fRows ?? []) as unknown as Record<string, unknown>[]) {
+            const sl = String(row.season_label);
+            if (bySeason.has(sl)) continue; // bizim veri oncelikli
+            const m = Number(row.appearances ?? 0);
+            const avg = row[foreignCol] != null ? Number(row[foreignCol]) : null;
+            if (!m || avg == null) continue;
+            bySeason.set(sl, {
+              total: avg * m, matches: m, pmNum: avg * m, pmDen: m,
+              last5: null, last5Matches: -1, rank: null,
+            });
+          }
         }
 
         const seasons: MetricSeason[] = [...bySeason.entries()].map(

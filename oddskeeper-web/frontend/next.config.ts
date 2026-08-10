@@ -35,6 +35,17 @@ const nextConfig: NextConfig = {
         hostname: "static.flashscore.com",
         pathname: "/**",
       },
+      {
+        // SofaScore oyuncu fotograflari (sentetik/yeni transfer kadro kayitlari)
+        protocol: "https",
+        hostname: "img.sofascore.com",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "api.sofascore.com",
+        pathname: "/**",
+      },
     ],
   },
 };

@@ -248,6 +248,14 @@ def main() -> None:
         seed(cur)
     apply(cur)
     conn.commit()
+    # Kadro profil mat'i (PSM fetchTeamPlayers bunu okur) kadro degisiminden
+    # sonra tazelenmeli; agir tanim view'i sorgu aninda kosulamayacak kadar yavas.
+    try:
+        conn.autocommit = True
+        cur.execute("refresh materialized view concurrently analytics.team_current_squad_profile_mat")
+        print("[mat] team_current_squad_profile_mat tazelendi", flush=True)
+    except Exception as e:  # noqa
+        print(f"UYARI: squad profile mat refresh basarisiz: {e}", flush=True)
     conn.close()
 
 
