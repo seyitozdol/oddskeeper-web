@@ -331,6 +331,45 @@ export default function ResmiMatchStatsModel({
   const [manAway, setManAway] = useState("");
   const [manTotal, setManTotal] = useState("");
 
+  // Şut ailesi çapraz-market önerisi: bir markette elle home/away değişince
+  // (ör. Shot 10/20 → 20/10) ilişkili marketlerde aynı ORANDA öneri gösterilir.
+  // 'attack' = değişim aynı tarafa uygulanır (Shot/SOT/Goal Kick);
+  // 'cross'  = ters tarafa (Saves: ev şutu artarsa DEPLASMAN kalecisinin
+  // kurtarışı artar, ev kalecisininki azalır). Oranlar atak-uzayında saklanır.
+  const SHOT_FAMILY: Record<string, "attack" | "cross"> = {
+    Shot: "attack", SOT: "attack", "Goal Kick": "attack", Saves: "cross",
+  };
+  const [shotAdj, setShotAdj] = useState<{
+    fixtureId: string;
+    market: string; // değişikliğin yapıldığı (sürücü) market
+    attackRH: number; // atak-uzayı ev oranı (elle / model)
+    attackRA: number;
+  } | null>(null);
+
+  // Elle home/away girişini sürücü kaydı olarak işler (yalnız şut ailesinde).
+  // Baz = supremacy sonrası, elle-öncesi model değerleri (homeXs/awayXs).
+  function recordShotAdj(side: "home" | "away", raw: string) {
+    const orient = SHOT_FAMILY[market];
+    if (!orient || !output || !selectedFixtureId) return;
+    const baseH = output.expectancy.homeXs;
+    const baseA = output.expectancy.awayXs;
+    const vH = parseFloat(side === "home" ? raw : manHome);
+    const vA = parseFloat(side === "away" ? raw : manAway);
+    const rH = isFinite(vH) && baseH > 0 ? vH / baseH : 1;
+    const rA = isFinite(vA) && baseA > 0 ? vA / baseA : 1;
+    // İki alan da boş/nötr ise bu marketin sürücülüğü kalkar.
+    if (!isFinite(vH) && !isFinite(vA)) {
+      setShotAdj((p) => (p && p.market === market && p.fixtureId === selectedFixtureId ? null : p));
+      return;
+    }
+    setShotAdj({
+      fixtureId: selectedFixtureId,
+      market,
+      attackRH: orient === "cross" ? rA : rH,
+      attackRA: orient === "cross" ? rH : rA,
+    });
+  }
+
   // Seçilen market+takımlar için veri.
   const [hist, setHist] = useState<HistBySlug>({});
   const [current, setCurrent] = useState<CurrentBySlug>({});
@@ -570,6 +609,27 @@ export default function ResmiMatchStatsModel({
   const exp = output?.expectancy;
   const showReferee = marketCfg?.refereeApplies;
 
+  // Şut ailesi önerisi: başka bir markette yapılan elle değişimin bu markete
+  // oransal yansıması. Saves'te taraflar çaprazlanır (atak-uzayı → savunma).
+  const shotSuggestion = useMemo(() => {
+    const orient = SHOT_FAMILY[market];
+    if (!orient || !shotAdj || !output) return null;
+    if (shotAdj.fixtureId !== selectedFixtureId || shotAdj.market === market) return null;
+    const { attackRH, attackRA } = shotAdj;
+    if (Math.abs(attackRH - 1) < 1e-6 && Math.abs(attackRA - 1) < 1e-6) return null;
+    const baseH = output.expectancy.homeXs;
+    const baseA = output.expectancy.awayXs;
+    if (!isFinite(baseH) || !isFinite(baseA)) return null;
+    const rHome = orient === "cross" ? attackRA : attackRH;
+    const rAway = orient === "cross" ? attackRH : attackRA;
+    return {
+      fromMarket: shotAdj.market,
+      oldH: baseH, oldA: baseA,
+      newH: baseH * rHome, newA: baseA * rAway,
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [market, shotAdj, output, selectedFixtureId]);
+
   // ─── Fixture seçimi + export ────────────────────────────────────────────────
   function selectFixture(fid: string) {
     setSelectedFixtureId(fid);
@@ -779,6 +839,7 @@ export default function ResmiMatchStatsModel({
     setManAway("");
     setManTotal("");
     setRefereeName("");
+    setShotAdj(null);
     if (fixtures.length) selectFixture(fixtures[0].fixtureId);
     loadConfig();
   }
@@ -1022,17 +1083,50 @@ export default function ResmiMatchStatsModel({
             <div className="mt-3 grid grid-cols-3 gap-2">
               <div>
                 <label className={lblCls}>{t("msm.manualHome")}</label>
-                <input className={numCls} inputMode="decimal" value={manHome} onChange={(e) => setManHome(e.target.value)} placeholder="—" />
+                <input className={numCls} inputMode="decimal" value={manHome}
+                  onChange={(e) => { setManHome(e.target.value); recordShotAdj("home", e.target.value); }} placeholder="—" />
               </div>
               <div>
                 <label className={lblCls}>{t("msm.manualAway")}</label>
-                <input className={numCls} inputMode="decimal" value={manAway} onChange={(e) => setManAway(e.target.value)} placeholder="—" />
+                <input className={numCls} inputMode="decimal" value={manAway}
+                  onChange={(e) => { setManAway(e.target.value); recordShotAdj("away", e.target.value); }} placeholder="—" />
               </div>
               <div>
                 <label className={lblCls}>{t("msm.manualTotal")}</label>
                 <input className={numCls} inputMode="decimal" value={manTotal} onChange={(e) => setManTotal(e.target.value)} placeholder="—" />
               </div>
             </div>
+
+            {/* Şut ailesi önerisi: sürücü marketteki elle değişimin bu markete
+                oransal yansıması; Apply elle home/away alanlarını doldurur. */}
+            {shotSuggestion && (
+              <div className="mt-2 rounded-md border border-accent/40 bg-accent/10 p-2.5 text-[11px]">
+                <div className="mb-1 text-[10px] font-medium uppercase tracking-wide text-ink-3">
+                  {t("msm.shotAdjTitle", { from: shotSuggestion.fromMarket })}
+                </div>
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                  <span className="text-ink-2">
+                    {t("msm.home")} <b className="tabular-nums text-ink">{shotSuggestion.oldH.toFixed(2)}</b>
+                    <span className="px-1 text-ink-3">→</span>
+                    <b className="tabular-nums text-accent-ink">{shotSuggestion.newH.toFixed(2)}</b>
+                  </span>
+                  <span className="text-ink-2">
+                    {t("msm.away")} <b className="tabular-nums text-ink">{shotSuggestion.oldA.toFixed(2)}</b>
+                    <span className="px-1 text-ink-3">→</span>
+                    <b className="tabular-nums text-accent-ink">{shotSuggestion.newA.toFixed(2)}</b>
+                  </span>
+                  <button
+                    onClick={() => {
+                      setManHome(shotSuggestion.newH.toFixed(2));
+                      setManAway(shotSuggestion.newA.toFixed(2));
+                    }}
+                    className="ml-auto rounded-md bg-accent px-2 py-0.5 text-[10px] font-semibold text-accent-ink hover:opacity-90"
+                  >
+                    {t("msm.apply")}
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Hakem özeti (sadece Card/Foul): seçilen hakemin istatistikleri + önerilen toplam */}
             {showReferee && (
