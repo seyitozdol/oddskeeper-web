@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/client";
 import { fetchAllPaged } from "@/lib/supabase/paginate";
+import { pmWrite } from "@/lib/pm-write-client";
 import { type StatusConfig, DEFAULT_STATUS_CONFIG } from "../../player-market-prediction/compute";
 
 export type { StatusConfig };
@@ -499,25 +500,11 @@ export async function fetchPlayerIds(): Promise<Record<string, string>> {
 export async function savePlayerIds(
   entries: Record<string, string>
 ): Promise<boolean> {
-  const rows = Object.entries(entries).map(([playerId, value]) => ({
+  return pmWrite("/api/player-market/write", {
     league: LEAGUE,
-    player_slug: playerId,
-    external_id: value.trim() || null,
-    updated_at: new Date().toISOString(),
-  }));
-  if (rows.length === 0) return true;
-
-  const supabase = createClient();
-  const { error } = await supabase
-    .schema("analytics")
-    .from("pm_player_ids")
-    .upsert(rows, { onConflict: "league,player_slug" });
-
-  if (error) {
-    console.error("savePlayerIds error:", error);
-    return false;
-  }
-  return true;
+    action: "savePlayerIds",
+    payload: { entries },
+  });
 }
 
 // ─── Fixture ID inputs (analytics.pm_fixture_inputs, league='tff1') ──────────
@@ -566,25 +553,11 @@ export async function fetchBets10FixtureIds(): Promise<Record<number, string>> {
 export async function saveFixtureInputs(
   entries: Record<number, string>
 ): Promise<boolean> {
-  const rows = Object.entries(entries).map(([fixtureId, value]) => ({
+  return pmWrite("/api/player-market/write", {
     league: LEAGUE,
-    fixture_id: Number(fixtureId),
-    input_value: value.trim() || null,
-    updated_at: new Date().toISOString(),
-  }));
-  if (rows.length === 0) return true;
-
-  const supabase = createClient();
-  const { error } = await supabase
-    .schema("analytics")
-    .from("pm_fixture_inputs")
-    .upsert(rows, { onConflict: "league,fixture_id" });
-
-  if (error) {
-    console.error("saveFixtureInputs error:", error);
-    return false;
-  }
-  return true;
+    action: "saveFixtureInputs",
+    payload: { entries },
+  });
 }
 
 // ─── Market store (analytics.pm_markets, league='tff1') ──────────────────────
@@ -624,13 +597,11 @@ export async function upsertStoredMarket(
     in_model?: boolean;
   }
 ): Promise<boolean> {
-  const supabase = createClient();
-  const { error } = await supabase
-    .schema("analytics")
-    .from("pm_markets")
-    .upsert(
-      {
-        league: LEAGUE,
+  return pmWrite("/api/player-market/write", {
+    league: LEAGUE,
+    action: "upsertMarket",
+    payload: {
+      market: {
         market_key: market.market_key,
         label: market.label,
         template_id: market.template_id,
@@ -638,32 +609,17 @@ export async function upsertStoredMarket(
         sort_order: market.sort_order ?? 0,
         market_type: market.market_type,
         in_model: market.in_model ?? true,
-        updated_at: new Date().toISOString(),
       },
-      { onConflict: "league,market_key" }
-    );
-
-  if (error) {
-    console.error("upsertStoredMarket error:", error);
-    return false;
-  }
-  return true;
+    },
+  });
 }
 
 export async function deleteStoredMarket(marketKey: string): Promise<boolean> {
-  const supabase = createClient();
-  const { error } = await supabase
-    .schema("analytics")
-    .from("pm_markets")
-    .delete()
-    .eq("league", LEAGUE)
-    .eq("market_key", marketKey);
-
-  if (error) {
-    console.error("deleteStoredMarket error:", error);
-    return false;
-  }
-  return true;
+  return pmWrite("/api/player-market/write", {
+    league: LEAGUE,
+    action: "deleteMarket",
+    payload: { market_key: marketKey },
+  });
 }
 
 // ─── Model config (analytics.pm_model_config, league='tff1') ─────────────────
@@ -695,23 +651,11 @@ export async function fetchDistWeights(): Promise<DistWeights> {
 }
 
 export async function saveDistWeights(w: DistWeights): Promise<boolean> {
-  const supabase = createClient();
-  const now = new Date().toISOString();
-  const rows = [
-    { league: LEAGUE, config_key: "dist_weight_ly", config_value: w.ly, updated_at: now },
-    { league: LEAGUE, config_key: "dist_weight_last5", config_value: w.last5, updated_at: now },
-    { league: LEAGUE, config_key: "dist_weight_avg", config_value: w.avg, updated_at: now },
-  ];
-  const { error } = await supabase
-    .schema("analytics")
-    .from("pm_model_config")
-    .upsert(rows, { onConflict: "league,config_key" });
-
-  if (error) {
-    console.error("saveDistWeights error:", error);
-    return false;
-  }
-  return true;
+  return pmWrite("/api/player-market/write", {
+    league: LEAGUE,
+    action: "saveDistWeights",
+    payload: { weights: w },
+  });
 }
 
 // Status kurallari (Model ekranindaki durum cikarimi esikleri, league='tff1').
@@ -742,31 +686,9 @@ export async function fetchStatusConfig(): Promise<StatusConfig> {
 }
 
 export async function saveStatusConfig(c: StatusConfig): Promise<boolean> {
-  const supabase = createClient();
-  const now = new Date().toISOString();
-  const kv: [string, number][] = [
-    ["status_out_n", c.outN],
-    ["status_out_k", c.outK],
-    ["status_starter_n", c.starterN],
-    ["status_starter_k", c.starterK],
-    ["status_sub_n", c.subN],
-    ["status_sub_k", c.subK],
-    ["status_last_only", c.lastOnly ? 1 : 0],
-  ];
-  const rows = kv.map(([config_key, config_value]) => ({
+  return pmWrite("/api/player-market/write", {
     league: LEAGUE,
-    config_key,
-    config_value,
-    updated_at: now,
-  }));
-  const { error } = await supabase
-    .schema("analytics")
-    .from("pm_model_config")
-    .upsert(rows, { onConflict: "league,config_key" });
-
-  if (error) {
-    console.error("saveStatusConfig error:", error);
-    return false;
-  }
-  return true;
+    action: "saveStatusConfig",
+    payload: { config: c },
+  });
 }

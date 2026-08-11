@@ -1,6 +1,9 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
+import { pmWrite } from "@/lib/pm-write-client";
+
+const PM_WRITE = "/api/basketball/pm-write";
 
 // league varsayılan 'basketball' (BSL); EL/EC için 'euroleague'/'eurocup' geçilir.
 // Tüm pm_* tabloları league kolonu + bileşik PK ile çok-lig paylaşımlı.
@@ -40,19 +43,10 @@ export async function fetchMarkets(league = "basketball"): Promise<PmMarket[]> {
   return data ?? [];
 }
 export async function upsertMarket(m: Partial<PmMarket> & { market_key: string; label: string }, league = "basketball"): Promise<boolean> {
-  const supabase = createClient();
-  const { error } = await supabase.schema("analytics").from("bb_pm_markets").upsert(
-    { league, ...m, updated_at: new Date().toISOString() },
-    { onConflict: "league,market_key" }
-  );
-  if (error) { console.error("upsertMarket", error.message); return false; }
-  return true;
+  return pmWrite(PM_WRITE, { league, action: "upsertMarket", payload: { market: m } });
 }
 export async function deleteMarket(market_key: string, league = "basketball"): Promise<boolean> {
-  const supabase = createClient();
-  const { error } = await supabase.schema("analytics").from("bb_pm_markets").delete().eq("league", league).eq("market_key", market_key);
-  if (error) { console.error("deleteMarket", error.message); return false; }
-  return true;
+  return pmWrite(PM_WRITE, { league, action: "deleteMarket", payload: { market_key } });
 }
 
 /* ---------------- market config (Config sekmesi: line kurallari) ---------------- */
@@ -90,19 +84,10 @@ export async function fetchMarketConfig(league = "basketball"): Promise<PmMarket
 }
 export async function upsertMarketConfig(rows: (Partial<PmMarketConfig> & { market_group: string; market_key: string })[], league = "basketball"): Promise<boolean> {
   if (rows.length === 0) return true;
-  const supabase = createClient();
-  const payload = rows.map((r) => ({ league, ...r, updated_at: new Date().toISOString() }));
-  const { error } = await supabase.schema("analytics").from("bb_pm_market_config")
-    .upsert(payload, { onConflict: "league,market_group,market_key" });
-  if (error) { console.error("upsertMarketConfig", error.message); return false; }
-  return true;
+  return pmWrite(PM_WRITE, { league, action: "upsertMarketConfig", payload: { rows } });
 }
 export async function deleteMarketConfig(market_group: string, market_key: string, league = "basketball"): Promise<boolean> {
-  const supabase = createClient();
-  const { error } = await supabase.schema("analytics").from("bb_pm_market_config")
-    .delete().eq("league", league).eq("market_group", market_group).eq("market_key", market_key);
-  if (error) { console.error("deleteMarketConfig", error.message); return false; }
-  return true;
+  return pmWrite(PM_WRITE, { league, action: "deleteMarketConfig", payload: { market_group, market_key } });
 }
 
 /* ---------------- fixtures (manual) ---------------- */
@@ -119,23 +104,13 @@ export async function fetchPmFixtures(league = "basketball"): Promise<PmFixture[
   return data ?? [];
 }
 export async function insertFixture(f: Omit<PmFixture, "id">, league = "basketball"): Promise<boolean> {
-  const supabase = createClient();
-  const { error } = await supabase.schema("analytics").from("bb_pm_fixtures").insert({ league, ...f });
-  if (error) { console.error("insertFixture", error.message); return false; }
-  return true;
+  return pmWrite(PM_WRITE, { league, action: "insertFixture", payload: { fixture: f } });
 }
 export async function updateFixture(id: number, patch: Partial<PmFixture>): Promise<boolean> {
-  const supabase = createClient();
-  const { error } = await supabase.schema("analytics").from("bb_pm_fixtures")
-    .update({ ...patch, updated_at: new Date().toISOString() }).eq("id", id);
-  if (error) { console.error("updateFixture", error.message); return false; }
-  return true;
+  return pmWrite(PM_WRITE, { action: "updateFixture", payload: { id, patch } });
 }
 export async function deleteFixture(id: number): Promise<boolean> {
-  const supabase = createClient();
-  const { error } = await supabase.schema("analytics").from("bb_pm_fixtures").delete().eq("id", id);
-  if (error) { console.error("deleteFixture", error.message); return false; }
-  return true;
+  return pmWrite(PM_WRITE, { action: "deleteFixture", payload: { id } });
 }
 
 /* ---------------- player merges (mükerrer → kanonik) ---------------- */
@@ -155,19 +130,10 @@ export async function fetchPlayerMerges(league = "basketball"): Promise<PmMerge[
 }
 export async function savePlayerMerges(rows: PmMerge[], league = "basketball"): Promise<boolean> {
   if (rows.length === 0) return true;
-  const supabase = createClient();
-  const payload = rows.map((r) => ({ league, ...r, updated_at: new Date().toISOString() }));
-  const { error } = await supabase.schema("analytics").from("bb_pm_player_merges")
-    .upsert(payload, { onConflict: "league,alias_slug" });
-  if (error) { console.error("savePlayerMerges", error.message); return false; }
-  return true;
+  return pmWrite(PM_WRITE, { league, action: "savePlayerMerges", payload: { rows } });
 }
 export async function deletePlayerMerge(alias_slug: string, league = "basketball"): Promise<boolean> {
-  const supabase = createClient();
-  const { error } = await supabase.schema("analytics").from("bb_pm_player_merges")
-    .delete().eq("league", league).eq("alias_slug", alias_slug);
-  if (error) { console.error("deletePlayerMerge", error.message); return false; }
-  return true;
+  return pmWrite(PM_WRITE, { league, action: "deletePlayerMerge", payload: { alias_slug } });
 }
 
 /* ---------------- model config (rol eşikleri vb.) ---------------- */
@@ -185,13 +151,7 @@ export async function fetchModelConfig(): Promise<PmModelConfig[]> {
 // Sadece mevcut anahtarların value'sunu günceller (view auto-updatable, insert gerekmez).
 export async function saveModelConfig(rows: { key: string; value: number }[]): Promise<boolean> {
   if (rows.length === 0) return true;
-  const supabase = createClient();
-  for (const r of rows) {
-    const { error } = await supabase.schema("analytics").from("bb_model_config")
-      .update({ value: r.value }).eq("key", r.key);
-    if (error) { console.error("saveModelConfig", error.message); return false; }
-  }
-  return true;
+  return pmWrite(PM_WRITE, { action: "saveModelConfig", payload: { rows } });
 }
 
 /* ---------------- player external ids ---------------- */
@@ -207,12 +167,5 @@ export async function fetchPlayerIds(league = "basketball"): Promise<Record<stri
   return out;
 }
 export async function savePlayerIds(entries: Record<string, string>, league = "basketball"): Promise<boolean> {
-  const rows = Object.entries(entries).map(([player_slug, v]) => ({
-    league, player_slug, external_id: v.trim() || null, updated_at: new Date().toISOString(),
-  }));
-  if (rows.length === 0) return true;
-  const supabase = createClient();
-  const { error } = await supabase.schema("analytics").from("bb_pm_player_ids").upsert(rows, { onConflict: "league,player_slug" });
-  if (error) { console.error("savePlayerIds", error.message); return false; }
-  return true;
+  return pmWrite(PM_WRITE, { league, action: "savePlayerIds", payload: { entries } });
 }
