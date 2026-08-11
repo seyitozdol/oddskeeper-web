@@ -332,13 +332,14 @@ export default function ResmiMatchStatsModel({
   const [manAway, setManAway] = useState("");
   const [manTotal, setManTotal] = useState("");
 
-  // Şut ailesi çapraz-market önerisi: bir markette elle home/away değişince
-  // (ör. Shot 10/20 → 20/10) ilişkili marketlerde aynı ORANDA öneri gösterilir.
-  // 'attack' = değişim aynı tarafa uygulanır (Shot/SOT/Goal Kick);
-  // 'cross'  = ters tarafa (Saves: ev şutu artarsa DEPLASMAN kalecisinin
-  // kurtarışı artar, ev kalecisininki azalır). Oranlar atak-uzayında saklanır.
+  // Şut ailesi çapraz-market önerisi: YALNIZ Shot'ta elle home/away değişince
+  // (ör. Shot 10/20 → 20/10) aşağıdaki marketlerde aynı ORANDA öneri gösterilir;
+  // başka markette yapılan elle değişiklik öneri üretmez.
+  // 'attack' = değişim aynı tarafa uygulanır (SOT: ev şutu artarsa ev isabeti artar);
+  // 'cross'  = ters tarafa (Saves/Goal Kick: ev şutu artarsa DEPLASMAN kalecisinin
+  // kurtarışı ve aut vuruşu artar). Oranlar atak-uzayında saklanır.
   const SHOT_FAMILY: Record<string, "attack" | "cross"> = {
-    Shot: "attack", SOT: "attack", "Goal Kick": "attack", Saves: "cross",
+    SOT: "attack", Saves: "cross", "Goal Kick": "cross",
   };
   const [shotAdj, setShotAdj] = useState<{
     fixtureId: string;
@@ -347,27 +348,24 @@ export default function ResmiMatchStatsModel({
     attackRA: number;
   } | null>(null);
 
-  // Elle home/away girişini sürücü kaydı olarak işler (yalnız şut ailesinde).
+  // Elle home/away girişini sürücü kaydı olarak işler (yalnız Shot sürücüdür).
   // Baz = supremacy sonrası, elle-öncesi model değerleri (homeXs/awayXs).
   function recordShotAdj(side: "home" | "away", raw: string) {
-    const orient = SHOT_FAMILY[market];
-    if (!orient || !output || !selectedFixtureId) return;
+    if (market !== "Shot" || !output || !selectedFixtureId) return;
     const baseH = output.expectancy.homeXs;
     const baseA = output.expectancy.awayXs;
     const vH = parseFloat(side === "home" ? raw : manHome);
     const vA = parseFloat(side === "away" ? raw : manAway);
-    const rH = isFinite(vH) && baseH > 0 ? vH / baseH : 1;
-    const rA = isFinite(vA) && baseA > 0 ? vA / baseA : 1;
-    // İki alan da boş/nötr ise bu marketin sürücülüğü kalkar.
+    // İki alan da boş/nötr ise sürücülük kalkar.
     if (!isFinite(vH) && !isFinite(vA)) {
-      setShotAdj((p) => (p && p.market === market && p.fixtureId === selectedFixtureId ? null : p));
+      setShotAdj(null);
       return;
     }
     setShotAdj({
       fixtureId: selectedFixtureId,
       market,
-      attackRH: orient === "cross" ? rA : rH,
-      attackRA: orient === "cross" ? rH : rA,
+      attackRH: isFinite(vH) && baseH > 0 ? vH / baseH : 1,
+      attackRA: isFinite(vA) && baseA > 0 ? vA / baseA : 1,
     });
   }
 
@@ -610,8 +608,8 @@ export default function ResmiMatchStatsModel({
   const exp = output?.expectancy;
   const showReferee = marketCfg?.refereeApplies;
 
-  // Şut ailesi önerisi: başka bir markette yapılan elle değişimin bu markete
-  // oransal yansıması. Saves'te taraflar çaprazlanır (atak-uzayı → savunma).
+  // Şut ailesi önerisi: Shot'ta yapılan elle değişimin bu markete oransal
+  // yansıması. Saves/Goal Kick'te taraflar çaprazlanır (atak-uzayı → savunma).
   const shotSuggestion = useMemo(() => {
     const orient = SHOT_FAMILY[market];
     if (!orient || !shotAdj || !output) return null;
