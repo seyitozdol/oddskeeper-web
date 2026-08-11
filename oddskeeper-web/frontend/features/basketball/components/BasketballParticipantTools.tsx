@@ -376,8 +376,9 @@ function PlayerRolesConfig({ modelConfig, reload, t }: {
 }
 
 /* ---------- Model ağırlıkları: Team Models + Player Models ---------- */
-// Team Metrics "Model" = (AVG*wavg + L10WTD*wl10) × pace; Player Dist "Model" =
-// son10*w10 + son5*w5 + sezon*wall (saf). BasketballTools bu anahtarları okur.
+// Team Metrics "L10 WTD" = sezon*wall + son10*w10 + son5*w5 karışımı (Excel TeamProps F);
+// "Model" = sayı uplift'i × bu karışım. Player Dist "Model" = son10*w10 + son5*w5 +
+// sezon*wall (saf). BasketballTools bu anahtarları okur.
 function ModelWeightsConfig({ modelConfig, reload, t }: {
   modelConfig: PmModelConfig[]; reload: () => void; t: (k: string) => string;
 }) {
@@ -391,15 +392,16 @@ function ModelWeightsConfig({ modelConfig, reload, t }: {
   };
   const tv = (k: string, d: number) => tEdits[k] ?? dbVal(k, d);
   const pv = (k: string, d: number) => pEdits[k] ?? dbVal(k, d);
-  const tTotal = tv("team_model_wavg", 50) + tv("team_model_wl10", 50);
+  const tTotal = tv("team_model_wall", 50) + tv("team_model_w10", 20) + tv("team_model_w5", 30);
   const pTotal = pv("player_model_w10", 20) + pv("player_model_w5", 30) + pv("player_model_wall", 50);
 
   const saveTeam = async () => {
     if (!(await confirmPermanentSave())) return;
     setSavingT(true);
     const ok = await saveModelConfig([
-      { key: "team_model_wavg", value: tv("team_model_wavg", 50) },
-      { key: "team_model_wl10", value: tv("team_model_wl10", 50) },
+      { key: "team_model_wall", value: tv("team_model_wall", 50) },
+      { key: "team_model_w10", value: tv("team_model_w10", 20) },
+      { key: "team_model_w5", value: tv("team_model_w5", 30) },
     ]);
     setSavingT(false);
     if (ok) { setTEdits({}); reload(); }
@@ -444,8 +446,9 @@ function ModelWeightsConfig({ modelConfig, reload, t }: {
         </div>
         <p className="mb-3 max-w-2xl text-[11px] text-ink-3">{t("basketball.modelTeamHint")}</p>
         <div className="flex flex-wrap items-end gap-4">
-          {field(t("basketball.modelWAvg"), tv("team_model_wavg", 50), (v) => setTEdits((s) => ({ ...s, team_model_wavg: v })))}
-          {field(t("basketball.modelWL10"), tv("team_model_wl10", 50), (v) => setTEdits((s) => ({ ...s, team_model_wl10: v })))}
+          {field(t("basketball.modelWSeason"), tv("team_model_wall", 50), (v) => setTEdits((s) => ({ ...s, team_model_wall: v })))}
+          {field(t("basketball.modelWLast10"), tv("team_model_w10", 20), (v) => setTEdits((s) => ({ ...s, team_model_w10: v })))}
+          {field(t("basketball.modelWLast5"), tv("team_model_w5", 30), (v) => setTEdits((s) => ({ ...s, team_model_w5: v })))}
           {totalCell(tTotal)}
         </div>
       </div>

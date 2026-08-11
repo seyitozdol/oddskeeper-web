@@ -109,13 +109,13 @@ function NumInput({ value, onChange, step = 0.1, w = "w-16", warn = false }: { v
 export default function BasketballTools({ pmFixtures, splits, forms, windows, teamLogs, playerIds, config, inputRows, roles = [], modelConfig = [], competition, historyLeague = "basketball", historyReloadKey = 0, onAdd }: Props) {
   const { t, locale } = useI18n();
   // Model ağırlıkları (Config > Model). Player: son10/son5/sezon karışımı (saf).
-  // Team: AVG + L10 WTD karışımı (sonra pace çarpanı). Config'ten değişince canlı.
+  // Team: Excel TeamProps F karışımı sezon/son10/son5 (sonra sayı uplift'i). Config'ten değişince canlı.
   const mc = useMemo(() => {
     const m = new Map(modelConfig.map((c) => [c.key, Number(c.value)]));
     return (k: string, d: number) => (m.has(k) ? (m.get(k) as number) : d);
   }, [modelConfig]);
   const pW = { w10: mc("player_model_w10", 20), w5: mc("player_model_w5", 30), wall: mc("player_model_wall", 50) };
-  const tW = { wavg: mc("team_model_wavg", 50), wl10: mc("team_model_wl10", 50) };
+  const tW = { wall: mc("team_model_wall", 50), w10: mc("team_model_w10", 20), w5: mc("team_model_w5", 30) };
   // rol+pozisyon aramas: "team_slug:player_slug" → satır (Player Dist etiketi).
   const roleBy = useMemo(() => new Map(roles.map((r) => [`${r.team_slug}:${r.player_slug}`, r])), [roles]);
   const euroTeamSlugs = useMemo(() => new Set(roles.filter((r) => r.euro_team).map((r) => r.team_slug)), [roles]);
@@ -181,7 +181,8 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
   }, [config, locale]);
   const playerMarketBy = useMemo(() => new Map(playerMarkets.map((m) => [m.key, m])), [playerMarkets]);
   const [teamTicks, setTeamTicks] = useState<Record<string, boolean>>({});
-  const isTeamTicked = (metricKey: string) => teamTicks[metricKey] !== false; // varsayılan açık
+  // varsayılan açık; points tick'lenemez → her zaman açık (eski snapshot'lardaki false da yok sayılır)
+  const isTeamTicked = (metricKey: string) => (metricKey.endsWith(":points") ? true : teamTicks[metricKey] !== false);
   const teams = useMemo(() => [...splits].sort((a, b) => a.team_name.localeCompare(b.team_name, "tr")), [splits]);
   const splitBy = useMemo(() => new Map(splits.map((s) => [s.team_slug, s])), [splits]);
   const formBy = useMemo(() => {
@@ -227,24 +228,44 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
 
   // Adım 2: takım metrik trader değerleri
   const [traderMetric, setTraderMetric] = useState<Record<string, number>>({});
-  const teamModel = (slug: string, mk: string, effPts: number) => {
-    // Yüzde metrikleri (FG%) hacme ölçeklenmez → son-10 ağırlıklı yüzde, yoksa sezon yüzdesi.
-    if (PCT_METRICS.has(mk)) return teamLast10Weighted(slug, mk) ?? teamSeasonAvg(slug, mk) ?? 0;
-    if (mk === "points") return effPts;
-    const fm = formBy.get(slug);
-    const ptsAvg = fm?.get("points")?.season_avg ?? 1;
-    // Taban = gösterilen AVG ve L10 WTD kolonlarının karışımı (Config > Model > Team).
-    // Eksik pencere (ör. L10 WTD "—") hariç, ağırlıklar kalan pencereye normalize.
-    const avg = teamSeasonAvg(slug, mk);
-    const l10 = teamLast10Weighted(slug, mk);
-    let num = 0, den = 0;
-    if (avg != null && tW.wavg > 0) { num += avg * tW.wavg; den += tW.wavg; }
-    if (l10 != null && tW.wl10 > 0) { num += l10 * tW.wl10; den += tW.wl10; }
-    const base = den > 0 ? num / den : avg ?? fm?.get(mk)?.season_avg ?? 0;
-    // Pace çarpanı: projeksiyon sayı / takım sezon sayı ort.
-    return Math.round(((effPts / (ptsAvg || 1)) * base) * 10) / 10;
+  const teamPtsAvg = (slug: string) => formBy.get(slug)?.get("points")?.season_avg ?? 1;
+  // Excel MissFG2 sezon ort: kaçan şut + kaçan serbest/2 (ribaund modelinin girdisi).
+  const missFG2Avg = (slug: string): number | null => {
+    const vals = (logsBy.get(slug) ?? [])
+      .map((m) => (m.fga != null && m.fgm != null && m.fta != null && m.ftm != null ? (m.fga - m.fgm) + (m.fta - m.ftm) / 2 : null))
+      .filter((v): v is number => v != null);
+    return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
   };
-  const teamTrader = (slug: string, mk: string, effPts: number) => traderMetric[`${slug}:${mk}`] ?? teamModel(slug, mk, effPts);
+  const teamModel = (slug: string, mk: string, effPts: number) => {
+    // Yüzde metrikleri (FG%) hacme ölçeklenmez → karışım yüzdesi, yoksa sezon yüzdesi.
+    if (PCT_METRICS.has(mk)) return teamBlend(slug, mk) ?? teamSeasonAvg(slug, mk) ?? 0;
+    if (mk === "points") return effPts;
+    // Sayı uplift'i (Excel G7/C7): trader maç projeksiyonu / sezon sayı ort.
+    const uplift = effPts / (teamPtsAvg(slug) || 1);
+    const isHome = slug === homeSlug;
+    const oppSlug = isHome ? awaySlug : homeSlug;
+    const oppEff = isHome ? effAway : effHome;
+    const oppUplift = oppEff / (teamPtsAvg(oppSlug) || 1);
+    // Ribaundlar Excel'in kaçan-şut modeliyle: OReb = kendi MissFG2 × 0.28 × uplift,
+    // DReb = rakibin MissFG2 × 0.72 × rakip uplift, TR = OReb + DReb.
+    if (mk === "oreb" || mk === "dreb" || mk === "rebounds") {
+      const oreb = (missFG2Avg(slug) ?? 0) * 0.28 * uplift;
+      const dreb = (missFG2Avg(oppSlug) ?? 0) * 0.72 * oppUplift;
+      const v = mk === "oreb" ? oreb : mk === "dreb" ? dreb : oreb + dreb;
+      if (v > 0) return Math.round(v * 10) / 10;
+      // log verisi yoksa genel ölçeklemeye düş
+    }
+    const base = teamBlend(slug, mk) ?? teamSeasonAvg(slug, mk) ?? formBy.get(slug)?.get(mk)?.season_avg ?? 0;
+    // Steal + blok RAKİBİN uplift'iyle ölçeklenir: rakibin sayı beklentisi artınca
+    // hücum girişimi artar → daha çok top kaybı (bizim steal) + blok şansı.
+    // Turnover kendi uplift'iyle (kendi hücum hacmi = kendi top kaybı; rakip steal'inin aynası).
+    // Diğer metrikler (Excel E kolonu) = kendi uplift × karışım (sezon/son10/son5).
+    const k = mk === "steals" || mk === "blocks" ? oppUplift : uplift;
+    return Math.round((k * base) * 10) / 10;
+  };
+  // Sayı trader'ı SADECE üstteki Total Points / Money Line alanından değişir.
+  const teamTrader = (slug: string, mk: string, effPts: number) =>
+    mk === "points" ? effPts : traderMetric[`${slug}:${mk}`] ?? teamModel(slug, mk, effPts);
 
   // Bir takım-maç logundan metriğin değeri (min/max + last10-weighted için).
   const metricLogVal = (m: BktTeamLogRow, key: string): number | null => {
@@ -257,8 +278,12 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
       case "blocks": return m.blocks;
       case "turnovers": return m.turnovers;
       case "twos": return m.fgm != null && m.fg3m != null ? m.fgm - m.fg3m : null;
+      case "oreb": return m.oreb;
+      case "dreb": return m.dreb;
+      case "ftm": return m.ftm;
       case "fgmadepct": return m.fgm != null && m.fga != null && m.fga > 0 ? Math.round((m.fgm / m.fga) * 1000) / 10 : null;
-      default: return null; // ftm/oreb/dreb + ftpct log'da yok
+      case "ftpct": return m.ftm != null && m.fta != null && m.fta > 0 ? Math.round((m.ftm / m.fta) * 1000) / 10 : null;
+      default: return null;
     }
   };
   // Historic min/max (eldeki tüm maçlar). null = veri yok (uyarı yapılmaz).
@@ -266,15 +291,18 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
     const vals = (logsBy.get(slug) ?? []).map((m) => metricLogVal(m, key)).filter((v): v is number => v != null);
     return vals.length ? { min: Math.min(...vals), max: Math.max(...vals) } : null;
   };
-  // Son-10 ağırlıklı ort: en yeni maç en yüksek ağırlık (10,9,...,1) / ağırlık toplamı.
-  const teamLast10Weighted = (slug: string, key: string): number | null => {
+  // Excel TeamProps F ("Last 10 Weight"): sezon×wall + son10×w10 + son5×w5 karışımı
+  // (varsayılan 50/20/30; per-maç değerlerden, en yeni maçlar önce).
+  const teamBlend = (slug: string, key: string): number | null => {
     const seq = [...(logsBy.get(slug) ?? [])]
       .sort((a, b) => (b.week ?? 0) - (a.week ?? 0) || String(b.match_date ?? "").localeCompare(String(a.match_date ?? "")))
-      .map((m) => metricLogVal(m, key)).filter((v): v is number => v != null).slice(0, 10);
+      .map((m) => metricLogVal(m, key)).filter((v): v is number => v != null);
     if (!seq.length) return null;
+    const avg = (arr: number[]) => arr.reduce((a, b) => a + b, 0) / arr.length;
+    const parts: [number, number][] = [[avg(seq), tW.wall], [avg(seq.slice(0, 10)), tW.w10], [avg(seq.slice(0, 5)), tW.w5]];
     let num = 0, den = 0;
-    seq.forEach((v, i) => { const w = seq.length - i; num += v * w; den += w; });
-    return Math.round((num / den) * 10) / 10;
+    for (const [v, w] of parts) if (w > 0) { num += v * w; den += w; }
+    return den > 0 ? Math.round((num / den) * 10) / 10 : null;
   };
   // Sezon yüzdesi (FG%) log'lardan: Σyapılan / Σdenenen. Form view'ında yüzde yok.
   const teamSeasonPct = (slug: string, mk: string): number | null => {
@@ -336,13 +364,16 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
 
   // Takım metriklerini Config kurallarıyla Input'a ekle. teamCfg config satırlarını gezer
   // (custom dahil); tikli olmayan metrik + template'siz/model-dışı satır atlanır.
-  const totalValue = (base: string) => totalOverride[base] ?? (teamTrader(homeSlug, base, effHome) + teamTrader(awaySlug, base, effAway));
+  // Toplam sayı da yalnız üstteki maç projeksiyonundan gelir (override edilmez).
+  const totalValue = (base: string) =>
+    base === "points" ? effHome + effAway : totalOverride[base] ?? (teamTrader(homeSlug, base, effHome) + teamTrader(awaySlug, base, effAway));
   // Sıfırla: elle girilen maç-sayısı + trader/total değerlerini temizle (model'e döner).
   const resetTeam = () => { setPtsOv({ h: null, a: null }); setTraderMetric({}); setTotalOverride({}); };
   const resetPlayer = () => setPlayerVal({});
   // Tümünü tikle/kaldır (panel bazında: slug ya da "total"); panelin gösterdiği metrikler.
+  // points tick'lenemez (her zaman dahil, trader'ı üstteki maç projeksiyonu).
   const setTeamAll = (prefix: string, markets: { key: string }[], on: boolean) =>
-    setTeamTicks((p) => { const n = { ...p }; for (const m of markets) n[`${prefix}:${m.key}`] = on; return n; });
+    setTeamTicks((p) => { const n = { ...p }; for (const m of markets) if (m.key !== "points") n[`${prefix}:${m.key}`] = on; return n; });
   // Takım metriği Input'ta zaten var mı (dedup uyarısı).
   const existingTeamTpl = useMemo(() => new Set(inputRows.filter((r) => r.kind === "team").map((r) => r.template)), [inputRows]);
   const teamInInput = (side: string, base: string) => {
@@ -511,7 +542,7 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
               <div className="grid gap-4 lg:grid-cols-3">
                 {[{ slug: homeSlug, side: "home", eff: effHome, s: home, mkts: teamMarketsBySide.home }, { slug: awaySlug, side: "away", eff: effAway, s: away, mkts: teamMarketsBySide.away }].map(({ slug, side, eff, s, mkts }) => (
                   <TeamMetricTable key={slug} slug={slug} side={side} name={s.team_name} crestUrl={s.crest_url} eff={eff} markets={mkts} seasonAvg={teamSeasonAvg} teamTrader={teamTrader}
-                    setTrader={(mk, v) => setTraderMetric((p) => ({ ...p, [`${slug}:${mk}`]: v }))} teamModel={teamModel} last10w={teamLast10Weighted}
+                    setTrader={(mk, v) => setTraderMetric((p) => ({ ...p, [`${slug}:${mk}`]: v }))} teamModel={teamModel} last10w={teamBlend}
                     valueWarn={teamValueWarn} inInput={teamInInput} isTeamTicked={isTeamTicked} setTeamTick={(key, v) => setTeamTicks((p) => ({ ...p, [key]: v }))}
                     setAll={(on) => setTeamAll(slug, mkts, on)} locale={locale} t={t} />
                 ))}
@@ -563,7 +594,7 @@ function TeamMetricTable({ slug, side, name, crestUrl, eff, markets, seasonAvg, 
   setAll: (on: boolean) => void;
   locale: "tr" | "en"; t: (k: string) => string;
 }) {
-  const allOn = markets.every((m) => isTeamTicked(`${slug}:${m.key}`));
+  const allOn = markets.filter((m) => m.key !== "points").every((m) => isTeamTicked(`${slug}:${m.key}`));
   return (
     <div className="overflow-x-auto">
       <div className="mb-2 flex items-center gap-2 text-[12px] font-medium text-ink"><TeamCrest slug={slug} name={name} size={22} url={crestUrl} /><span className="truncate">{name}</span></div>
@@ -583,12 +614,13 @@ function TeamMetricTable({ slug, side, name, crestUrl, eff, markets, seasonAvg, 
         <tbody>
           {markets.map((met) => {
             const key = `${slug}:${met.key}`;
+            const isPts = met.key === "points"; // tick'siz + trader üstteki maç projeksiyonundan (salt okunur)
             const on = isTeamTicked(key);
             const tv = Math.round(teamTrader(slug, met.key, eff) * 10) / 10;
             const l10w = last10w(slug, met.key);
             return (
               <tr key={met.key} className={`border-t border-line ${on ? "" : "opacity-45"}`}>
-                <td className="px-1 py-0.5 text-center"><input type="checkbox" checked={on} onChange={(e) => setTeamTick(key, e.target.checked)} className="accent-[var(--accent)]" /></td>
+                <td className="px-1 py-0.5 text-center">{isPts ? null : <input type="checkbox" checked={on} onChange={(e) => setTeamTick(key, e.target.checked)} className="accent-[var(--accent)]" />}</td>
                 <td className="px-1 py-0.5 text-ink whitespace-nowrap">
                   <span title={metricInfo(met.key, locale)} className="cursor-help border-b border-dotted border-ink-3/40">{metricLabel(met.key, locale, met.label)}</span>
                   {inInput(side, met.key) ? <span title={t("basketball.alreadyAdded")} className="ml-1 text-[10px] font-bold text-amber-400">⚠</span> : null}
@@ -596,7 +628,9 @@ function TeamMetricTable({ slug, side, name, crestUrl, eff, markets, seasonAvg, 
                 <td className="px-1 py-0.5 text-right tabular-nums text-ink-3">{fmt(seasonAvg(slug, met.key))}</td>
                 <td className="px-1 py-0.5 text-right tabular-nums text-ink-3">{l10w == null ? "-" : fmt(l10w)}</td>
                 <td className="px-1 py-0.5 text-right tabular-nums text-ink-2">{fmt(teamModel(slug, met.key, eff))}</td>
-                <td className="px-1 py-0.5 text-right"><NumInput value={tv} onChange={(v) => setTrader(met.key, v)} w="w-20" warn={on && valueWarn(slug, met.key, tv)} /></td>
+                <td className="px-1 py-0.5 text-right">{isPts
+                  ? <span title={t("basketball.ptsFromTop")} className="inline-block w-20 cursor-help px-2 py-1 text-right text-[13px] font-semibold tabular-nums text-ink">{fmt(tv)}</span>
+                  : <NumInput value={tv} onChange={(v) => setTrader(met.key, v)} w="w-20" warn={on && valueWarn(slug, met.key, tv)} />}</td>
               </tr>
             );
           })}
@@ -614,7 +648,7 @@ function TotalMetricTable({ markets, totalValue, setTotalOverride, isTeamTicked,
   setAll: (on: boolean) => void;
   locale: "tr" | "en"; t: (k: string) => string;
 }) {
-  const allOn = markets.every((m) => isTeamTicked(`total:${m.key}`));
+  const allOn = markets.filter((m) => m.key !== "points").every((m) => isTeamTicked(`total:${m.key}`));
   return (
     <div className="overflow-x-auto">
       <div className="mb-2 text-[12px] font-medium text-ink">{t("basketball.totalSection")}</div>
@@ -627,12 +661,16 @@ function TotalMetricTable({ markets, totalValue, setTotalOverride, isTeamTicked,
         <tbody>
           {markets.map((met) => {
             const key = `total:${met.key}`;
+            const isPts = met.key === "points"; // tick'siz + salt okunur (üstteki maç projeksiyonu toplamı)
             const on = isTeamTicked(key);
+            const tv = Math.round(totalValue(met.key) * 10) / 10;
             return (
               <tr key={met.key} className={`border-t border-line ${on ? "" : "opacity-45"}`}>
-                <td className="px-1 py-0.5 text-center"><input type="checkbox" checked={on} onChange={(e) => setTeamTick(key, e.target.checked)} className="accent-[var(--accent)]" /></td>
+                <td className="px-1 py-0.5 text-center">{isPts ? null : <input type="checkbox" checked={on} onChange={(e) => setTeamTick(key, e.target.checked)} className="accent-[var(--accent)]" />}</td>
                 <td className="px-1 py-0.5 text-ink whitespace-nowrap"><span title={metricInfo(met.key, locale)} className="cursor-help border-b border-dotted border-ink-3/40">{metricLabel(met.key, locale, met.label)}</span></td>
-                <td className="px-1 py-0.5 text-right"><NumInput value={Math.round(totalValue(met.key) * 10) / 10} onChange={(v) => setTotalOverride(met.key, v)} w="w-24" /></td>
+                <td className="px-1 py-0.5 text-right">{isPts
+                  ? <span title={t("basketball.ptsFromTop")} className="inline-block w-24 cursor-help px-2 py-1 text-right text-[13px] font-semibold tabular-nums text-ink">{fmt(tv)}</span>
+                  : <NumInput value={tv} onChange={(v) => setTotalOverride(met.key, v)} w="w-24" />}</td>
               </tr>
             );
           })}

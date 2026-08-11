@@ -345,8 +345,14 @@ export type BktTeamLogRow = {
   result: "W" | "L" | "T" | null;
   fgm: number | null;
   fga: number | null;
+  fg2m: number | null;
+  fg2a: number | null;
   fg3m: number | null;
   fg3a: number | null;
+  ftm: number | null;
+  fta: number | null;
+  oreb: number | null;
+  dreb: number | null;
   treb: number | null;
   assists: number | null;
   turnovers: number | null;

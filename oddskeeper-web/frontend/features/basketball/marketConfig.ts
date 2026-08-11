@@ -98,13 +98,28 @@ export function metricInfo(key: string, locale: string): string {
   const name = metricLabel(key, locale, key);
   if (key === "points") {
     return locale === "tr"
-      ? "Takım sayısı. Model = maç projeksiyon sayısı (takım hücumu × rakip savunması / lig ortalaması, log5). Trader'ı elle değiştirebilirsin."
-      : "Team points. Model = projected match points (team offense x opponent defense / league average, log5). You can override Trader.";
+      ? "Takım sayısı. Üstteki maç projeksiyonundan gelir (takım hücumu × rakip savunması / lig ortalaması, log5); sadece oradan değiştirilir."
+      : "Team points. Comes from the match projection above (team offense x opponent defense / league average, log5); it can only be changed there.";
+  }
+  if (key === "oreb" || key === "dreb" || key === "rebounds") {
+    return locale === "tr"
+      ? `${name}: kaçan-şut modeli. HR = kendi kaçan şut ort × 0.28 × sayı uplift'i; SR = rakibin kaçan şut ort × 0.72 × rakip uplift'i; Toplam Rib = HR + SR. Trader'ı elle değiştirebilirsin.`
+      : `${name}: missed-shot model. OReb = own missed shots avg x 0.28 x points uplift; DReb = opponent's missed shots avg x 0.72 x opponent uplift; Total Reb = OReb + DReb. You can override Trader.`;
+  }
+  if (key === "steals" || key === "blocks") {
+    return locale === "tr"
+      ? `${name}: Model = (RAKİBİN trader sayısı / rakibin sezon sayı ort) × L10 WTD karışımı. Rakibin hücum hacmi artınca çalma/blok şansı artar. Trader'ı elle değiştirebilirsin.`
+      : `${name}: Model = (OPPONENT's trader points / opponent's season points avg) x the L10 WTD blend. More opponent offense means more steal/block chances. You can override Trader.`;
+  }
+  if (key === "turnovers") {
+    return locale === "tr"
+      ? `${name}: Model = (kendi trader sayısı / sezon sayı ort) × L10 WTD karışımı. Kendi hücum hacmi arttıkça top kaybı artar (rakip top çalmasının aynası). Trader'ı elle değiştirebilirsin.`
+      : `${name}: Model = (own trader points / season points avg) x the L10 WTD blend. More own offense means more lost balls (mirror of opponent steals). You can override Trader.`;
   }
   const low = name.toLocaleLowerCase(locale === "tr" ? "tr" : "en");
   return locale === "tr"
-    ? `${name}: takım maç başına ${low}. Model = (projeksiyon sayı / takım sezon sayı ort) × ${low} son-10 ort. Trader'ı elle değiştirebilirsin.`
-    : `${name}: team ${low} per match. Model = (projected points / team season points avg) x this stat's last-10 avg. You can override Trader.`;
+    ? `${name}: takım maç başına ${low}. Model = (trader sayı / takım sezon sayı ort) × L10 WTD karışımı (Sezon/Son10/Son5). Trader'ı elle değiştirebilirsin.`
+    : `${name}: team ${low} per match. Model = (trader points / team season points avg) x the L10 WTD blend (Season/Last10/Last5). You can override Trader.`;
 }
 export function sideLabel(side: string | null | undefined, locale: string): string {
   const s = side ? SIDE_LABELS[side] : undefined;
