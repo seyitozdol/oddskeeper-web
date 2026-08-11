@@ -11,6 +11,107 @@ type Entry = {
 
 const ENTRIES: Entry[] = [
   {
+    date: "11 Ağustos",
+    title: "Maç İstatistik Modeli: şut ailesi önerileri",
+    tag: "Yeni",
+    items: [
+      "Shot marketinde elle ev/deplasman değeri girince, aynı değişim oranı SOT, Saves ve Goal Kick marketlerine öneri olarak yansıyor; Apply ile tek tıkla uygulanıyor.",
+      "Yön kuralı: SOT aynı tarafta değişir; Saves ve Goal Kick karşı tarafta (ev şutu artarsa deplasman kalecisinin kurtarışı ve deplasmanın aut vuruşu artar).",
+      "Öneri yalnızca Shot'taki değişiklikten üretilir; başka bir markette elle değişiklik yapmak öneri doğurmaz.",
+    ],
+  },
+  {
+    date: "11 Ağustos",
+    title: "Basketbol takım metrikleri",
+    items: [
+      "Takım metrikleri Excel modeliyle birebir hizalandı: ribaund tahmini kaçan şut modeline bağlandı, son 10 maç formu sezon ortalamasıyla harmanlanıyor, puan hesabı sabitlendi.",
+    ],
+  },
+  {
+    date: "11 Ağustos",
+    title: "Hız ve oyuncu fotoğrafları",
+    items: [
+      "Oyuncu Market Modeli sayfaları belirgin hızlandı.",
+      "Eksik oyuncu fotoğrafları tamamlandı ve artık kendi sunucumuzdan yükleniyor; oyuncu kartlarındaki biyografi bilgileri (yaş, boy, mevki) dolduruldu.",
+      "Oyuncu kartında yurt dışında oynanmış geçmiş sezonlar da listeleniyor.",
+      "Futbol takım istatistikleri sayfasında yalnız güncel Süper Lig takımları görünüyor.",
+    ],
+  },
+  {
+    date: "10 Ağustos",
+    title: "Maç İstatistik Modeli iyileştirmeleri",
+    items: [
+      "Config yeniden tasarlandı: ayarlar 4 alt sekmeye ve konu bazlı kartlara ayrıldı.",
+      "Markets alt sekmesi geldi: her market için 1. yarı / 2. yarı bazında line, under ve payback kontrolü.",
+      "Manuel fikstürde ligde olmayan rakip için \"benzer takım\" eşlemesi: Avrupa maçında rakibi lig takımlarından birine benzeterek modeli çalıştırabiliyorsun.",
+    ],
+  },
+  {
+    date: "10 Ağustos",
+    title: "Oyuncu Market Modeli: kutu içi/dışı şut",
+    tag: "Yeni",
+    items: [
+      "Şut haritası verisi bağlandı: kutu içi ve kutu dışı isabetli şut marketleri eklendi (Süper Lig + 1. Lig).",
+      "Oyuncu kartında SOT kutu içi/dışı sezon geçmişi görünüyor.",
+      "Market listesinde New/Save butonları üste alındı; yeni market oluşturma akışındaki hata düzeltildi.",
+    ],
+  },
+  {
+    date: "10 Ağustos",
+    title: "Vitrin tasarımı: maç ve takım sayfaları",
+    items: [
+      "Maç sayfaları ve takım profilleri (Süper Lig + 1. Lig) yeni vitrin tasarımına geçti ve varsayılan görünüm oldu.",
+    ],
+  },
+  {
+    date: "10 Ağustos",
+    title: "Yaklaşan Maçlar: dördüncü oran kaynağı",
+    items: [
+      "Oran karşılaştırmasına BMBets eklendi; maçlar artık dört kaynaktan gelen oranlarla görünüyor.",
+    ],
+  },
+  {
+    date: "10 Ağustos",
+    title: "Yeni transferler",
+    items: [
+      "Kadrolar her gün Transfermarkt ile kıyaslanıyor: yeni transferler kadroya otomatik ekleniyor, ayrılanlar işaretleniyor.",
+      "Yeni transferlerin geçen sezon verileri yurt dışı liglerinden çekiliyor; Oyuncu Market Modeli'nde geçen yıl ortalaması boş kalmıyor.",
+    ],
+  },
+  {
+    date: "9 Ağustos",
+    title: "Menü ve sayfa düzeni",
+    items: [
+      "Üst menüye Stats menüsü ve istatistik ana sayfası geldi; League Details ile eski 1. Lig panosu kaldırıldı.",
+      "Smart Prediction, Deep Prediction ML ve Match Predictions bölümleri kaldırıldı.",
+    ],
+  },
+  {
+    date: "9 Ağustos",
+    title: "Oyuncu profilleri vitrin tasarımı",
+    items: [
+      "Süper Lig ve 1. Lig oyuncu profilleri yeni vitrin tasarımına geçti: reyting grafiği, yüzdelik radarı ve sezon karşılaştırması.",
+      "Oyuncu, takım ve lig istatistikleri daha güncel veri kaynağından okunuyor; maç biter bitmez profillere yansıyor.",
+    ],
+  },
+  {
+    date: "9 Ağustos",
+    title: "Küçük iyileştirmeler",
+    items: [
+      "\"Add to Input\" butonu her modelde eklenen satır sayısını anlık gösteriyor; 0 satırda uyarı çıkıyor.",
+      "Süper Lig kadroları için günlük otomatik tazeleme kuruldu; transferler ertesi sabah siteye yansıyor.",
+    ],
+  },
+  {
+    date: "8 Ağustos",
+    title: "Marka ve arayüz",
+    items: [
+      "OddsKeeper logosu ve tema bazlı favicon geldi.",
+      "Tema geçişi artık anlık; sayfa yenilenmeden uygulanıyor.",
+      "Süper Lig ve 1. Lig'e Referees sekmesi eklendi: hakem listesi ve sezon istatistikleri.",
+    ],
+  },
+  {
     date: "8 Ağustos",
     title: "İyileştirmeler",
     items: [
@@ -22,7 +123,7 @@ const ENTRIES: Entry[] = [
     ],
   },
   {
-    date: "6-8 Ağustos",
+    date: "8 Ağustos",
     title: "Maç İstatistik Modeli",
     tag: "Yeni araç",
     items: [
@@ -45,6 +146,29 @@ const ENTRIES: Entry[] = [
     ],
   },
   {
+    date: "8 Ağustos",
+    title: "Yaklaşan Maçlar",
+    items: [
+      "Maçlar artık önem puanına göre yıldızlanıyor; önemsiz (düşük profilli) maçları gizleyip önce önemli maçlara odaklanabiliyorsun.",
+      "Maç eşleştirmesi düzeltildi: daha önce oranı hiç görünmeyen ya da yanlış maça bağlanan durumlar (özellikle kadın ve U19 maçlarının karışması) artık doğru oranıyla görünüyor.",
+    ],
+  },
+  {
+    date: "8 Ağustos",
+    title: "Veri güncelliği",
+    items: [
+      "Maç biter bitmez yaklaşık yarım saat içinde istatistikler güncelleniyor; xG, xGOT ve kart gibi ek veriler de ekleniyor. Yeni transfer olan oyuncuların verileri de otomatik yerine oturuyor.",
+      "Süper Lig ve Türkiye Kupası maçlarına da bet365 oranları geldi.",
+    ],
+  },
+  {
+    date: "7 Ağustos",
+    title: "Takım notları",
+    items: [
+      "Takımlar hakkında not tutabiliyorsun. Takım profiline yazdığın not, Maç İstatistik Modeli ekranında da o takımda görünüyor (Süper Lig + 1. Lig).",
+    ],
+  },
+  {
     date: "4 Ağustos",
     title: "Oyuncu Market Modeli ayarları",
     items: [
@@ -52,7 +176,7 @@ const ENTRIES: Entry[] = [
     ],
   },
   {
-    date: "1-4 Ağustos",
+    date: "4 Ağustos",
     title: "Basketbol: EuroLeague ve EuroCup",
     items: [
       "EuroLeague ve EuroCup eklendi: puan durumu, oyuncu/takım profilleri ve maç araçları.",
@@ -68,29 +192,6 @@ const ENTRIES: Entry[] = [
     items: [
       "Türkiye kadın milli takımı odağıyla voleybol araçları geldi: maç sonuçları, oyuncu listeleri (fotoğraf ve bayrakla), iki takımlı market modeli ve oyuncu dağıtımı.",
       "EuroVolley 2026 fikstürleri yüklü.",
-    ],
-  },
-  {
-    date: "2-8 Ağustos",
-    title: "Yaklaşan Maçlar",
-    items: [
-      "Maçlar artık önem puanına göre yıldızlanıyor; önemsiz (düşük profilli) maçları gizleyip önce önemli maçlara odaklanabiliyorsun.",
-      "Maç eşleştirmesi düzeltildi: daha önce oranı hiç görünmeyen ya da yanlış maça bağlanan durumlar (özellikle kadın ve U19 maçlarının karışması) artık doğru oranıyla görünüyor.",
-    ],
-  },
-  {
-    date: "7 Ağustos",
-    title: "Takım notları",
-    items: [
-      "Takımlar hakkında not tutabiliyorsun. Takım profiline yazdığın not, Maç İstatistik Modeli ekranında da o takımda görünüyor (Süper Lig + 1. Lig).",
-    ],
-  },
-  {
-    date: "7-8 Ağustos",
-    title: "Veri güncelliği",
-    items: [
-      "Maç biter bitmez yaklaşık yarım saat içinde istatistikler güncelleniyor; xG, xGOT ve kart gibi ek veriler de ekleniyor. Yeni transfer olan oyuncuların verileri de otomatik yerine oturuyor.",
-      "Süper Lig ve Türkiye Kupası maçlarına da bet365 oranları geldi.",
     ],
   },
 ];
