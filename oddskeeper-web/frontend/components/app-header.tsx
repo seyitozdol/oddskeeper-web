@@ -117,6 +117,30 @@ function LeagueMark({ item }: { item: LeagueItem }) {
   return null;
 }
 
+// Yenilikler (What's New) markasi: altigen icinde parilti. currentColor
+// kullandigi icin temanin accent rengini otomatik alir (night mavi,
+// calimla-light/dark kirmizi); ayri logo dosyasi gerekmez.
+function WhatsNewMark({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className} aria-hidden="true">
+      <path
+        d="M12 2.6 20.1 7.3v9.4L12 21.4 3.9 16.7V7.3L12 2.6Z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M11 8.3 Q11 12.2 14.9 12.2 Q11 12.2 11 16.1 Q11 12.2 7.1 12.2 Q11 12.2 11 8.3 Z"
+        fill="currentColor"
+      />
+      <path
+        d="M15.4 6.4 Q15.4 8.3 17.3 8.3 Q15.4 8.3 15.4 10.2 Q15.4 8.3 13.5 8.3 Q15.4 8.3 15.4 6.4 Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
 const LOCALE_LABEL_KEYS: Record<Locale, string> = {
   en: "nav.english",
   tr: "nav.turkish",
@@ -238,9 +262,11 @@ export default function AppHeader({
             {can("changelog") ? (
               <Link
                 href="/dashboard/changelog"
-                className={navLinkClass(isChangelogActive)}
+                aria-label={t("nav.changelog")}
+                title={t("nav.changelog")}
+                className={`flex items-center ${navLinkClass(isChangelogActive)}`}
               >
-                {t("nav.changelog")}
+                <WhatsNewMark className="h-5 w-5 shrink-0 text-accent" />
               </Link>
             ) : null}
 
@@ -356,9 +382,11 @@ export default function AppHeader({
           {can("changelog") ? (
             <Link
               href="/dashboard/changelog"
-              className={navLinkClass(isChangelogActive)}
+              aria-label={t("nav.changelog")}
+              title={t("nav.changelog")}
+              className={`flex items-center ${navLinkClass(isChangelogActive)}`}
             >
-              {t("nav.changelog")}
+              <WhatsNewMark className="h-5 w-5 shrink-0 text-accent" />
             </Link>
           ) : null}
 
