@@ -109,6 +109,33 @@ export async function POST(request: NextRequest) {
         return respond(error);
       }
 
+      case "savePlayerStatusOverride": {
+        const player_key = String(payload.player_key ?? "");
+        const status = payload.status == null ? null : String(payload.status);
+        if (!player_key) {
+          return NextResponse.json({ error: "invalid_player" }, { status: 400 });
+        }
+        // status null = override'i kaldir (otomatik cikarima don).
+        if (status === null) {
+          const { error } = await db
+            .from("pm_player_status_overrides")
+            .delete()
+            .eq("league", league)
+            .eq("player_key", player_key);
+          return respond(error);
+        }
+        if (!["Pos. Starter", "Pos. Sub", "Out"].includes(status)) {
+          return NextResponse.json({ error: "invalid_status" }, { status: 400 });
+        }
+        const { error } = await db
+          .from("pm_player_status_overrides")
+          .upsert(
+            { league, player_key, status, updated_at: now },
+            { onConflict: "league,player_key" }
+          );
+        return respond(error);
+      }
+
       case "saveStatusConfig": {
         const c = (payload.config ?? {}) as Record<string, unknown>;
         const kv: [string, number][] = [

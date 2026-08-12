@@ -30,6 +30,8 @@ import {
   DEFAULT_DIST_WEIGHTS,
   fetchStatusConfig,
   saveStatusConfig,
+  fetchStatusOverrides,
+  saveStatusOverride,
   MARKET_OPTIONS,
   type UpcomingFixture,
   type PlayerRow,
@@ -829,7 +831,7 @@ export default function PlayerMarketPredictionPage({
 
       const allIds = [...homeRaw, ...awayRaw].map((p) => p.player_source_id);
 
-      const [recentMatches, metricStats, last5AvgMap, lyStats, curApps, lyApps] = await Promise.all([
+      const [recentMatches, metricStats, last5AvgMap, lyStats, curApps, lyApps, statusOverrides] = await Promise.all([
         fetchPlayerRecentMatches(allIds, season),
         fetchPlayerMetricStats(allIds, selectedMarket.metricKey, season),
         fetchPlayerLast5Avg(allIds, selectedMarket.logField, season),
@@ -840,6 +842,7 @@ export default function PlayerMarketPredictionPage({
         prevSeason
           ? fetchPlayerSeasonAppearances(allIds, prevSeason)
           : Promise.resolve({} as Record<string, number>),
+        fetchStatusOverrides(),
       ]);
 
       function buildStates(rawPlayers: PlayerRow[]): PlayerState[] {
@@ -905,6 +908,14 @@ export default function PlayerMarketPredictionPage({
         return states;
       }
 
+      // Kalici manuel durumlar: elle secilen Starter/Sub/Out cikarimi (ve GK
+      // dedup'unu) ezer; sayfadan cikip girince de korunur.
+      const applyOverrides = (states: PlayerState[]) =>
+        states.map((p) => {
+          const o = statusOverrides[p.player_source_id];
+          return o ? { ...p, status: o as InferredStatus } : p;
+        });
+
       // Geçmişten restore: bu fikstür için snapshot varsa oyuncu
       // tik/durum/elle-değerlerini bindir, line tik + oranları geri yükle.
       const snap =
@@ -921,8 +932,8 @@ export default function PlayerMarketPredictionPage({
             })
           : states;
 
-      setHomePlayers(overlay(buildStates(homeRaw)));
-      setAwayPlayers(overlay(buildStates(awayRaw)));
+      setHomePlayers(overlay(applyOverrides(buildStates(homeRaw))));
+      setAwayPlayers(overlay(applyOverrides(buildStates(awayRaw))));
       if (snap) {
         setLineTicks(snap.lineTicks);
         setOddsEdit(snap.oddsEdit);
@@ -978,8 +989,11 @@ export default function PlayerMarketPredictionPage({
 
   // ── State updaters ──
   function makeStatusHandler(setter: typeof setHomePlayers) {
-    return (id: string, s: InferredStatus) =>
+    return (id: string, s: InferredStatus) => {
       setter((prev) => prev.map((p) => (p.player_source_id === id ? { ...p, status: s } : p)));
+      // Manuel durum secimi kalicidir (pm_player_status_overrides).
+      saveStatusOverride(id, s);
+    };
   }
 
   function makeManualHandler(setter: typeof setHomePlayers) {

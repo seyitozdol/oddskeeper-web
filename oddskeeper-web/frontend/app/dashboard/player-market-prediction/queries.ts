@@ -795,3 +795,34 @@ export async function saveStatusConfig(c: StatusConfig): Promise<boolean> {
     payload: { config: c },
   });
 }
+
+// ─── Oyuncu durum override'lari (pm_player_status_overrides) ─────────────────
+// Model'de elle secilen Starter/Sub/Out kalicidir; loader cikarimin ustune
+// bindirir. status=null gonderimi override'i siler (otomatige don).
+
+export async function fetchStatusOverrides(): Promise<Record<string, string>> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .schema("analytics")
+    .from("pm_player_status_overrides")
+    .select("player_key, status")
+    .eq("league", "tsl");
+  if (error) {
+    console.error("fetchStatusOverrides error:", error);
+    return {};
+  }
+  const result: Record<string, string> = {};
+  for (const r of data ?? []) result[r.player_key] = r.status;
+  return result;
+}
+
+export async function saveStatusOverride(
+  playerKey: string,
+  status: string | null
+): Promise<boolean> {
+  return pmWrite("/api/player-market/write", {
+    league: "tsl",
+    action: "savePlayerStatusOverride",
+    payload: { player_key: playerKey, status },
+  });
+}
