@@ -21,6 +21,20 @@ const TAG_NEW_TOOL: L = { en: "New tool", tr: "Yeni araç" };
 const ENTRIES: Entry[] = [
   {
     date: { en: "12 August", tr: "12 Ağustos" },
+    title: { en: "Upcoming Events tweaks", tr: "Yaklaşan Maçlar iyileştirmeleri" },
+    items: [
+      {
+        en: "Priority stars are left-aligned in their column.",
+        tr: "Öncelik yıldızları kolonda sola hizalandı.",
+      },
+      {
+        en: "\"Hide low profile\" is now a per-user preference: your choice is saved to your account and restored on every visit, without affecting anyone else.",
+        tr: "\"Hide low profile\" artık kullanıcı bazlı bir tercih: seçimin hesabına kaydediliyor ve her girişte geri yükleniyor, başkasının görünümünü etkilemiyor.",
+      },
+    ],
+  },
+  {
+    date: { en: "12 August", tr: "12 Ağustos" },
     title: { en: "Player Rankings polish", tr: "Player Rankings iyileştirmeleri" },
     items: [
       {

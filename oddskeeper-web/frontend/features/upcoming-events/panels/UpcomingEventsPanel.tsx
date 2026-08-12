@@ -45,7 +45,10 @@ export default function UpcomingEventsPanel({
 }) {
   const { t, locale } = useI18n();
   const [sportFilter, setSportFilter] = useState<TrackedSport | "all">("all");
-  // "Low Profile Gizle": yıldızı olmayan (öncelik puanı 0) maçları listeden çıkar.
+  // "Low Profile Gizle": yıldızı olmayan (öncelik puanı 0) maçları listeden
+  // çıkar. Tercih KULLANICI BAZLI kalıcıdır (analytics.user_prefs,
+  // /api/user-prefs); toggle her değişimde kendi kaydını yazar, başkasını
+  // etkilemez.
   const [hideLowProfile, setHideLowProfile] = useState(false);
   // Hydration uyusmazligini onlemek icin geri sayim yalnizca mount sonrasi
   // hesaplanir; her 30 sn'de bir tazelenir.
@@ -56,6 +59,28 @@ export default function UpcomingEventsPanel({
     const id = setInterval(() => setNow(Date.now()), 30_000);
     return () => clearInterval(id);
   }, []);
+
+  // Kayıtlı kullanıcı tercihini yükle (yoksa varsayılan: kapalı).
+  useEffect(() => {
+    fetch("/api/user-prefs?key=ue_hide_low_profile")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => {
+        if (j && typeof j.value === "boolean") setHideLowProfile(j.value);
+      })
+      .catch(() => {});
+  }, []);
+
+  function toggleHideLowProfile() {
+    setHideLowProfile((v) => {
+      const next = !v;
+      fetch("/api/user-prefs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key: "ue_hide_low_profile", value: next }),
+      }).catch(() => {});
+      return next;
+    });
+  }
 
   // Low Profile gizliyken yıldızsız maçlar sayımlardan da düşülür.
   const visibleEvents = useMemo(
@@ -159,7 +184,7 @@ export default function UpcomingEventsPanel({
     if (count <= 0) return null;
     return (
       <span
-        className="flex flex-nowrap items-center justify-center gap-[1px]"
+        className="flex flex-nowrap items-center justify-start gap-[1px]"
         title={t("upcomingEvents.priorityStars", { count })}
       >
         {Array.from({ length: count }).map((_, i) => (
@@ -327,7 +352,7 @@ export default function UpcomingEventsPanel({
           type="button"
           role="checkbox"
           aria-checked={hideLowProfile}
-          onClick={() => setHideLowProfile((v) => !v)}
+          onClick={toggleHideLowProfile}
           title={t("upcomingEvents.hideLowProfileHint")}
           className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[13px] font-medium transition ${
             hideLowProfile
@@ -427,7 +452,7 @@ export default function UpcomingEventsPanel({
                         }`}
                       >
                         <td className="px-1 py-1">
-                          <span className="flex flex-col items-center gap-0.5">
+                          <span className="flex flex-col items-start gap-0.5">
                             <Stars count={stars} />
                             {alert ? <AlertIcon /> : null}
                           </span>
