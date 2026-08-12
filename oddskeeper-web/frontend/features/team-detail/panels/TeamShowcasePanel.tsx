@@ -19,14 +19,12 @@ import {
   Users,
   Zap,
 } from "lucide-react";
-import { TEAM_DETAIL_TABS } from "../constants";
 import type {
   TeamDetailedMetricRow,
   TeamProfileRow,
   TeamRecentFormRow,
   TeamResultRow,
   TeamStatisticsSummaryRow,
-  ValidTab,
 } from "../types";
 import { TeamHeroLogo } from "../components/TeamHeroLogo";
 import {
@@ -310,45 +308,6 @@ export async function TeamShowcasePanel({
 
   return (
     <section className="w-full space-y-3">
-      {/* üst çubuk: geri + sekmeler */}
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <Link
-          href="/dashboard/stats-analysis/football/team-stats"
-          className="rounded-xl border border-line bg-card px-3 py-2 text-sm text-ink-2 transition hover:text-ink"
-        >
-          {t("teamDetail.backToTeams")}
-        </Link>
-
-        <div className="flex flex-wrap items-center gap-1.5">
-          {TEAM_DETAIL_TABS.map((tab: { key: ValidTab; labelKey: string }) => {
-            const isActive = tab.key === "team-statistics";
-            const href = isActive
-              ? `${detailHrefBase}&tab=team-statistics`
-              : `${detailHrefBase}&tab=${tab.key}`;
-            return (
-              <Link
-                key={tab.key}
-                href={href}
-                className={`rounded-xl border px-3 py-2 text-sm transition ${
-                  isActive
-                    ? "border-line-strong bg-accent-soft text-accent-ink"
-                    : "border-line bg-card text-ink-2 hover:text-ink"
-                }`}
-              >
-                {t(tab.labelKey)}
-              </Link>
-            );
-          })}
-          <Link
-            href={`${detailHrefBase}&tab=team-statistics&design=classic`}
-            className="rounded-xl border border-line bg-card px-3 py-2 text-sm text-ink-2 transition hover:text-ink"
-            title={t("playerDetail.classicViewLabel")}
-          >
-            {t("playerDetail.classicViewLabel")}
-          </Link>
-        </div>
-      </div>
-
       {/* hero + özet paneli */}
       <div className="overflow-hidden rounded-2xl border border-line bg-card">
         <div className="grid xl:grid-cols-[minmax(0,1fr)_460px]">
@@ -365,8 +324,18 @@ export async function TeamShowcasePanel({
               />
 
               <div className="min-w-0">
-                <h1 className="truncate text-3xl font-bold tracking-tight text-ink sm:text-4xl xl:text-[42px] xl:leading-[1.1]">
-                  {teamName}
+                <h1 className="flex items-center gap-3 text-3xl font-bold tracking-tight text-ink sm:text-4xl xl:text-[42px] xl:leading-[1.1]">
+                  <span className="truncate">{teamName}</span>
+                  {/* Lig logosu: SofaScore surumu koyu arkaplanda da okunur.
+                      SELF-HOST (Vercel optimizer SofaScore'dan cekemiyor, 502). */}
+                  <Image
+                    src="/images/leagues/super-lig-ss.png"
+                    alt="Trendyol Süper Lig"
+                    title="Trendyol Süper Lig"
+                    width={56}
+                    height={56}
+                    className="h-12 w-12 shrink-0 object-contain sm:h-14 sm:w-14"
+                  />
                 </h1>
 
                 <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1.5 text-sm text-ink-2">

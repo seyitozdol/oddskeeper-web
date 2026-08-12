@@ -21,6 +21,20 @@ const TAG_NEW_TOOL: L = { en: "New tool", tr: "Yeni araç" };
 const ENTRIES: Entry[] = [
   {
     date: { en: "13 August", tr: "13 Ağustos" },
+    title: { en: "Süper Lig team page: left menu", tr: "Süper Lig takım sayfası: sol menü" },
+    items: [
+      {
+        en: "The Süper Lig team page got the same layout as 1. Lig: all tabs (Team Statistics, Squad, Results, Fixture...) moved into the fixed left mini menu; the \"Back to teams\" button is removed.",
+        tr: "Süper Lig takım sayfası da 1. Lig ile aynı düzene geçti: tüm sekmeler (Team Statistics, Squad, Results, Fixture...) sabit sol mini menüye taşındı; \"Back to teams\" butonu kaldırıldı.",
+      },
+      {
+        en: "League logos next to team names are bigger and switched to versions that stay readable on dark backgrounds (self-hosted).",
+        tr: "Takım adının yanındaki lig logoları büyütüldü ve koyu arka planda da okunur sürümlerle değiştirildi (kendi sunucumuzdan).",
+      },
+    ],
+  },
+  {
+    date: { en: "13 August", tr: "13 Ağustos" },
     title: { en: "1. Lig team page cleanup", tr: "1. Lig takım sayfası sadeleşti" },
     items: [
       {

@@ -322,14 +322,15 @@ export function Tff1TeamShowcase({
               <div className="min-w-0">
                 <h1 className="flex items-center gap-3 text-3xl font-bold tracking-tight text-ink sm:text-4xl xl:text-[42px] xl:leading-[1.1]">
                   <span className="truncate">{teamName}</span>
-                  {/* Header'daki 1. Lig logosu: metin kicker yerine gorsel kimlik */}
+                  {/* Lig logosu: SofaScore surumu koyu arkaplanda da okunur.
+                      SELF-HOST (Vercel optimizer SofaScore'dan cekemiyor, 502). */}
                   <Image
-                    src="/images/leagues/tff-1-lig.png"
+                    src="/images/leagues/tff-1-lig-ss.png"
                     alt="Trendyol 1. Lig"
                     title="Trendyol 1. Lig"
-                    width={40}
-                    height={40}
-                    className="h-9 w-9 shrink-0 object-contain sm:h-10 sm:w-10"
+                    width={56}
+                    height={56}
+                    className="h-12 w-12 shrink-0 object-contain sm:h-14 sm:w-14"
                   />
                 </h1>
 

@@ -27,6 +27,7 @@ import { getNotesForSlugs } from "@/lib/team-notes";
 import { tff1SlugForTeamId } from "@/lib/tff1-team-slugs";
 import Tff1TeamNotesHeader from "@/features/tff1/components/Tff1TeamNotesHeader";
 import { Tff1TeamShowcase } from "@/features/tff1/components/Tff1TeamShowcase";
+import { SideTabMenu } from "@/components/nav/SideTabMenu";
 
 function num(v: number | string | null | undefined): number {
   const x = typeof v === "string" ? Number(v) : v;
@@ -334,31 +335,17 @@ export default async function Tff1TeamPage({
 
   return (
     <section className="w-full">
-      {/* Sol mini menu: bolucu cizgili dikey liste, sekmeler arasi sabit
-          (sticky). Mobilde yatay serite doner. */}
+      {/* Sol mini menu: sekmeler arasi ayni yerde sabit (SideTabMenu). */}
       <div className="grid items-start gap-3 lg:grid-cols-[190px_minmax(0,1fr)]">
-        <aside className="overflow-hidden rounded-xl border border-line bg-card lg:sticky lg:top-20">
-          <nav className="flex flex-row lg:flex-col lg:divide-y lg:divide-line/60">
-            {menuItems.map((m) => (
-              <Link
-                key={m.tab}
-                href={tabHref(m.tab)}
-                className={`flex flex-1 items-center justify-between gap-2 px-4 py-2.5 text-[13px] transition lg:flex-none ${
-                  activeTab === m.tab
-                    ? "border-l-2 border-l-accent bg-veil font-semibold text-ink"
-                    : "border-l-2 border-l-transparent font-medium text-ink-2 hover:bg-veil/60 hover:text-ink"
-                }`}
-              >
-                <span className="whitespace-nowrap">{m.label}</span>
-                {m.count != null ? (
-                  <span className="rounded-md bg-card-2 px-1.5 py-0.5 text-[11px] leading-none text-ink-3">
-                    {m.count}
-                  </span>
-                ) : null}
-              </Link>
-            ))}
-          </nav>
-        </aside>
+        <SideTabMenu
+          items={menuItems.map((m) => ({
+            key: m.tab,
+            href: tabHref(m.tab),
+            label: m.label,
+            count: m.count ?? null,
+          }))}
+          activeKey={activeTab}
+        />
 
         <div className="min-w-0 space-y-3">
       {activeTab === "overview" ? (

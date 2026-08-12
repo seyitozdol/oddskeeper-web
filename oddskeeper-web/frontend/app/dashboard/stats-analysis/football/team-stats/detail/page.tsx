@@ -7,7 +7,8 @@ import DetailedStatsPanel from "../../../../../../features/team-detail/panels/De
 import { TeamShowcasePanel } from "../../../../../../features/team-detail/panels/TeamShowcasePanel";
 import TeamAdvancedOverviewPanel from "../../../../../../features/team-detail/panels/TeamAdvancedOverviewPanel";
 import { TeamStatisticsPanel } from "../../../../../../features/team-detail/panels/TeamStatisticsPanel";
-import { VALID_TABS } from "../../../../../../features/team-detail/constants";
+import { TEAM_DETAIL_TABS, VALID_TABS } from "../../../../../../features/team-detail/constants";
+import { SideTabMenu } from "@/components/nav/SideTabMenu";
 import { getTeamDetailedMetrics } from "../../../../../../features/team-detail/server/getTeamDetailedMetrics";
 import { getTeamFixtures } from "../../../../../../features/team-detail/server/getTeamFixtures";
 import { getTeamProfile } from "../../../../../../features/team-detail/server/getTeamProfile";
@@ -212,20 +213,52 @@ export default async function TeamDetailPage({
   });
   const teamNotes = notesBySlug[localTeam.slug] ?? [];
 
+  // Sol mini menu: sekmeler her iki gorunumde de ayni yerde sabit.
+  const detailBase = `/dashboard/stats-analysis/football/team-stats/detail?team=${teamSlug}`;
+  const sideItems = [
+    ...TEAM_DETAIL_TABS.map((tab) => ({
+      key: tab.key,
+      href: `${detailBase}&tab=${tab.key}`,
+      label: t(tab.labelKey),
+      count:
+        tab.key === "results" && activeTab === "results" && resultsRows.length > 0
+          ? resultsRows.length
+          : null,
+    })),
+    {
+      key: "classic",
+      href: `${detailBase}&tab=team-statistics&design=classic`,
+      label: t("playerDetail.classicViewLabel"),
+      count: null,
+    },
+  ];
+  const sideActiveKey = showcaseDesign
+    ? "team-statistics"
+    : activeTab === "team-statistics"
+      ? "classic"
+      : activeTab;
+
   if (showcaseDesign) {
     return (
-      <TeamShowcasePanel
-        teamSlug={localTeam.slug}
-        teamName={teamProfile?.display_name ?? localTeam.name}
-        logoPath={localTeam.logoPath}
-        teamProfile={teamProfile}
-        summary={statsSummary}
-        seasonHistory={seasonHistoryRows}
-        recentForm={recentFormRows}
-        results={teamResults}
-        detailedMetrics={detailedMetricRows}
-        teamNotes={teamNotes}
-      />
+      <section className="w-full">
+        <div className="grid items-start gap-3 lg:grid-cols-[190px_minmax(0,1fr)]">
+          <SideTabMenu items={sideItems} activeKey={sideActiveKey} />
+          <div className="min-w-0">
+            <TeamShowcasePanel
+              teamSlug={localTeam.slug}
+              teamName={teamProfile?.display_name ?? localTeam.name}
+              logoPath={localTeam.logoPath}
+              teamProfile={teamProfile}
+              summary={statsSummary}
+              seasonHistory={seasonHistoryRows}
+              recentForm={recentFormRows}
+              results={teamResults}
+              detailedMetrics={detailedMetricRows}
+              teamNotes={teamNotes}
+            />
+          </div>
+        </div>
+      </section>
     );
   }
 
@@ -249,12 +282,13 @@ export default async function TeamDetailPage({
 
   return (
     <section className="w-full">
+      <div className="grid items-start gap-3 lg:grid-cols-[190px_minmax(0,1fr)]">
+      <SideTabMenu items={sideItems} activeKey={sideActiveKey} />
+      <div className="min-w-0">
       <TeamDetailHeader
         logoPath={localTeam.logoPath}
         teamName={teamProfile?.display_name ?? localTeam.name}
         teamSlug={localTeam.slug}
-        activeTab={activeTab}
-        resultsCount={resultsRows.length}
         initialNotes={teamNotes}
       />
 
@@ -328,6 +362,8 @@ export default async function TeamDetailPage({
             seasonLabel={comparisonData.season_label ?? null}
           />
          ) : null}
+      </div>
+      </div>
       </div>
     </section>
   );
