@@ -11,6 +11,33 @@ type Entry = {
 
 const ENTRIES: Entry[] = [
   {
+    date: "12 Ağustos",
+    title: "Maç İstatistik Modeli: maç deadline'ı ve hafta arşivi",
+    tag: "Yeni",
+    items: [
+      "Bets10 oran ve fixture id beslemesi, maç başladıktan sonra o maç için güncellenmiyor: son maç-öncesi oran donuyor, canlı/sonuçlanmış oranlar (1.00 gibi) artık öneriye sızmıyor.",
+      "Fixture sekmesinde başlamış maçlarda Bets10 önerisi ve Apply gizleniyor; \"Bets10'dan doldur\" bu maçları atlıyor.",
+      "Round listesinde tamamlanan haftalar (son maçın başlama saati geçen) en alta iniyor; sekme ilk aktif haftayla açılıyor. 1. Lig'de artık 37 haftanın tamamı listeleniyor.",
+      "Model sekmesindeki maç listesinde tamamlanan haftanın maçları en altta Arşiv grubuna taşınıyor; açılışta ilk aktif haftanın maçı seçili geliyor.",
+      "Fixture sekmesinde manuel maç silerken artık onay soruluyor (Sil? Evet/Vazgeç).",
+    ],
+  },
+  {
+    date: "12 Ağustos",
+    title: "Oyuncu Market Modeli: kalıcı durum ve LY düzeltmesi",
+    items: [
+      "Model'de elle değiştirilen oyuncu durumu (Starter/Sub/Out) artık kalıcı: sayfadan çıkıp girince veya maç değiştirince seçimin korunuyor (Süper Lig + 1. Lig).",
+      "Yeni transferlerin geçen yıl ortalaması düzeltildi: kadro kimliği güncellenen oyuncularda (ör. Salah) LY Avg boş görünüyordu, yurt dışı sezon verisi yeniden bağlandı.",
+    ],
+  },
+  {
+    date: "12 Ağustos",
+    title: "Lig sayfası: Fixtures paneli",
+    items: [
+      "League bölümündeki Fixtures paneli oynanmış maçları göstermeye devam etmiyor; hafta bitince otomatik olarak bir sonraki haftanın maçları listeleniyor.",
+    ],
+  },
+  {
     date: "11 Ağustos",
     title: "Maç İstatistik Modeli: şut ailesi önerileri",
     tag: "Yeni",
