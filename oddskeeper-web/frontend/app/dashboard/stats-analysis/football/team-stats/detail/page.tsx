@@ -307,7 +307,13 @@ export default async function TeamDetailPage({
         ) : activeTab === "results" ? (
           <ResultsPanel rows={resultsRows} />
         ) : activeTab === "squad" ? (
-          <SquadPanel rows={squadRows} currentSquad={currentSquadRows} />
+          <SquadPanel
+            rows={squadRows}
+            currentSquad={currentSquadRows}
+            teamName={teamProfile?.display_name ?? localTeam.name}
+            logoPath={localTeam.logoPath}
+            profile={teamProfile}
+          />
         ) : activeTab === "fixture" ? (
           fixturePastSeason ? (
             <ResultsPanel rows={resultsRows} />

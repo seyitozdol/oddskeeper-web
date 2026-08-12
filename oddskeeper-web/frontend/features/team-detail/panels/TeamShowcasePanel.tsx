@@ -365,11 +365,7 @@ export async function TeamShowcasePanel({
               />
 
               <div className="min-w-0">
-                <p className="text-[11px] font-medium uppercase tracking-[0.3em] text-accent-ink">
-                  {t("teamDetail.headerKicker")}
-                </p>
-
-                <h1 className="mt-1.5 truncate text-3xl font-bold tracking-tight text-ink sm:text-4xl xl:text-[42px] xl:leading-[1.1]">
+                <h1 className="truncate text-3xl font-bold tracking-tight text-ink sm:text-4xl xl:text-[42px] xl:leading-[1.1]">
                   {teamName}
                 </h1>
 

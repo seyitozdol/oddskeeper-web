@@ -70,6 +70,16 @@ const COUNTRY_ISO: Record<string, string> = {
   Switzerland: "ch",
   Jordan: "jo",
   Guinea: "gn",
+  Egypt: "eg",
+  Madagascar: "mg",
+  Gabon: "ga",
+  Ireland: "ie",
+  Jamaica: "jm",
+  Libya: "ly",
+  Venezuela: "ve",
+  "Curaçao": "cw",
+  "DR Congo": "cd",
+  "Congo Republic": "cg",
 };
 
 const CANONICAL_NAMES: Record<string, string> = {

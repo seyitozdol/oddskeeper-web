@@ -454,4 +454,8 @@ export type TeamCurrentSquadRow = {
   fetched_at: string | null;
 
   player_slug: string | null;
+
+  // Kadro gorunumu zenginlestirmesi (getTeamCurrentSquad doldurur).
+  nationality: string | null;
+  market_value_eur: number | null;
 };

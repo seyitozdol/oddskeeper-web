@@ -21,6 +21,25 @@ const TAG_NEW_TOOL: L = { en: "New tool", tr: "Yeni araç" };
 const ENTRIES: Entry[] = [
   {
     date: { en: "12 August", tr: "12 Ağustos" },
+    title: { en: "Squad view redesign", tr: "Kadro görünümü yenilendi" },
+    tag: TAG_NEW,
+    items: [
+      {
+        en: "The team squad tab has a new layout: the left third is an always-open team info panel (logo, founded, stadium, capacity, head coach, squad size, average age, foreign players, total market value); the remaining two thirds list the players.",
+        tr: "Takım kadro sekmesi yeni düzende: ekranın ilk üçte biri hep açık takım bilgi paneli (logo, kuruluş, stadyum, kapasite, teknik direktör, kadro genişliği, yaş ortalaması, yabancı sayısı, toplam piyasa değeri); kalan iki parça oyuncu listesi.",
+      },
+      {
+        en: "Player cards show photo, nationality flag, position, age, shirt number and Transfermarkt market value, grouped by position.",
+        tr: "Oyuncu kartlarında fotoğraf, uyruk bayrağı, mevki, yaş, forma numarası ve Transfermarkt piyasa değeri var; pozisyona göre gruplu.",
+      },
+      {
+        en: "The \"Football Team Stats\" label next to the logo is removed from team pages.",
+        tr: "Takım sayfalarında logonun yanındaki \"Football Team Stats\" yazısı kaldırıldı.",
+      },
+    ],
+  },
+  {
+    date: { en: "12 August", tr: "12 Ağustos" },
     title: { en: "Upcoming Events tweaks", tr: "Yaklaşan Maçlar iyileştirmeleri" },
     items: [
       {

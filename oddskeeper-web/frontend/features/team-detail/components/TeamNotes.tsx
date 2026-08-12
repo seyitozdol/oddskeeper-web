@@ -57,9 +57,6 @@ export function TeamNotes({
             </button>
 
             <div className="min-w-0">
-              <p className="mb-1 text-[10px] font-medium uppercase tracking-[0.22em] text-accent-ink">
-                {t("teamDetail.headerKicker")}
-              </p>
               <h1 className="truncate text-xl font-semibold leading-none text-ink lg:text-2xl">
                 {teamName}
               </h1>

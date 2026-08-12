@@ -1,9 +1,11 @@
 "use client";
 
+import Image from "next/image";
 import { useMemo, useState } from "react";
 import { useI18n } from "@/lib/i18n/LanguageProvider";
 import type { Translator } from "@/lib/i18n/messages";
-import type { TeamCurrentSquadRow, TeamSquadRow } from "../types";
+import { getCountryFlagUrl } from "@/lib/country-flags";
+import type { TeamCurrentSquadRow, TeamProfileRow, TeamSquadRow } from "../types";
 import { formatDate } from "../utils/formatDate";
 import { formatDecimal } from "../utils/formatDecimal";
 import PlayerLink from "@/components/links/PlayerLink";
@@ -11,6 +13,10 @@ import PlayerLink from "@/components/links/PlayerLink";
 type SquadPanelProps = {
   rows?: TeamSquadRow[];
   currentSquad?: TeamCurrentSquadRow[];
+  // Sol bilgi paneli (varsayilan acik, tiklama gerekmez).
+  teamName?: string;
+  logoPath?: string | null;
+  profile?: TeamProfileRow | null;
 };
 
 const POSITION_GROUP_KEYS: Record<string, string> = {
@@ -30,63 +36,196 @@ function getPositionGroupLabel(
   return key ? t(key) : position ?? "—";
 }
 
-function CurrentSquadTable({ rows }: { rows: TeamCurrentSquadRow[] }) {
+// €7.0m / €500k bicimi; deger yoksa "—".
+function formatMarketValue(eur: number | null): string {
+  if (eur == null || !Number.isFinite(eur) || eur <= 0) return "—";
+  if (eur >= 1_000_000) {
+    const m = eur / 1_000_000;
+    return `€${m >= 10 ? Math.round(m) : m.toFixed(1).replace(/\.0$/, "")}m`;
+  }
+  return `€${Math.round(eur / 1_000)}k`;
+}
+
+function NationFlag({ nationality }: { nationality: string | null }) {
+  const url = getCountryFlagUrl(nationality);
+  if (!url || !nationality) return null;
+  return (
+    <Image
+      src={url}
+      alt={nationality}
+      title={nationality}
+      width={16}
+      height={12}
+      className="h-3 w-4 shrink-0 rounded-[2px] object-cover"
+    />
+  );
+}
+
+function PlayerAvatar({ photo, name }: { photo: string | null; name: string }) {
+  if (photo) {
+    return (
+      <Image
+        src={photo}
+        alt={name}
+        width={34}
+        height={34}
+        className="h-[34px] w-[34px] shrink-0 rounded-full border border-line bg-card-2 object-cover"
+      />
+    );
+  }
+  const initials = name
+    .split(/\s+/)
+    .map((p) => p[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+  return (
+    <span className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full border border-line bg-veil text-[11px] font-semibold text-ink-3">
+      {initials}
+    </span>
+  );
+}
+
+const TR_NATION = new Set(["turkiye", "turkey", "türkiye"]);
+
+// Sol panel: takim kimligi + genel bilgiler (drawer benzeri, hep acik).
+function TeamInfoCard({
+  teamName,
+  logoPath,
+  profile,
+  squad,
+}: {
+  teamName: string;
+  logoPath: string | null;
+  profile: TeamProfileRow | null;
+  squad: TeamCurrentSquadRow[];
+}) {
   const { t } = useI18n();
 
+  const ages = squad.map((r) => r.age).filter((a): a is number => a != null && a > 0);
+  const avgAge = ages.length
+    ? (ages.reduce((s, a) => s + a, 0) / ages.length).toFixed(1)
+    : null;
+  const foreigners = squad.filter(
+    (r) => r.nationality && !TR_NATION.has(r.nationality.toLowerCase())
+  ).length;
+  const totalValue = squad.reduce((s, r) => s + (r.market_value_eur ?? 0), 0);
+
+  const infoRows: [string, string | null][] = [
+    [t("teamDetail.labelFounded"), profile?.founded_year ? String(profile.founded_year) : null],
+    [t("teamDetail.labelStadium"), profile?.stadium_name ?? null],
+    [
+      t("teamDetail.labelCapacity"),
+      profile?.capacity ? profile.capacity.toLocaleString("en-US") : null,
+    ],
+    [t("teamDetail.labelHeadCoach"), profile?.head_coach ?? null],
+    [t("teamDetail.squadSize"), squad.length ? String(squad.length) : null],
+    [t("teamDetail.squadAvgAge"), avgAge],
+    [t("teamDetail.squadForeigners"), squad.length ? String(foreigners) : null],
+    [
+      t("teamDetail.labelMarketValue"),
+      totalValue > 0 ? formatMarketValue(totalValue) : profile?.market_value_display ?? null,
+    ],
+  ];
+
   return (
-    <div className="rounded-xl border border-line">
+    <div className="rounded-xl border border-line bg-card">
+      <div className="flex flex-col items-center gap-2 border-b border-line px-4 py-5 text-center">
+        {logoPath ? (
+          <Image
+            src={logoPath}
+            alt={teamName}
+            width={72}
+            height={72}
+            className="h-16 w-16 object-contain"
+          />
+        ) : null}
+        <div className="text-lg font-semibold leading-tight text-ink">{teamName}</div>
+      </div>
+      <dl className="divide-y divide-line/60">
+        {infoRows
+          .filter(([, v]) => v != null && v !== "")
+          .map(([label, value]) => (
+            <div key={label} className="flex items-center justify-between gap-3 px-4 py-2">
+              <dt className="text-[11px] font-medium uppercase tracking-[0.1em] text-ink-3">
+                {label}
+              </dt>
+              <dd className="text-[13px] font-semibold text-ink">{value}</dd>
+            </div>
+          ))}
+      </dl>
+    </div>
+  );
+}
+
+// Kadro: pozisyon grubuna gore bolumlenmis oyuncu kartlari (2 kolon).
+function CurrentSquadCards({ rows }: { rows: TeamCurrentSquadRow[] }) {
+  const { t } = useI18n();
+
+  const groups: { key: string; rows: TeamCurrentSquadRow[] }[] = [];
+  for (const row of rows) {
+    const last = groups[groups.length - 1];
+    if (last && last.key === row.position_group) last.rows.push(row);
+    else groups.push({ key: row.position_group, rows: [row] });
+  }
+
+  return (
+    <div className="rounded-xl border border-line bg-card">
       <div className="border-b border-line bg-veil px-3 py-2">
         <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-ink-3">
           {t("teamDetail.currentSquadTitle")}
         </div>
       </div>
-
-      <div className="overflow-x-auto">
-        <table className="min-w-full border-collapse">
-          <thead>
-            <tr className="text-left text-[10px] uppercase tracking-[0.14em] text-ink-3">
-              <th className="px-3 py-2 font-medium">{t("teamDetail.colShirtNumber")}</th>
-              <th className="px-3 py-2 font-medium">{t("common.player")}</th>
-              <th className="px-3 py-2 font-medium">{t("teamDetail.colPosition")}</th>
-              <th className="px-3 py-2 font-medium">{t("common.age")}</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {rows.map((row) => (
-              <tr
-                key={row.player_source_id}
-                className="border-t border-line text-[13px] text-ink-2"
-              >
-                <td className="px-3 py-1.5 text-ink-2">
-                  {row.shirt_number ?? "—"}
-                </td>
-                <td className="px-3 py-1.5 font-medium">
-                  {row.player_slug ? (
-                    <PlayerLink
-                      playerSlug={row.player_slug}
-                      className="font-medium text-accent-ink transition hover:text-accent hover:underline"
-                      title={row.player_name}
-                    >
-                      {row.player_name}
-                    </PlayerLink>
-                  ) : (
-                    <span
-                      className="text-ink"
-                      title={t("teamDetail.playerPageNotYetAvailable")}
-                    >
-                      {row.player_name}
+      <div className="space-y-3 p-3">
+        {groups.map((g) => (
+          <div key={g.key}>
+            <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-3">
+              {getPositionGroupLabel(g.key, g.rows[0]?.position ?? null, t)}
+            </div>
+            <div className="grid gap-1.5 md:grid-cols-2">
+              {g.rows.map((row) => (
+                <div
+                  key={row.player_source_id}
+                  className="flex items-center gap-2.5 rounded-lg border border-line/70 bg-card-2/40 px-2.5 py-1.5"
+                >
+                  <span className="w-5 shrink-0 text-center text-[11px] font-semibold tabular-nums text-ink-3">
+                    {row.shirt_number ?? "—"}
+                  </span>
+                  <PlayerAvatar photo={row.photo_url} name={row.player_name} />
+                  <div className="min-w-0 flex-1">
+                    <span className="flex items-center gap-1.5">
+                      {row.player_slug ? (
+                        <PlayerLink
+                          playerSlug={row.player_slug}
+                          className="truncate text-[13px] font-medium text-accent-ink transition hover:text-accent hover:underline"
+                          title={row.player_name}
+                        >
+                          {row.player_name}
+                        </PlayerLink>
+                      ) : (
+                        <span
+                          className="truncate text-[13px] font-medium text-ink"
+                          title={t("teamDetail.playerPageNotYetAvailable")}
+                        >
+                          {row.player_name}
+                        </span>
+                      )}
+                      <NationFlag nationality={row.nationality} />
                     </span>
-                  )}
-                </td>
-                <td className="px-3 py-1.5">
-                  {getPositionGroupLabel(row.position_group, row.position, t)}
-                </td>
-                <td className="px-3 py-1.5">{row.age ?? "—"}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                    <span className="block text-[11px] text-ink-3">
+                      {row.position ?? getPositionGroupLabel(row.position_group, null, t)}
+                      {row.age != null ? ` · ${row.age}` : ""}
+                    </span>
+                  </div>
+                  <span className="shrink-0 text-[12px] font-semibold tabular-nums text-ink-2">
+                    {formatMarketValue(row.market_value_eur)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -230,7 +369,13 @@ function getMetricSortValue(row: TeamSquadRow, sortKey: SortKey): number {
   return 0;
 }
 
-export function SquadPanel({ rows = [], currentSquad = [] }: SquadPanelProps) {
+export function SquadPanel({
+  rows = [],
+  currentSquad = [],
+  teamName = "",
+  logoPath = null,
+  profile = null,
+}: SquadPanelProps) {
   const { t } = useI18n();
   const [sortKey, setSortKey] = useState<SortKey>("primary_position_code");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
@@ -296,7 +441,19 @@ export function SquadPanel({ rows = [], currentSquad = [] }: SquadPanelProps) {
   return (
     <div className="space-y-3">
       {currentSquad.length > 0 ? (
-        <CurrentSquadTable rows={currentSquad} />
+        // Duseyde 3 parca: 1. parca takim + genel bilgiler (drawer benzeri,
+        // varsayilan acik), kalan 2 parca oyuncu kartlari.
+        <div className="grid items-start gap-3 lg:grid-cols-3">
+          <TeamInfoCard
+            teamName={teamName || currentSquad[0]?.team_name || ""}
+            logoPath={logoPath}
+            profile={profile}
+            squad={currentSquad}
+          />
+          <div className="lg:col-span-2">
+            <CurrentSquadCards rows={currentSquad} />
+          </div>
+        </div>
       ) : null}
 
       {rows.length > 0 ? (
