@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import {
@@ -304,19 +305,6 @@ export function Tff1TeamShowcase({
 
   return (
     <div className="space-y-3">
-      {/* üst çubuk */}
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <Link
-          href="/dashboard/stats-analysis/tff1/resmi?season=2026%2F2027&section=league"
-          className="rounded-xl border border-line bg-card px-3 py-2 text-sm text-ink-2 transition hover:text-ink"
-        >
-          ← {t("tff1.backToLeague")}
-        </Link>
-        <span className="rounded-full border border-line-strong bg-accent-soft px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.12em] text-accent-ink">
-          Trendyol 1. Lig
-        </span>
-      </div>
-
       {/* hero + özet paneli */}
       <div className="overflow-hidden rounded-2xl border border-line bg-card">
         <div className="grid xl:grid-cols-[minmax(0,1fr)_460px]">
@@ -332,12 +320,17 @@ export function Tff1TeamShowcase({
               />
 
               <div className="min-w-0">
-                <p className="text-[11px] font-medium uppercase tracking-[0.3em] text-accent-ink">
-                  {t("tff1.kicker")}
-                </p>
-
-                <h1 className="mt-1.5 truncate text-3xl font-bold tracking-tight text-ink sm:text-4xl xl:text-[42px] xl:leading-[1.1]">
-                  {teamName}
+                <h1 className="flex items-center gap-3 text-3xl font-bold tracking-tight text-ink sm:text-4xl xl:text-[42px] xl:leading-[1.1]">
+                  <span className="truncate">{teamName}</span>
+                  {/* Header'daki 1. Lig logosu: metin kicker yerine gorsel kimlik */}
+                  <Image
+                    src="/images/leagues/tff-1-lig.png"
+                    alt="Trendyol 1. Lig"
+                    title="Trendyol 1. Lig"
+                    width={40}
+                    height={40}
+                    className="h-9 w-9 shrink-0 object-contain sm:h-10 sm:w-10"
+                  />
                 </h1>
 
                 <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1.5 text-sm text-ink-2">

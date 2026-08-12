@@ -20,6 +20,20 @@ const TAG_NEW_TOOL: L = { en: "New tool", tr: "Yeni araç" };
 
 const ENTRIES: Entry[] = [
   {
+    date: { en: "13 August", tr: "13 Ağustos" },
+    title: { en: "1. Lig team page cleanup", tr: "1. Lig takım sayfası sadeleşti" },
+    items: [
+      {
+        en: "The back button and the \"Trendyol 1. Lig\" pill at the top are removed; the \"TFF 1. Lig\" label above the team name is replaced with the league logo next to the name.",
+        tr: "Üstteki geri butonu ve \"Trendyol 1. Lig\" rozeti kaldırıldı; takım adının üzerindeki \"TFF 1. Lig\" yazısı yerine adın yanında lig logosu görünüyor.",
+      },
+      {
+        en: "Overview / Fixtures / Squad / Results moved from top tabs into a small left menu with dividers; it stays fixed in place while switching sections.",
+        tr: "Genel Bakış / Fikstür / Kadro / Sonuçlar üst sekmelerden, bölücü çizgili küçük bir sol menüye taşındı; bölümler arasında gezerken yerinde sabit kalıyor.",
+      },
+    ],
+  },
+  {
     date: { en: "12 August", tr: "12 Ağustos" },
     title: { en: "Team pages: modern tabs", tr: "Takım sayfaları: modern sekmeler" },
     items: [

@@ -27,7 +27,6 @@ import { getNotesForSlugs } from "@/lib/team-notes";
 import { tff1SlugForTeamId } from "@/lib/tff1-team-slugs";
 import Tff1TeamNotesHeader from "@/features/tff1/components/Tff1TeamNotesHeader";
 import { Tff1TeamShowcase } from "@/features/tff1/components/Tff1TeamShowcase";
-import { TabPill, TabPillBar } from "@/components/nav/TabPills";
 
 function num(v: number | string | null | undefined): number {
   const x = typeof v === "string" ? Number(v) : v;
@@ -324,32 +323,44 @@ export default async function Tff1TeamPage({
     `/dashboard/tff-1-lig/team/${teamId}?season=${encodeURIComponent(season)}` +
     (tab === "overview" ? "" : `&tab=${tab}`);
 
-  return (
-    <section className="w-full space-y-3">
-      {/* Sekmeler: TSL takim sayfasindaki gibi gercek tab'lar. */}
-      <TabPillBar>
-        <TabPill href={tabHref("overview")} active={activeTab === "overview"}>
-          {t("tff1.jumpOverview")}
-        </TabPill>
-        {teamFixtures.length > 0 ? (
-          <TabPill href={tabHref("fixtures")} active={activeTab === "fixtures"}>
-            {t("tff1.jumpFixtures")}
-          </TabPill>
-        ) : null}
-        <TabPill href={tabHref("squad")} active={activeTab === "squad"}>
-          {t("tff1.jumpSquad")}
-          <span className="rounded-md bg-veil px-1.5 py-0.5 text-[11px] leading-none text-ink-2">
-            {squad.length}
-          </span>
-        </TabPill>
-        <TabPill href={tabHref("results")} active={activeTab === "results"}>
-          {t("tff1.jumpResults")}
-          <span className="rounded-md bg-veil px-1.5 py-0.5 text-[11px] leading-none text-ink-2">
-            {teamMatches.length}
-          </span>
-        </TabPill>
-      </TabPillBar>
+  const menuItems: { tab: TeamTab; label: string; count?: number }[] = [
+    { tab: "overview", label: t("tff1.jumpOverview") },
+    ...(teamFixtures.length > 0
+      ? [{ tab: "fixtures" as TeamTab, label: t("tff1.jumpFixtures") }]
+      : []),
+    { tab: "squad", label: t("tff1.jumpSquad"), count: squad.length },
+    { tab: "results", label: t("tff1.jumpResults"), count: teamMatches.length },
+  ];
 
+  return (
+    <section className="w-full">
+      {/* Sol mini menu: bolucu cizgili dikey liste, sekmeler arasi sabit
+          (sticky). Mobilde yatay serite doner. */}
+      <div className="grid items-start gap-3 lg:grid-cols-[190px_minmax(0,1fr)]">
+        <aside className="overflow-hidden rounded-xl border border-line bg-card lg:sticky lg:top-20">
+          <nav className="flex flex-row lg:flex-col lg:divide-y lg:divide-line/60">
+            {menuItems.map((m) => (
+              <Link
+                key={m.tab}
+                href={tabHref(m.tab)}
+                className={`flex flex-1 items-center justify-between gap-2 px-4 py-2.5 text-[13px] transition lg:flex-none ${
+                  activeTab === m.tab
+                    ? "border-l-2 border-l-accent bg-veil font-semibold text-ink"
+                    : "border-l-2 border-l-transparent font-medium text-ink-2 hover:bg-veil/60 hover:text-ink"
+                }`}
+              >
+                <span className="whitespace-nowrap">{m.label}</span>
+                {m.count != null ? (
+                  <span className="rounded-md bg-card-2 px-1.5 py-0.5 text-[11px] leading-none text-ink-3">
+                    {m.count}
+                  </span>
+                ) : null}
+              </Link>
+            ))}
+          </nav>
+        </aside>
+
+        <div className="min-w-0 space-y-3">
       {activeTab === "overview" ? (
       <Tff1TeamShowcase
         teamId={teamId}
@@ -680,6 +691,8 @@ export default async function Tff1TeamPage({
 
         </div>
       ) : null}
+        </div>
+      </div>
     </section>
   );
 }
