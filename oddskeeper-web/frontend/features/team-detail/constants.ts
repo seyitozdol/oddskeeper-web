@@ -1,6 +1,7 @@
 export const VALID_TABS = [
   "team-statistics",
   "detailed-stats",
+  "player-stats",
   "advanced",
   "season-history",
   "results",
@@ -14,6 +15,7 @@ export type ValidTab = (typeof VALID_TABS)[number];
 export const TAB_LABEL_KEYS: Record<ValidTab, string> = {
   "team-statistics": "teamDetail.tabTeamStatistics",
   "detailed-stats": "teamDetail.tabDetailedStats",
+  "player-stats": "teamDetail.tabPlayerStats",
   advanced: "teamDetail.tabAdvanced",
   "season-history": "teamDetail.tabSeasonHistory",
   results: "teamDetail.tabResults",

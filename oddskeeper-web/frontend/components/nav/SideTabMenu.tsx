@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
@@ -17,12 +18,33 @@ export type SideTabItem = {
 export function SideTabMenu({
   items,
   activeKey,
+  teamName,
+  teamLogo,
 }: {
   items: SideTabItem[];
   activeKey: string;
+  // Menunun ustunde takim kimligi (logo + ad); her sekmede ayni yerde durur.
+  teamName?: string;
+  teamLogo?: string | null;
 }) {
   return (
     <aside className="overflow-hidden rounded-xl border border-line bg-card lg:sticky lg:top-20">
+      {teamName ? (
+        <div className="flex items-center gap-2.5 border-b border-line bg-gradient-to-b from-card-2 to-card px-4 py-3">
+          {teamLogo ? (
+            <Image
+              src={teamLogo}
+              alt={teamName}
+              width={32}
+              height={32}
+              className="h-8 w-8 shrink-0 object-contain"
+            />
+          ) : null}
+          <span className="truncate text-[14px] font-semibold leading-tight text-ink">
+            {teamName}
+          </span>
+        </div>
+      ) : null}
       <nav className="flex flex-row overflow-x-auto lg:flex-col lg:divide-y lg:divide-line/60">
         {items.map((m) => (
           <Link

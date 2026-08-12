@@ -55,3 +55,13 @@ else
   echo "----- $(date -u '+%F %T UTC') TM diff raporu FAILED -----" >> "$LOG"
 fi
 rm -f "$TMP_DIFF"
+
+# 5) Kadro denetim listeleri (header'daki herkese acik 3 sekmeli sayfa):
+#    TM kiyas + participant-id eksikleri football.squad_audit'a yazilir.
+{
+  if "$VENV" "$PIPE/src/football/build_squad_audit.py"; then
+    echo "----- $(date -u '+%F %T UTC') 5) squad audit OK -----"
+  else
+    echo "----- $(date -u '+%F %T UTC') 5) squad audit FAILED rc=$? -----"
+  fi
+} >> "$LOG" 2>&1

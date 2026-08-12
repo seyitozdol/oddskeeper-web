@@ -28,7 +28,8 @@ import { tff1SlugForTeamId } from "@/lib/tff1-team-slugs";
 import Tff1TeamNotesHeader from "@/features/tff1/components/Tff1TeamNotesHeader";
 import { Tff1TeamShowcase } from "@/features/tff1/components/Tff1TeamShowcase";
 import { SideTabMenu } from "@/components/nav/SideTabMenu";
-import { CalendarDays, Goal, LayoutDashboard, Users } from "lucide-react";
+import MetricSelect from "@/components/rankings/MetricSelect";
+import { BarChart3, CalendarDays, Goal, LayoutDashboard, Users } from "lucide-react";
 
 function num(v: number | string | null | undefined): number {
   const x = typeof v === "string" ? Number(v) : v;
@@ -41,18 +42,61 @@ const RESULT_CLASS: Record<string, string> = {
   L: "bg-neg/15 text-neg",
 };
 
-const TEAM_TABS = ["overview", "fixtures", "squad", "results"] as const;
+const TEAM_TABS = ["overview", "fixtures", "squad", "playerstats", "results"] as const;
 type TeamTab = (typeof TEAM_TABS)[number];
+
+// Player Stats sekmesi metrikleri (tff1 oyuncu sezon istatistik kolonlari).
+// avg=true: deger zaten ortalama/oran, mac-basi kolonu gosterilmez.
+const TFF1_PLAYER_METRICS: {
+  key: string;
+  en: string;
+  tr: string;
+  cat: { en: string; tr: string };
+  avg?: boolean;
+}[] = [
+  { key: "rating_avg", en: "Average Rating", tr: "Ortalama Reyting", cat: { en: "Overall", tr: "Genel" }, avg: true },
+  { key: "minutes", en: "Minutes", tr: "Dakika", cat: { en: "Overall", tr: "Genel" } },
+  { key: "goals", en: "Goals", tr: "Gol", cat: { en: "Attacking", tr: "Hücum" } },
+  { key: "assists", en: "Assists", tr: "Asist", cat: { en: "Attacking", tr: "Hücum" } },
+  { key: "xg", en: "Expected Goals (xG)", tr: "Gol Beklentisi (xG)", cat: { en: "Attacking", tr: "Hücum" } },
+  { key: "xa", en: "Expected Assists (xA)", tr: "Asist Beklentisi (xA)", cat: { en: "Attacking", tr: "Hücum" } },
+  { key: "shots", en: "Shots", tr: "Şut", cat: { en: "Shooting", tr: "Şut" } },
+  { key: "shots_on_target", en: "Shots on Target", tr: "İsabetli Şut", cat: { en: "Shooting", tr: "Şut" } },
+  { key: "big_chances_created", en: "Big Chances Created", tr: "Yaratılan Net Fırsat", cat: { en: "Creation", tr: "Yaratıcılık" } },
+  { key: "key_passes", en: "Key Passes", tr: "Kilit Pas", cat: { en: "Creation", tr: "Yaratıcılık" } },
+  { key: "total_passes", en: "Passes", tr: "Pas", cat: { en: "Passing", tr: "Pas" } },
+  { key: "accurate_passes", en: "Accurate Passes", tr: "İsabetli Pas", cat: { en: "Passing", tr: "Pas" } },
+  { key: "pass_accuracy", en: "Pass Accuracy %", tr: "Pas İsabeti %", cat: { en: "Passing", tr: "Pas" }, avg: true },
+  { key: "crosses", en: "Crosses", tr: "Orta", cat: { en: "Passing", tr: "Pas" } },
+  { key: "long_balls", en: "Long Balls", tr: "Uzun Top", cat: { en: "Passing", tr: "Pas" } },
+  { key: "tackles", en: "Tackles", tr: "Müdahale", cat: { en: "Defending", tr: "Savunma" } },
+  { key: "interceptions", en: "Interceptions", tr: "Top Kapma", cat: { en: "Defending", tr: "Savunma" } },
+  { key: "clearances", en: "Clearances", tr: "Uzaklaştırma", cat: { en: "Defending", tr: "Savunma" } },
+  { key: "blocks", en: "Blocks", tr: "Blok", cat: { en: "Defending", tr: "Savunma" } },
+  { key: "ball_recoveries", en: "Ball Recoveries", tr: "Top Kazanma", cat: { en: "Defending", tr: "Savunma" } },
+  { key: "duels_won", en: "Duels Won", tr: "Kazanılan İkili Mücadele", cat: { en: "Duels", tr: "İkili Mücadele" } },
+  { key: "aerials_won", en: "Aerial Duels Won", tr: "Kazanılan Hava Topu", cat: { en: "Duels", tr: "İkili Mücadele" } },
+  { key: "dribbles_won", en: "Successful Dribbles", tr: "Başarılı Çalım", cat: { en: "Possession", tr: "Top Hakimiyeti" } },
+  { key: "touches", en: "Touches", tr: "Top Teması", cat: { en: "Possession", tr: "Top Hakimiyeti" } },
+  { key: "fouls", en: "Fouls Conceded", tr: "Yapılan Faul", cat: { en: "Discipline", tr: "Disiplin" } },
+  { key: "was_fouled", en: "Fouls Won", tr: "Kazanılan Faul", cat: { en: "Discipline", tr: "Disiplin" } },
+  { key: "yellow_cards", en: "Yellow Cards", tr: "Sarı Kart", cat: { en: "Discipline", tr: "Disiplin" } },
+  { key: "red_cards", en: "Red Cards", tr: "Kırmızı Kart", cat: { en: "Discipline", tr: "Disiplin" } },
+  { key: "saves", en: "Saves", tr: "Kurtarış", cat: { en: "Goalkeeping", tr: "Kalecilik" } },
+  { key: "km_covered", en: "Distance Covered (km)", tr: "Koşu (km)", cat: { en: "Physical", tr: "Fiziksel" } },
+  { key: "sprints", en: "Sprints", tr: "Sprint", cat: { en: "Physical", tr: "Fiziksel" } },
+  { key: "top_speed", en: "Top Speed (km/h)", tr: "En Yüksek Hız (km/s)", cat: { en: "Physical", tr: "Fiziksel" }, avg: true },
+];
 
 export default async function Tff1TeamPage({
   params,
   searchParams,
 }: {
   params: Promise<{ teamId: string }>;
-  searchParams: Promise<{ season?: string; tab?: string }>;
+  searchParams: Promise<{ season?: string; tab?: string; metric?: string }>;
 }) {
   const { teamId } = await params;
-  const { season: seasonParam, tab: tabParam } = await searchParams;
+  const { season: seasonParam, tab: tabParam, metric: metricParam } = await searchParams;
   const activeTab: TeamTab = TEAM_TABS.includes(tabParam as TeamTab)
     ? (tabParam as TeamTab)
     : "overview";
@@ -331,8 +375,20 @@ export default async function Tff1TeamPage({
       ? [{ tab: "fixtures" as TeamTab, label: t("tff1.jumpFixtures"), icon: <CalendarDays /> }]
       : []),
     { tab: "squad", label: t("tff1.jumpSquad"), icon: <Users />, count: squad.length },
+    { tab: "playerstats", label: t("tff1.jumpPlayerStats"), icon: <BarChart3 /> },
     { tab: "results", label: t("tff1.jumpResults"), icon: <Goal />, count: teamMatches.length },
   ];
+
+  // Player Stats: secili metrige gore takim oyunculari (sezon secilebilir).
+  const selectedMetric =
+    TFF1_PLAYER_METRICS.find((m) => m.key === metricParam) ??
+    TFF1_PLAYER_METRICS.find((m) => m.key === "rating_avg")!;
+  const metricVal = (p: (typeof squad)[number]): number =>
+    num((p as unknown as Record<string, number | string | null>)[selectedMetric.key]);
+  const playerStatsRanked = squad
+    .filter((p) => metricVal(p) > 0 || num(p.appearances) > 0)
+    .slice()
+    .sort((a, b) => metricVal(b) - metricVal(a));
 
   return (
     <section className="w-full">
@@ -626,6 +682,114 @@ export default async function Tff1TeamPage({
         <p className="mt-4 text-[12px] text-ink-3">{t("tff1.tmNote")}</p>
         </div>
         </>
+      ) : null}
+
+      {activeTab === "playerstats" ? (
+        <div className="rounded-2xl border border-line bg-card p-6">
+          <div className="flex flex-wrap items-center gap-2">
+            <MetricSelect
+              options={TFF1_PLAYER_METRICS.map((m) => ({
+                key: m.key,
+                label: locale === "tr" ? m.tr : m.en,
+                category: locale === "tr" ? m.cat.tr : m.cat.en,
+              }))}
+              selectedKey={selectedMetric.key}
+              basePath={`/dashboard/tff-1-lig/team/${teamId}`}
+              baseParams={{ season, tab: "playerstats" }}
+            />
+            <span className="flex flex-wrap items-center gap-1">
+              {teamSeasons.map((tr) => (
+                <Link
+                  key={tr.season_label}
+                  href={`/dashboard/tff-1-lig/team/${teamId}?season=${encodeURIComponent(tr.season_label)}&tab=playerstats&metric=${selectedMetric.key}`}
+                  className={`rounded-md border px-2 py-0.5 text-[12px] transition ${
+                    tr.season_label === season
+                      ? "border-line-strong bg-card-2 text-ink"
+                      : "border-line text-ink-3 hover:text-ink"
+                  }`}
+                >
+                  {tr.season_label}
+                </Link>
+              ))}
+            </span>
+          </div>
+
+          <div className="mt-3 overflow-x-auto rounded-lg border border-line">
+            <table className="min-w-full border-collapse text-[13px]">
+              <thead>
+                <tr className="text-left text-[10px] uppercase tracking-[0.12em] text-ink-3">
+                  <th className="px-3 py-2 font-medium">#</th>
+                  <th className="px-3 py-2 font-medium">{t("tff1.colPlayer")}</th>
+                  <th className="px-3 py-2 font-medium">{t("tff1.colPosition")}</th>
+                  <th className="px-3 py-2 text-right font-medium">{t("tff1.colAppearances")}</th>
+                  <th className="px-3 py-2 text-right font-medium">
+                    {locale === "tr" ? selectedMetric.tr : selectedMetric.en}
+                  </th>
+                  {!selectedMetric.avg ? (
+                    <th className="px-3 py-2 text-right font-medium">{t("tff1.perMatchShort")}</th>
+                  ) : null}
+                </tr>
+              </thead>
+              <tbody>
+                {playerStatsRanked.map((p, i) => {
+                  const pi = infoById[p.player_id];
+                  const flagUrl = getCountryFlagUrl(pi?.country ?? null);
+                  const name = p.player_name ?? p.player_id;
+                  const val = metricVal(p);
+                  const apps = num(p.appearances);
+                  return (
+                    <tr key={p.player_id} className="border-t border-line text-ink transition hover:bg-veil">
+                      <td className="px-3 py-1.5 font-semibold tabular-nums text-ink-3">{i + 1}</td>
+                      <td className="whitespace-nowrap px-3 py-1.5">
+                        <span className="flex items-center gap-2">
+                          {pi?.photo ? (
+                            <Image
+                              src={pi.photo}
+                              alt={name}
+                              width={26}
+                              height={26}
+                              className="h-[26px] w-[26px] shrink-0 rounded-full border border-line bg-card-2 object-cover"
+                            />
+                          ) : (
+                            <span className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full border border-line bg-veil text-[10px] font-semibold text-ink-3">
+                              {name.split(/\s+/).map((x) => x[0]).filter(Boolean).slice(0, 2).join("").toUpperCase()}
+                            </span>
+                          )}
+                          <Link
+                            href={`/dashboard/tff-1-lig/player/${p.player_id}`}
+                            className="font-medium text-accent-ink transition hover:text-accent hover:underline"
+                          >
+                            {name}
+                          </Link>
+                          {flagUrl && pi?.country ? (
+                            <Image
+                              src={flagUrl}
+                              alt={pi.country}
+                              title={pi.country}
+                              width={16}
+                              height={12}
+                              className="h-3 w-4 shrink-0 rounded-[2px] object-cover"
+                            />
+                          ) : null}
+                        </span>
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-1.5 text-ink-2">{positionLabel(p, locale)}</td>
+                      <td className="px-3 py-1.5 text-right tabular-nums">{apps}</td>
+                      <td className="px-3 py-1.5 text-right font-semibold tabular-nums">
+                        {Number.isInteger(val) ? val : val.toFixed(2)}
+                      </td>
+                      {!selectedMetric.avg ? (
+                        <td className="px-3 py-1.5 text-right tabular-nums text-ink-2">
+                          {apps > 0 ? (val / apps).toFixed(2) : "—"}
+                        </td>
+                      ) : null}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
       ) : null}
 
       {activeTab === "results" ? (

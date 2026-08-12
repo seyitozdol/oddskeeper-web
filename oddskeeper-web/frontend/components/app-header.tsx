@@ -10,6 +10,7 @@ import { LOCALES, type Locale } from "../lib/i18n/config";
 import { THEMES, type Theme } from "../lib/theme";
 import { isNavKeyAllowed, type NavKey } from "../lib/nav-permissions";
 import ThemeSelect from "./ThemeSelect";
+import { ClipboardList } from "lucide-react";
 
 type AppHeaderProps = {
   userEmail?: string | null;
@@ -270,6 +271,16 @@ export default function AppHeader({
               </Link>
             ) : null}
 
+            {/* Kadro denetimi: herkese acik, izin gate'i yok. */}
+            <Link
+              href="/dashboard/squad-audit"
+              aria-label={t("nav.squadAudit")}
+              title={t("nav.squadAudit")}
+              className={`flex items-center ${navLinkClass(pathname.startsWith("/dashboard/squad-audit"))}`}
+            >
+              <ClipboardList className="h-5 w-5 shrink-0" />
+            </Link>
+
             {isAdmin ? (
               <Link
                 href="/dashboard/admin/users"
@@ -390,6 +401,15 @@ export default function AppHeader({
             </Link>
           ) : null}
 
+          <Link
+            href="/dashboard/squad-audit"
+            aria-label={t("nav.squadAudit")}
+            title={t("nav.squadAudit")}
+            className={`flex items-center ${navLinkClass(pathname.startsWith("/dashboard/squad-audit"))}`}
+          >
+            <ClipboardList className="h-5 w-5 shrink-0" />
+          </Link>
+
           {isAdmin ? (
             <Link
               href="/dashboard/admin/users"
@@ -412,7 +432,7 @@ function TslMark({ className }: { className?: string }) {
       alt="TSL"
       width={16}
       height={16}
-      className={`${className ?? ""} object-contain`}
+      className={`${className ?? ""} tsl-league-mark object-contain`}
     />
   );
 }
@@ -424,7 +444,7 @@ function Lig1Mark({ className }: { className?: string }) {
       alt="1.Lig"
       width={16}
       height={16}
-      className={`${className ?? ""} object-contain`}
+      className={`${className ?? ""} tsl-league-mark object-contain`}
     />
   );
 }

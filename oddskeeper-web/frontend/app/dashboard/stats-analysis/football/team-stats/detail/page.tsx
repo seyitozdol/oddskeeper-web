@@ -1,5 +1,4 @@
 import { notFound } from "next/navigation";
-import { TeamDetailHeader } from "../../../../../../features/team-detail/components/TeamDetailHeader";
 import { FixturePanel } from "../../../../../../features/team-detail/panels/FixturePanel";
 import { ResultsPanel } from "../../../../../../features/team-detail/panels/ResultsPanel";
 import { SquadPanel } from "../../../../../../features/team-detail/panels/SquadPanel";
@@ -15,7 +14,7 @@ import {
   Gauge,
   Goal,
   History,
-  LayoutList,
+  LayoutDashboard,
   Scale,
   Table2,
   Users,
@@ -35,6 +34,8 @@ import { getNotesForSlugs } from "@/lib/team-notes";
 import { getTeamSeasonHistory } from "../../../../../../features/team-detail/server/getTeamSeasonHistory";
 import { SeasonHistoryPanel } from "../../../../../../features/team-detail/panels/SeasonHistoryPanel";
 import { getTeamComparison } from "../../../../../../features/team-detail/server/getTeamComparison";
+import { getTeamPlayerStats } from "../../../../../../features/team-detail/server/getTeamPlayerStats";
+import TeamPlayerStatsPanel from "../../../../../../features/team-detail/panels/TeamPlayerStatsPanel";
 import TeamComparisonPanel from "../../../../../../features/team-detail/panels/TeamComparisonPanel";
 import { getFootballTeams } from "../../../../../../lib/football-teams";
 import type {
@@ -50,6 +51,7 @@ type TeamDetailPageProps = {
     opponent?: string;
     season?: string;
     design?: string;
+    metric?: string;
   }>;
 };
 
@@ -227,8 +229,9 @@ export default async function TeamDetailPage({
   // Sol mini menu: sekmeler her iki gorunumde de ayni yerde sabit.
   const detailBase = `/dashboard/stats-analysis/football/team-stats/detail?team=${teamSlug}`;
   const TAB_ICONS: Record<string, React.ReactNode> = {
-    "team-statistics": <BarChart3 />,
+    "team-statistics": <LayoutDashboard />,
     "detailed-stats": <Table2 />,
+    "player-stats": <BarChart3 />,
     advanced: <Gauge />,
     "season-history": <History />,
     results: <Goal />,
@@ -236,36 +239,41 @@ export default async function TeamDetailPage({
     fixture: <CalendarDays />,
     comparison: <Scale />,
   };
-  const sideItems = [
-    ...TEAM_DETAIL_TABS.map((tab) => ({
-      key: tab.key,
-      href: `${detailBase}&tab=${tab.key}`,
-      label: t(tab.labelKey),
-      icon: TAB_ICONS[tab.key],
-      count:
-        tab.key === "results" && activeTab === "results" && resultsRows.length > 0
-          ? resultsRows.length
-          : null,
-    })),
-    {
-      key: "classic",
-      href: `${detailBase}&tab=team-statistics&design=classic`,
-      label: t("playerDetail.classicViewLabel"),
-      icon: <LayoutList />,
-      count: null,
-    },
-  ];
-  const sideActiveKey = showcaseDesign
-    ? "team-statistics"
-    : activeTab === "team-statistics"
-      ? "classic"
-      : activeTab;
+  const sideItems = TEAM_DETAIL_TABS.map((tab) => ({
+    key: tab.key,
+    href: `${detailBase}&tab=${tab.key}`,
+    label: t(tab.labelKey),
+    icon: TAB_ICONS[tab.key],
+    count:
+      tab.key === "results" && activeTab === "results" && resultsRows.length > 0
+        ? resultsRows.length
+        : null,
+  }));
+  const sideActiveKey = showcaseDesign ? "team-statistics" : activeTab;
+
+  const playerStatsData =
+    activeTab === "player-stats"
+      ? await getTeamPlayerStats(
+          teamSlug,
+          requestedSeason ?? null,
+          resolvedSearchParams.metric ?? null
+        )
+      : null;
+
+  const sideMenu = (
+    <SideTabMenu
+      items={sideItems}
+      activeKey={sideActiveKey}
+      teamName={teamProfile?.display_name ?? localTeam.name}
+      teamLogo={localTeam.logoPath}
+    />
+  );
 
   if (showcaseDesign) {
     return (
       <section className="w-full">
         <div className="grid items-start gap-3 lg:grid-cols-[190px_minmax(0,1fr)]">
-          <SideTabMenu items={sideItems} activeKey={sideActiveKey} />
+          {sideMenu}
           <div className="min-w-0">
             <TeamShowcasePanel
               teamSlug={localTeam.slug}
@@ -306,14 +314,8 @@ export default async function TeamDetailPage({
   return (
     <section className="w-full">
       <div className="grid items-start gap-3 lg:grid-cols-[190px_minmax(0,1fr)]">
-      <SideTabMenu items={sideItems} activeKey={sideActiveKey} />
+      {sideMenu}
       <div className="min-w-0">
-      <TeamDetailHeader
-        logoPath={localTeam.logoPath}
-        teamName={teamProfile?.display_name ?? localTeam.name}
-        teamSlug={localTeam.slug}
-        initialNotes={teamNotes}
-      />
 
       {SEASON_TABS.includes(activeTab) && seasonLabels.length > 1 ? (
         <div className="mt-3 flex items-center justify-end gap-3">
@@ -354,6 +356,8 @@ export default async function TeamDetailPage({
           />
         ) : activeTab === "detailed-stats" ? (
           <DetailedStatsPanel rows={detailedMetricRows} />
+        ) : activeTab === "player-stats" && playerStatsData ? (
+          <TeamPlayerStatsPanel teamSlug={teamSlug} data={playerStatsData} />
         ) : activeTab === "advanced" ? (
           <TeamAdvancedOverviewPanel
             rows={detailedMetricRows}

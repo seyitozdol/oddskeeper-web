@@ -145,7 +145,9 @@ export const tff1 = defineMessages({
     jumpResults: "Results",
     jumpFixtures: "Fixtures",
     jumpOverview: "Overview",
+    jumpPlayerStats: "Player Stats",
     squadStatsTitle: "Season stats",
+    perMatchShort: "per match",
     noSeasonStatsTitle: "No stats in this league yet",
     noSeasonStatsBody:
       "This team has no played matches in the 1. Lig database yet (newly promoted, or its history is in another league). Upcoming fixtures are shown below.",
@@ -297,7 +299,9 @@ export const tff1 = defineMessages({
     jumpResults: "Sonuçlar",
     jumpFixtures: "Fikstür",
     jumpOverview: "Genel Bakış",
+    jumpPlayerStats: "Oyuncu İstatistikleri",
     squadStatsTitle: "Sezon istatistikleri",
+    perMatchShort: "maç başı",
     noSeasonStatsTitle: "Bu ligde henüz istatistik yok",
     noSeasonStatsBody:
       "Bu takımın 1. Lig veri tabanında henüz oynanmış maçı yok (yeni çıktı ya da geçmişi başka ligde). Aşağıda yaklaşan maçları listeleniyor.",

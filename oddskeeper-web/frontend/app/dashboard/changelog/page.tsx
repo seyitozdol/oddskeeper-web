@@ -21,6 +21,47 @@ const TAG_NEW_TOOL: L = { en: "New tool", tr: "Yeni araç" };
 const ENTRIES: Entry[] = [
   {
     date: { en: "13 August", tr: "13 Ağustos" },
+    title: { en: "Squad Audit", tr: "Kadro Denetimi" },
+    tag: TAG_NEW,
+    items: [
+      {
+        en: "A new header icon (right of What's New, open to everyone) opens a 3-tab audit page: players in our squads but not on Transfermarkt, players on Transfermarkt but missing from us, and players without a participant id; TSL + 1. Lig, grouped by team.",
+        tr: "Header'a yeni bir ikon geldi (What's New'un sağında, herkese açık): 3 sekmeli denetim sayfası açıyor: bizde olup Transfermarkt'ta olmayanlar, TM'de olup bizde olmayanlar ve participant id'si olmayanlar; TSL + 1. Lig, takım bazında gruplu.",
+      },
+      {
+        en: "The lists refresh automatically after the morning Transfermarkt run.",
+        tr: "Listeler sabahki Transfermarkt koşusundan sonra otomatik tazeleniyor.",
+      },
+    ],
+  },
+  {
+    date: { en: "13 August", tr: "13 Ağustos" },
+    title: {
+      en: "Team pages: Overview, Player Stats and cleanup",
+      tr: "Takım sayfaları: Genel Bakış, Oyuncu İstatistikleri ve sadeleşme",
+    },
+    tag: TAG_NEW,
+    items: [
+      {
+        en: "The team logo and name now sit at the top of the left menu; the separate header box that reloaded on every tab is gone. \"Team Statistics\" is renamed Overview and note-taking lives there (via the hero logo).",
+        tr: "Takım logosu ve adı artık sol menünün üstünde; her sekmede yeniden gelen ayrı başlık kutusu kaldırıldı. \"Team Statistics\" sekmesinin adı Genel Bakış oldu; not ekleme oradaki büyük logo üzerinden yapılıyor.",
+      },
+      {
+        en: "New Player Stats tab on both TSL and 1. Lig team pages: pick a metric and season, players sort by it, with photos and nationality flags.",
+        tr: "Hem TSL hem 1. Lig takım sayfalarına yeni Oyuncu İstatistikleri sekmesi: metrik ve sezon seç, oyuncular ona göre sıralansın; fotoğraf ve uyruk bayraklarıyla.",
+      },
+      {
+        en: "Classic view is removed; the showcase design is the only team view now.",
+        tr: "Classic görünüm kaldırıldı; takım sayfası artık yalnız vitrin tasarımıyla çalışıyor.",
+      },
+      {
+        en: "The TSL and 1. Lig icons in the header also render white on dark themes.",
+        tr: "Header'daki TSL ve 1. Lig ikonları da koyu temalarda beyaz görünüyor.",
+      },
+    ],
+  },
+  {
+    date: { en: "13 August", tr: "13 Ağustos" },
     title: { en: "Süper Lig team page: left menu", tr: "Süper Lig takım sayfası: sol menü" },
     items: [
       {
@@ -53,16 +94,8 @@ const ENTRIES: Entry[] = [
   },
   {
     date: { en: "12 August", tr: "12 Ağustos" },
-    title: { en: "Team pages: modern tabs", tr: "Takım sayfaları: modern sekmeler" },
+    title: { en: "Team squad panels", tr: "Takım kadro panelleri" },
     items: [
-      {
-        en: "The 1. Lig team page now has real tabs like Süper Lig: Overview / Fixtures / Squad / Results, with counts on Squad and Results.",
-        tr: "1. Lig takım sayfası artık Süper Lig'deki gibi gerçek sekmeli: Genel Bakış / Fikstür / Kadro / Sonuçlar; Kadro ve Sonuçlar sekmelerinde sayaç var.",
-      },
-      {
-        en: "Tab bars on team pages got a modern pill design (raised active tab on a soft container).",
-        tr: "Takım sayfalarındaki sekme çubukları modern hap tasarımına geçti (yumuşak zemin üzerinde kabarık aktif sekme).",
-      },
       {
         en: "The squad tab's left panel grew: a large logo like the team showcase, position distribution badges, total and per-player market value, most valuable player and website link.",
         tr: "Kadro sekmesindeki sol panel genişledi: vitrin sayfasındaki gibi büyük logo, pozisyon dağılımı rozetleri, toplam ve oyuncu başına piyasa değeri, en değerli oyuncu ve site linki.",

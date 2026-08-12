@@ -13,7 +13,8 @@ export const teamDetail = defineMessages({
     standingsShort: "#{rank}",
 
     // constants.ts tab labels
-    tabTeamStatistics: "Team Statistics",
+    tabTeamStatistics: "Overview",
+    tabPlayerStats: "Player Stats",
     tabDetailedStats: "Detailed Stats",
     tabAdvanced: "Advanced",
     tabSeasonHistory: "Season History",
@@ -258,7 +259,8 @@ export const teamDetail = defineMessages({
     standingsShort: "#{rank}",
 
     // constants.ts tab labels
-    tabTeamStatistics: "Takım İstatistikleri",
+    tabTeamStatistics: "Genel Bakış",
+    tabPlayerStats: "Oyuncu İstatistikleri",
     tabDetailedStats: "Detaylı İstatistikler",
     tabAdvanced: "Gelişmiş",
     tabSeasonHistory: "Sezon Geçmişi",

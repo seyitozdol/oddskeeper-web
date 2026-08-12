@@ -13,6 +13,7 @@ import { nav } from "./nav";
 import { notes } from "./notes";
 import { playerDetail } from "./playerDetail";
 import { playerMarket } from "./playerMarket";
+import { squadAudit } from "./squadAudit";
 import { statsHub } from "./statsHub";
 import { teamDetail } from "./teamDetail";
 import { tff1 } from "./tff1";
@@ -38,6 +39,7 @@ const MESSAGES: Record<
   notes,
   playerDetail,
   playerMarket,
+  squadAudit,
   statsHub,
   teamDetail,
   tff1,
