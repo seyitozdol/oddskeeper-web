@@ -28,6 +28,7 @@ import { tff1SlugForTeamId } from "@/lib/tff1-team-slugs";
 import Tff1TeamNotesHeader from "@/features/tff1/components/Tff1TeamNotesHeader";
 import { Tff1TeamShowcase } from "@/features/tff1/components/Tff1TeamShowcase";
 import { SideTabMenu } from "@/components/nav/SideTabMenu";
+import { CalendarDays, Goal, LayoutDashboard, Users } from "lucide-react";
 
 function num(v: number | string | null | undefined): number {
   const x = typeof v === "string" ? Number(v) : v;
@@ -324,13 +325,13 @@ export default async function Tff1TeamPage({
     `/dashboard/tff-1-lig/team/${teamId}?season=${encodeURIComponent(season)}` +
     (tab === "overview" ? "" : `&tab=${tab}`);
 
-  const menuItems: { tab: TeamTab; label: string; count?: number }[] = [
-    { tab: "overview", label: t("tff1.jumpOverview") },
+  const menuItems: { tab: TeamTab; label: string; icon: React.ReactNode; count?: number }[] = [
+    { tab: "overview", label: t("tff1.jumpOverview"), icon: <LayoutDashboard /> },
     ...(teamFixtures.length > 0
-      ? [{ tab: "fixtures" as TeamTab, label: t("tff1.jumpFixtures") }]
+      ? [{ tab: "fixtures" as TeamTab, label: t("tff1.jumpFixtures"), icon: <CalendarDays /> }]
       : []),
-    { tab: "squad", label: t("tff1.jumpSquad"), count: squad.length },
-    { tab: "results", label: t("tff1.jumpResults"), count: teamMatches.length },
+    { tab: "squad", label: t("tff1.jumpSquad"), icon: <Users />, count: squad.length },
+    { tab: "results", label: t("tff1.jumpResults"), icon: <Goal />, count: teamMatches.length },
   ];
 
   return (
@@ -342,6 +343,7 @@ export default async function Tff1TeamPage({
             key: m.tab,
             href: tabHref(m.tab),
             label: m.label,
+            icon: m.icon,
             count: m.count ?? null,
           }))}
           activeKey={activeTab}

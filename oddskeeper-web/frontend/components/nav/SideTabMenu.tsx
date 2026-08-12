@@ -1,13 +1,16 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 
 // Takim sayfalari icin sol mini menu: bolucu cizgili dikey liste, sticky
 // (sekmeler arasi ayni yerde sabit). Mobilde yatay kaydirilabilir serit.
-// TFF1 + Super Lig takim sayfalari ortak kullanir.
+// TFF1 + Super Lig takim sayfalari ortak kullanir. Ikonlar currentColor
+// kullanir; metinle ayni renkte gorunur.
 
 export type SideTabItem = {
   key: string;
   href: string;
   label: string;
+  icon?: ReactNode;
   count?: number | null;
 };
 
@@ -31,7 +34,10 @@ export function SideTabMenu({
                 : "border-l-2 border-l-transparent font-medium text-ink-2 hover:bg-veil/60 hover:text-ink"
             }`}
           >
-            <span className="whitespace-nowrap">{m.label}</span>
+            <span className="flex items-center gap-2 whitespace-nowrap">
+              {m.icon ? <span className="shrink-0 [&>svg]:h-4 [&>svg]:w-4">{m.icon}</span> : null}
+              {m.label}
+            </span>
             {m.count != null ? (
               <span className="rounded-md bg-card-2 px-1.5 py-0.5 text-[11px] leading-none text-ink-3">
                 {m.count}

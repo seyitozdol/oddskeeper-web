@@ -9,6 +9,17 @@ import TeamAdvancedOverviewPanel from "../../../../../../features/team-detail/pa
 import { TeamStatisticsPanel } from "../../../../../../features/team-detail/panels/TeamStatisticsPanel";
 import { TEAM_DETAIL_TABS, VALID_TABS } from "../../../../../../features/team-detail/constants";
 import { SideTabMenu } from "@/components/nav/SideTabMenu";
+import {
+  BarChart3,
+  CalendarDays,
+  Gauge,
+  Goal,
+  History,
+  LayoutList,
+  Scale,
+  Table2,
+  Users,
+} from "lucide-react";
 import { getTeamDetailedMetrics } from "../../../../../../features/team-detail/server/getTeamDetailedMetrics";
 import { getTeamFixtures } from "../../../../../../features/team-detail/server/getTeamFixtures";
 import { getTeamProfile } from "../../../../../../features/team-detail/server/getTeamProfile";
@@ -215,11 +226,22 @@ export default async function TeamDetailPage({
 
   // Sol mini menu: sekmeler her iki gorunumde de ayni yerde sabit.
   const detailBase = `/dashboard/stats-analysis/football/team-stats/detail?team=${teamSlug}`;
+  const TAB_ICONS: Record<string, React.ReactNode> = {
+    "team-statistics": <BarChart3 />,
+    "detailed-stats": <Table2 />,
+    advanced: <Gauge />,
+    "season-history": <History />,
+    results: <Goal />,
+    squad: <Users />,
+    fixture: <CalendarDays />,
+    comparison: <Scale />,
+  };
   const sideItems = [
     ...TEAM_DETAIL_TABS.map((tab) => ({
       key: tab.key,
       href: `${detailBase}&tab=${tab.key}`,
       label: t(tab.labelKey),
+      icon: TAB_ICONS[tab.key],
       count:
         tab.key === "results" && activeTab === "results" && resultsRows.length > 0
           ? resultsRows.length
@@ -229,6 +251,7 @@ export default async function TeamDetailPage({
       key: "classic",
       href: `${detailBase}&tab=team-statistics&design=classic`,
       label: t("playerDetail.classicViewLabel"),
+      icon: <LayoutList />,
       count: null,
     },
   ];
