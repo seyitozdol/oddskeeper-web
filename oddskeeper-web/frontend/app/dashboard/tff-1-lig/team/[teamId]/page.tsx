@@ -1,5 +1,7 @@
+import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { getCountryFlagUrl } from "@/lib/country-flags";
 import {
   formatMarketValue,
   formatMatchDate,
@@ -12,6 +14,7 @@ import {
   getTff1Fixtures,
   getTff1Matches,
   getTff1MarketValues,
+  getTff1PlayerInfo,
   getTff1PlayerSeasonStats,
   getTff1TeamLogos,
   getTff1TeamSeasonStats,
@@ -52,7 +55,7 @@ export default async function Tff1TeamPage({
   const activeTab: TeamTab = TEAM_TABS.includes(tabParam as TeamTab)
     ? (tabParam as TeamTab)
     : "overview";
-  const [players, teams, matches, fixtures, mvRows, logos, t, locale] =
+  const [players, teams, matches, fixtures, mvRows, logos, playerInfos, t, locale] =
     await Promise.all([
       getTff1PlayerSeasonStats(),
       getTff1TeamSeasonStats(),
@@ -60,6 +63,7 @@ export default async function Tff1TeamPage({
       getTff1Fixtures(),
       getTff1MarketValues(),
       getTff1TeamLogos(),
+      getTff1PlayerInfo(),
       getT(),
       getLocale(),
     ]);
@@ -237,6 +241,54 @@ export default async function Tff1TeamPage({
 
   const squadValue = squad.reduce((acc, p) => acc + num(marketValues[p.player_id]), 0);
 
+  // Kadro kartlari icin oyuncu foto/uyruk/yas (tff1_player_info_v1).
+  const infoById: Record<string, { photo: string | null; country: string | null; age: number | null }> = {};
+  for (const pi of playerInfos) {
+    const age = pi.birth_date
+      ? Math.floor((Date.now() - new Date(pi.birth_date).getTime()) / (365.25 * 86_400_000))
+      : null;
+    infoById[pi.player_id] = { photo: pi.photo_url ?? null, country: pi.country ?? null, age };
+  }
+
+  // Sol panel istatistikleri (Super Lig kadro gorunumuyle ayni mantik).
+  const squadAges = squad
+    .map((p) => infoById[p.player_id]?.age)
+    .filter((a): a is number => a != null && a > 0);
+  const squadAvgAge = squadAges.length
+    ? (squadAges.reduce((s, a) => s + a, 0) / squadAges.length).toFixed(1)
+    : null;
+  const TR_NAT = new Set(["turkey", "türkiye", "turkiye"]);
+  const squadForeigners = squad.filter((p) => {
+    const cn = infoById[p.player_id]?.country;
+    return cn && !TR_NAT.has(cn.toLowerCase());
+  }).length;
+  const valuedSquad = squad.filter((p) => num(marketValues[p.player_id]) > 0);
+  const topValued = valuedSquad
+    .slice()
+    .sort((a, b) => num(marketValues[b.player_id]) - num(marketValues[a.player_id]))[0];
+
+  // Pozisyon gruplama: G/D/M/F sirasi. Grup basligi jenerik etiket kullanir
+  // (oyuncunun detay pozisyonu "Centre back" gibi olabilir).
+  const POS_ORDER = ["G", "D", "M", "F"];
+  const GROUP_LABEL: Record<string, { tr: string; en: string }> = {
+    G: { tr: "Kaleci", en: "Goalkeeper" },
+    D: { tr: "Defans", en: "Defender" },
+    M: { tr: "Orta saha", en: "Midfielder" },
+    F: { tr: "Forvet", en: "Forward" },
+    "?": { tr: "Diğer", en: "Other" },
+  };
+  const groupLabel = (code: string) =>
+    locale === "tr" ? GROUP_LABEL[code]?.tr ?? code : GROUP_LABEL[code]?.en ?? code;
+  const posGroups: { code: string; rows: typeof squad }[] = [];
+  for (const code of [...POS_ORDER, "?"]) {
+    const rows = squad.filter((p) =>
+      code === "?"
+        ? !POS_ORDER.includes((p.position_code ?? "").toUpperCase())
+        : (p.position_code ?? "").toUpperCase() === code
+    );
+    if (rows.length) posGroups.push({ code, rows });
+  }
+
   const resultFor = (m: Tff1MatchRow): "W" | "D" | "L" | null => {
     if (m.home_score === null || m.away_score === null) return null;
     const isHome = m.home_team_id === teamId;
@@ -359,9 +411,160 @@ export default async function Tff1TeamPage({
       ) : null}
 
       {activeTab === "squad" ? (
+        <>
+        {/* Super Lig kadro gorunumuyle ayni duzen: 1/3 takim bilgi paneli
+            (hep acik) + 2/3 pozisyona gruplu oyuncu kartlari. */}
+        <div className="grid items-start gap-3 lg:grid-cols-3">
+          <div className="overflow-hidden rounded-xl border border-line bg-card">
+            <div className="flex flex-col items-center gap-4 border-b border-line bg-gradient-to-b from-card-2 to-card px-4 pb-5 pt-6 text-center">
+              {logo ? (
+                <div className="flex h-[160px] w-[160px] items-center justify-center overflow-hidden rounded-2xl border border-line bg-gradient-to-b from-card-2 to-canvas p-5">
+                  <Image
+                    src={logo}
+                    alt={team.team_name ?? teamId}
+                    width={120}
+                    height={120}
+                    className="h-full w-full object-contain"
+                  />
+                </div>
+              ) : null}
+              <div>
+                <div className="text-xl font-bold leading-tight tracking-tight text-ink">
+                  {team.team_name ?? teamId}
+                </div>
+                <div className="mt-1 text-[12px] text-ink-3">
+                  {t("teamDetail.squadSize")}: {squad.length}
+                  {squadValue > 0 ? ` · ${formatMarketValue(squadValue)}` : ""}
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center justify-center gap-1.5">
+                {posGroups.map((g) => (
+                  <span
+                    key={g.code}
+                    className="rounded-md border border-line bg-card px-2 py-1 text-[11px] font-medium text-ink-2"
+                  >
+                    {groupLabel(g.code)}{" "}
+                    <span className="font-semibold text-ink">{g.rows.length}</span>
+                  </span>
+                ))}
+              </div>
+            </div>
+            <dl className="divide-y divide-line/60">
+              {(
+                [
+                  [t("teamDetail.squadAvgAge"), squadAvgAge],
+                  [
+                    t("teamDetail.squadForeigners"),
+                    squad.length ? `${squadForeigners} / ${squad.length}` : null,
+                  ],
+                  [
+                    t("teamDetail.squadAvgValue"),
+                    valuedSquad.length
+                      ? formatMarketValue(squadValue / valuedSquad.length)
+                      : null,
+                  ],
+                  [
+                    t("teamDetail.squadTopValue"),
+                    topValued
+                      ? `${topValued.player_name ?? ""} · ${formatMarketValue(marketValues[topValued.player_id])}`
+                      : null,
+                  ],
+                ] as [string, string | null][]
+              )
+                .filter(([, v]) => v != null && v !== "")
+                .map(([label, value]) => (
+                  <div key={label} className="flex items-center justify-between gap-3 px-4 py-2.5">
+                    <dt className="text-[11px] font-medium uppercase tracking-[0.1em] text-ink-3">
+                      {label}
+                    </dt>
+                    <dd className="text-right text-[13px] font-semibold text-ink">{value}</dd>
+                  </div>
+                ))}
+            </dl>
+          </div>
+
+          <div className="rounded-xl border border-line bg-card lg:col-span-2">
+            <div className="border-b border-line bg-veil px-3 py-2">
+              <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-ink-3">
+                {t("tff1.drawerSquad", { count: squad.length })}
+              </div>
+            </div>
+            <div className="space-y-3 p-3">
+              {posGroups.map((g) => (
+                <div key={g.code}>
+                  <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-3">
+                    {groupLabel(g.code)}
+                  </div>
+                  <div className="grid gap-1.5 md:grid-cols-2">
+                    {g.rows.map((p) => {
+                      const pi = infoById[p.player_id];
+                      const flagUrl = getCountryFlagUrl(pi?.country ?? null);
+                      const name = p.player_name ?? p.player_id;
+                      return (
+                        <div
+                          key={p.player_id}
+                          className="flex items-center gap-2.5 rounded-lg border border-line/70 bg-card-2/40 px-2.5 py-1.5"
+                        >
+                          {pi?.photo ? (
+                            <Image
+                              src={pi.photo}
+                              alt={name}
+                              width={34}
+                              height={34}
+                              className="h-[34px] w-[34px] shrink-0 rounded-full border border-line bg-card-2 object-cover"
+                            />
+                          ) : (
+                            <span className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full border border-line bg-veil text-[11px] font-semibold text-ink-3">
+                              {name
+                                .split(/\s+/)
+                                .map((x) => x[0])
+                                .filter(Boolean)
+                                .slice(0, 2)
+                                .join("")
+                                .toUpperCase()}
+                            </span>
+                          )}
+                          <div className="min-w-0 flex-1">
+                            <span className="flex items-center gap-1.5">
+                              <Link
+                                href={`/dashboard/tff-1-lig/player/${p.player_id}`}
+                                className="truncate text-[13px] font-medium text-accent-ink transition hover:text-accent hover:underline"
+                                title={name}
+                              >
+                                {name}
+                              </Link>
+                              {flagUrl && pi?.country ? (
+                                <Image
+                                  src={flagUrl}
+                                  alt={pi.country}
+                                  title={pi.country}
+                                  width={16}
+                                  height={12}
+                                  className="h-3 w-4 shrink-0 rounded-[2px] object-cover"
+                                />
+                              ) : null}
+                            </span>
+                            <span className="block text-[11px] text-ink-3">
+                              {positionLabel(p, locale)}
+                              {pi?.age != null ? ` · ${pi.age}` : ""}
+                            </span>
+                          </div>
+                          <span className="shrink-0 text-[12px] font-semibold tabular-nums text-ink-2">
+                            {formatMarketValue(marketValues[p.player_id])}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
         <div className="rounded-2xl border border-line bg-card p-6">
         <h2 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-3">
-          {t("tff1.drawerSquad", { count: squad.length })}
+          {t("tff1.squadStatsTitle")}
         </h2>
         <div className="mt-2 overflow-x-auto rounded-lg border border-line">
           <table className="min-w-full border-collapse text-[13px]">
@@ -422,6 +625,7 @@ export default async function Tff1TeamPage({
         </div>
         <p className="mt-4 text-[12px] text-ink-3">{t("tff1.tmNote")}</p>
         </div>
+        </>
       ) : null}
 
       {activeTab === "results" ? (

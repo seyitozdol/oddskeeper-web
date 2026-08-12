@@ -35,6 +35,10 @@ const ENTRIES: Entry[] = [
         en: "The squad tab's left panel grew: a large logo like the team showcase, position distribution badges, total and per-player market value, most valuable player and website link.",
         tr: "Kadro sekmesindeki sol panel genişledi: vitrin sayfasındaki gibi büyük logo, pozisyon dağılımı rozetleri, toplam ve oyuncu başına piyasa değeri, en değerli oyuncu ve site linki.",
       },
+      {
+        en: "The same squad design came to 1. Lig team pages too: team info panel on the left, player cards with photo, flag, age and market value grouped by position; the season stats table stays below.",
+        tr: "Aynı kadro tasarımı 1. Lig takım sayfalarına da geldi: solda takım bilgi paneli, pozisyona gruplu foto/bayrak/yaş/piyasa değeri kartları; sezon istatistik tablosu altta duruyor.",
+      },
     ],
   },
   {
