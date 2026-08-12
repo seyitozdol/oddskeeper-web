@@ -28,8 +28,12 @@ const ENTRIES: Entry[] = [
         tr: "Süper Lig takım sayfası da 1. Lig ile aynı düzene geçti: tüm sekmeler (Team Statistics, Squad, Results, Fixture...) sabit sol mini menüye taşındı; \"Back to teams\" butonu kaldırıldı.",
       },
       {
-        en: "League logos next to team names are bigger and switched to versions that stay readable on dark backgrounds (self-hosted).",
-        tr: "Takım adının yanındaki lig logoları büyütüldü ve koyu arka planda da okunur sürümlerle değiştirildi (kendi sunucumuzdan).",
+        en: "League logos next to team names are bigger and render flat white on dark themes (colored on light), so they stay readable everywhere.",
+        tr: "Takım adının yanındaki lig logoları büyütüldü; koyu temalarda düz beyaz, açık temada renkli görünüyor, her yerde okunur.",
+      },
+      {
+        en: "Left menu items have small icons in the same color as the text.",
+        tr: "Sol menü öğelerinin yanında metinle aynı renkte küçük ikonlar var.",
       },
     ],
   },
