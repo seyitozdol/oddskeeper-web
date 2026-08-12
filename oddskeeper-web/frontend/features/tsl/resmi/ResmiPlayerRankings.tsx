@@ -7,7 +7,8 @@ import SortableRankingTable, {
 } from "@/components/rankings/SortableRankingTable";
 import { formatMetric } from "@/features/tsl/lib";
 import type { ResmiPlayerRankingsBundle } from "@/features/tsl/server/resmiLoaders";
-import { PlayerNameLink, TeamNameLink } from "./parts";
+import { Flag, PlayerFace, PlayerNameLink, TeamNameLink } from "./parts";
+import TeamCrest from "@/features/tsl/shared/TeamCrest";
 
 export default async function ResmiPlayerRankings({
   data,
@@ -15,7 +16,10 @@ export default async function ResmiPlayerRankings({
   data: ResmiPlayerRankingsBundle;
 }) {
   const t = await getT();
-  const { catalog, metricKey, metric, rows, playerHrefById, teamHrefById, basePath, season } = data;
+  const {
+    catalog, metricKey, metric, rows, playerHrefById, teamHrefById, basePath, season,
+    photoById, nationalityById, teamLogoById,
+  } = data;
 
   const options = catalog.map((c) => ({
     key: c.metricKey,
@@ -50,13 +54,19 @@ export default async function ResmiPlayerRankings({
   const tableRows: RankingRow[] = ranked.map((r, i) => {
     const cells = [
       <span key="rank" className="font-semibold">{i + 1}</span>,
-      <PlayerNameLink
-        key="player"
-        name={r.playerName}
-        href={playerHrefById[r.playerId] ?? null}
-        className="font-medium text-accent-ink hover:text-accent"
-      />,
-      <TeamNameLink key="team" name={r.teamName} href={r.teamId ? teamHrefById[r.teamId] ?? null : null} className="text-ink-2" />,
+      <span key="player" className="flex items-center gap-2">
+        <PlayerFace photo={photoById[r.playerId] ?? null} name={r.playerName} size={26} />
+        <PlayerNameLink
+          name={r.playerName}
+          href={playerHrefById[r.playerId] ?? null}
+          className="font-medium text-accent-ink hover:text-accent"
+        />
+        <Flag nationality={nationalityById[r.playerId] ?? null} />
+      </span>,
+      <span key="team" className="flex items-center gap-1.5">
+        <TeamCrest logo={r.teamId ? teamLogoById[r.teamId] ?? null : null} name={r.teamName} size="xs" />
+        <TeamNameLink name={r.teamName} href={r.teamId ? teamHrefById[r.teamId] ?? null : null} className="text-ink-2" />
+      </span>,
       ...(showMatches ? [<span key="matches" className="tabular-nums text-ink-2">{r.matches ?? "—"}</span>] : []),
       <span key="total" className="font-semibold text-ink">{formatMetric(r.total, r.valueFormat)}</span>,
       ...(showPerMatch ? [<span key="perMatch" className="tabular-nums">{formatMetric(r.perMatch, "decimal")}</span>] : []),
@@ -82,7 +92,12 @@ export default async function ResmiPlayerRankings({
       ...(showPer90 ? [r.per90] : []),
       ...(showVsAvg ? [r.vsAvgPct] : []),
     ];
-    return { id: `${r.playerId}-${i}`, cells, sortValues };
+    return {
+      id: `${r.playerId}-${i}`,
+      cells,
+      sortValues,
+      searchText: `${r.playerName} ${r.teamName}`,
+    };
   });
 
   return (
@@ -107,7 +122,13 @@ export default async function ResmiPlayerRankings({
       ) : null}
 
       <div className="rounded-2xl border border-line">
-        <SortableRankingTable columns={columns} rows={tableRows} initialSortIndex={0} initialSortDir="asc" />
+        <SortableRankingTable
+          columns={columns}
+          rows={tableRows}
+          initialSortIndex={0}
+          initialSortDir="asc"
+          searchPlaceholder={t("tsl.searchPlaceholder")}
+        />
       </div>
     </section>
   );

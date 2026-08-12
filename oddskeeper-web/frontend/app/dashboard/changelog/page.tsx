@@ -21,6 +21,24 @@ const TAG_NEW_TOOL: L = { en: "New tool", tr: "Yeni araç" };
 const ENTRIES: Entry[] = [
   {
     date: { en: "12 August", tr: "12 Ağustos" },
+    title: { en: "Player Rankings polish", tr: "Player Rankings iyileştirmeleri" },
+    items: [
+      {
+        en: "Player rows now show the player photo and nationality flag (like the Players section), and team logos appear next to team names (Süper Lig + 1. Lig).",
+        tr: "Oyuncu satırlarında artık oyuncu fotoğrafı ve bayrağı görünüyor (Players bölümündeki gibi); takım adlarının yanına takım logoları eklendi (Süper Lig + 1. Lig).",
+      },
+      {
+        en: "Metric names in the dropdown are properly translated; Turkish labels like \"Ortalama Reyting\" no longer appear in the English interface.",
+        tr: "Metrik adları dropdown'da düzgün çevriliyor; İngilizce arayüzde \"Ortalama Reyting\" gibi Türkçe etiketler artık çıkmıyor.",
+      },
+      {
+        en: "A search box was added above the rankings table; it filters by player or team name as you type.",
+        tr: "Sıralama tablosunun üstüne arama kutusu eklendi; yazdıkça oyuncu veya takım adına göre filtreliyor.",
+      },
+    ],
+  },
+  {
+    date: { en: "12 August", tr: "12 Ağustos" },
     title: { en: "UI and squad fixes", tr: "Arayüz ve kadro düzeltmeleri" },
     items: [
       {

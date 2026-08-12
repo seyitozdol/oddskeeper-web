@@ -379,6 +379,10 @@ export type ResmiPlayerRankingsBundle = {
   rows: TslLeaderRow[];
   playerHrefById: Record<string, string | null>;
   teamHrefById: Record<string, string | null>;
+  // Gorsel zenginlestirme: oyuncu foto/bayrak + takim logosu (Players gibi).
+  photoById: Record<string, string | null>;
+  nationalityById: Record<string, string | null>;
+  teamLogoById: Record<string, string | null>;
 };
 
 export async function loadResmiPlayerRankings(
@@ -403,8 +407,19 @@ export async function loadResmiPlayerRankings(
     season
   );
   const playerHrefById: Record<string, string | null> = {};
-  for (const r of rows) playerHrefById[r.playerId] = playerHrefFor(config, r.playerId, assets[r.playerId]?.slug ?? null);
-  return { season, basePath: config.basePath, catalog, metricKey, metric, rows, playerHrefById, teamHrefById };
+  const photoById: Record<string, string | null> = {};
+  const nationalityById: Record<string, string | null> = {};
+  const teamLogoById: Record<string, string | null> = {};
+  for (const r of rows) {
+    playerHrefById[r.playerId] = playerHrefFor(config, r.playerId, assets[r.playerId]?.slug ?? null);
+    photoById[r.playerId] = assets[r.playerId]?.photo ?? null;
+    nationalityById[r.playerId] = assets[r.playerId]?.nationality ?? null;
+    if (r.teamId) teamLogoById[r.teamId] = meta[r.teamId]?.logo ?? null;
+  }
+  return {
+    season, basePath: config.basePath, catalog, metricKey, metric, rows,
+    playerHrefById, teamHrefById, photoById, nationalityById, teamLogoById,
+  };
 }
 
 export type ResmiTeamRankingsBundle = {
