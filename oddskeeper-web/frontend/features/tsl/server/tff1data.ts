@@ -141,9 +141,12 @@ export async function tff1Matches(season: string, meta: Record<string, TslTeamMe
 
 export async function tff1Upcoming(season: string, meta: Record<string, TslTeamMeta>): Promise<TslMatch[]> {
   const sb = await createClient();
+  // fixture_status bayat kalabiliyor (oynanmis mac hala "scheduled"); 3+ saat
+  // once baslamis maclari sorguda ele (bkz. getResmiUpcoming'deki ayni filtre).
+  const cutoff = new Date(Date.now() - 3 * 3600_000).toISOString();
   const { data } = await sb.schema("analytics").from("tff1_fixtures_v1")
     .select("fixture_id, fixture_datetime, home_team_id, home_team_name, away_team_id, away_team_name, fixture_status")
-    .eq("season_label", season).order("fixture_datetime", { ascending: true }).limit(80);
+    .eq("season_label", season).gte("fixture_datetime", cutoff).order("fixture_datetime", { ascending: true }).limit(80);
   return (data ?? []).filter((r) => (r.fixture_status ?? "").toLowerCase() !== "finished").map((r) => {
     const h = String(r.home_team_id), a = String(r.away_team_id);
     return {

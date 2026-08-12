@@ -145,6 +145,10 @@ export async function getResmiUpcoming(
   meta: Record<string, TslTeamMeta>
 ): Promise<TslMatch[]> {
   const supabase = await createClient();
+  // fixture_status kaynakta bayat kalabiliyor (oynanmis mac hala "scheduled").
+  // Baslamasi 3+ saat gecmis maclari sorguda ele: hem oynanmis maclar listede
+  // kalmaz, hem de limit penceresi gecmis maclarla dolup paneli bosaltmaz.
+  const cutoff = new Date(Date.now() - 3 * 3600_000).toISOString();
   const { data, error } = await supabase
     .schema("analytics")
     .from("tsl_ss_fixtures_v1")
@@ -152,6 +156,7 @@ export async function getResmiUpcoming(
       "fixture_id, fixture_datetime, home_team_id, home_team_name, away_team_id, away_team_name, fixture_status, round_number"
     )
     .eq("season_label", season)
+    .gte("fixture_datetime", cutoff)
     .order("fixture_datetime", { ascending: true })
     .limit(60);
   if (error || !data) return [];
