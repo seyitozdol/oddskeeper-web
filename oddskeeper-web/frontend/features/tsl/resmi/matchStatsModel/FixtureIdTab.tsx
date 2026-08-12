@@ -13,6 +13,8 @@ import {
   deleteManualFixture,
   manualSlug,
   saveFixtureInputs,
+  completedRoundSet,
+  fixtureStarted,
   type FixtureRow,
   type FixtureInput,
   type Bets10Link,
@@ -118,6 +120,9 @@ export default function FixtureIdTab({
   const { t } = useI18n();
   const [round, setRound] = useState(1);
   const [fixtures, setFixtures] = useState<FixtureRow[]>([]);
+  // Tum sezon fikstürü: tamamlanan haftalari (son macin baslama saati gecen)
+  // hesaplayip round dropdown'inda en alta itmek icin.
+  const [allFixtures, setAllFixtures] = useState<FixtureRow[]>([]);
   const [manuals, setManuals] = useState<FixtureRow[]>([]);
   const [teams, setTeams] = useState<TeamOption[]>([]);
   const [inputs, setInputs] = useState<Record<string, FixtureInput>>({});
@@ -143,11 +148,32 @@ export default function FixtureIdTab({
     fetchTeamLogos(league).then(setTeamLogos);
     fetchTeams(league).then(setTeams);
     reloadManuals();
+    fetchFixtures(league).then(setAllFixtures);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [league]);
   useEffect(() => {
     fetchFixtures(league, round).then(setFixtures);
   }, [league, round]);
+
+  // Round dropdown sirasi: aktif haftalar (kucukten buyuge) ustte, tamamlanan
+  // haftalar en altta. Round listesi fikstürden turetilir (TFF1 38 hafta).
+  const completedRounds = useMemo(() => completedRoundSet(allFixtures), [allFixtures]);
+  const roundOptions = useMemo(() => {
+    const rounds = allFixtures.length
+      ? [...new Set(allFixtures.map((f) => f.round))].sort((a, b) => a - b)
+      : ROUNDS;
+    return [...rounds.filter((r) => !completedRounds.has(r)), ...rounds.filter((r) => completedRounds.has(r))];
+  }, [allFixtures, completedRounds]);
+
+  // Acilis secimi: ilk aktif (tamamlanmamis) hafta. Yalniz bir kez uygulanir,
+  // kullanicinin sonraki secimini ezmez.
+  const roundInitRef = useRef(false);
+  useEffect(() => {
+    if (roundInitRef.current || !allFixtures.length) return;
+    roundInitRef.current = true;
+    const first = roundOptions.find((r) => !completedRounds.has(r));
+    if (first != null) setRound(first);
+  }, [allFixtures, roundOptions, completedRounds]);
 
   async function addManual() {
     if (!nh.name.trim() || !na.name.trim()) return;
@@ -191,13 +217,16 @@ export default function FixtureIdTab({
       awayOdds: lk.awayOdds,
     });
   }
+  // Baslamis maca Bets10 onerisi sunulmaz/uygulanmaz: canli/sonuclanmis oranlar
+  // (1.00 gibi) mac-oncesi kaydi kirletmesin (deadline = baslama saati).
   function applyAllVisible() {
     for (const f of fixtures) {
+      if (fixtureStarted(f)) continue;
       const lk = links[f.fixtureId];
       if (lk) applyLink(f.fixtureId, lk);
     }
   }
-  const visibleWithLink = fixtures.filter((f) => links[f.fixtureId]).length;
+  const visibleWithLink = fixtures.filter((f) => !fixtureStarted(f) && links[f.fixtureId]).length;
 
   async function save() {
     setStatus("saving");
@@ -226,7 +255,7 @@ export default function FixtureIdTab({
           value={round}
           onChange={(e) => setRound(parseInt(e.target.value))}
         >
-          {ROUNDS.map((r) => (
+          {roundOptions.map((r) => (
             <option key={r} value={r} className="bg-field text-ink">{r}</option>
           ))}
         </select>
@@ -283,7 +312,8 @@ export default function FixtureIdTab({
           <tbody>
             {rows.map((f) => {
               const v = inputs[f.fixtureId];
-              const lk = links[f.fixtureId];
+              // Baslamis macta oneri gizlenir (bayat/canli oran uyarisi dahil).
+              const lk = fixtureStarted(f) ? undefined : links[f.fixtureId];
               return (
                 <tr key={f.fixtureId} className="border-t border-line/60 hover:bg-veil">
                   <td className="px-2 py-1.5 whitespace-nowrap text-ink">

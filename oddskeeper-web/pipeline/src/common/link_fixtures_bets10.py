@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import os
 import sys
+from datetime import datetime, timezone
 
 import psycopg2
 from dotenv import load_dotenv
@@ -46,7 +47,8 @@ def load_bets10_events(cur) -> dict[int, dict]:
     cur.execute(
         """
         select o.event_id, o.site_event_id, o.selection, o.odds,
-               u.home_team_name, u.away_team_name, u.start_ts::date, u.tournament_name
+               u.home_team_name, u.away_team_name, u.start_ts::date, u.start_ts,
+               u.tournament_name
         from analytics.upcoming_event_odds_v1 o
         join tracker.upcoming_events u on u.event_id = o.event_id
         where o.site = 'bets10' and o.market_name = 'Maç Sonucu'
@@ -54,10 +56,11 @@ def load_bets10_events(cur) -> dict[int, dict]:
         """
     )
     ev: dict[int, dict] = {}
-    for eid, seid, sel, odds, home, away, d, tour in cur.fetchall():
+    for eid, seid, sel, odds, home, away, d, start_ts, tour in cur.fetchall():
         e = ev.setdefault(eid, {
             "event_id": eid, "site_event_id": seid,
-            "home": home, "away": away, "date": d, "tournament": tour,
+            "home": home, "away": away, "date": d, "start_ts": start_ts,
+            "tournament": tour,
             "sels": [],
         })
         if seid and not e["site_event_id"]:
@@ -171,7 +174,19 @@ def main() -> None:
     cur = conn.cursor()
 
     bets10 = load_bets10_events(cur)
+
+    # DEADLINE DONMASI: baslama saati gecen maclarin eventleri aday havuzundan
+    # cikarilir. Bets10 canli/sonuclanmis oranlari (1.00 gibi) linki kirletmesin;
+    # tabloda duran son mac-oncesi kayit oldugu gibi donmus kalir (upsert yok).
+    now = datetime.now(timezone.utc)
+    started = sum(1 for e in bets10.values()
+                  if e["start_ts"] is not None and e["start_ts"] <= now)
+    bets10 = {k: e for k, e in bets10.items()
+              if e["start_ts"] is None or e["start_ts"] > now}
+
     rows = resolve_tsl(cur, bets10) + resolve_tff1(cur, bets10)
+    if started:
+        print(f"baslamis mac (donduruldu, guncellenmeyecek): {started}")
 
     print(f"Bets10 futbol maçı (oranlı): {len(bets10)}")
     print(f"eşleşen fikstür: {len(rows)} "

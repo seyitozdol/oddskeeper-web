@@ -44,6 +44,7 @@ import {
   fetchFixtures,
   fetchManualFixtures,
   setManualFixtureProxy,
+  completedRoundSet,
   fetchFixtureInputs,
   logImport,
   resolveReferee,
@@ -451,16 +452,28 @@ export default function ResmiMatchStatsModel({
     loadConfig();
   }, [loadConfig, loadFixtures, LEAGUE]);
 
+  // Tamamlanan haftalar (son macin baslama saati gecen): dropdown'da en altta
+  // "Archive" grubuna iner; acilis secimi de aktif haftadan yapilir.
+  const completedRounds = useMemo(() => completedRoundSet(fixtures), [fixtures]);
+  const isArchived = useCallback(
+    (f: FixtureRow) => !f.manual && completedRounds.has(f.round),
+    [completedRounds]
+  );
+
   // Takımlar SADECE fikstürden gelir: fikstürler yüklenince ilk RESMİ maçı seç
-  // (manuel fikstürler listenin başında ama açılışta stat'lı bir maç seçilsin).
+  // (manuel fikstürler listenin başında ama açılışta stat'lı bir maç seçilsin;
+  // tamamlanan haftalar atlanır).
   useEffect(() => {
     if (!selectedFixtureId && fixtures.length) {
-      const f = fixtures.find((x) => !x.manual) ?? fixtures[0];
+      const f =
+        fixtures.find((x) => !x.manual && !isArchived(x)) ??
+        fixtures.find((x) => !x.manual) ??
+        fixtures[0];
       setSelectedFixtureId(f.fixtureId);
       setHomeSlug(f.homeProxySlug || f.homeSlug);
       setAwaySlug(f.awayProxySlug || f.awaySlug);
     }
-  }, [fixtures, selectedFixtureId]);
+  }, [fixtures, selectedFixtureId, isArchived]);
 
   // Seçili fikstürün oranlarını fixture_inputs'tan doldur (geç yüklenmeyi de yakalar).
   useEffect(() => {
@@ -1064,11 +1077,20 @@ export default function ResmiMatchStatsModel({
                 <div>
                   <label className={lblCls}>{t("msm.tab_fixtures")}</label>
                   <select className={`${selCls} w-full`} value={selectedFixtureId} onChange={(e) => selectFixture(e.target.value)}>
-                    {fixtures.map((f) => (
+                    {fixtures.filter((f) => !isArchived(f)).map((f) => (
                       <option key={f.fixtureId} value={f.fixtureId} className="bg-field text-ink">
                         {f.manual ? "M" : `R${f.round}`} · {f.label}
                       </option>
                     ))}
+                    {fixtures.some(isArchived) && (
+                      <optgroup label={t("msm.archive")} className="bg-field text-ink">
+                        {fixtures.filter(isArchived).map((f) => (
+                          <option key={f.fixtureId} value={f.fixtureId} className="bg-field text-ink">
+                            R{f.round} · {f.label}
+                          </option>
+                        ))}
+                      </optgroup>
+                    )}
                   </select>
                 </div>
 

@@ -84,6 +84,30 @@ export interface FixtureInput {
   awayOdds: number | null;
 }
 
+// Mac basladi mi? Deadline = baslama saati; skora bakilmaz (fixture_status
+// kaynakta bayat kalabiliyor, ona guvenilmez).
+export function fixtureStarted(f: FixtureRow): boolean {
+  if (!f.datetime) return false;
+  const t = new Date(f.datetime).getTime();
+  return Number.isFinite(t) && t <= Date.now();
+}
+
+// Tamamlanan haftalar: round'un SON macinin baslama saati gectiyse o round
+// "tamamlanan hafta" sayilir. Manuel fikstürler (round=0, datetime yok) haric.
+export function completedRoundSet(fixtures: FixtureRow[]): Set<number> {
+  const last: Record<number, number> = {};
+  for (const f of fixtures) {
+    if (f.manual || !f.datetime) continue;
+    const t = new Date(f.datetime).getTime();
+    if (!Number.isFinite(t)) continue;
+    if (!(f.round in last) || t > last[f.round]) last[f.round] = t;
+  }
+  const now = Date.now();
+  const out = new Set<number>();
+  for (const [r, t] of Object.entries(last)) if (t <= now) out.add(Number(r));
+  return out;
+}
+
 export async function fetchFixtures(league: string, round?: number): Promise<FixtureRow[]> {
   let q = sb()
     .from(FIXTURE_VIEW[league] ?? "league_fixtures_v1")
