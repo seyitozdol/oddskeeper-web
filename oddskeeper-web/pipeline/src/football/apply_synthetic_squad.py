@@ -93,22 +93,79 @@ def tokens(name: str) -> set[str]:
     return {t for t in norm(name).split() if len(t) >= 4}
 
 
-def natural_exists(cur, source_team_id: str, tm_name: str) -> bool:
-    """API-Football (dogal) kadroda bu oyuncu var mi? Kisaltma + ters-sira toleransli."""
+def find_natural(cur, team_slug: str, tm_name: str):
+    """API-Football (dogal) kadroda bu oyuncu var mi? Kisaltma + ters-sira toleransli.
+
+    Takimin TUM aktif mapping satirlari uzerinden bakar: sentetikler farkli bir
+    source_team_id (or. Amed sofascore 207011) altinda dururken dogal kadro
+    apifootball id (3579) altinda olabiliyor; tek team_id'ye bakmak emeklilik
+    kontrolunu kor birakiyordu (R. Raveloson / Rayan Raveloson cifti).
+    Eslesirse (source_player_id, player_name) doner, yoksa None.
+    """
     cur.execute(
-        "select player_name from football.team_squad_current "
-        "where source='apifootball' and source_team_id=%s",
-        (source_team_id,),
+        """select s.source_player_id, s.player_name
+           from football.team_squad_current s
+           join ref.team_mapping tm on tm.source_team_id = s.source_team_id and tm.is_active
+           where s.source='apifootball' and tm.team_slug=%s""",
+        (team_slug,),
     )
     tt = tokens(tm_name)
     rev = " ".join(reversed(norm(tm_name).split()))
-    for (nm,) in cur.fetchall():
+    for pid, nm in cur.fetchall():
         if _name_match(tm_name, nm) or _name_match(rev, nm):
-            return True
+            return pid, nm
         # guclu token kesisimi (ad-soyad sirasi tamamen farkli yazimlar)
         if tt and len(tt & tokens(nm)) >= min(2, len(tt)):
-            return True
-    return False
+            return pid, nm
+    return None
+
+
+def migrate_synthetic(cur, syn_pid: str, nat_id: str) -> None:
+    """Sentetik kimlik (tmX) altinda biriken veriyi dogal apifootball id'ye tasir.
+
+    Emeklilikte yalniz squad satirini silmek yetmiyor: bio (tam ad/uyruk/dogum),
+    TM piyasa degeri ve yurt disi sezon istatistikleri tm-id altinda kaliyor,
+    dogal kayit bos profil + bos LY Avg ile geliyordu (Salah vakasi).
+    """
+    # bio: dogal id'de bio yoksa sentetigin satirini tasi (tam ad da buradan gelir)
+    cur.execute("select 1 from football.player_bio where source='apifootball' and source_player_id=%s", (nat_id,))
+    if not cur.fetchone():
+        cur.execute(
+            "update football.player_bio set source_player_id=%s "
+            "where source='apifootball' and source_player_id=%s", (nat_id, syn_pid))
+    # TM piyasa degeri (apifootball_player_id unique: hedef doluysa sentetigi sil)
+    cur.execute("select 1 from football.player_market_values where apifootball_player_id=%s", (nat_id,))
+    if cur.fetchone():
+        cur.execute("delete from football.player_market_values where apifootball_player_id=%s", (syn_pid,))
+    else:
+        cur.execute(
+            "update football.player_market_values set apifootball_player_id=%s "
+            "where apifootball_player_id=%s", (nat_id, syn_pid))
+    # yurt disi gecmis sezon istatistikleri (PSM LY Avg fallback'i)
+    cur.execute(
+        "update football.player_foreign_season_stats set apifootball_player_id=%s "
+        "where apifootball_player_id=%s", (nat_id, syn_pid))
+    # PSM kalici referanslari: durum override'i (player_key) + ozel id (slug).
+    # Hedef anahtar zaten doluysa eskisini birakma, sil (cakisma guard'i).
+    cur.execute(
+        """update analytics.pm_player_status_overrides p set player_key=%s
+           where p.player_key=%s
+             and not exists (select 1 from analytics.pm_player_status_overrides q
+                             where q.league=p.league and q.player_key=%s)""",
+        (f"af-{nat_id}", f"af-{syn_pid}", f"af-{nat_id}"))
+    cur.execute("delete from analytics.pm_player_status_overrides where player_key=%s", (f"af-{syn_pid}",))
+    cur.execute(
+        "select player_slug from analytics.player_current_info_v1 "
+        "where apifootball_player_id=%s limit 1", (nat_id,))
+    row = cur.fetchone()
+    if row:
+        cur.execute(
+            """update analytics.pm_player_ids p set player_slug=%s
+               where p.player_slug like %s
+                 and not exists (select 1 from analytics.pm_player_ids q
+                                 where q.league=p.league and q.player_slug=%s)""",
+            (row[0], f"%--af{syn_pid}", row[0]))
+        cur.execute("delete from analytics.pm_player_ids where player_slug like %s", (f"%--af{syn_pid}",))
 
 
 def seed(cur) -> None:
@@ -168,9 +225,17 @@ def seed(cur) -> None:
 
 
 def apply(cur) -> None:
+    # Ayni team_slug icin birden fazla aktif mapping olabilir (opta + apifootball
+    # + sofascore id uzaylari). Sentetik satirlar DOGAL apifootball kadrosuyla
+    # ayni source_team_id altina yazilmali; yoksa ayni takim iki ayri id altinda
+    # bolunur (Amed 3579/207011 vakasi). has_nat=true satir sozlukte kazanir.
     cur.execute(
-        """select tm.team_slug, tm.source_team_id, tm.display_name
-           from ref.team_mapping tm where tm.is_active"""
+        """select tm.team_slug, tm.source_team_id, tm.display_name,
+                  exists(select 1 from football.team_squad_current s
+                         where s.source='apifootball'
+                           and s.source_team_id = tm.source_team_id) as has_nat
+           from ref.team_mapping tm where tm.is_active
+           order by has_nat asc"""
     )
     team_by_slug = {r[0]: (r[1], r[2]) for r in cur.fetchall()}
 
@@ -186,8 +251,10 @@ def apply(cur) -> None:
             continue
         src_team_id, team_name = team_by_slug[team_slug]
         syn_pid = f"tm{tm_id}"
-        if natural_exists(cur, src_team_id, name):
-            # API-Football yetisti: sentetigi emekli et.
+        nat = find_natural(cur, team_slug, name)
+        if nat:
+            # API-Football yetisti: veriyi dogal kimlige tasi, sentetigi emekli et.
+            migrate_synthetic(cur, syn_pid, nat[0])
             cur.execute(
                 "update football.squad_synthetic_players set active=false, retired_at=now() "
                 "where tm_player_id=%s", (tm_id,))
@@ -195,22 +262,24 @@ def apply(cur) -> None:
                 "delete from football.team_squad_current where source='synthetic-tm' "
                 "and source_player_id=%s", (syn_pid,))
             retired += 1
-            print(f"  emekli: {name} ({team_slug}) - API-Football kadroya ekledi")
+            print(f"  emekli: {name} ({team_slug}) -> apifootball {nat[0]} '{nat[1]}' (veri tasindi)")
             continue
-        cur.execute(
-            """insert into football.team_squad_current
-                 (source, source_team_id, team_name, source_player_id, player_name, position, fetched_at)
-               values ('synthetic-tm', %s, %s, %s, %s, %s, now())
-               on conflict do nothing""",
-            (src_team_id, team_name, syn_pid, name, pos),
-        )
-        # Mevcut sentetik satirin pozisyonu/adi guncellenmis olabilir (seed tekrar kostu).
+        # Mevcut sentetik satiri guncelle + dogru takim id'sine tasi (unique
+        # anahtar source_team_id icerdiginden once update, yoksa insert).
         cur.execute(
             """update football.team_squad_current
-               set position=%s, player_name=%s
+               set source_team_id=%s, team_name=%s, position=%s, player_name=%s
                where source='synthetic-tm' and source_player_id=%s""",
-            (pos, name, syn_pid),
+            (src_team_id, team_name, pos, name, syn_pid),
         )
+        if cur.rowcount == 0:
+            cur.execute(
+                """insert into football.team_squad_current
+                     (source, source_team_id, team_name, source_player_id, player_name, position, fetched_at)
+                   values ('synthetic-tm', %s, %s, %s, %s, %s, now())
+                   on conflict do nothing""",
+                (src_team_id, team_name, syn_pid, name, pos),
+            )
         # Dogum tarihi (TM deger eslesmesi + profil icin) - varsa dokunma.
         if birth:
             cur.execute(
