@@ -21,6 +21,16 @@ const TAG_NEW_TOOL: L = { en: "New tool", tr: "Yeni araç" };
 const ENTRIES: Entry[] = [
   {
     date: { en: "12 August", tr: "12 Ağustos" },
+    title: { en: "1. Lig team page shortcuts", tr: "1. Lig takım sayfası kısayolları" },
+    items: [
+      {
+        en: "Fixtures / Squad / Results shortcut chips were added right below the team showcase; these sections live under the long showcase panel and could look missing.",
+        tr: "Takım vitrininin hemen altına Fikstür / Kadro / Sonuçlar kısayol çipleri eklendi; bu bölümler uzun vitrin panelinin altında kaldığı için kaybolmuş gibi görünebiliyordu.",
+      },
+    ],
+  },
+  {
+    date: { en: "12 August", tr: "12 Ağustos" },
     title: { en: "Squad view redesign", tr: "Kadro görünümü yenilendi" },
     tag: TAG_NEW,
     items: [

@@ -141,6 +141,9 @@ export const tff1 = defineMessages({
     noFixtures: "No upcoming fixtures.",
     noMatchLog: "No match data.",
     teamFixturesSection: "Upcoming fixtures",
+    jumpSquad: "Squad",
+    jumpResults: "Results",
+    jumpFixtures: "Fixtures",
     noSeasonStatsTitle: "No stats in this league yet",
     noSeasonStatsBody:
       "This team has no played matches in the 1. Lig database yet (newly promoted, or its history is in another league). Upcoming fixtures are shown below.",
@@ -288,6 +291,9 @@ export const tff1 = defineMessages({
     noFixtures: "Yaklaşan fikstür yok.",
     noMatchLog: "Maç verisi yok.",
     teamFixturesSection: "Yaklaşan maçlar",
+    jumpSquad: "Kadro",
+    jumpResults: "Sonuçlar",
+    jumpFixtures: "Fikstür",
     noSeasonStatsTitle: "Bu ligde henüz istatistik yok",
     noSeasonStatsBody:
       "Bu takımın 1. Lig veri tabanında henüz oynanmış maçı yok (yeni çıktı ya da geçmişi başka ligde). Aşağıda yaklaşan maçları listeleniyor.",

@@ -281,10 +281,38 @@ export default async function Tff1TeamPage({
         locale={locale}
       />
 
+      {/* Bölüm kısayolları: kadro/sonuç/fikstür vitrinin altında kaldığından
+          "kayboldu" sanılıyordu; üstten tek tıkla inilir. */}
+      <nav className="flex flex-wrap items-center gap-2">
+        {teamFixtures.length > 0 ? (
+          <a
+            href="#team-fixtures"
+            className="rounded-lg border border-line bg-card px-3 py-1.5 text-[13px] font-medium text-ink-2 transition hover:border-line-strong hover:bg-card-2 hover:text-ink"
+          >
+            {t("tff1.jumpFixtures")}
+          </a>
+        ) : null}
+        <a
+          href="#team-squad"
+          className="rounded-lg border border-line bg-card px-3 py-1.5 text-[13px] font-medium text-ink-2 transition hover:border-line-strong hover:bg-card-2 hover:text-ink"
+        >
+          {t("tff1.jumpSquad")}
+        </a>
+        <a
+          href="#team-results"
+          className="rounded-lg border border-line bg-card px-3 py-1.5 text-[13px] font-medium text-ink-2 transition hover:border-line-strong hover:bg-card-2 hover:text-ink"
+        >
+          {t("tff1.jumpResults")}
+        </a>
+      </nav>
+
       <div className="rounded-2xl border border-line bg-card p-6">
         {teamFixtures.length > 0 ? (
           <>
-            <h2 className="mt-8 text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-3">
+            <h2
+              id="team-fixtures"
+              className="mt-8 scroll-mt-24 text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-3"
+            >
               {t("tff1.teamFixturesSection")}
             </h2>
             <div className="mt-2 overflow-x-auto rounded-lg border border-line">
@@ -320,7 +348,10 @@ export default async function Tff1TeamPage({
           </>
         ) : null}
 
-        <h2 className="mt-8 text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-3">
+        <h2
+          id="team-squad"
+          className="mt-8 scroll-mt-24 text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-3"
+        >
           {t("tff1.drawerSquad", { count: squad.length })}
         </h2>
         <div className="mt-2 overflow-x-auto rounded-lg border border-line">
@@ -381,7 +412,10 @@ export default async function Tff1TeamPage({
           </table>
         </div>
 
-        <h2 className="mt-8 text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-3">
+        <h2
+          id="team-results"
+          className="mt-8 scroll-mt-24 text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-3"
+        >
           {t("tff1.drawerResults", { count: teamMatches.length })}
         </h2>
         <div className="mt-2 max-h-96 overflow-y-auto rounded-lg border border-line">
