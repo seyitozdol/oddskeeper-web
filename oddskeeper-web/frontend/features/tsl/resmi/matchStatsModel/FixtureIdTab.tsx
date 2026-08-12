@@ -21,6 +21,7 @@ import {
   type TeamOption,
 } from "./queries";
 import TeamCrest from "@/features/tsl/shared/TeamCrest";
+import { TenText } from "@/components/TenBadge";
 import { getTeamLogoPath } from "@/features/player-detail/utils/getTeamLogoPath";
 import RefreshNowButton from "@/features/upcoming-events/components/RefreshNowButton";
 
@@ -270,7 +271,7 @@ export default function FixtureIdTab({
           title={t("msm.betsHint")}
           className={`${isAdmin ? "" : "ml-auto "}rounded-md border border-line bg-card px-3 py-1.5 text-sm font-medium text-ink hover:bg-veil disabled:opacity-40`}
         >
-          {t("msm.betsFill")}{visibleWithLink > 0 ? ` (${visibleWithLink})` : ""}
+          <TenText text={t("msm.betsFill")} />{visibleWithLink > 0 ? ` (${visibleWithLink})` : ""}
         </button>
         <button
           onClick={save}

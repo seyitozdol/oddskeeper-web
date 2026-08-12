@@ -2,6 +2,8 @@
 // (nav-permissions "changelog" anahtari + proxy path kilidi). Icerik son
 // kullaniciya yararini anlatir bicimde, Turkce.
 
+import { TenText } from "@/components/TenBadge";
+
 type Entry = {
   date: string;
   title: string;
@@ -259,7 +261,7 @@ export default function ChangelogPage() {
                   className="flex gap-2 text-[13px] leading-relaxed text-ink-2"
                 >
                   <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-ink-3" />
-                  <span>{item}</span>
+                  <span><TenText text={item} /></span>
                 </li>
               ))}
             </ul>

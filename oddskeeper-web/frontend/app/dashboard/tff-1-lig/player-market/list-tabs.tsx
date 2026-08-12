@@ -9,6 +9,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useI18n } from "@/lib/i18n/LanguageProvider";
 import { exportFileName } from "@/lib/model-history";
+import { TenText } from "@/components/TenBadge";
 import {
   fetchAllCurrentPlayers,
   fetchFixtureInputs,
@@ -793,7 +794,7 @@ export function FixtureIdTab({ fixtures }: { fixtures: UpcomingFixture[] }) {
           title={t("playerMarket.betsHint")}
           className="ml-auto rounded-lg border border-line bg-card px-3 py-1.5 text-[13px] font-medium text-ink transition hover:bg-veil disabled:opacity-40"
         >
-          {t("playerMarket.betsFill")}{visibleWithLink > 0 ? ` (${visibleWithLink})` : ""}
+          <TenText text={t("playerMarket.betsFill")} />{visibleWithLink > 0 ? ` (${visibleWithLink})` : ""}
         </button>
       </div>
 
