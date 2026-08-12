@@ -110,7 +110,14 @@ function TeamInfoCard({
   const foreigners = squad.filter(
     (r) => r.nationality && !TR_NATION.has(r.nationality.toLowerCase())
   ).length;
-  const totalValue = squad.reduce((s, r) => s + (r.market_value_eur ?? 0), 0);
+  const valued = squad.filter((r) => (r.market_value_eur ?? 0) > 0);
+  const totalValue = valued.reduce((s, r) => s + (r.market_value_eur ?? 0), 0);
+  const topPlayer = valued.slice().sort((a, b) => (b.market_value_eur ?? 0) - (a.market_value_eur ?? 0))[0];
+
+  // Pozisyon dagilimi (GK/DF/MF/FW) — kadro kompozisyonu tek bakista.
+  const posCounts: Record<string, number> = {};
+  for (const r of squad) posCounts[r.position_group] = (posCounts[r.position_group] ?? 0) + 1;
+  const posOrder = ["GOALKEEPER", "DEFENDER", "MIDFIELDER", "FORWARD"];
 
   const infoRows: [string, string | null][] = [
     [t("teamDetail.labelFounded"), profile?.founded_year ? String(profile.founded_year) : null],
@@ -120,41 +127,85 @@ function TeamInfoCard({
       profile?.capacity ? profile.capacity.toLocaleString("en-US") : null,
     ],
     [t("teamDetail.labelHeadCoach"), profile?.head_coach ?? null],
-    [t("teamDetail.squadSize"), squad.length ? String(squad.length) : null],
     [t("teamDetail.squadAvgAge"), avgAge],
-    [t("teamDetail.squadForeigners"), squad.length ? String(foreigners) : null],
+    [t("teamDetail.squadForeigners"), squad.length ? `${foreigners} / ${squad.length}` : null],
     [
-      t("teamDetail.labelMarketValue"),
-      totalValue > 0 ? formatMarketValue(totalValue) : profile?.market_value_display ?? null,
+      t("teamDetail.squadAvgValue"),
+      valued.length ? formatMarketValue(totalValue / valued.length) : null,
+    ],
+    [
+      t("teamDetail.squadTopValue"),
+      topPlayer
+        ? `${topPlayer.player_name} · ${formatMarketValue(topPlayer.market_value_eur)}`
+        : null,
     ],
   ];
 
   return (
-    <div className="rounded-xl border border-line bg-card">
-      <div className="flex flex-col items-center gap-2 border-b border-line px-4 py-5 text-center">
+    <div className="overflow-hidden rounded-xl border border-line bg-card">
+      {/* Buyuk logo: takim detay vitrinindeki hero kutusuyla ayni dil. */}
+      <div className="flex flex-col items-center gap-4 border-b border-line bg-gradient-to-b from-card-2 to-card px-4 pb-5 pt-6 text-center">
         {logoPath ? (
-          <Image
-            src={logoPath}
-            alt={teamName}
-            width={72}
-            height={72}
-            className="h-16 w-16 object-contain"
-          />
+          <div className="flex h-[160px] w-[160px] items-center justify-center overflow-hidden rounded-2xl border border-line bg-gradient-to-b from-card-2 to-canvas p-5">
+            <Image
+              src={logoPath}
+              alt={teamName}
+              width={120}
+              height={120}
+              className="h-full w-full object-contain"
+            />
+          </div>
         ) : null}
-        <div className="text-lg font-semibold leading-tight text-ink">{teamName}</div>
+        <div>
+          <div className="text-xl font-bold leading-tight tracking-tight text-ink">{teamName}</div>
+          {squad.length ? (
+            <div className="mt-1 text-[12px] text-ink-3">
+              {t("teamDetail.squadSize")}: {squad.length}
+              {totalValue > 0 ? ` · ${formatMarketValue(totalValue)}` : ""}
+            </div>
+          ) : null}
+        </div>
+        {/* Pozisyon dagilimi rozetleri */}
+        {squad.length ? (
+          <div className="flex flex-wrap items-center justify-center gap-1.5">
+            {posOrder
+              .filter((p) => posCounts[p])
+              .map((p) => (
+                <span
+                  key={p}
+                  className="rounded-md border border-line bg-card px-2 py-1 text-[11px] font-medium text-ink-2"
+                >
+                  {getPositionGroupLabel(p, null, t)}{" "}
+                  <span className="font-semibold text-ink">{posCounts[p]}</span>
+                </span>
+              ))}
+          </div>
+        ) : null}
       </div>
       <dl className="divide-y divide-line/60">
         {infoRows
           .filter(([, v]) => v != null && v !== "")
           .map(([label, value]) => (
-            <div key={label} className="flex items-center justify-between gap-3 px-4 py-2">
+            <div key={label} className="flex items-center justify-between gap-3 px-4 py-2.5">
               <dt className="text-[11px] font-medium uppercase tracking-[0.1em] text-ink-3">
                 {label}
               </dt>
-              <dd className="text-[13px] font-semibold text-ink">{value}</dd>
+              <dd className="text-right text-[13px] font-semibold text-ink">{value}</dd>
             </div>
           ))}
       </dl>
+      {profile?.website_url ? (
+        <div className="border-t border-line px-4 py-2.5">
+          <a
+            href={profile.website_url}
+            target="_blank"
+            rel="noreferrer"
+            className="text-[12px] font-medium text-accent-ink transition hover:text-accent hover:underline"
+          >
+            {profile.website_url.replace(/^https?:\/\/(www\.)?/, "")}
+          </a>
+        </div>
+      ) : null}
     </div>
   );
 }

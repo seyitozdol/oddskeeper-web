@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getT } from "@/lib/i18n/server";
+import { TabPill, TabPillBar } from "@/components/nav/TabPills";
 import { TEAM_DETAIL_TABS } from "../constants";
 import type { ValidTab } from "../types";
 import type { TeamNote } from "@/lib/team-notes";
@@ -32,33 +33,30 @@ export async function TeamDetailHeader({
         logoPath={logoPath}
         initialNotes={initialNotes}
       >
-        {TEAM_DETAIL_TABS.map((tab) => {
-          const isActive = activeTab === tab.key;
-          const showResultsCount =
-            tab.key === "results" &&
-            activeTab === "results" &&
-            resultsCount > 0;
+        <TabPillBar>
+          {TEAM_DETAIL_TABS.map((tab) => {
+            const isActive = activeTab === tab.key;
+            const showResultsCount =
+              tab.key === "results" &&
+              activeTab === "results" &&
+              resultsCount > 0;
 
-          return (
-            <Link
-              key={tab.key}
-              href={`/dashboard/stats-analysis/football/team-stats/detail?team=${teamSlug}&tab=${tab.key}`}
-              className={`inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm font-medium whitespace-nowrap transition ${
-                isActive
-                  ? "border-line-strong bg-card-2 text-ink"
-                  : "border-line bg-veil text-ink-2 hover:border-line-strong hover:bg-card-2 hover:text-ink"
-              }`}
-            >
-              <span>{t(tab.labelKey)}</span>
-
-              {showResultsCount && (
-                <span className="rounded-md border border-line bg-veil px-1.5 py-0.5 text-[11px] leading-none text-ink-2">
-                  {resultsCount}
-                </span>
-              )}
-            </Link>
-          );
-        })}
+            return (
+              <TabPill
+                key={tab.key}
+                href={`/dashboard/stats-analysis/football/team-stats/detail?team=${teamSlug}&tab=${tab.key}`}
+                active={isActive}
+              >
+                <span>{t(tab.labelKey)}</span>
+                {showResultsCount && (
+                  <span className="rounded-md bg-veil px-1.5 py-0.5 text-[11px] leading-none text-ink-2">
+                    {resultsCount}
+                  </span>
+                )}
+              </TabPill>
+            );
+          })}
+        </TabPillBar>
 
         <Link
           href="/dashboard/stats-analysis/football/team-stats"

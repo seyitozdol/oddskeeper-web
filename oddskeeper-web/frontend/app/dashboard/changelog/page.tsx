@@ -21,11 +21,19 @@ const TAG_NEW_TOOL: L = { en: "New tool", tr: "Yeni araç" };
 const ENTRIES: Entry[] = [
   {
     date: { en: "12 August", tr: "12 Ağustos" },
-    title: { en: "1. Lig team page shortcuts", tr: "1. Lig takım sayfası kısayolları" },
+    title: { en: "Team pages: modern tabs", tr: "Takım sayfaları: modern sekmeler" },
     items: [
       {
-        en: "Fixtures / Squad / Results shortcut chips were added right below the team showcase; these sections live under the long showcase panel and could look missing.",
-        tr: "Takım vitrininin hemen altına Fikstür / Kadro / Sonuçlar kısayol çipleri eklendi; bu bölümler uzun vitrin panelinin altında kaldığı için kaybolmuş gibi görünebiliyordu.",
+        en: "The 1. Lig team page now has real tabs like Süper Lig: Overview / Fixtures / Squad / Results, with counts on Squad and Results.",
+        tr: "1. Lig takım sayfası artık Süper Lig'deki gibi gerçek sekmeli: Genel Bakış / Fikstür / Kadro / Sonuçlar; Kadro ve Sonuçlar sekmelerinde sayaç var.",
+      },
+      {
+        en: "Tab bars on team pages got a modern pill design (raised active tab on a soft container).",
+        tr: "Takım sayfalarındaki sekme çubukları modern hap tasarımına geçti (yumuşak zemin üzerinde kabarık aktif sekme).",
+      },
+      {
+        en: "The squad tab's left panel grew: a large logo like the team showcase, position distribution badges, total and per-player market value, most valuable player and website link.",
+        tr: "Kadro sekmesindeki sol panel genişledi: vitrin sayfasındaki gibi büyük logo, pozisyon dağılımı rozetleri, toplam ve oyuncu başına piyasa değeri, en değerli oyuncu ve site linki.",
       },
     ],
   },

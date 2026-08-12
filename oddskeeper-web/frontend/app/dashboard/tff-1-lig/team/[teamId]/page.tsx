@@ -24,6 +24,7 @@ import { getNotesForSlugs } from "@/lib/team-notes";
 import { tff1SlugForTeamId } from "@/lib/tff1-team-slugs";
 import Tff1TeamNotesHeader from "@/features/tff1/components/Tff1TeamNotesHeader";
 import { Tff1TeamShowcase } from "@/features/tff1/components/Tff1TeamShowcase";
+import { TabPill, TabPillBar } from "@/components/nav/TabPills";
 
 function num(v: number | string | null | undefined): number {
   const x = typeof v === "string" ? Number(v) : v;
@@ -36,15 +37,21 @@ const RESULT_CLASS: Record<string, string> = {
   L: "bg-neg/15 text-neg",
 };
 
+const TEAM_TABS = ["overview", "fixtures", "squad", "results"] as const;
+type TeamTab = (typeof TEAM_TABS)[number];
+
 export default async function Tff1TeamPage({
   params,
   searchParams,
 }: {
   params: Promise<{ teamId: string }>;
-  searchParams: Promise<{ season?: string }>;
+  searchParams: Promise<{ season?: string; tab?: string }>;
 }) {
   const { teamId } = await params;
-  const { season: seasonParam } = await searchParams;
+  const { season: seasonParam, tab: tabParam } = await searchParams;
+  const activeTab: TeamTab = TEAM_TABS.includes(tabParam as TeamTab)
+    ? (tabParam as TeamTab)
+    : "overview";
   const [players, teams, matches, fixtures, mvRows, logos, t, locale] =
     await Promise.all([
       getTff1PlayerSeasonStats(),
@@ -261,8 +268,37 @@ export default async function Tff1TeamPage({
       ? seasonTeams
       : teams.filter((tr) => tr.season_label === radarTeam.season_label);
 
+  const tabHref = (tab: TeamTab) =>
+    `/dashboard/tff-1-lig/team/${teamId}?season=${encodeURIComponent(season)}` +
+    (tab === "overview" ? "" : `&tab=${tab}`);
+
   return (
     <section className="w-full space-y-3">
+      {/* Sekmeler: TSL takim sayfasindaki gibi gercek tab'lar. */}
+      <TabPillBar>
+        <TabPill href={tabHref("overview")} active={activeTab === "overview"}>
+          {t("tff1.jumpOverview")}
+        </TabPill>
+        {teamFixtures.length > 0 ? (
+          <TabPill href={tabHref("fixtures")} active={activeTab === "fixtures"}>
+            {t("tff1.jumpFixtures")}
+          </TabPill>
+        ) : null}
+        <TabPill href={tabHref("squad")} active={activeTab === "squad"}>
+          {t("tff1.jumpSquad")}
+          <span className="rounded-md bg-veil px-1.5 py-0.5 text-[11px] leading-none text-ink-2">
+            {squad.length}
+          </span>
+        </TabPill>
+        <TabPill href={tabHref("results")} active={activeTab === "results"}>
+          {t("tff1.jumpResults")}
+          <span className="rounded-md bg-veil px-1.5 py-0.5 text-[11px] leading-none text-ink-2">
+            {teamMatches.length}
+          </span>
+        </TabPill>
+      </TabPillBar>
+
+      {activeTab === "overview" ? (
       <Tff1TeamShowcase
         teamId={teamId}
         team={team}
@@ -280,39 +316,12 @@ export default async function Tff1TeamPage({
         t={t}
         locale={locale}
       />
+      ) : null}
 
-      {/* Bölüm kısayolları: kadro/sonuç/fikstür vitrinin altında kaldığından
-          "kayboldu" sanılıyordu; üstten tek tıkla inilir. */}
-      <nav className="flex flex-wrap items-center gap-2">
-        {teamFixtures.length > 0 ? (
-          <a
-            href="#team-fixtures"
-            className="rounded-lg border border-line bg-card px-3 py-1.5 text-[13px] font-medium text-ink-2 transition hover:border-line-strong hover:bg-card-2 hover:text-ink"
-          >
-            {t("tff1.jumpFixtures")}
-          </a>
-        ) : null}
-        <a
-          href="#team-squad"
-          className="rounded-lg border border-line bg-card px-3 py-1.5 text-[13px] font-medium text-ink-2 transition hover:border-line-strong hover:bg-card-2 hover:text-ink"
-        >
-          {t("tff1.jumpSquad")}
-        </a>
-        <a
-          href="#team-results"
-          className="rounded-lg border border-line bg-card px-3 py-1.5 text-[13px] font-medium text-ink-2 transition hover:border-line-strong hover:bg-card-2 hover:text-ink"
-        >
-          {t("tff1.jumpResults")}
-        </a>
-      </nav>
-
-      <div className="rounded-2xl border border-line bg-card p-6">
-        {teamFixtures.length > 0 ? (
+      {activeTab === "fixtures" && teamFixtures.length > 0 ? (
+        <div className="rounded-2xl border border-line bg-card p-6">
           <>
-            <h2
-              id="team-fixtures"
-              className="mt-8 scroll-mt-24 text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-3"
-            >
+            <h2 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-3">
               {t("tff1.teamFixturesSection")}
             </h2>
             <div className="mt-2 overflow-x-auto rounded-lg border border-line">
@@ -346,12 +355,12 @@ export default async function Tff1TeamPage({
               </table>
             </div>
           </>
-        ) : null}
+        </div>
+      ) : null}
 
-        <h2
-          id="team-squad"
-          className="mt-8 scroll-mt-24 text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-3"
-        >
+      {activeTab === "squad" ? (
+        <div className="rounded-2xl border border-line bg-card p-6">
+        <h2 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-3">
           {t("tff1.drawerSquad", { count: squad.length })}
         </h2>
         <div className="mt-2 overflow-x-auto rounded-lg border border-line">
@@ -411,11 +420,13 @@ export default async function Tff1TeamPage({
             </tbody>
           </table>
         </div>
+        <p className="mt-4 text-[12px] text-ink-3">{t("tff1.tmNote")}</p>
+        </div>
+      ) : null}
 
-        <h2
-          id="team-results"
-          className="mt-8 scroll-mt-24 text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-3"
-        >
+      {activeTab === "results" ? (
+        <div className="rounded-2xl border border-line bg-card p-6">
+        <h2 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-3">
           {t("tff1.drawerResults", { count: teamMatches.length })}
         </h2>
         <div className="mt-2 max-h-96 overflow-y-auto rounded-lg border border-line">
@@ -463,8 +474,8 @@ export default async function Tff1TeamPage({
           </table>
         </div>
 
-        <p className="mt-4 text-[12px] text-ink-3">{t("tff1.tmNote")}</p>
-      </div>
+        </div>
+      ) : null}
     </section>
   );
 }
