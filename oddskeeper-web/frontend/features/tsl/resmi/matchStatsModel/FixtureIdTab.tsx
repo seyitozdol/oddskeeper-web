@@ -128,6 +128,8 @@ export default function FixtureIdTab({
   const [nh, setNh] = useState({ name: "", slug: "" });
   const [na, setNa] = useState({ name: "", slug: "" });
   const [adding, setAdding] = useState(false);
+  // Manuel fikstür silme: History dropdown'daki gibi satır içi onay (Sil? Evet/Vazgeç).
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const logoFor = (slug: string): string | null =>
     teamLogos ? (teamLogos[slug] ?? null) : getTeamLogoPath(slug);
 
@@ -166,6 +168,7 @@ export default function FixtureIdTab({
       await reloadManuals();
       onManualChanged?.();
     }
+    setConfirmDeleteId(null);
   }
 
   function edit(fid: string, patch: Partial<FixtureInput>) {
@@ -285,15 +288,35 @@ export default function FixtureIdTab({
                 <tr key={f.fixtureId} className="border-t border-line/60 hover:bg-veil">
                   <td className="px-2 py-1.5 whitespace-nowrap text-ink">
                     <span className="flex items-center gap-1.5">
-                      {f.manual && (
-                        <button
-                          onClick={() => removeManual(f.fixtureId)}
-                          title={t("msm.clear")}
-                          className="mr-0.5 shrink-0 rounded px-1 text-[13px] leading-none text-ink-3 hover:text-neg"
-                        >
-                          ×
-                        </button>
-                      )}
+                      {f.manual &&
+                        (confirmDeleteId === f.fixtureId ? (
+                          <span className="mr-0.5 flex shrink-0 items-center gap-1 text-[10px]">
+                            <span className="text-ink-3">{t("modelHistory.deleteConfirm")}</span>
+                            <button
+                              type="button"
+                              onClick={() => removeManual(f.fixtureId)}
+                              className="rounded bg-neg/15 px-1.5 py-0.5 font-semibold text-neg hover:bg-neg/25"
+                            >
+                              {t("modelHistory.deleteYes")}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setConfirmDeleteId(null)}
+                              className="rounded px-1.5 py-0.5 text-ink-3 hover:text-ink"
+                            >
+                              {t("modelHistory.deleteNo")}
+                            </button>
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setConfirmDeleteId(f.fixtureId)}
+                            title={t("modelHistory.deleteConfirm")}
+                            className="mr-0.5 shrink-0 rounded px-1 text-[13px] leading-none text-ink-3 hover:text-neg"
+                          >
+                            ×
+                          </button>
+                        ))}
                       <TeamCrest logo={logoFor(f.homeSlug)} name={f.homeName} size="xs" />
                       <span>{f.homeName}</span>
                       <span className="text-ink-3">-</span>
