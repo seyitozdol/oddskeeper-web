@@ -198,16 +198,161 @@ export async function cupAggression(season: string): Promise<Record<string, Team
   return out;
 }
 
-// ---- Oyuncu tarafı: Faz 5 (Mackolik oyuncu endpoint'leri) ----
-export async function cupPlayers(): Promise<ResmiPlayerRow[]> {
-  return [];
+// ---- Oyuncu tarafı (Faz 5: Mackolik statistics-service oyuncu metrikleri) ----
+// Katalog: [metricKey, category, categoryLabel, format, higherBetter]. Sayılabilir
+// metrikler view'da TOPLAM; oran metrikleri (pass_accuracy/rating) türetilir.
+const CUP_PLAYER_CATALOG: TslMetricOption[] = ([
+  ["appearances", "playing_time", "Oynama Süresi", "count", true],
+  ["minutes", "playing_time", "Oynama Süresi", "count", true],
+  ["rating_avg", "overall", "Genel", "decimal", true],
+  ["goals_total", "attacking", "Hücum", "count", true],
+  ["xg", "attacking", "Hücum", "decimal", true],
+  ["xgot", "attacking", "Hücum", "decimal", true],
+  ["shots_total", "attacking", "Hücum", "count", true],
+  ["shots_on_target", "attacking", "Hücum", "count", true],
+  ["touches_opp_box", "attacking", "Hücum", "count", true],
+  ["assists_total", "creation", "Yaratıcılık", "count", true],
+  ["xa", "creation", "Yaratıcılık", "decimal", true],
+  ["key_passes", "creation", "Yaratıcılık", "count", true],
+  ["big_chances_missed", "creation", "Yaratıcılık", "count", false],
+  ["passes_total", "passing", "Pas", "count", true],
+  ["accurate_pass", "passing", "Pas", "count", true],
+  ["pass_accuracy_pct", "passing", "Pas", "pct", true],
+  ["long_balls", "passing", "Pas", "count", true],
+  ["crosses", "passing", "Pas", "count", true],
+  ["tackles", "defending", "Savunma", "count", true],
+  ["interceptions", "defending", "Savunma", "count", true],
+  ["clearances", "defending", "Savunma", "count", true],
+  ["blocks", "defending", "Savunma", "count", true],
+  ["recoveries", "defending", "Savunma", "count", true],
+  ["duels_won", "duels", "İkili Mücadele", "count", true],
+  ["aerials_won", "duels", "İkili Mücadele", "count", true],
+  ["dribbles_won", "duels", "İkili Mücadele", "count", true],
+  ["touches", "possession", "Topla Oynama", "count", true],
+  ["fouls_won", "discipline", "Disiplin", "count", true],
+  ["fouls", "discipline", "Disiplin", "count", false],
+  ["offsides", "discipline", "Disiplin", "count", false],
+  ["saves", "goalkeeping", "Kalecilik", "count", true],
+] as [string, string, string, string, boolean][]).map(([metricKey, categoryKey, categoryLabel, valueFormat, isHigherBetter], i) => ({
+  metricKey, metricLabel: metricKey, categoryKey, categoryLabel, categorySort: i,
+  valueFormat, isHigherBetter, defaultBasis: "total",
+}));
+const RATE_KEYS = new Set(["pass_accuracy_pct", "rating_avg"]);
+
+export function cupPlayerCatalog(): TslMetricOption[] {
+  return CUP_PLAYER_CATALOG;
 }
+
+// Header (isim/uuid/takım/reyting/apps/pozisyon/slug) + metrik toplamları.
+async function playerHeaders(season: string) {
+  const sb = await createClient();
+  const out: Record<string, unknown>[] = [];
+  for (let from = 0; ; from += 1000) {
+    const { data } = await sb.schema("analytics").from("cup_player_stats_v1")
+      .select("player_id, player_uuid, player_name, main_team_id, main_position, apps, avg_rating")
+      .eq("season_label", season).order("apps", { ascending: false }).range(from, from + 999);
+    if (!data || !data.length) break;
+    out.push(...data);
+    if (data.length < 1000) break;
+  }
+  return out;
+}
+async function playerMetrics(season: string): Promise<Record<string, Record<string, number>>> {
+  const sb = await createClient();
+  const out: Record<string, Record<string, number>> = {};
+  for (let from = 0; ; from += 1000) {
+    const { data } = await sb.schema("analytics").from("cup_player_season_metric_v1")
+      .select("player_id, metric_key, total").eq("season_label", season).range(from, from + 999);
+    if (!data || !data.length) break;
+    for (const r of data) {
+      const id = String(r.player_id);
+      (out[id] ??= {})[r.metric_key as string] = toNum(r.total) ?? 0;
+    }
+    if (data.length < 1000) break;
+  }
+  return out;
+}
+async function playerSlugs(): Promise<Record<string, string | null>> {
+  const sb = await createClient();
+  const out: Record<string, string | null> = {};
+  for (let from = 0; ; from += 1000) {
+    const { data } = await sb.schema("ref").from("mackolik_player_map")
+      .select("mackolik_player_id, opta_player_slug").not("opta_player_slug", "is", null).range(from, from + 999);
+    if (!data || !data.length) break;
+    for (const r of data) out[String(r.mackolik_player_id)] = (r.opta_player_slug as string) ?? null;
+    if (data.length < 1000) break;
+  }
+  return out;
+}
+
+function buildMetrics(m: Record<string, number>, apps: number, ratingAvg: number | null): ResmiPlayerRow["metrics"] {
+  const minutes = m["minutes"] ?? 0;
+  const out: ResmiPlayerRow["metrics"] = {};
+  for (const c of CUP_PLAYER_CATALOG) {
+    const k = c.metricKey;
+    if (k === "appearances") { out[k] = { total: apps, perMatch: apps, per90: apps }; continue; }
+    if (k === "rating_avg") { out[k] = { total: ratingAvg, perMatch: ratingAvg, per90: ratingAvg }; continue; }
+    if (k === "pass_accuracy_pct") {
+      const acc = m["accurate_pass"], tot = m["passes_total"];
+      const pct = tot ? Math.round((acc / tot) * 1000) / 10 : null;
+      out[k] = { total: pct, perMatch: pct, per90: pct }; continue;
+    }
+    const total = m[k] ?? null;
+    if (RATE_KEYS.has(k)) out[k] = { total, perMatch: total, per90: total };
+    else out[k] = {
+      total,
+      perMatch: total != null && apps > 0 ? total / apps : null,
+      per90: total != null && minutes > 0 ? (total / minutes) * 90 : null,
+    };
+  }
+  return out;
+}
+
+export async function cupPlayers(season: string, meta: Record<string, TslTeamMeta>): Promise<ResmiPlayerRow[]> {
+  const [headers, metrics, slugs] = await Promise.all([playerHeaders(season), playerMetrics(season), playerSlugs()]);
+  return headers.map((h) => {
+    const id = String(h.player_id);
+    const teamId = String(h.main_team_id ?? "");
+    const apps = toNum(h.apps) ?? 0;
+    const rating = toNum(h.avg_rating);
+    return {
+      playerId: id, name: (h.player_name as string) ?? "—", positionCode: (h.main_position as string) ?? null,
+      teamId, teamName: meta[teamId]?.name ?? null, teamLogo: meta[teamId]?.logo ?? null,
+      slug: slugs[id] ?? null, playerHref: null, teamHref: null,
+      photo: cupPlayerPhoto(h.player_uuid as string | null), nationality: null, inCurrentSquad: true,
+      metrics: buildMetrics(metrics[id] ?? {}, apps, rating),
+    };
+  });
+}
+
 export async function cupAssets(): Promise<Record<string, PlayerAsset>> {
   return {};
 }
-export function cupPlayerCatalog(): TslMetricOption[] {
-  return [];
-}
-export async function cupLeaderboard(): Promise<TslLeaderRow[]> {
-  return [];
+
+export async function cupLeaderboard(season: string, metricKey: string, meta: Record<string, TslTeamMeta>): Promise<TslLeaderRow[]> {
+  const def = CUP_PLAYER_CATALOG.find((c) => c.metricKey === metricKey);
+  if (!def) return [];
+  const [headers, metrics] = await Promise.all([playerHeaders(season), playerMetrics(season)]);
+  const arr = headers.map((h) => {
+    const id = String(h.player_id);
+    const teamId = String(h.main_team_id ?? "");
+    const apps = toNum(h.apps) ?? 0;
+    const m = metrics[id] ?? {};
+    let total: number | null;
+    if (metricKey === "appearances") total = apps;
+    else if (metricKey === "rating_avg") total = toNum(h.avg_rating);
+    else if (metricKey === "pass_accuracy_pct") total = m["passes_total"] ? Math.round((m["accurate_pass"] / m["passes_total"]) * 1000) / 10 : null;
+    else total = m[metricKey] ?? null;
+    return {
+      playerId: id, playerName: (h.player_name as string) ?? "—",
+      teamName: meta[teamId]?.name ?? null, teamId: teamId || null, positionCode: (h.main_position as string) ?? null,
+      metricKey, metricLabel: metricKey, total,
+      perMatch: RATE_KEYS.has(metricKey) || metricKey === "appearances" ? total : total != null && apps > 0 ? total / apps : null,
+      per90: null, matches: apps,
+      leagueAvg: null, vsAvgPct: null, valueFormat: def.valueFormat, isHigherBetter: def.isHigherBetter,
+    };
+  }).filter((x) => x.total != null && (x.matches ?? 0) > 0);
+  const higher = def.isHigherBetter;
+  arr.sort((a, b) => (higher ? (b.total ?? 0) - (a.total ?? 0) : (a.total ?? 0) - (b.total ?? 0)));
+  return arr.map((x, i) => ({ rank: i + 1, ...x }));
 }

@@ -24,3 +24,17 @@ create table if not exists football.mackolik_player_match_metrics (
   primary key (match_uuid, player_id, metric_key)
 );
 create index if not exists mpmm_player_idx on football.mackolik_player_match_metrics (player_id, metric_key);
+
+-- Oyuncu sezon-toplam metrikleri (Players + Player Rankings sekmeleri).
+create or replace view analytics.cup_player_season_metric_v1 as
+select
+  m.player_id,
+  mm.season_name as season_label,
+  m.metric_key,
+  sum(m.value) as total,
+  count(distinct m.match_uuid) as apps
+from football.mackolik_player_match_metrics m
+join football.mackolik_matches mm on mm.match_uuid = m.match_uuid
+group by m.player_id, mm.season_name, m.metric_key;
+
+grant select on analytics.cup_player_season_metric_v1 to anon, authenticated;
