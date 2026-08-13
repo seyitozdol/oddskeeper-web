@@ -146,9 +146,11 @@ async function leaderboardRows(season: string) {
   return data ?? [];
 }
 
+const METRIC_ORDER = new Map(TEAM_METRICS.map((m, i) => [m.key, i]));
+
 export async function cupTeamMetrics(season: string, meta: Record<string, TslTeamMeta>): Promise<TslTeamMetric[]> {
   const rows = await leaderboardRows(season);
-  return rows.map((r) => {
+  const out = rows.map((r) => {
     const id = String(r.team_id);
     const d = DEF.get(r.metric_key as string);
     return {
@@ -160,6 +162,10 @@ export async function cupTeamMetrics(season: string, meta: Record<string, TslTea
       valueFormat: d?.fmt ?? "count", isHigherBetter: d?.hb ?? true,
     };
   });
+  // TEAM_METRICS sırası: ilk metrik possession (tüm 18 takım) olsun ki board
+  // varsayılanda 8 değil 18 takım göstersin.
+  out.sort((a, b) => (METRIC_ORDER.get(a.metricKey) ?? 99) - (METRIC_ORDER.get(b.metricKey) ?? 99));
+  return out;
 }
 
 export async function cupTeamLeaderboard(season: string, meta: Record<string, TslTeamMeta>): Promise<TslTeamLeaderRow[]> {
@@ -310,7 +316,10 @@ function buildMetrics(m: Record<string, number>, apps: number, ratingAvg: number
 
 export async function cupPlayers(season: string, meta: Record<string, TslTeamMeta>): Promise<ResmiPlayerRow[]> {
   const [headers, metrics, slugs] = await Promise.all([playerHeaders(season), playerMetrics(season), playerSlugs()]);
-  return headers.map((h) => {
+  // Oyuncu-istatistiği sadece Çeyrek/Yarı Final + Final'de var. Lineup'ta görünen
+  // ama maç-istatistiği olmayan (erken tur) oyuncuları listeleme — tablo boş
+  // satırlarla dolmasin. Sadece metriği olan oyuncuları göster.
+  return headers.filter((h) => metrics[String(h.player_id)]).map((h) => {
     const id = String(h.player_id);
     const teamId = String(h.main_team_id ?? "");
     const apps = toNum(h.apps) ?? 0;

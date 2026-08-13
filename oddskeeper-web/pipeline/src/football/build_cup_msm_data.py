@@ -32,17 +32,22 @@ SIDED = """
   where m.score_a is not null and s.stat_type = %(stat)s
 """
 
+# NOT: season TIRE formatinda ('2025-2026') — MSM engine HIST_SEASONS'i tire ile
+# arar; slash olursa histdata'yi bulamaz. Ev/dep tek tarafliysa (amator takim)
+# null yerine genel ortalama (coalesce) — model her eslesmede sayi uretsin.
 INSERT_ONE = """
 insert into msm.histdata(league, season, market, team_name, team_slug, hf, ha, af, aa, updated_at)
 with sided as (%s),
 slug as (
-  select sd.*, coalesce(tm.team_slug,
+  select sd.*, replace(sd.season,'/','-') season_d, coalesce(tm.team_slug,
     regexp_replace(lower(translate(sd.nm,'çğıöşüÇĞİÖŞÜ','cgiosucgiosu')),'[^a-z0-9]+','-','g')) team_slug
   from sided sd left join ref.mackolik_team_map tm on tm.mackolik_team_id = sd.team_id)
-select 'cup', season, %%(market)s, max(nm), team_slug,
-  round(avg(vfor) filter(where is_home)::numeric,2), round(avg(vagainst) filter(where is_home)::numeric,2),
-  round(avg(vfor) filter(where not is_home)::numeric,2), round(avg(vagainst) filter(where not is_home)::numeric,2), now()
-from slug group by season, team_slug having count(*) >= 2
+select 'cup', season_d, %%(market)s, max(nm), team_slug,
+  coalesce(round(avg(vfor) filter(where is_home)::numeric,2), round(avg(vfor)::numeric,2)),
+  coalesce(round(avg(vagainst) filter(where is_home)::numeric,2), round(avg(vagainst)::numeric,2)),
+  coalesce(round(avg(vfor) filter(where not is_home)::numeric,2), round(avg(vfor)::numeric,2)),
+  coalesce(round(avg(vagainst) filter(where not is_home)::numeric,2), round(avg(vagainst)::numeric,2)), now()
+from slug group by season_d, team_slug having count(*) >= 2
 """ % SIDED
 
 INSERT_CARD = """
@@ -62,12 +67,14 @@ with sided as (
   left join football.mackolik_team_stats sr on sr.match_uuid=m.match_uuid and sr.stat_type='red_card'
   where m.score_a is not null
 ),
-slug as (select sd.*, coalesce(tm.team_slug, regexp_replace(lower(translate(sd.nm,'çğıöşüÇĞİÖŞÜ','cgiosucgiosu')),'[^a-z0-9]+','-','g')) team_slug
+slug as (select sd.*, replace(sd.season,'/','-') season_d, coalesce(tm.team_slug, regexp_replace(lower(translate(sd.nm,'çğıöşüÇĞİÖŞÜ','cgiosucgiosu')),'[^a-z0-9]+','-','g')) team_slug
   from sided sd left join ref.mackolik_team_map tm on tm.mackolik_team_id=sd.team_id)
-select 'cup', season, 'Card', max(nm), team_slug,
-  round(avg(vfor) filter(where is_home)::numeric,2), round(avg(vagainst) filter(where is_home)::numeric,2),
-  round(avg(vfor) filter(where not is_home)::numeric,2), round(avg(vagainst) filter(where not is_home)::numeric,2), now()
-from slug group by season, team_slug having count(*)>=2
+select 'cup', season_d, 'Card', max(nm), team_slug,
+  coalesce(round(avg(vfor) filter(where is_home)::numeric,2), round(avg(vfor)::numeric,2)),
+  coalesce(round(avg(vagainst) filter(where is_home)::numeric,2), round(avg(vagainst)::numeric,2)),
+  coalesce(round(avg(vfor) filter(where not is_home)::numeric,2), round(avg(vfor)::numeric,2)),
+  coalesce(round(avg(vagainst) filter(where not is_home)::numeric,2), round(avg(vagainst)::numeric,2)), now()
+from slug group by season_d, team_slug having count(*)>=2
 """
 
 
