@@ -21,6 +21,29 @@ const TAG_NEW_TOOL: L = { en: "New tool", tr: "Yeni araç" };
 const ENTRIES: Entry[] = [
   {
     date: { en: "13 August", tr: "13 Ağustos" },
+    title: { en: "Team fixtures: all competitions", tr: "Takım fikstürü: tüm turnuvalar" },
+    tag: TAG_NEW,
+    items: [
+      {
+        en: "The Fixture tab now lists European cup matches too (e.g. Fenerbahçe vs Lyon in the Champions League); Turkish Cup matches will appear the same way when the draw is made.",
+        tr: "Fixture sekmesi artık Avrupa kupası maçlarını da listeliyor (ör. Şampiyonlar Ligi'nde Fenerbahçe - Lyon); kura çekilince Türkiye Kupası maçları da aynı şekilde gelecek.",
+      },
+      {
+        en: "Duplicate rows and wrong dates are fixed: each match appears once with its real date and kickoff time.",
+        tr: "Mükerrer satırlar ve yanlış tarihler düzeltildi: her maç gerçek tarihi ve başlama saatiyle bir kez görünüyor.",
+      },
+      {
+        en: "Opponent logos and competition logos were added to the list (league, Champions League, Europa League...).",
+        tr: "Listeye rakip takım logoları ve turnuva logoları eklendi (lig, Şampiyonlar Ligi, Avrupa Ligi...).",
+      },
+      {
+        en: "The season selector on the Fixture tab is removed; past seasons already live in Results.",
+        tr: "Fixture sekmesindeki sezon seçici kaldırıldı; geçmiş sezonlar zaten Results'ta.",
+      },
+    ],
+  },
+  {
+    date: { en: "13 August", tr: "13 Ağustos" },
     title: { en: "Squad Audit", tr: "Kadro Denetimi" },
     tag: TAG_NEW,
     items: [

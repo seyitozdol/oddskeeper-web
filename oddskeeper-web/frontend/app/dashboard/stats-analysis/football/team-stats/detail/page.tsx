@@ -112,10 +112,8 @@ export default async function TeamDetailPage({
     notFound();
   }
 
-  // Fikstür sekmesinde geçmiş sezon seçilirse yaklaşan fikstür yerine o
-  // sezonun oynanmış programı (sonuçlarla) gösterilir.
-  const fixturePastSeason =
-    activeTab === "fixture" && requestedSeason ? requestedSeason : null;
+  // Fikstür sekmesi yalnız yaklaşan maçları gösterir; geçmiş sezonlar
+  // Results sekmesinde (sezon seçici fikstürde yok).
 
   // Birbirinden bağımsız sorgular paralel; summary'e bağımlı olanlar ikinci grupta.
   const [
@@ -127,15 +125,13 @@ export default async function TeamDetailPage({
     fixtureRows,
   ] = await Promise.all([
     getTeamProfile(teamSlug),
-    activeTab === "results" || fixturePastSeason || showcaseDesign
+    activeTab === "results" || showcaseDesign
       ? getTeamResults(teamSlug, requestedSeason ?? null)
       : Promise.resolve([]),
     getTeamSeasonHistory(teamSlug),
     activeTab === "squad" ? getTeamSquad(teamSlug) : Promise.resolve([]),
     activeTab === "squad" ? getTeamCurrentSquad(teamSlug) : Promise.resolve([]),
-    activeTab === "fixture" && !fixturePastSeason
-      ? getTeamFixtures(teamSlug)
-      : Promise.resolve([]),
+    activeTab === "fixture" ? getTeamFixtures(teamSlug) : Promise.resolve([]),
   ]);
 
   // Sekmelerin çoğu geçmiş sezonları destekler: özet, sezon geçmişi
@@ -294,18 +290,16 @@ export default async function TeamDetailPage({
   }
 
   // Sezon seçici gösterilen sekmeler ve sekmeye göre seçili sezon.
+  // Fikstür sekmesinde YOK: yalnız yaklaşan maçlar (geçmiş sezonlar Results'ta).
   const SEASON_TABS: ValidTab[] = [
     "team-statistics",
     "detailed-stats",
     "advanced",
     "results",
-    "fixture",
     "comparison",
   ];
   const selectedSeasonForTab =
-    activeTab === "fixture"
-      ? requestedSeason ?? "upcoming"
-      : activeTab === "comparison"
+    activeTab === "comparison"
       ? comparisonData?.season_label ?? requestedSeason ?? null
       : activeTab === "results"
       ? requestedSeason ?? statsSummary?.season_label ?? null
@@ -319,11 +313,6 @@ export default async function TeamDetailPage({
 
       {SEASON_TABS.includes(activeTab) && seasonLabels.length > 1 ? (
         <div className="mt-3 flex items-center justify-end gap-3">
-          {fixturePastSeason ? (
-            <span className="text-[12px] text-ink-3">
-              {t("teamDetail.pastSeasonScheduleNote")}
-            </span>
-          ) : null}
           <SeasonSelect
             teamSlug={teamSlug}
             tab={activeTab}
@@ -333,14 +322,6 @@ export default async function TeamDetailPage({
               activeTab === "comparison" && opponentSlug
                 ? { opponent: opponentSlug }
                 : undefined
-            }
-            leadingOption={
-              activeTab === "fixture"
-                ? {
-                    value: "upcoming",
-                    label: t("teamDetail.upcomingFixturesOption"),
-                  }
-                : null
             }
           />
         </div>
@@ -376,11 +357,7 @@ export default async function TeamDetailPage({
             profile={teamProfile}
           />
         ) : activeTab === "fixture" ? (
-          fixturePastSeason ? (
-            <ResultsPanel rows={resultsRows} />
-          ) : (
-            <FixturePanel rows={fixtureRows} />
-          )
+          <FixturePanel rows={fixtureRows} />
         ) : activeTab === "comparison" && comparisonData ? (
           <TeamComparisonPanel
             initialData={comparisonData}
