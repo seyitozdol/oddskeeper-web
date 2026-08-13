@@ -21,6 +21,17 @@ const TAG_NEW_TOOL: L = { en: "New tool", tr: "Yeni araç" };
 const ENTRIES: Entry[] = [
   {
     date: { en: "13 August", tr: "13 Ağustos" },
+    title: { en: "Turkish Cup — Players & Rankings", tr: "Türkiye Kupası — Oyuncular & Sıralamalar" },
+    tag: TAG_NEW,
+    items: [
+      {
+        en: "The Cup now has Players and Player Rankings tabs, with per-player cup stats (goals, xG, shots, key passes, tackles, duels, and more) pulled match by match. Coverage grows from the quarter-finals back through the group stage; data is still filling in for earlier rounds.",
+        tr: "Kupada artık Oyuncular ve Oyuncu Sıralamaları sekmeleri var; oyuncu-başı kupa istatistikleri (gol, xG, şut, kilit pas, top kapma, ikili mücadele ve daha fazlası) maç maç çekiliyor. Kapsam çeyrek finalden grup aşamasına doğru genişliyor; erken turlar için veri hâlâ doluyor.",
+      },
+    ],
+  },
+  {
+    date: { en: "13 August", tr: "13 Ağustos" },
     title: { en: "Turkish Cup — team & player pages", tr: "Türkiye Kupası — takım & oyuncu sayfaları" },
     tag: TAG_NEW,
     items: [
