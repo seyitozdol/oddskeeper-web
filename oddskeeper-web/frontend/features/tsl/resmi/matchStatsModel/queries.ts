@@ -298,10 +298,12 @@ export async function deleteManualFixture(id: string): Promise<boolean> {
 }
 
 // Takım logoları: tsl → null (lokal /images/football_logos/{slug}.png kullanılır);
-// tff1 → slug→logo_url haritası (msm_team_logos_tff1_v1, SofaScore/Flashscore URL).
+// tff1 → slug→logo_url (msm_team_logos_tff1_v1); cup → slug→Mackolik CDN URL
+// (cup_msm_team_logos_v1) çünkü amatör takımların yerel logosu yok (404 → kırık).
 export async function fetchTeamLogos(league: string): Promise<Record<string, string> | null> {
-  if (league !== "tff1") return null;
-  const { data, error } = await sb().from("msm_team_logos_tff1_v1").select("slug, logo_url");
+  if (league !== "tff1" && league !== "cup") return null;
+  const view = league === "cup" ? "cup_msm_team_logos_v1" : "msm_team_logos_tff1_v1";
+  const { data, error } = await sb().from(view).select("slug, logo_url");
   if (error) { console.error("fetchTeamLogos", error); return {}; }
   const out: Record<string, string> = {};
   for (const r of data ?? []) if (r.logo_url) out[r.slug as string] = r.logo_url as string;
