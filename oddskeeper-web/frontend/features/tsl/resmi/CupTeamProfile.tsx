@@ -7,7 +7,7 @@ import type { CupTeamProfile } from "../server/cupProfiles";
 function Crest({ src, alt, size = 20 }: { src: string | null; alt: string; size?: number }) {
   if (!src) return <span className="inline-block shrink-0 rounded-full bg-veil" style={{ width: size, height: size }} aria-hidden />;
   // eslint-disable-next-line @next/next/no-img-element
-  return <img src={src} alt={alt} className="shrink-0 object-contain" style={{ width: size, height: size }} loading="lazy" />;
+  return <img src={src} alt={alt} referrerPolicy="no-referrer" className="shrink-0 object-contain" style={{ width: size, height: size }} loading="lazy" />;
 }
 
 function fmtDate(iso: string | null, locale: string): string {

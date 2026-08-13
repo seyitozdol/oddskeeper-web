@@ -30,7 +30,7 @@ export default function CupPlayerProfilePage({ data }: { data: CupPlayerProfile 
       <div className="mb-6 flex items-center gap-4">
         {data.photo ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={data.photo} alt={data.name} className="shrink-0 rounded-full object-cover ring-1 ring-line" style={{ width: 72, height: 72 }} loading="lazy" />
+          <img src={data.photo} alt={data.name} referrerPolicy="no-referrer" className="shrink-0 rounded-full object-cover ring-1 ring-line" style={{ width: 72, height: 72 }} loading="lazy" />
         ) : (
           <span className="shrink-0 rounded-full bg-veil" style={{ width: 72, height: 72 }} />
         )}
@@ -43,7 +43,7 @@ export default function CupPlayerProfilePage({ data }: { data: CupPlayerProfile 
             {data.teamName && (
               <Link href={data.teamHref ?? "#"} className="flex items-center gap-1 text-ink-2 hover:text-ink">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                {data.teamLogo && <img src={data.teamLogo} alt={data.teamName} className="h-3.5 w-3.5 object-contain" loading="lazy" />}
+                {data.teamLogo && <img src={data.teamLogo} alt={data.teamName} referrerPolicy="no-referrer" className="h-3.5 w-3.5 object-contain" loading="lazy" />}
                 {data.teamName}
               </Link>
             )}

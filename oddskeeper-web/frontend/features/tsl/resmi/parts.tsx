@@ -35,11 +35,13 @@ export function PlayerFace({
 }) {
   if (photo) {
     return (
-      <Image
+      // Harici foto CDN'leri (Mackolik) hotlink korumali -> düz img + no-referrer.
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
         src={photo}
         alt={name}
-        width={size}
-        height={size}
+        referrerPolicy="no-referrer"
+        loading="lazy"
         className="shrink-0 rounded-full border border-line bg-veil object-cover"
         style={{ width: size, height: size }}
       />

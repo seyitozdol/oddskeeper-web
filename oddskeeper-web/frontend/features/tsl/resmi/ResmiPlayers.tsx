@@ -327,7 +327,9 @@ function Avatar({ photo, name }: { photo: string | null; name: string }) {
   if (!photo) {
     return <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-line bg-veil text-[11px] font-semibold text-ink-3">{name.slice(0, 1).toUpperCase()}</span>;
   }
-  return <Image src={photo} alt={name} width={32} height={32} className="h-8 w-8 shrink-0 rounded-full border border-line bg-veil object-cover" />;
+  // Harici foto CDN'leri (Mackolik) hotlink korumali -> düz img + no-referrer.
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img src={photo} alt={name} referrerPolicy="no-referrer" className="h-8 w-8 shrink-0 rounded-full border border-line bg-veil object-cover" loading="lazy" />;
 }
 
 function Flag({ nationality }: { nationality: string | null }) {
@@ -342,7 +344,7 @@ function TeamCell({ name, logo, href }: { name: string | null; logo: string | nu
     <span className="inline-flex items-center gap-2">
       {logo ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={logo} alt="" className="h-[18px] w-[18px] shrink-0 object-contain" loading="lazy" />
+        <img src={logo} alt="" referrerPolicy="no-referrer" className="h-[18px] w-[18px] shrink-0 object-contain" loading="lazy" />
       ) : null}
       <span className="text-[12px]">{name ?? "—"}</span>
     </span>
