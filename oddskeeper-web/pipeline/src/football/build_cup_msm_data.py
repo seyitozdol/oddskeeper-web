@@ -123,6 +123,30 @@ select 'cup', s.season, 'Saves', agg.nm, agg.team_slug, agg.hf, agg.ha, agg.af, 
 from agg cross join """ + WEIGHTED_SEASONS
 
 
+# Saves TAHMINI: gercek kaleci verisi olmayan takimlar icin. TSL+1.Lig'den (Opta,
+# 2'ser sezon) "yedigi isabetli sutun ne kadari kurtarisa doner" orani (~0.68,
+# iki ligde de kararli) canli hesaplanir; takimin kupa SOT histdata'sina uygulanir.
+# Saves.hf(kendi ev kurtaris)=SOT.ha(evde yedigi SOT)*r ; ha=SOT.hf*r ; af=SOT.aa*r ; aa=SOT.af*r.
+# estimated=true bayragi ile gercek veriden ayrilir. Sadece gercek Saves'i OLMAYAN takimlara.
+INSERT_SAVES_ESTIMATE = """
+insert into msm.histdata(league, season, market, team_name, team_slug, hf, ha, af, aa, estimated, updated_at)
+with ratio as (
+  select sum(sf_h+sf_a)/nullif(sum(sa_h+sa_a),0) r from (
+    select sv.hf sf_h, sv.af sf_a, so.ha sa_h, so.aa sa_a
+    from msm.histdata sv join msm.histdata so
+      on sv.league=so.league and sv.season=so.season and sv.team_slug=so.team_slug
+    where sv.market='Saves' and so.market='SOT' and sv.league in ('tsl','tff1')
+  ) x),
+sot as (select season, team_name, team_slug, hf, ha, af, aa from msm.histdata where league='cup' and market='SOT'),
+have as (select distinct team_slug from msm.histdata where league='cup' and market='Saves')
+select 'cup', sot.season, 'Saves', sot.team_name, sot.team_slug,
+  round((sot.ha*r.r)::numeric,2), round((sot.hf*r.r)::numeric,2),
+  round((sot.aa*r.r)::numeric,2), round((sot.af*r.r)::numeric,2), true, now()
+from sot cross join ratio r
+where sot.team_slug not in (select team_slug from have)
+"""
+
+
 def main():
     c = psycopg2.connect(ENV["DATABASE_URL"]); c.autocommit = True; cur = c.cursor()
     # market + model config: TSL'den kopya (ayni marketler/parametreler)
@@ -143,8 +167,11 @@ def main():
         cur.execute(INSERT_ONE, {"market": market, "stat": stat}); n += cur.rowcount
     cur.execute(INSERT_CARD); n += cur.rowcount
     cur.execute(INSERT_SAVES); n += cur.rowcount
-    cur.execute("select count(distinct team_slug) from msm.histdata where league='cup' and market='Saves'")
-    print(f"  Saves market: {cur.fetchone()[0]} takim")
+    real_saves = cur.rowcount
+    cur.execute(INSERT_SAVES_ESTIMATE); n += cur.rowcount
+    cur.execute("select count(distinct team_slug) filter(where not estimated), count(distinct team_slug) filter(where estimated) from msm.histdata where league='cup' and market='Saves'")
+    rs, es = cur.fetchone()
+    print(f"  Saves market: {rs} takim gercek + {es} takim TAHMINI (SOT*oran)")
     cur.execute("select count(distinct team_slug) from msm.histdata where league='cup'")
     print(f"MSM cup: {n} histdata satiri, {cur.fetchone()[0]} takim")
 
