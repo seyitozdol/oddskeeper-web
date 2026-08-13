@@ -21,6 +21,21 @@ const TAG_NEW_TOOL: L = { en: "New tool", tr: "Yeni araç" };
 const ENTRIES: Entry[] = [
   {
     date: { en: "13 August", tr: "13 Ağustos" },
+    title: { en: "Cup Match Stats Model — Saves market & clearer estimates", tr: "Kupa Match Stats Model — Saves marketi & şeffaf tahminler" },
+    tag: TAG_NEW,
+    items: [
+      {
+        en: "The Saves market now works in the cup model. Team-level save data isn't reported for cup matches, so for teams without it we estimate saves from the shots on target they face, using the real save rate measured across two seasons of Süper Lig and 1. Lig (about 68% of on-target shots become a save). These estimated figures are clearly flagged with an \"≈ estimate\" note under the market, so you always know which numbers are derived rather than measured.",
+        tr: "Kupa modelinde artık Saves marketi çalışıyor. Kupa maçları için takım-seviyesi kurtarış verisi yayınlanmıyor; bu yüzden verisi olmayan takımlarda kurtarışı, yedikleri isabetli şuttan tahmin ediyoruz — Süper Lig ve 1. Lig'in iki sezonundan ölçülen gerçek kurtarış oranıyla (isabetli şutların yaklaşık %68'i kurtarışa dönüyor). Bu tahmini değerler market altında \"≈ tahmini\" notuyla açıkça işaretleniyor; hangi sayının ölçüm değil türetme olduğunu her zaman görürsün.",
+      },
+      {
+        en: "Cup team logos in the Match Stats Model no longer break for lower-league and amateur clubs — they now load from the same source as the rest of the cup.",
+        tr: "Match Stats Model'deki kupa takım logoları alt lig ve amatör kulüplerde artık kırık gelmiyor; kupanın geri kalanıyla aynı kaynaktan yükleniyor.",
+      },
+    ],
+  },
+  {
+    date: { en: "13 August", tr: "13 Ağustos" },
     title: { en: "Turkish Cup — polish & Match Stats Model", tr: "Türkiye Kupası — iyileştirmeler & Match Stats Model" },
     tag: TAG_NEW,
     items: [
