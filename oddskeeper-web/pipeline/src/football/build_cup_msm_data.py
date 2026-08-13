@@ -87,6 +87,42 @@ select 'cup', s.season, 'Card', agg.nm, agg.team_slug, agg.hf, agg.ha, agg.af, a
 from agg cross join """ + WEIGHTED_SEASONS
 
 
+# Saves market: takim-seviyesi kurtaris kupa TAKIM feed'inde YOK; oyuncu (kaleci)
+# saves'inden turetilir (statistics-service). Sadece ÇF/YF/Final'de veri var ->
+# sadece o turlara cikan takimlarda (>=2 mac) deger olur.
+INSERT_SAVES = """
+insert into msm.histdata(league, season, market, team_name, team_slug, hf, ha, af, aa, updated_at)
+with tms as (
+  select s.match_uuid, s.team_id, sum(m.value) saves
+  from football.mackolik_player_match_stats s
+  join football.mackolik_player_match_metrics m
+    on m.match_uuid=s.match_uuid and m.player_id=s.player_id and m.metric_key='saves'
+  group by s.match_uuid, s.team_id
+),
+sided as (
+  select mt.team_a_id team_id, mt.team_a_name nm, true is_home, ta.saves vfor, tb.saves vagainst
+  from football.mackolik_matches mt
+  join tms ta on ta.match_uuid=mt.match_uuid and ta.team_id=mt.team_a_id
+  join tms tb on tb.match_uuid=mt.match_uuid and tb.team_id=mt.team_b_id
+  union all
+  select mt.team_b_id, mt.team_b_name, false, tb.saves, ta.saves
+  from football.mackolik_matches mt
+  join tms ta on ta.match_uuid=mt.match_uuid and ta.team_id=mt.team_a_id
+  join tms tb on tb.match_uuid=mt.match_uuid and tb.team_id=mt.team_b_id
+),
+slug as (select sd.*, coalesce(tm.team_slug, regexp_replace(lower(translate(sd.nm,'çğıöşüÇĞİÖŞÜ','cgiosucgiosu')),'[^a-z0-9]+','-','g')) team_slug
+  from sided sd left join ref.mackolik_team_map tm on tm.mackolik_team_id=sd.team_id),
+agg as (
+  select team_slug, max(nm) nm,
+    coalesce(round(avg(vfor) filter(where is_home)::numeric,2), round(avg(vfor)::numeric,2)) hf,
+    coalesce(round(avg(vagainst) filter(where is_home)::numeric,2), round(avg(vagainst)::numeric,2)) ha,
+    coalesce(round(avg(vfor) filter(where not is_home)::numeric,2), round(avg(vfor)::numeric,2)) af,
+    coalesce(round(avg(vagainst) filter(where not is_home)::numeric,2), round(avg(vagainst)::numeric,2)) aa
+  from slug group by team_slug having count(*)>=2)
+select 'cup', s.season, 'Saves', agg.nm, agg.team_slug, agg.hf, agg.ha, agg.af, agg.aa, now()
+from agg cross join """ + WEIGHTED_SEASONS
+
+
 def main():
     c = psycopg2.connect(ENV["DATABASE_URL"]); c.autocommit = True; cur = c.cursor()
     # market + model config: TSL'den kopya (ayni marketler/parametreler)
@@ -106,6 +142,9 @@ def main():
     for market, stat in MARKET_STAT.items():
         cur.execute(INSERT_ONE, {"market": market, "stat": stat}); n += cur.rowcount
     cur.execute(INSERT_CARD); n += cur.rowcount
+    cur.execute(INSERT_SAVES); n += cur.rowcount
+    cur.execute("select count(distinct team_slug) from msm.histdata where league='cup' and market='Saves'")
+    print(f"  Saves market: {cur.fetchone()[0]} takim")
     cur.execute("select count(distinct team_slug) from msm.histdata where league='cup'")
     print(f"MSM cup: {n} histdata satiri, {cur.fetchone()[0]} takim")
 
