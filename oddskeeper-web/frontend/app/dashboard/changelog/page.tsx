@@ -21,6 +21,17 @@ const TAG_NEW_TOOL: L = { en: "New tool", tr: "Yeni araç" };
 const ENTRIES: Entry[] = [
   {
     date: { en: "13 August", tr: "13 Ağustos" },
+    title: { en: "Turkish Cup section", tr: "Türkiye Kupası bölümü" },
+    tag: TAG_NEW,
+    items: [
+      {
+        en: "A new \"Cup\" shortcut has been added to the header (after 1.Lig). The last two seasons of the Turkish Cup (all rounds, including early and group stages) have been loaded with full match statistics; the fixtures and match content will appear in this section shortly.",
+        tr: "Header'a (1.Lig'den sonra) yeni bir \"Kupa\" kısayolu eklendi. Türkiye Kupası'nın son iki sezonu (erken ve grup aşamaları dahil tüm turlar) tam maç istatistikleriyle yüklendi; fikstür ve maç içeriği bu bölümde kısa süre içinde yer alacak.",
+      },
+    ],
+  },
+  {
+    date: { en: "13 August", tr: "13 Ağustos" },
     title: { en: "Season History fix", tr: "Season History düzeltmesi" },
     items: [
       {

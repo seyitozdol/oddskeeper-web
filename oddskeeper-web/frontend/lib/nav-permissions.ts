@@ -14,6 +14,9 @@ export const NAV_KEYS = [
   // gider, bu yuzden yalnizca header gorunurlugunu kontrol eder.
   "league-tsl",
   "league-1lig",
+  // Turkiye Kupasi panosu (Mackolik verisi). Temiz yol prefix'i /dashboard/cup
+  // (proxy gercekten kilitler). Header'da 1.Lig'den sonra, SofaScore kupa logosu.
+  "league-cup",
   "league-tbl",
   "volleyball",
   // Match Stats Model içindeki GSheet alt sekmesi. Bir header/route DEĞİL, salt
@@ -71,6 +74,12 @@ export const NAV_PERMISSION_ITEMS: NavPermissionItem[] = [
     // Temiz yol (Resmi deneyimi): proxy bu rotayi league-1lig iznine gore
     // kilitler. TSL ile ayni mantik.
     pathPrefixes: ["/dashboard/stats-analysis/tff1"],
+  },
+  {
+    key: "league-cup",
+    labelKey: "nav.leagueCup",
+    href: "/dashboard/cup",
+    pathPrefixes: ["/dashboard/cup"],
   },
   {
     key: "league-tbl",
