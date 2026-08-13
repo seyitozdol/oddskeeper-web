@@ -82,9 +82,8 @@ export default async function ResmiExperience({
   const metric = first(sp.metric);
   const leaderMetric = RESMI_LEADER_METRICS.find((m) => m.key === first(sp.leader))?.key ?? "goals_total";
 
-  // Kupada Players + Player Rankings artık hazır (Faz 5). MSM/PSM henüz placeholder.
-  const cupPending =
-    config.source === "cup" && (section === "matchStatsModel" || section === "playerStatsModel");
+  // Kupada Players + Rankings + MSM hazır. PSM (Player Participant Tools) henüz değil.
+  const cupPending = config.source === "cup" && section === "playerStatsModel";
 
   let content: React.ReactNode = null;
   if (cupPending) content = <CupComingSoon />;
