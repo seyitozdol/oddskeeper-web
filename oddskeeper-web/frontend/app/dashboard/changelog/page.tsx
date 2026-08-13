@@ -21,6 +21,17 @@ const TAG_NEW_TOOL: L = { en: "New tool", tr: "Yeni araç" };
 const ENTRIES: Entry[] = [
   {
     date: { en: "13 August", tr: "13 Ağustos" },
+    title: { en: "Turkish Cup — team & player pages", tr: "Türkiye Kupası — takım & oyuncu sayfaları" },
+    tag: TAG_NEW,
+    items: [
+      {
+        en: "Every cup team and player now has a page — including lower-league and amateur clubs that aren't in our leagues — with logos and player photos. Clicking a team or match opens its profile: team pages show results, cup stats and squad; match pages show the full stat comparison (possession, xG, throw-ins, fouls...).",
+        tr: "Artık her kupa takımının ve oyuncusunun bir sayfası var — liglerimizde olmayan alt lig ve amatör kulüpler dahil — logolar ve oyuncu fotoğraflarıyla. Takıma ya da maça tıklayınca profili açılıyor: takım sayfalarında sonuçlar, kupa istatistikleri ve kadro; maç sayfalarında tam istatistik karşılaştırması (topa sahip olma, xG, taç, faul...).",
+      },
+    ],
+  },
+  {
+    date: { en: "13 August", tr: "13 Ağustos" },
     title: { en: "Turkish Cup — first tabs live", tr: "Türkiye Kupası — ilk sekmeler yayında" },
     tag: TAG_NEW,
     items: [
