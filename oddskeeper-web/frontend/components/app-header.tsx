@@ -105,7 +105,7 @@ function ThemedUpcomingLogo({ imgClassName, alt }: { imgClassName: string; alt: 
 const LEAGUE_ITEMS: LeagueItem[] = [
   { key: "tsl", navKey: "league-tsl", label: "TSL", Icon: TslMark, href: TSL_HUB_HREF, group: "football" },
   { key: "1lig", navKey: "league-1lig", label: "1.Lig", Icon: Lig1Mark, href: TFF1_RESMI_HREF, group: "football" },
-  { key: "cup", navKey: "league-cup", label: "Cup", logoSrc: "/images/leagues/turkiye-kupasi.png", href: CUP_HREF, group: "football" },
+  { key: "cup", navKey: "league-cup", label: "Cup", Icon: CupMark, href: CUP_HREF, group: "football" },
   { key: "tbl", navKey: "league-tbl", label: "BSL", Icon: TblMark, href: BASKETBALL_LEAGUE_HREF, group: "basketball", sport: "basketball" },
   { key: "euroleague", navKey: "league-tbl", label: "EL", logoSrc: "/images/leagues/euroleague.svg", href: "/dashboard/euro/euroleague", group: "basketball", sport: "basketball" },
   { key: "eurocup", navKey: "league-tbl", label: "EC", logoSrc: "/images/leagues/eurocup.svg", href: "/dashboard/euro/eurocup", group: "basketball", sport: "basketball" },
@@ -446,6 +446,20 @@ function Lig1Mark({ className }: { className?: string }) {
     <Image
       src="/images/leagues/tff-1-lig.png"
       alt="1.Lig"
+      width={16}
+      height={16}
+      className={`${className ?? ""} tsl-league-mark object-contain`}
+    />
+  );
+}
+
+// Türkiye Kupası amblemi. TSL/1.Lig ile ayni tsl-league-mark filtresi:
+// koyu temada beyaz silue, calimla-light'ta orijinal (kirmizi).
+function CupMark({ className }: { className?: string }) {
+  return (
+    <Image
+      src="/images/leagues/turkiye-kupasi.png"
+      alt="Cup"
       width={16}
       height={16}
       className={`${className ?? ""} tsl-league-mark object-contain`}
