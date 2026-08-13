@@ -26,6 +26,9 @@ export const msm = defineMessages({
     etki: "Impact %",
     weight: "weight",
     referee: "Referee",
+    estimated: "estimate",
+    estimatedNote:
+      "has no real data for this market; derived from shots on target faced × the league save rate.",
     manualHome: "Manual home",
     manualAway: "Manual away",
     manualTotal: "Manual total",
@@ -163,6 +166,9 @@ export const msm = defineMessages({
     etki: "Etki %",
     weight: "ağırlık",
     referee: "Hakem",
+    estimated: "tahmini",
+    estimatedNote:
+      "için bu markette gerçek veri yok; yediği isabetli şut × lig kurtarış oranından türetildi.",
     manualHome: "Elle ev",
     manualAway: "Elle deplasman",
     manualTotal: "Elle toplam",

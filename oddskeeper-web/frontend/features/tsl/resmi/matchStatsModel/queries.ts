@@ -437,6 +437,25 @@ export async function fetchHistData(
   return out;
 }
 
+// Bu market + takımlarda verisi TAHMINI (estimated=true) olan slug'lar. MSM rozeti
+// icin: kupa Saves gibi gercek veri olmayan yerlerde SOT*oran ile turetilmis deger.
+export async function fetchEstimatedSlugs(
+  league: string,
+  market: string,
+  slugs: string[]
+): Promise<Set<string>> {
+  if (slugs.length === 0) return new Set();
+  const { data, error } = await sb()
+    .from("msm_histdata_v1")
+    .select("team_slug")
+    .eq("league", league)
+    .eq("market", market)
+    .eq("estimated", true)
+    .in("team_slug", slugs);
+  if (error) { console.error("fetchEstimatedSlugs", error); return new Set(); }
+  return new Set((data ?? []).map((r) => r.team_slug as string));
+}
+
 // ─── Config sekmesi: ham satırlar + yazma (RPC) + template listesi ──────────
 export interface RawModelConfig {
   margin: number; referee_weight: number; supremacy_divisor: number;

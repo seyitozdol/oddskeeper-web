@@ -36,6 +36,7 @@ import {
   fetchModelConfig,
   fetchReferees,
   fetchHistData,
+  fetchEstimatedSlugs,
   fetchCurrentStats,
   fetchCurrentMatchLog,
   fetchRawModelConfig,
@@ -372,6 +373,8 @@ export default function ResmiMatchStatsModel({
 
   // Seçilen market+takımlar için veri.
   const [hist, setHist] = useState<HistBySlug>({});
+  // Bu market+takımlarda verisi tahmini olan slug'lar (kupa Saves gibi).
+  const [estimatedSlugs, setEstimatedSlugs] = useState<Set<string>>(new Set());
   const [current, setCurrent] = useState<CurrentBySlug>({});
 
   // Güncel sezon pencereleme (Excel W7/W8) + istisnalar (Big4/RedC) + maç logu.
@@ -488,6 +491,7 @@ export default function ResmiMatchStatsModel({
     if (!homeSlug || !awaySlug || !market) return;
     const slugs = [homeSlug, awaySlug];
     fetchHistData(LEAGUE, market, slugs).then(setHist);
+    fetchEstimatedSlugs(LEAGUE, market, slugs).then(setEstimatedSlugs);
     fetchCurrentStats(LEAGUE, market, slugs, CURRENT_SEASON).then(setCurrent);
     fetchCurrentMatchLog(LEAGUE, market, slugs, CURRENT_SEASON).then(setMatchLog);
   }, [homeSlug, awaySlug, market]);
@@ -1159,6 +1163,17 @@ export default function ResmiMatchStatsModel({
                       <option key={m} value={m} className="bg-field text-ink">{m}</option>
                     ))}
                   </select>
+                  {estimatedSlugs.size > 0 && (
+                    <p className="mt-1 flex items-start gap-1 text-[10px] leading-snug text-amber-600 dark:text-amber-400">
+                      <span className="mt-px shrink-0 rounded bg-amber-500/15 px-1 font-semibold">≈ {t("msm.estimated")}</span>
+                      <span>
+                        {[...estimatedSlugs]
+                          .map((s) => (s === homeSlug ? homeName : s === awaySlug ? awayName : s))
+                          .join(", ")}{" "}
+                        {t("msm.estimatedNote")}
+                      </span>
+                    </p>
+                  )}
                 </div>
               </div>
               <div>
