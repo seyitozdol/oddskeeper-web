@@ -21,6 +21,17 @@ const TAG_NEW_TOOL: L = { en: "New tool", tr: "Yeni araç" };
 const ENTRIES: Entry[] = [
   {
     date: { en: "13 August", tr: "13 Ağustos" },
+    title: { en: "Turkish Cup — polish & Match Stats Model", tr: "Türkiye Kupası — iyileştirmeler & Match Stats Model" },
+    tag: TAG_NEW,
+    items: [
+      {
+        en: "Team logos across Cup Stages now load reliably, match pages show every available statistic (possession, xG, throw-ins, duels, clearances and more), and the cup shows a round-by-round chart instead of a league table (which doesn't fit a knockout). The Match Stats Model is now available for the cup too, built from each team's home/away cup numbers.",
+        tr: "Cup Stages'teki takım logoları artık düzgün yükleniyor, maç sayfaları mevcut tüm istatistikleri gösteriyor (topa sahip olma, xG, taç, ikili mücadele, uzaklaştırma ve daha fazlası) ve kupada lig tablosu yerine tur bazlı grafik var (eleme usulüne lig tablosu uymuyor). Match Stats Model artık kupada da var; her takımın ev/deplasman kupa sayılarından kuruluyor.",
+      },
+    ],
+  },
+  {
+    date: { en: "13 August", tr: "13 Ağustos" },
     title: { en: "Turkish Cup — Players & Rankings", tr: "Türkiye Kupası — Oyuncular & Sıralamalar" },
     tag: TAG_NEW,
     items: [
