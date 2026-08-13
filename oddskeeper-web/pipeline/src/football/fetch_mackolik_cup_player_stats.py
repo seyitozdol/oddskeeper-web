@@ -103,16 +103,26 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--limit", type=int, default=None, help="test: ilk N maç")
     ap.add_argument("--sleep", type=float, default=0.35)
+    # Oyuncu-stat SADECE Çeyrek/Yarı Final + Final'de var (kesif); varsayilan bu 3 tur.
+    # Tum turlar icin: --rounds all
+    ap.add_argument("--rounds", default="Çeyrek Final,Yarı Final,Final",
+                    help="virgülle tur adları veya 'all'")
     args = ap.parse_args()
 
     conn = psycopg2.connect(ENV["DATABASE_URL"])
     cur = conn.cursor()
-    cur.execute(
+    q = (
         "select match_uuid, team_a_id, team_b_id, raw #> '{match,mid}' as match_mid, raw "
         "from football.mackolik_matches where raw is not null "
         "and jsonb_array_length(coalesce(raw #> '{lineup,team_A,players}','[]')) > 0 "
-        "order by match_datetime"
     )
+    params = []
+    if args.rounds.strip().lower() != "all":
+        rounds = [r.strip() for r in args.rounds.split(",") if r.strip()]
+        q += "and round_name = any(%s) "
+        params.append(rounds)
+    q += "order by match_datetime desc"
+    cur.execute(q, params)
     matches = cur.fetchall()
     if args.limit:
         matches = matches[: args.limit]
