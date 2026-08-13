@@ -21,6 +21,16 @@ const TAG_NEW_TOOL: L = { en: "New tool", tr: "Yeni araç" };
 const ENTRIES: Entry[] = [
   {
     date: { en: "13 August", tr: "13 Ağustos" },
+    title: { en: "Season History fix", tr: "Season History düzeltmesi" },
+    items: [
+      {
+        en: "Duplicate season rows (2025/2026 shown twice) are removed, and the \"Current\" badge now follows the calendar season; it will move to 2026/2027 as soon as the new season's first matches arrive.",
+        tr: "Mükerrer sezon satırları (iki kez görünen 2025/2026) kaldırıldı; \"Current\" rozeti artık takvim sezonunu izliyor, yeni sezonun ilk maçları gelir gelmez 2026/2027'ye geçecek.",
+      },
+    ],
+  },
+  {
+    date: { en: "13 August", tr: "13 Ağustos" },
     title: { en: "Team fixtures: all competitions", tr: "Takım fikstürü: tüm turnuvalar" },
     tag: TAG_NEW,
     items: [

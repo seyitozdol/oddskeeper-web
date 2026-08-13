@@ -1,4 +1,5 @@
 import { getT } from "@/lib/i18n/server";
+import { currentSeasonLabel } from "@/lib/season";
 import type { TeamStatisticsSummaryRow } from "../types";
 import { formatDecimal } from "../utils/formatDecimal";
 import { formatPercentage } from "../utils/formatPercentage";
@@ -20,7 +21,10 @@ export async function SeasonHistoryPanel({
     );
   }
 
-  const currentSeasonLabel = rows[0]?.season_label ?? null;
+  // "Current" rozeti TAKVIM sezonuna baglidir (Temmuz'da yeni sezona doner);
+  // en yeni veri satiri degil. Yeni sezon veri gelmeden eski sezona "current"
+  // yazilmasin (kullanici sikayeti: 2025/2026'ya current deniyordu).
+  const activeSeasonLabel = currentSeasonLabel();
 
   return (
     <div className="space-y-3">
@@ -53,7 +57,7 @@ export async function SeasonHistoryPanel({
 
             <tbody>
               {rows.map((row) => {
-                const isCurrent = row.season_label === currentSeasonLabel;
+                const isCurrent = row.season_label === activeSeasonLabel;
 
                 return (
                   <tr
