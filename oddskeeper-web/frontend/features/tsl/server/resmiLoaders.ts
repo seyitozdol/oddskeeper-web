@@ -63,6 +63,7 @@ import {
   cupPlayers,
   cupStandings,
   cupTeamLeaderboard,
+  cupTeamLogo,
   cupTeamMeta,
   cupTeamMetrics,
   cupUpcoming,
@@ -619,6 +620,8 @@ export type CupStageMatch = {
   awayName: string;
   homeSlug: string | null;
   awaySlug: string | null;
+  homeLogo: string | null;
+  awayLogo: string | null;
   homeScore: number | null;
   awayScore: number | null;
   status: string | null;
@@ -632,14 +635,18 @@ export type ResmiCupStagesBundle = {
 
 export async function loadResmiCupStages(config: LeagueConfig, season: string): Promise<ResmiCupStagesBundle> {
   const sb = await createClient();
-  const [{ data: stageData }, { data: matchData }] = await Promise.all([
+  const [{ data: stageData }, { data: matchData }, localLogos] = await Promise.all([
     sb.schema("analytics").from("cup_stages_v1").select("*").eq("season_label", season),
     sb.schema("analytics").from("cup_matches_v1")
-      .select("match_id, match_datetime, round_id, round_name, status, home_team_name, home_team_slug, away_team_name, away_team_slug, home_score, away_score")
+      .select("match_id, match_datetime, round_id, round_name, status, home_team_name, home_team_slug, home_team_uuid, away_team_name, away_team_slug, away_team_uuid, home_score, away_score")
       .eq("season_label", season)
       .order("match_datetime", { ascending: true })
       .limit(400),
+    getAllFootballTeamLogos(),
   ]);
+  // Eşleşen takım: yerel football logosu; değilse Mackolik CDN (uuid ile).
+  const teamLogo = (slug: string | null, uuid: string | null): string | null =>
+    (slug ? localLogos[slug] : null) ?? cupTeamLogo(uuid);
   const stages: CupStageRow[] = (stageData ?? [])
     .map((r) => ({
       roundId: r.round_id == null ? null : Number(r.round_id),
@@ -661,6 +668,8 @@ export async function loadResmiCupStages(config: LeagueConfig, season: string): 
       awayName: (r.away_team_name as string) ?? "—",
       homeSlug: (r.home_team_slug as string) ?? null,
       awaySlug: (r.away_team_slug as string) ?? null,
+      homeLogo: teamLogo((r.home_team_slug as string) ?? null, (r.home_team_uuid as string) ?? null),
+      awayLogo: teamLogo((r.away_team_slug as string) ?? null, (r.away_team_uuid as string) ?? null),
       homeScore: r.home_score == null ? null : Number(r.home_score),
       awayScore: r.away_score == null ? null : Number(r.away_score),
       status: (r.status as string) ?? null,

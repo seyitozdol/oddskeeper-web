@@ -49,17 +49,28 @@ async function logos(): Promise<Record<string, string>> {
   return getAllFootballTeamLogos();
 }
 
+// Mackolik CDN: her kupa takım/oyuncusunun logosu/fotoğrafı uuid ile (auth'suz).
+// Sistemde-olmayan alt lig/amatör takımları da kapsar.
+export function cupTeamLogo(uuid: string | null): string | null {
+  return uuid ? `https://api.mackolikfeeds.com/soccer/images/teams/150x150/${uuid}.png` : null;
+}
+export function cupPlayerPhoto(uuid: string | null): string | null {
+  return uuid ? `https://api.mackolikfeeds.com/soccer/images/players/150x150/${uuid}.png` : null;
+}
+
 export async function cupTeamMeta(): Promise<Record<string, TslTeamMeta>> {
   const sb = await createClient();
   const [{ data }, lg] = await Promise.all([
-    sb.schema("analytics").from("cup_team_meta_v1").select("team_id, team_name, team_slug").limit(500),
+    sb.schema("analytics").from("cup_team_meta_v1").select("team_id, team_uuid, team_name, team_slug").limit(500),
     logos(),
   ]);
   const out: Record<string, TslTeamMeta> = {};
   for (const r of data ?? []) {
     const id = String(r.team_id);
     const slug = r.team_slug as string | null;
-    out[id] = { teamId: id, name: r.team_name ?? id, logo: slug ? lg[slug] ?? null : null };
+    // Eşleşen takım: yerel football logosu (tema-tutarlı); değilse Mackolik CDN.
+    const logo = (slug ? lg[slug] : null) ?? cupTeamLogo(r.team_uuid as string | null);
+    out[id] = { teamId: id, name: r.team_name ?? id, logo };
   }
   return out;
 }

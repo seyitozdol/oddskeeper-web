@@ -71,10 +71,15 @@ export function teamHrefFor(
   teamSlug: string | null,
   season?: string
 ): string | null {
-  // tff1: sofascore takım id'li mevcut sayfa. tsl + cup: opta slug'lı football profili.
+  // tff1: sofascore takım id'li mevcut sayfa.
   if (config.source === "tff1") {
     const s = season ? `?season=${encodeURIComponent(season)}` : "";
     return `/dashboard/tff-1-lig/team/${encodeURIComponent(teamId)}${s}`;
+  }
+  // cup: eşleşen (slug var) football profiline; eşleşmeyen kupa takım profiline.
+  if (config.source === "cup") {
+    if (teamSlug) return getTeamDetailHref(teamSlug);
+    return `/dashboard/cup/team/${encodeURIComponent(teamId)}`;
   }
   return getTeamDetailHref(teamSlug);
 }
@@ -86,6 +91,11 @@ export function playerHrefFor(
   playerSlug: string | null
 ): string | null {
   if (config.source === "tff1") return `/dashboard/tff-1-lig/player/${encodeURIComponent(playerId)}`;
+  // cup: eşleşen (slug var) football profiline; eşleşmeyen kupa oyuncu profiline.
+  if (config.source === "cup") {
+    if (playerSlug) return getPlayerDetailHref(playerSlug);
+    return `/dashboard/cup/player/${encodeURIComponent(playerId)}`;
+  }
   return getPlayerDetailHref(playerSlug);
 }
 

@@ -1,8 +1,14 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useI18n } from "../../../lib/i18n/LanguageProvider";
 import type { ResmiCupStagesBundle } from "../server/resmiLoaders";
+
+function Crest({ src, alt }: { src: string | null; alt: string }) {
+  if (!src) return <span className="inline-block h-4 w-4 shrink-0 rounded-full bg-veil" aria-hidden />;
+  return <Image src={src} alt={alt} width={16} height={16} className="h-4 w-4 shrink-0 object-contain" unoptimized />;
+}
 
 function fmtDate(iso: string | null, locale: string): string {
   if (!iso) return "";
@@ -57,8 +63,9 @@ export default function ResmiCupStages({ data }: { data: ResmiCupStagesBundle })
                       <span className="w-14 shrink-0 text-[10px] tabular-nums text-ink-3">
                         {fmtDate(m.datetime, locale)}
                       </span>
-                      <span className={`flex-1 text-right ${homeWin ? "font-semibold text-ink" : "text-ink-2"}`}>
+                      <span className={`flex flex-1 items-center justify-end gap-1.5 text-right ${homeWin ? "font-semibold text-ink" : "text-ink-2"}`}>
                         {m.homeName}
+                        <Crest src={m.homeLogo} alt={m.homeName} />
                       </span>
                       <span className="w-12 shrink-0 text-center tabular-nums">
                         {played ? (
@@ -69,7 +76,8 @@ export default function ResmiCupStages({ data }: { data: ResmiCupStagesBundle })
                           <span className="text-ink-3">-</span>
                         )}
                       </span>
-                      <span className={`flex-1 ${awayWin ? "font-semibold text-ink" : "text-ink-2"}`}>
+                      <span className={`flex flex-1 items-center gap-1.5 ${awayWin ? "font-semibold text-ink" : "text-ink-2"}`}>
+                        <Crest src={m.awayLogo} alt={m.awayName} />
                         {m.awayName}
                       </span>
                     </Link>

@@ -58,6 +58,13 @@ const nextConfig: NextConfig = {
         hostname: "api.sofascore.com",
         pathname: "/**",
       },
+      {
+        // Mackolik CDN: kupa takim logolari + oyuncu fotograflari (uuid ile).
+        // Sistemde-olmayan alt lig/amator takim-oyunculari da kapsar.
+        protocol: "https",
+        hostname: "api.mackolikfeeds.com",
+        pathname: "/soccer/images/**",
+      },
     ],
   },
 };
