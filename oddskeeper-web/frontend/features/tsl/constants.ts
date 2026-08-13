@@ -50,10 +50,27 @@ export const RESMI_SECTIONS = [
   "matchStatsModel",
   "playerStatsModel",
 ] as const;
-export type ResmiSection = (typeof RESMI_SECTIONS)[number];
+
+// Türkiye Kupası sekmeleri (kullanıcı sırası). "league" yok; ilk sekme
+// "cupStages" (bracket/turlar, kupaya özel). Diğerleri TSL bileşenlerini
+// paylaşır (Players/Rankings/PSM Faz 5'e kadar placeholder).
+export const CUP_SECTIONS = [
+  "cupStages",
+  "players",
+  "teams",
+  "results",
+  "referees",
+  "playerRankings",
+  "teamRankings",
+  "matchStatsModel",
+  "playerStatsModel",
+] as const;
+
+const ALL_SECTIONS = [...RESMI_SECTIONS, "cupStages"] as const;
+export type ResmiSection = (typeof ALL_SECTIONS)[number];
 
 export function isResmiSection(v: string | undefined | null): v is ResmiSection {
-  return !!v && (RESMI_SECTIONS as readonly string[]).includes(v);
+  return !!v && (ALL_SECTIONS as readonly string[]).includes(v);
 }
 
 // Lig liderleri metrik seti (client + server ortak; server modulu import etme).

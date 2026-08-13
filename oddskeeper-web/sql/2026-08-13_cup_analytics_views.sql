@@ -188,9 +188,33 @@ select
 from football.mackolik_matches
 group by season_name, season_id, round_id, round_name;
 
+-- 7) Kupa performans tablosu (standings): takim basina kupa geneli galibiyet/
+--    beraberlik/maglubiyet + gol + puan (Results/Teams yan panelleri icin).
+create or replace view analytics.cup_standings_v1 as
+with sided as (
+  select season_name, team_a_id tid, team_a_name nm, score_a gf, score_b ga from football.mackolik_matches where score_a is not null
+  union all
+  select season_name, team_b_id, team_b_name, score_b, score_a from football.mackolik_matches where score_a is not null
+)
+select
+  s.season_name as season_label,
+  s.tid as team_id,
+  coalesce(tm.team_name, max(s.nm)) as team_name,
+  tm.team_slug,
+  count(*) as played,
+  count(*) filter (where gf>ga) as wins,
+  count(*) filter (where gf=ga) as draws,
+  count(*) filter (where gf<ga) as losses,
+  sum(gf) as goals_for, sum(ga) as goals_against,
+  count(*) filter (where gf>ga)*3 + count(*) filter (where gf=ga) as points
+from sided s
+left join analytics.cup_team_meta_v1 tm on tm.team_id = s.tid
+group by s.season_name, s.tid, tm.team_name, tm.team_slug;
+
 grant select on
     analytics.cup_team_meta_v1, analytics.cup_matches_v1,
     analytics.cup_team_match_stats_v1, analytics.cup_team_metrics_v1,
     analytics.cup_team_leaderboard_rows_v1, analytics.cup_referee_matches_v1,
-    analytics.cup_referee_season_stats_v1, analytics.cup_stages_v1
+    analytics.cup_referee_season_stats_v1, analytics.cup_stages_v1,
+    analytics.cup_standings_v1
 to anon, authenticated;

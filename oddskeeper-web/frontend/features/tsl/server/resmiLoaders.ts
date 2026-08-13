@@ -54,8 +54,21 @@ import {
   tff1TeamMetrics,
   tff1Upcoming,
 } from "./tff1data";
+import {
+  cupAggression,
+  cupAssets,
+  cupLeaderboard,
+  cupMatches,
+  cupPlayerCatalog,
+  cupPlayers,
+  cupStandings,
+  cupTeamLeaderboard,
+  cupTeamMeta,
+  cupTeamMetrics,
+  cupUpcoming,
+} from "./cupdata";
 
-// ---- Lig kaynak sağlayıcısı (tsl_ss vs tff1) ----
+// ---- Lig kaynak sağlayıcısı (tsl_ss vs tff1 vs cup) ----
 type Provider = {
   teamMeta(season: string): Promise<Record<string, TslTeamMeta>>;
   matches(season: string, meta: Record<string, TslTeamMeta>): Promise<TslMatch[]>;
@@ -72,6 +85,22 @@ type Provider = {
 };
 
 function providerFor(config: LeagueConfig): Provider {
+  if (config.source === "cup") {
+    return {
+      teamMeta: () => cupTeamMeta(),
+      matches: (s, meta) => cupMatches(s, meta),
+      upcoming: () => cupUpcoming(),
+      standings: (s, meta, m) => cupStandings(s, meta, m),
+      players: () => cupPlayers(),
+      assets: () => cupAssets(),
+      catalog: () => Promise.resolve(cupPlayerCatalog()),
+      leaderboard: () => cupLeaderboard(),
+      teamMetrics: (s, meta) => cupTeamMetrics(s, meta),
+      teamLeaderboard: (s, meta) => cupTeamLeaderboard(s, meta),
+      aggression: (s) => cupAggression(s),
+      transfers: () => Promise.resolve([]),
+    };
+  }
   if (config.source === "tff1") {
     return {
       teamMeta: () => tff1TeamMeta(),
@@ -179,8 +208,9 @@ async function buildTeamHrefs(
   season: string
 ): Promise<Record<string, string | null>> {
   const out: Record<string, string | null> = {};
+  // tsl + cup opta-slug'lı football profillerine gider; ikisi de valid slug seti ister.
   const valid =
-    config.source === "tsl"
+    config.source !== "tff1"
       ? new Set(Object.keys(await getAllFootballTeamLogos()))
       : null;
   for (const e of entries) {
@@ -516,9 +546,11 @@ const num = (v: unknown): number | null => (v == null ? null : Number(v));
 // Kaynak: analytics.msm_referee_season_stats_v1 (lig+sezon başına tek kaynak).
 export async function loadResmiReferees(config: LeagueConfig, season: string): Promise<ResmiRefereesBundle> {
   const supabase = await createClient();
+  // Kupa hakem verisi ayrı view'da (aynı şekil); diğer ligler msm_* ortak tablodan.
+  const refTable = config.source === "cup" ? "cup_referee_season_stats_v1" : "msm_referee_season_stats_v1";
   const { data, error } = await supabase
     .schema("analytics")
-    .from("msm_referee_season_stats_v1")
+    .from(refTable)
     .select(
       "referee, apps, fouls_total, tackles_total, yellow_total, red_total, pen_total, fouls_pg, fouls_per_tackle, pen_pg, yel_pg, red_pg, cards_pg"
     )
@@ -568,4 +600,71 @@ export async function loadResmiReferees(config: LeagueConfig, season: string): P
     };
   }
   return { season, rows, averages };
+}
+
+// ---- Cup Stages (kupaya özel: turlar/bracket) ----
+export type CupStageRow = {
+  roundId: number | null;
+  roundName: string;
+  matchCount: number;
+  playedCount: number;
+  firstMatch: string | null;
+  lastMatch: string | null;
+};
+export type CupStageMatch = {
+  matchId: string;
+  datetime: string | null;
+  roundName: string;
+  homeName: string;
+  awayName: string;
+  homeSlug: string | null;
+  awaySlug: string | null;
+  homeScore: number | null;
+  awayScore: number | null;
+  status: string | null;
+};
+export type ResmiCupStagesBundle = {
+  season: string;
+  matchBase: string;
+  stages: CupStageRow[];
+  matchesByRound: Record<string, CupStageMatch[]>;
+};
+
+export async function loadResmiCupStages(config: LeagueConfig, season: string): Promise<ResmiCupStagesBundle> {
+  const sb = await createClient();
+  const [{ data: stageData }, { data: matchData }] = await Promise.all([
+    sb.schema("analytics").from("cup_stages_v1").select("*").eq("season_label", season),
+    sb.schema("analytics").from("cup_matches_v1")
+      .select("match_id, match_datetime, round_id, round_name, status, home_team_name, home_team_slug, away_team_name, away_team_slug, home_score, away_score")
+      .eq("season_label", season)
+      .order("match_datetime", { ascending: true })
+      .limit(400),
+  ]);
+  const stages: CupStageRow[] = (stageData ?? [])
+    .map((r) => ({
+      roundId: r.round_id == null ? null : Number(r.round_id),
+      roundName: (r.round_name as string) ?? "—",
+      matchCount: Number(r.match_count ?? 0),
+      playedCount: Number(r.played_count ?? 0),
+      firstMatch: (r.first_match as string) ?? null,
+      lastMatch: (r.last_match as string) ?? null,
+    }))
+    .sort((a, b) => (a.firstMatch ?? "").localeCompare(b.firstMatch ?? ""));
+  const matchesByRound: Record<string, CupStageMatch[]> = {};
+  for (const r of matchData ?? []) {
+    const key = (r.round_name as string) ?? "—";
+    (matchesByRound[key] ??= []).push({
+      matchId: String(r.match_id),
+      datetime: (r.match_datetime as string) ?? null,
+      roundName: key,
+      homeName: (r.home_team_name as string) ?? "—",
+      awayName: (r.away_team_name as string) ?? "—",
+      homeSlug: (r.home_team_slug as string) ?? null,
+      awaySlug: (r.away_team_slug as string) ?? null,
+      homeScore: r.home_score == null ? null : Number(r.home_score),
+      awayScore: r.away_score == null ? null : Number(r.away_score),
+      status: (r.status as string) ?? null,
+    });
+  }
+  return { season, matchBase: config.matchBase, stages, matchesByRound };
 }

@@ -5,12 +5,13 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { useI18n } from "../../../lib/i18n/LanguageProvider";
-import { RESMI_SECTIONS, type ResmiSection } from "../constants";
+import { type ResmiSection } from "../constants";
 import type { LeagueConfig } from "../leagues";
 import SeasonToggle from "../../../components/SeasonToggle";
 
 const SECTION_KEY: Record<ResmiSection, string> = {
   league: "tsl.sectionLeague",
+  cupStages: "tsl.sectionCupStages",
   players: "tsl.sectionPlayers",
   teams: "tsl.sectionTeams",
   results: "tsl.sectionResults",
@@ -48,7 +49,7 @@ export default function ResmiControlBar({
         {/* Sol: lig amblemi + isim + bayrak */}
         <div className="flex items-center gap-3">
           <Link
-            href={`${config.basePath}?season=${encodeURIComponent(season)}&section=league`}
+            href={`${config.basePath}?season=${encodeURIComponent(season)}&section=${config.defaultSection}`}
             title={leagueName}
             className="flex items-center gap-3"
           >
@@ -77,8 +78,8 @@ export default function ResmiControlBar({
       </div>
 
       {/* Alt: bolumler */}
-      <div className="mt-3 flex items-center gap-1">
-        {RESMI_SECTIONS.map((s) => {
+      <div className="mt-3 flex items-center gap-1 overflow-x-auto">
+        {config.sections.map((s) => {
           const active = s === section;
           return (
             <Link
