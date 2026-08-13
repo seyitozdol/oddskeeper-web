@@ -1,13 +1,16 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useI18n } from "../../../lib/i18n/LanguageProvider";
 import type { ResmiCupStagesBundle } from "../server/resmiLoaders";
+import CupRoundsChart from "./CupRoundsChart";
 
+// Kupa logolari harici CDN'den (Mackolik) gelebildiginden next/image yerine
+// duz <img>: domain/optimizasyon kisiti yok, her zaman yukler.
 function Crest({ src, alt }: { src: string | null; alt: string }) {
   if (!src) return <span className="inline-block h-4 w-4 shrink-0 rounded-full bg-veil" aria-hidden />;
-  return <Image src={src} alt={alt} width={16} height={16} className="h-4 w-4 shrink-0 object-contain" unoptimized />;
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img src={src} alt={alt} width={16} height={16} className="h-4 w-4 shrink-0 object-contain" loading="lazy" />;
 }
 
 function fmtDate(iso: string | null, locale: string): string {
@@ -38,6 +41,7 @@ export default function ResmiCupStages({ data }: { data: ResmiCupStagesBundle })
       <h2 className="text-[15px] font-semibold text-ink">
         {t("tsl.sectionCupStages")} · {season}
       </h2>
+      <CupRoundsChart rounds={stages} />
       {stages.map((st) => {
         const matches = matchesByRound[st.roundName] ?? [];
         return (

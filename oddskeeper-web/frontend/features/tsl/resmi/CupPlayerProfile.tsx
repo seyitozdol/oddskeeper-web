@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useI18n } from "../../../lib/i18n/LanguageProvider";
 import type { CupPlayerProfile } from "../server/cupProfiles";
@@ -30,9 +29,10 @@ export default function CupPlayerProfilePage({ data }: { data: CupPlayerProfile 
 
       <div className="mb-6 flex items-center gap-4">
         {data.photo ? (
-          <Image src={data.photo} alt={data.name} width={72} height={72} className="h-18 w-18 shrink-0 rounded-full object-cover ring-1 ring-line" style={{ width: 72, height: 72 }} unoptimized />
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={data.photo} alt={data.name} className="shrink-0 rounded-full object-cover ring-1 ring-line" style={{ width: 72, height: 72 }} loading="lazy" />
         ) : (
-          <span className="h-18 w-18 shrink-0 rounded-full bg-veil" style={{ width: 72, height: 72 }} />
+          <span className="shrink-0 rounded-full bg-veil" style={{ width: 72, height: 72 }} />
         )}
         <div>
           <h1 className="text-xl font-bold text-ink">{data.name}</h1>
@@ -42,7 +42,8 @@ export default function CupPlayerProfilePage({ data }: { data: CupPlayerProfile 
             {a && <span>{a} {tr ? "yaş" : "yrs"}</span>}
             {data.teamName && (
               <Link href={data.teamHref ?? "#"} className="flex items-center gap-1 text-ink-2 hover:text-ink">
-                {data.teamLogo && <Image src={data.teamLogo} alt={data.teamName} width={14} height={14} className="h-3.5 w-3.5 object-contain" unoptimized />}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                {data.teamLogo && <img src={data.teamLogo} alt={data.teamName} className="h-3.5 w-3.5 object-contain" loading="lazy" />}
                 {data.teamName}
               </Link>
             )}

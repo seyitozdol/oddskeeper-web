@@ -312,7 +312,25 @@ export type ResmiResultsBundle = {
   standings: TslStandingRow[];
   rounds: MatchRound[];
   teamHrefById: Record<string, string | null>;
+  // Kupa: lig tablosu yerine tur bazlı grafik verisi.
+  cupRounds?: CupStageRow[];
 };
+
+async function loadCupRounds(season: string): Promise<CupStageRow[]> {
+  const sb = await createClient();
+  const { data } = await sb.schema("analytics").from("cup_stages_v1").select("*").eq("season_label", season);
+  return (data ?? [])
+    .map((r) => ({
+      roundId: r.round_id == null ? null : Number(r.round_id),
+      roundName: (r.round_name as string) ?? "—",
+      matchCount: Number(r.match_count ?? 0),
+      playedCount: Number(r.played_count ?? 0),
+      goals: Number(r.goals ?? 0),
+      firstMatch: (r.first_match as string) ?? null,
+      lastMatch: (r.last_match as string) ?? null,
+    }))
+    .sort((a, b) => (a.firstMatch ?? "").localeCompare(b.firstMatch ?? ""));
+}
 
 export async function loadResmiResults(config: LeagueConfig, season: string): Promise<ResmiResultsBundle> {
   const p = providerFor(config);
@@ -326,7 +344,8 @@ export async function loadResmiResults(config: LeagueConfig, season: string): Pr
     season
   );
   const rounds = clusterRounds(matches).reverse();
-  return { season, basePath: config.basePath, matchBase: config.matchBase, standings, rounds, teamHrefById };
+  const cupRounds = config.source === "cup" ? await loadCupRounds(season) : undefined;
+  return { season, basePath: config.basePath, matchBase: config.matchBase, standings, rounds, teamHrefById, cupRounds };
 }
 
 export type ResmiTeamsBundle = {
@@ -609,6 +628,7 @@ export type CupStageRow = {
   roundName: string;
   matchCount: number;
   playedCount: number;
+  goals: number;
   firstMatch: string | null;
   lastMatch: string | null;
 };
@@ -653,6 +673,7 @@ export async function loadResmiCupStages(config: LeagueConfig, season: string): 
       roundName: (r.round_name as string) ?? "—",
       matchCount: Number(r.match_count ?? 0),
       playedCount: Number(r.played_count ?? 0),
+      goals: Number(r.goals ?? 0),
       firstMatch: (r.first_match as string) ?? null,
       lastMatch: (r.last_match as string) ?? null,
     }))

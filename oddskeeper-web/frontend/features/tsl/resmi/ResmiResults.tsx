@@ -2,13 +2,15 @@ import { getLocale, getT } from "@/lib/i18n/server";
 import { formatDate } from "@/features/tsl/lib";
 import type { ResmiResultsBundle } from "@/features/tsl/server/resmiLoaders";
 import { MatchRow, ResmiStandings } from "./parts";
+import CupRoundsChart from "./CupRoundsChart";
 
 export default async function ResmiResults({ data }: { data: ResmiResultsBundle }) {
   const t = await getT();
   const locale = await getLocale();
-  const { standings, rounds, teamHrefById, basePath, matchBase } = data;
+  const { standings, rounds, teamHrefById, basePath, matchBase, cupRounds } = data;
+  const isCup = !!cupRounds;
 
-  if (!standings.length) {
+  if (!standings.length && !isCup) {
     return <p className="py-16 text-center text-sm text-ink-3">{t("tsl.noData")}</p>;
   }
 
@@ -27,17 +29,23 @@ export default async function ResmiResults({ data }: { data: ResmiResultsBundle 
 
   return (
     <div className="grid gap-5 lg:grid-cols-[1fr_1fr]">
-      {/* Ranking (tam puan durumu) */}
+      {/* Kupa: lig tablosu yerine tur grafiği. Diğer ligler: puan durumu. */}
       <div>
-        <h2 className="mb-2 text-[13px] font-semibold uppercase tracking-[0.12em] text-ink-2">
-          {t("tsl.standings")}
-        </h2>
-        <ResmiStandings
-          standings={standings}
-          teamHrefById={teamHrefById}
-          compact={false}
-          labels={labels}
-        />
+        {isCup ? (
+          <CupRoundsChart rounds={cupRounds!} />
+        ) : (
+          <>
+            <h2 className="mb-2 text-[13px] font-semibold uppercase tracking-[0.12em] text-ink-2">
+              {t("tsl.standings")}
+            </h2>
+            <ResmiStandings
+              standings={standings}
+              teamHrefById={teamHrefById}
+              compact={false}
+              labels={labels}
+            />
+          </>
+        )}
       </div>
 
       {/* Hafta hafta sonuclar */}

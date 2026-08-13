@@ -1,13 +1,13 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useI18n } from "../../../lib/i18n/LanguageProvider";
 import type { CupMatchDetail } from "../server/cupProfiles";
 
 function Crest({ src, alt, size = 40 }: { src: string | null; alt: string; size?: number }) {
   if (!src) return <span className="inline-block shrink-0 rounded-full bg-veil" style={{ width: size, height: size }} aria-hidden />;
-  return <Image src={src} alt={alt} width={size} height={size} className="shrink-0 object-contain" style={{ width: size, height: size }} unoptimized />;
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img src={src} alt={alt} className="shrink-0 object-contain" style={{ width: size, height: size }} loading="lazy" />;
 }
 
 function StatBar({ label, a, b }: { label: string; a: number | null; b: number | null }) {

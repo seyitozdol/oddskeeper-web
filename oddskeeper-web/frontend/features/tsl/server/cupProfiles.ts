@@ -121,20 +121,37 @@ export type CupMatchDetail = {
   stats: CupMatchStat[];
 };
 
+// Mackolik stat_team'deki TÜM tipler (o maçta hangisi varsa hepsi gösterilir).
 const MATCH_STAT_ORDER: { key: string; label: string }[] = [
   { key: "possession", label: "Topa Sahip Olma" },
   { key: "expected_goals", label: "Gol Beklentisi (xG)" },
+  { key: "expected_goals_on_set_pieces", label: "Duran Toptan xG" },
   { key: "shots", label: "Toplam Şut" },
   { key: "shots_on_target", label: "İsabetli Şut" },
   { key: "shots_off_target", label: "İsabetsiz Şut" },
   { key: "blocked_shots", label: "Engellenen Şut" },
+  { key: "woodwork", label: "Direkten Dönen" },
+  { key: "big_chances_missed", label: "Kaçan Büyük Şans" },
+  { key: "touches_in_opp_box", label: "Rakip Ceza Sahasında Buluşma" },
   { key: "corners", label: "Korner" },
   { key: "throw_in", label: "Taç" },
-  { key: "fouls", label: "Faul" },
+  { key: "goal_kick", label: "Kale Vuruşu" },
   { key: "total_offside", label: "Ofsayt" },
-  { key: "passes", label: "Pas" },
+  { key: "passes", label: "Toplam Pas" },
+  { key: "successful_passes", label: "İsabetli Pas" },
   { key: "passing_accuracy", label: "Pas İsabeti (%)" },
+  { key: "crosses", label: "Orta" },
+  { key: "successful_crosses", label: "İsabetli Orta" },
+  { key: "successful_tackles", label: "Top Kapma" },
+  { key: "interceptions", label: "Araya Girme" },
+  { key: "clearances", label: "Uzaklaştırma" },
+  { key: "successful_duels", label: "Kazanılan İkili Mücadele" },
+  { key: "successful_aerial_duels", label: "Kazanılan Hava Topu" },
+  { key: "successful_takeons", label: "Başarılı Çalım" },
+  { key: "fouls", label: "Faul" },
   { key: "yellow_card", label: "Sarı Kart" },
+  { key: "second_yellow_card", label: "2. Sarı Kart" },
+  { key: "direct_red_card", label: "Direkt Kırmızı Kart" },
   { key: "red_card", label: "Kırmızı Kart" },
 ];
 
