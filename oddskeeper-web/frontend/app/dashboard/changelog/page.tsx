@@ -21,12 +21,23 @@ const TAG_NEW_TOOL: L = { en: "New tool", tr: "Yeni araç" };
 const ENTRIES: Entry[] = [
   {
     date: { en: "13 August", tr: "13 Ağustos" },
+    title: { en: "Turkish Cup — first tabs live", tr: "Türkiye Kupası — ilk sekmeler yayında" },
+    tag: TAG_NEW,
+    items: [
+      {
+        en: "The Cup section now opens on a Cup Stages view (round-by-round bracket), plus Results, Teams, Team Rankings and Referees — covering the last two seasons, all rounds including group stages. Player-side tabs (Players, Rankings, models) are being prepared next.",
+        tr: "Kupa bölümü artık Cup Stages görünümüyle açılıyor (tur tur bracket); ayrıca Results, Teams, Team Rankings ve Referees sekmeleri geldi — son iki sezon, grup aşamaları dahil tüm turlar. Oyuncu tarafı sekmeler (Players, sıralamalar, modeller) sırada.",
+      },
+    ],
+  },
+  {
+    date: { en: "13 August", tr: "13 Ağustos" },
     title: { en: "Turkish Cup section", tr: "Türkiye Kupası bölümü" },
     tag: TAG_NEW,
     items: [
       {
-        en: "A new \"Cup\" shortcut has been added to the header (after 1.Lig). The last two seasons of the Turkish Cup (all rounds, including early and group stages) have been loaded with full match statistics; the fixtures and match content will appear in this section shortly.",
-        tr: "Header'a (1.Lig'den sonra) yeni bir \"Kupa\" kısayolu eklendi. Türkiye Kupası'nın son iki sezonu (erken ve grup aşamaları dahil tüm turlar) tam maç istatistikleriyle yüklendi; fikstür ve maç içeriği bu bölümde kısa süre içinde yer alacak.",
+        en: "A new \"Cup\" shortcut has been added to the header (after 1.Lig). The last two seasons of the Turkish Cup (all rounds, including early and group stages) have been loaded with full match statistics.",
+        tr: "Header'a (1.Lig'den sonra) yeni bir \"Kupa\" kısayolu eklendi. Türkiye Kupası'nın son iki sezonu (erken ve grup aşamaları dahil tüm turlar) tam maç istatistikleriyle yüklendi.",
       },
     ],
   },
