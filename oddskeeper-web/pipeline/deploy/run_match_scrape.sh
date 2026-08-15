@@ -50,5 +50,22 @@ fi
       "$VENV" -c "import psycopg2; from dotenv import dotenv_values; e=dotenv_values('$PIPE/.env'); c=psycopg2.connect(e['DATABASE_URL'].strip().strip(chr(34))); c.autocommit=True; cur=c.cursor(); cur.execute('refresh materialized view analytics.tff1_player_season_stats_mat'); cur.execute('refresh materialized view analytics.tff1_team_season_stats_mat')"
       echo "===== $(date -u '+%F %T UTC') FS-MAP + PHOTO + MAT OK ====="
     fi
+
+    # 3b) TSL kimlik haritalari + tsl_ss mat'lari. Bunlar eskiden SADECE 04:00
+    #     gunluk job'da kurulurdu, tsl_ss mat'lari ise HIC tazelenmiyordu: yeni
+    #     transferler/yukselen takim oyuncularinin verisi bir sonraki gune kadar
+    #     (mat'lar icin hic) sitede gorunmuyordu. Sira: sofa->opta ONCE (fs->opta
+    #     onu kopru olarak okur), sonra mat'lar.
+    "$VENV" "$PIPE/src/football/build_sofascore_opta_player_map.py"
+    "$VENV" "$PIPE/src/football/build_flashscore_opta_player_map.py" >/dev/null
+    if "$VENV" "$PIPE/src/football/refresh_tsl_mats.py"; then
+      echo "===== $(date -u '+%F %T UTC') TSL MAP + MAT OK ====="
+    else
+      echo "===== $(date -u '+%F %T UTC') TSL MAP + MAT FAILED ====="
+    fi
+
+    # 3c) Tutarlilik denetimi: skor <-> ham oyuncu golu <-> haritali gol.
+    #     Uyari verirse logda 'UYARI' satiri olur (gol dusuren kimlik arizasi).
+    "$VENV" "$PIPE/src/football/check_match_coverage.py" --days 2 || true
   fi
 } >> "$LOG" 2>&1

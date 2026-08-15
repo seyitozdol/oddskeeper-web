@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""FlashScore oyuncu id'lerini SofaScore oyuncu id'lerine esler (TFF 1. Lig).
+"""FlashScore oyuncu id'lerini SofaScore oyuncu id'lerine esler (Super Lig + TFF 1. Lig).
 
 Isim formatlari: FlashScore 'Soyad Ad' (ASCII), SofaScore 'Ad Soyad' (aksanli).
 Eslesme: ayni sezon havuzunda normalize edilmis token-kumesi esitligi;
@@ -22,6 +22,9 @@ ENV = dotenv_values(ROOT / ".env")
 DRY = "--dry-run" in sys.argv
 # Eslesme yapilacak sezon (canli job guncel sezona bakar). Env ile ezilir.
 SEASON = (os.environ.get("FS_MAP_SEASON") or "2026/2027").strip()
+# Iki lig de eslenir: TSL tarafi FS->Sofa->Opta koprusunu besler (Opta karsiligi
+# olmayan yeni oyuncularin kart/xG overlay'i de dogru kimlikte toplansin diye).
+COMPETITIONS = ["Trendyol 1. Lig%", "S_per Lig%"]
 
 
 CHAR_MAP = str.maketrans({"đ": "d", "ð": "d", "ø": "o", "ł": "l", "þ": "th", "ı": "i"})
@@ -47,17 +50,26 @@ def main():
           created_at           timestamptz default now()
         )""")
 
-    def players(source: str) -> dict:
+    def players(source: str, comp_like: str) -> dict:
         cur.execute("""
             select d.source_player_id, max(d.player_name), max(d.team_name)
             from football.match_player_stats_details d
             join football.matches m on m.source=d.source and m.source_match_id=d.source_match_id
-            where d.source=%s and m.competition like 'Trendyol 1. Lig%%' and m.season_label=%s
-            group by 1""", (source, SEASON))
+            where d.source=%s and m.competition like %s and m.season_label=%s
+            group by 1""", (source, comp_like, SEASON))
         return {r[0]: (r[1], r[2]) for r in cur.fetchall()}
 
-    fs = players("flashscore")
-    sofa = players("sofascore")
+    all_rows = []
+    for comp_like in COMPETITIONS:
+        all_rows.extend(match_one(cur, players, comp_like))
+    write(conn, cur, all_rows)
+
+
+def match_one(cur, players, comp_like):
+    """Tek bir lig icin FS->Sofa eslesmesi. Havuzlar LIG BAZINDA ayri tutulur:
+    tek havuzda birlestirilirse iki ligdeki ayni isimler yanlis eslesir."""
+    fs = players("flashscore", comp_like)
+    sofa = players("sofascore", comp_like)
     sofa_by_tokens = {}
     for sid, (name, _team) in sofa.items():
         sofa_by_tokens.setdefault(norm_tokens(name), []).append(sid)
@@ -89,9 +101,13 @@ def main():
             unmatched.append((fid, name, len(hit or [])))
 
     n_exact = sum(1 for r in rows if r[3] == "token-exact")
-    print(f"[{SEASON}] FS oyuncu: {len(fs)}, Sofa oyuncu: {len(sofa)}, eslesen: {len(rows)} (exact {n_exact}, subset {len(rows)-n_exact}), eslesmeyen: {len(unmatched)}")
+    print(f"[{SEASON} {comp_like}] FS oyuncu: {len(fs)}, Sofa oyuncu: {len(sofa)}, eslesen: {len(rows)} (exact {n_exact}, subset {len(rows)-n_exact}), eslesmeyen: {len(unmatched)}")
     for u in unmatched[:15]:
         print("  eslesmedi:", u)
+    return rows
+
+
+def write(conn, cur, rows):
     if not DRY:
         psycopg2.extras.execute_values(
             cur,

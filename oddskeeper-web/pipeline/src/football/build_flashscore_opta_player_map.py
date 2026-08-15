@@ -25,8 +25,10 @@ from dotenv import dotenv_values
 ROOT = Path(__file__).resolve().parents[2]
 ENV = dotenv_values(ROOT / ".env")
 DRY = "--dry-run" in sys.argv
-# Eslesme yapilacak sezon (canli job guncel sezona bakar). Env ile ezilir.
-SEASON = (os.environ.get("FS_MAP_SEASON") or "2026/2027").strip()
+# Sezon filtresi YOK (varsayilan): harita sezona bagli degil, Opta id'si oyuncuya ait.
+# Tek sezona kisitlamak, o sezonda Opta verisi olmadiginda (2026/27) haritayi bosaltiyordu.
+# Hata ayiklama icin FS_OPTA_MAP_SEASON ile tek sezona daraltilabilir.
+SEASON = (os.environ.get("FS_OPTA_MAP_SEASON") or "").strip() or None
 
 CHAR_MAP = str.maketrans({"đ": "d", "ð": "d", "ø": "o", "ł": "l", "þ": "th", "ı": "i"})
 
@@ -54,16 +56,20 @@ def main():
     cur.execute("alter table ref.flashscore_player_map alter column sofascore_player_id drop not null")
     cur.execute("alter table ref.flashscore_player_map add column if not exists opta_player_id text")
 
-    def pool(source):
+    def pool(source, season=None):
         cur.execute("""
             select d.source_player_id, max(d.player_name), max(d.team_name)
             from football.match_player_stats_details d
             join football.matches m on m.source=d.source and m.source_match_id=d.source_match_id
-            where d.source=%s and m.season_label=%s and m.competition like 'S%%per Lig%%'
-            group by 1""", (source, SEASON))
+            where d.source=%s and (%s is null or m.season_label=%s)
+              and m.competition like 'S%%per Lig%%'
+            group by 1""", (source, season, season))
         return {r[0]: (r[1], r[2]) for r in cur.fetchall()}
 
-    fs = pool("flashscore")
+    fs = pool("flashscore", SEASON)
+    # Opta havuzu SEZONSUZ: Opta id'leri sezonlar arasi sabit ve 2026/27'de hic Opta
+    # verisi yok. Sezona kisitlanirsa havuz bos kalir, hicbir eslesme uretilmez ve
+    # asagidaki temizlik tum sezonlarin haritasini silerdi (2026-08 kart/xG kaybi).
     opta = pool("opta")
     cur.execute("""select opta_player_id, coalesce(nullif(trim(first_name||' '||last_name),''), full_name, player_name)
                    from analytics.player_current_info_v1 where opta_player_id is not null""")
@@ -95,12 +101,26 @@ def main():
         for tk in set(sur):
             tgt_tok_freq[tk] = tgt_tok_freq.get(tk, 0) + 1
 
+    # KOPRU: FS -> SofaScore (ref.flashscore_player_map.sofascore_player_id, gunluk
+    # build_flashscore_sofa_player_map.py kurar) -> ref.sofascore_opta_player_map.
+    # Id bazli oldugu icin isim eslesmesinden guclu; ayrica sofa haritasindaki SENTETIK
+    # id'leri de tasir, boylece FS kart/xG overlay'i ile SofaScore golleri AYNI
+    # player_source_id'de toplanir (Opta karsiligi olmayan yeni oyuncular dahil).
+    cur.execute("""
+        select f.flashscore_player_id, s.opta_player_id
+        from ref.flashscore_player_map f
+        join ref.sofascore_opta_player_map s on s.sofascore_player_id = f.sofascore_player_id
+        where f.sofascore_player_id is not null""")
+    bridge = dict(cur.fetchall())
+
     rows, unmatched = [], []
     for fid, (name, team) in fs.items():
         toks = tokens(name)
         tkey = team_key(team)
         hit, method = None, None
-        h1 = info_by_tokens.get(toks)
+        if fid in bridge:
+            hit, method = {bridge[fid]}, "sofa-bridge"
+        h1 = None if hit else info_by_tokens.get(toks)
         if h1 and len(h1) == 1:
             hit, method = h1, "info-fullname"
         if not hit:
@@ -148,7 +168,8 @@ def main():
             unmatched.append((fid, name, team))
 
     # 1:1 zorlamasi: ayni opta id'ye coklu eslesmede en guclu yontem kazanir, berabere ise dusur
-    PRIORITY = {"info-fullname": 0, "opta-fullname": 1, "abbrev-surname": 2, "fuzzy-surname": 3, "shared-token": 4}
+    PRIORITY = {"sofa-bridge": -1, "info-fullname": 0, "opta-fullname": 1,
+                "abbrev-surname": 2, "fuzzy-surname": 3, "shared-token": 4}
     by_opta = {}
     for r in rows:
         by_opta.setdefault(r[1], []).append(r)
@@ -172,9 +193,17 @@ def main():
     print(f"FS TSL oyuncu: {len(fs)}, Opta oyuncu: {len(opta)}, eslesen: {len(rows)} {meth}, eslesmeyen: {len(unmatched)}")
     for u in unmatched[:20]:
         print("  eslesmedi:", u)
+    if not rows:
+        print("UYARI: hic eslesme uretilmedi, harita KORUNDU (yazma atlandi)")
+        conn.rollback()
+        return
     if not DRY:
-        # eski yanlis eslesmeleri temizle (sofascore kolonuna dokunma)
-        cur.execute("update ref.flashscore_player_map set opta_player_id = null where opta_player_id is not null")
+        # Eski yanlis eslesmeleri temizle (sofascore kolonuna dokunma). SADECE bu
+        # sezonun FS havuzundaki oyuncular: havuz sezona kisitli oldugundan tum tabloyu
+        # null'lamak diger sezonlarin eslesmesini kalici siliyordu.
+        cur.execute("update ref.flashscore_player_map set opta_player_id = null "
+                    "where opta_player_id is not null and flashscore_player_id = any(%s)",
+                    (list(fs.keys()),))
         psycopg2.extras.execute_values(
             cur,
             """insert into ref.flashscore_player_map (flashscore_player_id, opta_player_id, player_name, match_method)

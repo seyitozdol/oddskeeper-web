@@ -22,6 +22,10 @@ DRY = "--dry-run" in sys.argv
 
 CHAR_MAP = str.maketrans({"đ": "d", "ð": "d", "ø": "o", "ł": "l", "þ": "th", "ı": "i"})
 
+# Opta karsiligi olmayan oyuncuya verilen sentetik player_source_id oneki.
+# Gercek Opta id'leri 24-25 karakterli alnum oldugu icin cakisma yok.
+SYNTH_PREFIX = "ss"
+
 
 def norm(s: str) -> str:
     t = unicodedata.normalize("NFKD", s or "")
@@ -163,12 +167,28 @@ def main():
             print(f"  CAKISMA cozulemedi opta={oid}: hepsi dusuruldu {[r[2] for r in group]}")
     rows = resolved
 
+    # SENTETIK KIMLIK: Opta karsiligi OLMAYAN oyuncu (yeni transfer, yukselen takim,
+    # cakismada dusen) haritadan DUSURULMEZ. Tum tsl_ss view'lari bu haritaya inner
+    # join yaptigi icin haritada olmayan oyuncu sitede tamamen kaybolur (2026-08-14
+    # Galatasaray-Corum: Corum'un iki golcusu Opta'da olmadigi icin goller yok olmustu).
+    # Deterministik 'ss<sofascore_id>' verilir; harita her kosuda sifirdan kuruldugundan
+    # Opta ilerde gercek id verirse sentetik kendiliginden gercegiyle degisir.
+    covered = {r[0] for r in rows}
+    synthetic = [(sid, SYNTH_PREFIX + sid, name, "synthetic")
+                 for sid, (name, _team) in sofa.items() if sid not in covered]
+    rows.extend(synthetic)
+
     meth = {}
     for _s, _o, _n, m in rows:
         meth[m] = meth.get(m, 0) + 1
-    print(f"Sofa TSL oyuncu: {len(sofa)}, Opta: {len(opta)}, eslesen: {len(rows)} {meth}, eslesmeyen: {len(unmatched)}")
+    print(f"Sofa TSL oyuncu: {len(sofa)}, Opta: {len(opta)}, eslesen: {len(rows)} {meth}, "
+          f"opta-esi yok (sentetik): {len(synthetic)}")
     for u in unmatched[:15]:
-        print("  eslesmedi:", u)
+        print("  opta esi yok:", u)
+    if not rows:
+        print("UYARI: hic satir uretilmedi, harita KORUNDU (yazma atlandi)")
+        conn.rollback()
+        return
     if not DRY:
         cur.execute("truncate ref.sofascore_opta_player_map")
         psycopg2.extras.execute_values(
