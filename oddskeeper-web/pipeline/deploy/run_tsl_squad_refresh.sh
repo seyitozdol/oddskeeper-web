@@ -56,6 +56,9 @@ run() {  # $1=etiket  $2=script  $3.. = "VAR=val" ise env, degilse script arguma
   #     satiri + SofaScore koprusu. API-Football yetisince otomatik emekli olur.
   run "1c) sentetik kadro"    apply_synthetic_squad.py --seed
   run "2) remap (additive)"   remap_players_additive.py APPLY=1
+  # 2b) apifootball<->sofascore kimlik haritasi: yeni transferler kadroya girince
+  #     PSM guncel-sezon Avg koprusu (af-<id> -> sofascore -> tsl_ss) icin tazele.
+  run "2b) af<->sofa harita"  build_apifootball_sofascore_player_map.py
   run "3) TM market values"   fetch_transfermarkt_values.py
   run "3b) TM values 1.Lig"   fetch_transfermarkt_values_tff1.py
   echo "===== $(date -u '+%F %T UTC') DONE ====="

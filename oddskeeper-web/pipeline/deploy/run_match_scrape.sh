@@ -69,6 +69,9 @@ fi
   if [ "$sofa_islendi" -eq 1 ] || [ "$flash_islendi" -eq 1 ]; then
     "$VENV" "$PIPE/src/football/build_sofascore_opta_player_map.py"
     "$VENV" "$PIPE/src/football/build_flashscore_opta_player_map.py" >/dev/null
+    # apifootball<->sofascore kimlik haritasi: PSM (Player Market) guncel sezon
+    # Avg koprusu bunu okur (af-<id> yeni transfer -> sofascore -> tsl_ss).
+    "$VENV" "$PIPE/src/football/build_apifootball_sofascore_player_map.py" >/dev/null
     if "$VENV" "$PIPE/src/football/refresh_tsl_mats.py"; then
       echo "===== $(date -u '+%F %T UTC') TSL MAP + MAT OK ====="
     else

@@ -448,6 +448,12 @@ async function fillForeignSeasonAvg(
 // metricKey "log:<kolon>" ise sezon ortalamasi leaderboard yerine
 // player_log_season_avg_v1'den okunur (leaderboard'da olmayan metrikler).
 
+// Opta'nin uretmedigi guncel sezon(lar): Avg + appearances SofaScore koprusunden
+// (analytics.psm_*_bridge_v1) okunur. Opta job'i 2026-07-19'da durdu; 26/27 verisi
+// yalniz tsl_ss zincirinde. Bkz. sql/2026-08-15_psm_season_avg_bridge.sql.
+// YENI SEZON: bir sonraki sezon acilinca hem bu kume hem bridge view'lari genisletilir.
+export const PSM_BRIDGED_SEASONS = new Set(["2026/2027"]);
+
 export async function fetchPlayerMetricStats(
   playerSourceIds: string[],
   metricKey: string,
@@ -455,6 +461,37 @@ export async function fetchPlayerMetricStats(
 ): Promise<Record<string, PlayerMetricStat>> {
   if (playerSourceIds.length === 0 || !metricKey) return {};
   const supabase = createClient();
+
+  // Koprulu sezon: tum market tipleri (duz / log: / shots:) tek view'dan, PSM
+  // metricKey'i aynen metric_key olarak saklandigi icin uniform sorgu.
+  if (PSM_BRIDGED_SEASONS.has(seasonLabel)) {
+    const { data, error } = await supabase
+      .schema("analytics")
+      .from("psm_player_season_avg_bridge_v1")
+      .select("player_source_id, per_match_value")
+      .eq("season_label", seasonLabel)
+      .eq("metric_key", metricKey)
+      .in("player_source_id", playerSourceIds);
+
+    if (error) {
+      console.error("fetchPlayerMetricStats (bridge) error:", error);
+      return {};
+    }
+    const bridgeResult: Record<string, PlayerMetricStat> = {};
+    for (const row of data ?? []) {
+      const id = String(row.player_source_id);
+      bridgeResult[id] = {
+        player_source_id: id,
+        per_match_value:
+          row.per_match_value !== null && row.per_match_value !== undefined
+            ? Number(row.per_match_value)
+            : null,
+        last5_value: null,
+      };
+    }
+    await fillForeignSeasonAvg(bridgeResult, playerSourceIds, metricKey, seasonLabel);
+    return bridgeResult;
+  }
 
   // Shotmap turevleri: sezon ortalamasi player_shot_zones_season_v1'den
   // (appearance tabanli; sut atilmayan maclar 0 sayilir). TSL oyuncu id'si
@@ -550,9 +587,14 @@ export async function fetchPlayerSeasonAppearances(
   if (playerSourceIds.length === 0 || !seasonLabel) return {};
   const supabase = createClient();
 
+  // Koprulu sezon: mac sayisi da SofaScore koprusunden (Opta profil view'i 26/27 bos).
+  const table = PSM_BRIDGED_SEASONS.has(seasonLabel)
+    ? "psm_player_appearances_bridge_v1"
+    : "player_profile_v1";
+
   const { data, error } = await supabase
     .schema("analytics")
-    .from("player_profile_v1")
+    .from(table)
     .select("player_source_id, appearances")
     .eq("season_label", seasonLabel)
     .in("player_source_id", playerSourceIds);
