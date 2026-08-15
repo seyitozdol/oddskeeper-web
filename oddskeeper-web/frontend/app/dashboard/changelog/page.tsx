@@ -32,6 +32,10 @@ const ENTRIES: Entry[] = [
         tr: "Süper Lig sayfalarında tüm sezonlarda kaybolan sarı/kırmızı kart, xG ve xA verileri de geri geldi.",
       },
       {
+        en: "A team's Player Stats tab now lists everyone who took the field, substitutes included. It used to hide anyone below the league ranking cut-off (30% of the season's highest minutes), which in the opening week meant every player with under 27 minutes vanished from their own club's page. League-wide Player Rankings keep the cut-off, as they should.",
+        tr: "Takım sayfasındaki Oyuncu İstatistikleri sekmesi artık sahaya çıkan herkesi listeliyor, sonradan girenler dahil. Önceden lig sıralaması eşiğinin (sezonun en yüksek dakikasının %30'u) altında kalan gizleniyordu; sezonun ilk haftasında bu, 27 dakikanın altında oynayan herkesin kendi kulübünün sayfasından düşmesi demekti. Lig geneli Oyuncu Sıralamaları'nda eşik olması gerektiği gibi duruyor.",
+      },
+      {
         en: "New players now have full profile pages too: click a name anywhere in the Süper Lig section and you get their photo, nationality, position, shirt number, season stats and match log, exactly like established players. Profile pages also roll over to 2026/2027 as soon as a player takes the field, instead of staying stuck on last season.",
         tr: "Yeni oyuncuların artık tam profil sayfası da var: Süper Lig bölümünde herhangi bir isme tıkladığında fotoğrafı, uyruğu, mevkisi, forma numarası, sezon istatistikleri ve maç logu, eski oyuncularla aynı şekilde geliyor. Profil sayfaları da oyuncu sahaya çıkar çıkmaz 2026/2027'ye geçiyor, geçen sezonda takılı kalmıyor.",
       },
