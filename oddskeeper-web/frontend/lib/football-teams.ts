@@ -23,6 +23,10 @@ function removeExtension(fileName: string) {
 
 function slugify(value: string) {
   return value
+    // Turkce noktasiz '\u0131' ve '\u0130' NFKD ile cozulmez (\u00e7/\u011f/\u00f6/\u015f/\u00fc cozulur); onlari
+    // once 'i'ye katla, yoksa '\u0131' [^a-z0-9] kuralinda '-'e donusuyordu
+    // ("Kas\u0131mpa\u015fa" -> "kas-mpasa", takim slug'i "kasimpasa" ile eslesmiyordu).
+    .replace(/[\u0131\u0130]/g, "i")
     .normalize("NFKD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
