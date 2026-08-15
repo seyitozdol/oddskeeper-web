@@ -21,11 +21,23 @@ const TAG_NEW_TOOL: L = { en: "New tool", tr: "Yeni araç" };
 const ENTRIES: Entry[] = [
   {
     date: { en: "16 August", tr: "16 Ağustos" },
-    title: { en: "Finished matches drop to the bottom per match", tr: "Biten maçlar maç bazında en alta iniyor" },
+    title: { en: "Fixture pickers: real kick-off times & nearest-first order", tr: "Fikstür seçici: gerçek maç saatleri & en yakın maç üstte" },
     items: [
       {
-        en: "In the Match Stats Model and Player Market fixture pickers, a played match used to move to the bottom of the list only once the whole matchweek was over. Now each match drops to the bottom on its own once it has finished, so the upcoming matches you're working on stay at the top without waiting for the rest of the round.",
-        tr: "Match Stats Model ve Player Market fikstür seçicilerinde oynanmış bir maç, ancak tüm hafta bittiğinde listenin en altına iniyordu. Artık her maç bittiğinde tek tek en alta iniyor; üzerinde çalıştığın yaklaşan maçlar, haftanın geri kalanını beklemeden en üstte kalıyor.",
+        en: "Fixtures now carry their real kick-off date and time. The Süper Lig fixture list was using placeholder times (every match at 17:00/18:00) and sometimes the wrong day; it now reads the actual kick-off straight from live match data. 1. Lig already had real times.",
+        tr: "Fikstürler artık gerçek maç günü ve saatiyle geliyor. Süper Lig fikstür listesi placeholder saatler kullanıyordu (her maç 17:00/18:00) ve bazen yanlış gün gösteriyordu; artık gerçek başlama saatini doğrudan canlı maç verisinden okuyor. 1. Lig'de saatler zaten gerçekti.",
+      },
+      {
+        en: "In the Match Stats Model and Player Market, the fixture list is now ordered by kick-off with the nearest match at the top (instead of round order), and each match drops to the bottom on its own once it has finished — no more waiting for the whole matchweek to end. Manually added fixtures always stay pinned at the top.",
+        tr: "Match Stats Model ve Player Market'te fikstür listesi artık başlama saatine göre, en yakın maç en üstte sıralanıyor (round sırası yerine) ve her maç bittiğinde tek tek en alta iniyor — tüm haftanın bitmesini beklemek yok. Elle eklenen fikstürler her zaman en üstte sabit kalıyor.",
+      },
+      {
+        en: "Player Market fixtures now show their round number (R1, R2 …) in the picker.",
+        tr: "Player Market fikstürlerinde artık seçicide hafta numarası (R1, R2 …) görünüyor.",
+      },
+      {
+        en: "In the Fixture ID tab, once a match has kicked off its 1X2 odds fields are locked, so you can't accidentally enter live or stale odds for a match already in play.",
+        tr: "Fixture ID sekmesinde bir maç başladığında 1X2 oran alanları kilitleniyor; oynanmakta olan bir maça yanlışlıkla canlı/bayat oran girilemiyor.",
       },
     ],
   },
