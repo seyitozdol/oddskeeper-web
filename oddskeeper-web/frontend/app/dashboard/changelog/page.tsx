@@ -43,6 +43,14 @@ const ENTRIES: Entry[] = [
         en: "New players now have full profile pages too: click a name anywhere in the Süper Lig section and you get their photo, nationality, position, shirt number, season stats and match log, exactly like established players. Profile pages also roll over to 2026/2027 as soon as a player takes the field, instead of staying stuck on last season.",
         tr: "Yeni oyuncuların artık tam profil sayfası da var: Süper Lig bölümünde herhangi bir isme tıkladığında fotoğrafı, uyruğu, mevkisi, forma numarası, sezon istatistikleri ve maç logu, eski oyuncularla aynı şekilde geliyor. Profil sayfaları da oyuncu sahaya çıkar çıkmaz 2026/2027'ye geçiyor, geçen sezonda takılı kalmıyor.",
       },
+      {
+        en: "A team could still sit empty for a while right after its own match if one data source published later than the other (Kasımpaşa 1-1 Trabzonspor: the visiting side's players showed, the home side's didn't). The post-match rebuild now fires from our primary source too, so both teams fill in together instead of waiting for the slower source.",
+        tr: "Bir takım, iki veri kaynağından biri diğerinden geç yayınladığında kendi maçının hemen ardından bir süre boş kalabiliyordu (Kasımpaşa 1-1 Trabzonspor: deplasman kadrosu geldi, ev sahibininki gelmedi). Maç-sonrası güncelleme artık ana kaynağımızdan da tetikleniyor; iki takım geç kaynağı beklemeden birlikte doluyor.",
+      },
+      {
+        en: "The Player Stats tab on a team's page is much faster. Picking a metric from the dropdown used to take several seconds because each change re-read the entire player database; it now reads only that squad, so the table updates almost instantly.",
+        tr: "Takım sayfasındaki Oyuncu İstatistikleri sekmesi çok daha hızlı. Açılır menüden metrik seçmek eskiden birkaç saniye sürüyordu; her değişiklik tüm oyuncu veritabanını yeniden okuyordu. Artık yalnız o kadroyu okuyor, tablo neredeyse anında güncelleniyor.",
+      },
     ],
   },
   {
