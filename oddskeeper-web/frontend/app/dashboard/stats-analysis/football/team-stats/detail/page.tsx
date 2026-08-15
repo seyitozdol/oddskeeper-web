@@ -139,9 +139,15 @@ export default async function TeamDetailPage({
   const seasonsSorted = [...seasonHistoryRows].sort((a, b) =>
     (b.season_label ?? "").localeCompare(a.season_label ?? "")
   );
-  const seasonLabels = seasonsSorted
-    .map((row) => row.season_label)
-    .filter((label): label is string => Boolean(label));
+  // Aynı sezonda iki satır olabiliyor (ör. sezon içinde lig değiştiren takım);
+  // sezon seçicide tekilleştir, yoksa aynı etiket iki kez çıkıyor.
+  const seasonLabels = Array.from(
+    new Set(
+      seasonsSorted
+        .map((row) => row.season_label)
+        .filter((label): label is string => Boolean(label))
+    )
+  );
   const statsSummary =
     seasonsSorted.find((row) => row.season_label === requestedSeason) ??
     seasonsSorted[0] ??

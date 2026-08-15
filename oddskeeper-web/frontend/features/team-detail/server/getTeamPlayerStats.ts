@@ -59,13 +59,19 @@ export async function getTeamPlayerStats(
     null;
   const metricKey = metric?.metricKey ?? "goals_total";
 
-  let teamRows = (await getTslLeaderboard(season, metricKey)).filter((r) =>
+  // includeUnqualified: takim sayfasi kadroyu EKSIKSIZ gostermeli; lig siralamasinin
+  // "yeterli dakika" esigi (sezon max dakikasinin %30'u) burada uygulanmaz, yoksa
+  // kisa sure oynayan yedekler listeden dusuyor (sezon basinda esik 27 dk idi).
+  const load = (s: string) =>
+    getTslLeaderboard(s, metricKey, { includeUnqualified: true });
+
+  let teamRows = (await load(season)).filter((r) =>
     slugMatches(r.teamName, teamSlug)
   );
   // Sezon secilmemisse ve guncel sezonda henuz veri yoksa geriye dus.
   if (!teamRows.length && !requestedSeason) {
     for (const s of seasons.slice(1)) {
-      const rows = (await getTslLeaderboard(s, metricKey)).filter((r) =>
+      const rows = (await load(s)).filter((r) =>
         slugMatches(r.teamName, teamSlug)
       );
       if (rows.length) {

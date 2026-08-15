@@ -240,14 +240,24 @@ export async function getTslPlayerCatalog(
 
 // ---- Oyuncu siralamasi (tek metrik) ----
 
+// includeUnqualified: lig siralamasindaki "yeterli dakika" esigini (sezon max
+// dakikanin %30'u) BYPASS eder. Lig genelindeki Player Rankings icin esik dogru,
+// ama takim sayfasinda kadroyu eksik gosteriyordu: sezonun ilk haftasinda esik
+// 27 dakika olduğu icin kisa sure oynayan yedekler listede cikmiyordu.
 export async function getTslLeaderboard(
   season: string,
-  metricKey: string
+  metricKey: string,
+  options?: { includeUnqualified?: boolean }
 ): Promise<TslLeaderRow[]> {
+  const includeUnqualified = options?.includeUnqualified ?? false;
   const supabase = await createClient();
-  const { data, error } = await supabase
+  let query = supabase
     .schema("analytics")
-    .from("tsl_ss_player_leaderboard_rows_v1")
+    .from(
+      includeUnqualified
+        ? "tsl_ss_player_leaderboard_all_rows_v1"
+        : "tsl_ss_player_leaderboard_rows_v1"
+    )
     .select(
       `metric_key, metric_label, player_source_id, player_name, position_code,
        team_name, source_team_id, sample_matches, total_value, per_match_value, per90_value,
@@ -255,8 +265,17 @@ export async function getTslLeaderboard(
     )
     .eq("competition", TSL_COMPETITION)
     .eq("season_label", season)
-    .eq("metric_key", metricKey)
-    .order("league_rank", { ascending: true, nullsFirst: false })
+    .eq("metric_key", metricKey);
+
+  // Filtresiz surumde hic oynamamis kadro uyeleri de gelir; istatistik tablosunda
+  // onlar gurultu (tam kadro ayri "Squad" sekmesinde).
+  if (includeUnqualified) query = query.gt("sample_matches", 0);
+
+  const { data, error } = await query
+    .order(includeUnqualified ? "sort_rank" : "league_rank", {
+      ascending: true,
+      nullsFirst: false,
+    })
     .limit(600);
 
   if (error) {
