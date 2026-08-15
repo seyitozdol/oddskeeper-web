@@ -21,6 +21,20 @@ const TAG_NEW_TOOL: L = { en: "New tool", tr: "Yeni araç" };
 const ENTRIES: Entry[] = [
   {
     date: { en: "15 August", tr: "15 Ağustos" },
+    title: { en: "Player Market: current-season Avg is back", tr: "Player Market: güncel sezon Avg'si geri geldi" },
+    items: [
+      {
+        en: "In Player Market, picking a fixture showed only the LY (last-year) average — the current-season Avg column was empty even for teams that had already played, and didn't fill as matches were played. The Avg column was reading from last season's data source, which has no 2026/2027 data. It now reads the current season straight from live match data, so Avg fills in from each team's first match and updates as more are played, across every market in the list.",
+        tr: "Player Market'te bir fikstür seçince yalnız LY (geçen yıl) ortalaması geliyordu; güncel sezon Avg kolonu maç oynamış takımlarda bile boştu ve maç oynandıkça dolmuyordu. Avg kolonu geçen sezonun veri kaynağından okuyordu ve orada 2026/2027 verisi yok. Artık güncel sezonu doğrudan canlı maç verisinden okuyor; Avg her takımın ilk maçından itibaren doluyor ve maç oynandıkça güncelleniyor, listedeki her market için.",
+      },
+      {
+        en: "New signings are included too: a player with no Süper Lig history is now linked to the live data by name and date of birth, so their current-season Avg shows even before we have a full profile for them.",
+        tr: "Yeni transferler de dahil: Süper Lig geçmişi olmayan oyuncu artık isim ve doğum tarihiyle canlı veriye bağlanıyor, tam profili oluşmadan bile güncel sezon Avg'si görünüyor.",
+      },
+    ],
+  },
+  {
+    date: { en: "15 August", tr: "15 Ağustos" },
     title: { en: "New-season players no longer go missing", tr: "Yeni sezon oyuncuları artık kaybolmuyor" },
     items: [
       {
