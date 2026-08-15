@@ -50,7 +50,20 @@ export async function getTeamPlayerStats(
     ? (requestedSeason as string)
     : seasons[0];
 
-  let catalog = await getTslPlayerCatalog(season);
+  // includeUnqualified: takim sayfasi kadroyu EKSIKSIZ gostermeli; lig siralamasinin
+  // "yeterli dakika" esigi (sezon max dakikasinin %30'u) burada uygulanmaz, yoksa
+  // kisa sure oynayan yedekler listeden dusuyor (sezon basinda esik 27 dk idi).
+  const load = (s: string, key: string) =>
+    getTslLeaderboard(s, key, { includeUnqualified: true });
+
+  // Katalog metrikten bagimsiz; dropdown daima gecerli bir metrik gonderir.
+  // Katalogu ve tahmini metrigin leaderboard'unu PARALEL cek: yaygin durumda
+  // (gecerli requestedMetric ya da varsayilan) ikinci sorgu gerekmez.
+  const guessKey = requestedMetric ?? "goals_total";
+  let [catalog, teamRowsAll] = await Promise.all([
+    getTslPlayerCatalog(season),
+    load(season, guessKey),
+  ]);
   if (!catalog.length) catalog = await getTslPlayerCatalog("2025/2026");
   const metric =
     catalog.find((c) => c.metricKey === requestedMetric) ??
@@ -59,19 +72,14 @@ export async function getTeamPlayerStats(
     null;
   const metricKey = metric?.metricKey ?? "goals_total";
 
-  // includeUnqualified: takim sayfasi kadroyu EKSIKSIZ gostermeli; lig siralamasinin
-  // "yeterli dakika" esigi (sezon max dakikasinin %30'u) burada uygulanmaz, yoksa
-  // kisa sure oynayan yedekler listeden dusuyor (sezon basinda esik 27 dk idi).
-  const load = (s: string) =>
-    getTslLeaderboard(s, metricKey, { includeUnqualified: true });
+  // Tahmin tutmadiysa (nadiren: gecersiz/bos metrik) dogru metrikle yeniden cek.
+  if (metricKey !== guessKey) teamRowsAll = await load(season, metricKey);
 
-  let teamRows = (await load(season)).filter((r) =>
-    slugMatches(r.teamName, teamSlug)
-  );
+  let teamRows = teamRowsAll.filter((r) => slugMatches(r.teamName, teamSlug));
   // Sezon secilmemisse ve guncel sezonda henuz veri yoksa geriye dus.
   if (!teamRows.length && !requestedSeason) {
     for (const s of seasons.slice(1)) {
-      const rows = (await load(s)).filter((r) =>
+      const rows = (await load(s, metricKey)).filter((r) =>
         slugMatches(r.teamName, teamSlug)
       );
       if (rows.length) {
@@ -82,7 +90,8 @@ export async function getTeamPlayerStats(
     }
   }
 
-  const assets = await getPlayerAssets();
+  // Yalniz bu takimin oyuncularinin varliklarini cek (tam tablo taramasi yerine).
+  const assets = await getPlayerAssets(teamRows.map((r) => r.playerId));
   const rows: TeamPlayerStatRow[] = teamRows.map((r) => {
     const a = assets[r.playerId];
     return {

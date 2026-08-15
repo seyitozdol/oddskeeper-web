@@ -51,9 +51,33 @@ export type PlayerAsset = {
   nationality: string | null;
 };
 
-export async function getPlayerAssets(): Promise<Record<string, PlayerAsset>> {
+export async function getPlayerAssets(
+  playerIds?: string[]
+): Promise<Record<string, PlayerAsset>> {
   const supabase = await createClient();
   const out: Record<string, PlayerAsset> = {};
+
+  // Belirli oyuncular istendiginde (takim sayfasi ~30 oyuncu) tum tabloyu
+  // sayfalamak yerine yalniz o opta id'leri cek. Tam tarama tek bir takim
+  // istatistigi icin sayfa basina saniyeler ekliyordu.
+  if (playerIds) {
+    const ids = Array.from(new Set(playerIds.filter(Boolean)));
+    if (!ids.length) return out;
+    const { data } = await supabase
+      .schema("analytics")
+      .from("player_current_info_bridged_v1")
+      .select("opta_player_id, player_slug, photo_url, nationality")
+      .in("opta_player_id", ids);
+    for (const r of data ?? []) {
+      out[String(r.opta_player_id)] = {
+        slug: r.player_slug ?? null,
+        photo: r.photo_url ?? null,
+        nationality: r.nationality ?? null,
+      };
+    }
+    return out;
+  }
+
   // player_current_info_bridged_v1: opta id -> slug/foto/uyruk. Guncel kadro (Opta
   // kimlikli) + Opta karsiligi olmayan oyuncular icin SofaScore'dan turetilenler;
   // olmasa yeni transfer / yukselen takim oyuncusunun adi duz metin kalirdi.
