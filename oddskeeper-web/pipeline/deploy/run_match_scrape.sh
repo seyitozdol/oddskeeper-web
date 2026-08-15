@@ -23,11 +23,12 @@ fi
 {
   echo "===== $(date -u '+%F %T UTC') START ====="
   # 1) SofaScore (ANA): bitmis maclar, kickoff+2.5..6s penceresi (~ bitis +30 dk)
-  if SOFA_MIN_AGE_H=2.5 SOFA_MAX_AGE_H=6 "$VENV" "$PIPE/src/football/fetch_sofascore_matches.py"; then
+  SOFA_OUT=$(SOFA_MIN_AGE_H=2.5 SOFA_MAX_AGE_H=6 "$VENV" "$PIPE/src/football/fetch_sofascore_matches.py" 2>&1); src=$?
+  echo "$SOFA_OUT"
+  if [ "$src" -eq 0 ]; then
     echo "===== $(date -u '+%F %T UTC') SOFA OK ====="
   else
-    rc=$?
-    echo "===== $(date -u '+%F %T UTC') SOFA FAILED rc=$rc ====="
+    echo "===== $(date -u '+%F %T UTC') SOFA FAILED rc=$src ====="
   fi
   # 2) FlashScore (OVERLAY): xg/xgot/xa/sari-kirmizi kart/detayli pozisyon.
   #    Proxysiz duz HTTP; ayni 2.5-6s penceresi (fetcher kendi FS_* envleriyle).
@@ -39,10 +40,16 @@ fi
     echo "===== $(date -u '+%F %T UTC') FLASH FAILED rc=$frc ====="
   fi
 
-  # 3) Bu turda mac islendiyse: yeni oyunculari FS->Sofa esle + tff1 player mat tazele.
+  # Bu turda hangi kaynak mac isledi? SofaScore fetcher sonda "TOPLAM: N mac"
+  # yazar; FlashScore fetcher "islenecek=N". Gate'ler bu iki bayrakla kurulur.
+  sofa_islendi=0;  echo "$SOFA_OUT"  | grep -qE 'TOPLAM: [1-9]'    && sofa_islendi=1
+  flash_islendi=0; echo "$FLASH_OUT" | grep -qE 'islenecek=[1-9]'  && flash_islendi=1
+
+  # 3) FlashScore overlay: SADECE FlashScore bu turda mac islediyse. Yeni
+  #    oyunculari FS->Sofa esle + fotolar + tff1 player/team mat tazele.
   #    Yoksa yeni 26/27 oyuncularinin kart/xG overlay'i 04:00 gunluk job'a kadar
   #    gecikirdi (Juan Arguello kart bug'i). DB-driven + idempotent + hizli.
-  if echo "$FLASH_OUT" | grep -qE 'islenecek=[1-9]'; then
+  if [ "$flash_islendi" -eq 1 ]; then
     if FS_MAP_SEASON="2026/2027" "$VENV" "$PIPE/src/football/build_flashscore_sofa_player_map.py" >/dev/null; then
       # yeni oyuncularin fotolarini FS ham verisinden sofascore_player_info'ya
       "$VENV" "$PIPE/src/football/sync_player_photos_tff1.py"
@@ -50,12 +57,16 @@ fi
       "$VENV" -c "import psycopg2; from dotenv import dotenv_values; e=dotenv_values('$PIPE/.env'); c=psycopg2.connect(e['DATABASE_URL'].strip().strip(chr(34))); c.autocommit=True; cur=c.cursor(); cur.execute('refresh materialized view analytics.tff1_player_season_stats_mat'); cur.execute('refresh materialized view analytics.tff1_team_season_stats_mat')"
       echo "===== $(date -u '+%F %T UTC') FS-MAP + PHOTO + MAT OK ====="
     fi
+  fi
 
-    # 3b) TSL kimlik haritalari + tsl_ss mat'lari. Bunlar eskiden SADECE 04:00
-    #     gunluk job'da kurulurdu, tsl_ss mat'lari ise HIC tazelenmiyordu: yeni
-    #     transferler/yukselen takim oyuncularinin verisi bir sonraki gune kadar
-    #     (mat'lar icin hic) sitede gorunmuyordu. Sira: sofa->opta ONCE (fs->opta
-    #     onu kopru olarak okur), sonra mat'lar.
+  # 3b) TSL kimlik haritalari + tsl_ss mat'lari: SofaScore VEYA FlashScore bu
+  #     turda mac islediyse. ONEMLI: TSL istatistiklerinin ANA kaynagi SofaScore;
+  #     bu adim eskiden yalniz FlashScore gate'ine bagliydi, dolayisiyla SofaScore
+  #     bir maci yukleyip FlashScore ayni turda yakalamayinca (FS gec yayinliyor)
+  #     harita+mat tazelenmiyor, yeni yuklenen takim ~1 saat analytics'e girmiyordu
+  #     (Kasimpasa-Trabzonspor 2026-08-15). Artik SofaScore de tetikliyor.
+  #     Sira: sofa->opta ONCE (fs->opta onu kopru olarak okur), sonra mat'lar.
+  if [ "$sofa_islendi" -eq 1 ] || [ "$flash_islendi" -eq 1 ]; then
     "$VENV" "$PIPE/src/football/build_sofascore_opta_player_map.py"
     "$VENV" "$PIPE/src/football/build_flashscore_opta_player_map.py" >/dev/null
     if "$VENV" "$PIPE/src/football/refresh_tsl_mats.py"; then
