@@ -20,6 +20,20 @@ const TAG_NEW_TOOL: L = { en: "New tool", tr: "Yeni araç" };
 
 const ENTRIES: Entry[] = [
   {
+    date: { en: "15 August", tr: "15 Ağustos" },
+    title: { en: "New-season players no longer go missing", tr: "Yeni sezon oyuncuları artık kaybolmuyor" },
+    items: [
+      {
+        en: "In the season opener (Galatasaray 2-2 Çorum FK) only Osimhen's two goals showed up. Players were being matched to our historical player database, so anyone with no Süper Lig history — new signings and the whole squad of a promoted club — was dropped from every stat page. Çorum's two scorers vanished that way. Every player now gets an identity of their own, so new arrivals appear from their very first match. Season stats, rankings and team pages are rebuilt right after each match instead of waiting for the next day.",
+        tr: "Sezonun ilk maçında (Galatasaray 2-2 Çorum FK) sadece Osimhen'in iki golü görünüyordu. Oyuncular geçmiş sezon oyuncu veritabanımızla eşleştiriliyordu; Süper Lig geçmişi olmayan herkes, yani yeni transferler ve yükselen takımın tüm kadrosu, istatistik sayfalarından düşüyordu. Çorum'un iki golcüsü de böyle kaybolmuştu. Artık her oyuncunun kendi kimliği var; yeni gelenler ilk maçlarından itibaren görünüyor. Sezon istatistikleri, sıralamalar ve takım sayfaları da ertesi günü beklemeden maçtan hemen sonra güncelleniyor.",
+      },
+      {
+        en: "Yellow and red cards, xG and xA had also disappeared from Süper Lig pages for every season; they are back.",
+        tr: "Süper Lig sayfalarında tüm sezonlarda kaybolan sarı/kırmızı kart, xG ve xA verileri de geri geldi.",
+      },
+    ],
+  },
+  {
     date: { en: "13 August", tr: "13 Ağustos" },
     title: { en: "Cup Match Stats Model — Saves market & clearer estimates", tr: "Kupa Match Stats Model — Saves marketi & şeffaf tahminler" },
     tag: TAG_NEW,
