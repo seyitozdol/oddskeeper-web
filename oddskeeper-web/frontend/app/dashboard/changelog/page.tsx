@@ -31,6 +31,10 @@ const ENTRIES: Entry[] = [
         en: "Yellow and red cards, xG and xA had also disappeared from Süper Lig pages for every season; they are back.",
         tr: "Süper Lig sayfalarında tüm sezonlarda kaybolan sarı/kırmızı kart, xG ve xA verileri de geri geldi.",
       },
+      {
+        en: "New players now have full profile pages too: click a name anywhere in the Süper Lig section and you get their photo, nationality, position, shirt number, season stats and match log, exactly like established players. Profile pages also roll over to 2026/2027 as soon as a player takes the field, instead of staying stuck on last season.",
+        tr: "Yeni oyuncuların artık tam profil sayfası da var: Süper Lig bölümünde herhangi bir isme tıkladığında fotoğrafı, uyruğu, mevkisi, forma numarası, sezon istatistikleri ve maç logu, eski oyuncularla aynı şekilde geliyor. Profil sayfaları da oyuncu sahaya çıkar çıkmaz 2026/2027'ye geçiyor, geçen sezonda takılı kalmıyor.",
+      },
     ],
   },
   {
