@@ -233,13 +233,17 @@ def seed(cur) -> None:
           + (f"; takim eslenemedi: {sorted(unmapped_teams)}" if unmapped_teams else ""))
 
     found = 0
+    seen_tm_ids: set[str] = set()   # TM'de HALA kadroda olan tum oyuncular
     for tm_id, tm_slug in clubs.items():
         team_slug = match_team(tm_slug)
-        if team_slug not in wanted_by_team:
+        if team_slug is None:
             continue
-        wanted = wanted_by_team[team_slug]
+        # Kadro her eslenen kulup icin cekilir (yalniz "istenen" olanlar icin degil):
+        # asagidaki ayrilan-temizligi TM'de kimin KALDIGINI bilmek zorunda.
+        wanted = wanted_by_team.get(team_slug, {})
         squad_url = f"{BASE}/{clubs[tm_id]}/kader/verein/{tm_id}/saison_id/2026/plus/1"
         for p in parse_squad_with_pos(fetch(squad_url)):
+            seen_tm_ids.add(str(p["tm_id"]))
             if norm(p["name"]) not in wanted:
                 continue
             cur.execute(
@@ -257,6 +261,32 @@ def seed(cur) -> None:
             found += 1
             print(f"  seed: {team_slug} <- {p['name']} ({p.get('tm_position')}, "
                   f"{p['value'] and '€%.1fm' % (p['value']/1e6) or '-'})")
+    # AYRILAN TEMIZLIGI: TM kadrosunda artik olmayan sentetikler emekli edilir.
+    # apply()'daki emeklilik yalniz "API-Football yetisti" durumunu kapsar; ligden
+    # ayrilan sentetik oyuncu aksi halde kadroda sonsuza kadar kalirdi.
+    # Guvenlik esigi: TM cekimi kismen basarisiz olduysa (az kadro geldi) temizligi
+    # HIC yapma; yoksa tek bir kotu kosu tum sentetik kadroyu silebilir.
+    MIN_SEEN = 300  # 18 kulup x ~28 oyuncu ≈ 500
+    if len(seen_tm_ids) < MIN_SEEN:
+        print(f"  ayrilan temizligi ATLANDI: TM'den yalniz {len(seen_tm_ids)} oyuncu goruldu")
+    elif seen_tm_ids:
+        cur.execute(
+            """select tm_player_id, team_slug, player_name
+               from football.squad_synthetic_players
+               where active and tm_player_id <> all(%s)""",
+            (sorted(seen_tm_ids),),
+        )
+        gone = cur.fetchall()
+        for tm_id, team_slug, name in gone:
+            cur.execute(
+                "update football.squad_synthetic_players set active=false, retired_at=now() "
+                "where tm_player_id=%s", (tm_id,))
+            cur.execute(
+                "delete from football.team_squad_current where source='synthetic-tm' "
+                "and source_player_id=%s", (f"tm{tm_id}",))
+            print(f"  ayrildi: {name} ({team_slug}) TM kadrosunda yok -> emekli")
+        if gone:
+            print(f"  {len(gone)} sentetik oyuncu ayrilma nedeniyle emekli edildi")
     print(f"seed tamam: {found} oyuncu yazildi/guncellendi")
 
 
