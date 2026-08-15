@@ -30,6 +30,10 @@ create or replace view analytics.psm_id_bridge_v1 as
   join ref.sofascore_opta_player_map so on so.sofascore_player_id = m.sofascore_player_id;
 
 -- ── Sezon-Avg koprusu (per_match_value, PSM metricKey'iyle) ───────────────────
+-- KAPSAM DISI (bilerek): 'log:shots_off_target' ve 'log:shots_blocked'. tsl_ss'te
+-- blokajli sut ayri sayilmaz; shots_total - shots_on_target = off_target + blocked
+-- olur (uygulama bu ikisini AYRI tanimlar). Bahis modelinde yaklasik deger vermemek
+-- icin 26/27'de bos birakildi (shotmap miss/block ayrimi ile sonraki artis).
 create or replace view analytics.psm_player_season_avg_bridge_v1 as
 with im as (select player_key, tslss_id from analytics.psm_id_bridge_v1),
 -- tsl_ss duz metrikler: PSM metricKey == tsl_ss metric_key (per_match hazir)
@@ -44,24 +48,6 @@ plain as (
       'cards_yellow_total','cards_red_total','offsides_total','saves_total_total',
       'shots_total','shots_on_target_total'
     )
-),
--- turetilen: shots_off_target = shots_total - shots_on_target (PSM 'log:' onekiyle sunulur)
-st as (
-  select im.player_key, g.per_match_value pm
-  from analytics.tsl_ss_player_detailed_metrics_global_mat g
-  join im on im.tslss_id = g.player_source_id
-  where g.season_label='2026/2027' and g.metric_key='shots_total'
-),
-sot as (
-  select im.player_key, g.per_match_value pm
-  from analytics.tsl_ss_player_detailed_metrics_global_mat g
-  join im on im.tslss_id = g.player_source_id
-  where g.season_label='2026/2027' and g.metric_key='shots_on_target_total'
-),
-soff as (
-  select st.player_key, 'log:shots_off_target'::text as metric_key,
-         greatest(coalesce(st.pm,0) - coalesce(sot.pm,0), 0) as per_match_value
-  from st join sot on sot.player_key = st.player_key
 ),
 -- shotmap bolgeleri (per-match): attempts (duz key) + SOT (shots: onek)
 zones as (
@@ -79,7 +65,6 @@ zones as (
 select player_key as player_source_id, '2026/2027'::text as season_label,
        metric_key, per_match_value::numeric as per_match_value
 from plain where per_match_value is not null
-union all select player_key, '2026/2027', metric_key, per_match_value from soff where per_match_value is not null
 union all select player_key, '2026/2027', metric_key, per_match_value from zones where per_match_value is not null;
 
 -- ── Sezon mac; PSM 'Mac sayisi' kolonu ───────────────────────────────────────
