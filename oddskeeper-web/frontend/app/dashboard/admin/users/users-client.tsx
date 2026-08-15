@@ -21,10 +21,65 @@ type AdminUserRow = {
   email: string;
   createdAt: string | null;
   lastSignInAt: string | null;
+  lastUsedAt: string | null;
+  activity: { day: string; hits: number }[];
   isAdmin: boolean;
   allowedKeys: string[] | null;
   directAlias: string | null;
 };
+
+// GitHub tarzi kompakt aktiflik: son ~20 hafta, gun basina kutu (hits'e gore yesil).
+function ActivityGraph({ activity }: { activity: { day: string; hits: number }[] }) {
+  const WEEKS = 20;
+  const map = new Map(activity.map((a) => [a.day, a.hits]));
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const start = new Date(today);
+  start.setDate(start.getDate() - (WEEKS * 7 - 1));
+  start.setDate(start.getDate() - start.getDay()); // haftayi Pazar'a hizala
+
+  const cols: { iso: string; hits: number }[][] = [];
+  const cur = new Date(start);
+  while (cur <= today) {
+    const col: { iso: string; hits: number }[] = [];
+    for (let d = 0; d < 7; d++) {
+      const iso = cur.toISOString().slice(0, 10);
+      col.push({ iso, hits: cur <= today ? map.get(iso) ?? 0 : -1 });
+      cur.setDate(cur.getDate() + 1);
+    }
+    cols.push(col);
+  }
+
+  const color = (h: number) =>
+    h < 0
+      ? "transparent"
+      : h === 0
+      ? "rgba(128,128,128,0.15)"
+      : h < 3
+      ? "#0e4429"
+      : h < 6
+      ? "#006d32"
+      : h < 12
+      ? "#26a641"
+      : "#39d353";
+
+  return (
+    <div className="flex gap-[2px]">
+      {cols.map((col, i) => (
+        <div key={i} className="flex flex-col gap-[2px]">
+          {col.map((c) => (
+            <span
+              key={c.iso}
+              title={c.hits >= 0 ? `${c.iso}: ${c.hits}` : undefined}
+              className="h-[9px] w-[9px] rounded-[2px]"
+              style={{ backgroundColor: color(c.hits) }}
+            />
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
 
 type AdminUsersClientProps = {
   requesterId: string | null;
@@ -384,7 +439,10 @@ export default function AdminUsersClient({
                   {t("adminUsers.createdColumn")}
                 </th>
                 <th className="px-3 py-2.5 font-medium">
-                  {t("adminUsers.lastSignInColumn")}
+                  {t("adminUsers.lastUsedColumn")}
+                </th>
+                <th className="px-3 py-2.5 font-medium">
+                  {t("adminUsers.activityColumn")}
                 </th>
                 <th className="px-3 py-2.5 text-center font-medium">
                   {t("adminUsers.adminColumn")}
@@ -440,7 +498,10 @@ export default function AdminUsersClient({
                       {formatDate(user.createdAt)}
                     </td>
                     <td className="whitespace-nowrap px-3 py-2.5 text-[12px] text-ink-2">
-                      {formatDate(user.lastSignInAt)}
+                      {formatDate(user.lastUsedAt ?? user.lastSignInAt)}
+                    </td>
+                    <td className="px-3 py-2.5">
+                      <ActivityGraph activity={user.activity} />
                     </td>
                     <td className="px-3 py-2.5 text-center">
                       <button

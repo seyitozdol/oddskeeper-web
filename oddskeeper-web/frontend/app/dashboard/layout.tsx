@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import AppHeader from "../../components/app-header";
+import ActivityHeartbeat from "../../components/activity-heartbeat";
 import { VersionGuard } from "../../components/version-guard";
 import { ConfirmDialogHost } from "../../lib/confirm-dialog";
 import { getNavAccess, isDevAuthBypass } from "../../lib/nav-access-server";
@@ -35,6 +36,7 @@ export default async function DashboardLayout({
       <main className="w-full px-4 pb-8 pt-4 lg:px-8">{children}</main>
       <ConfirmDialogHost />
       <VersionGuard />
+      <ActivityHeartbeat />
     </div>
   );
 }
