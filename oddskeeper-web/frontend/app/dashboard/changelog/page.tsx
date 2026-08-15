@@ -32,6 +32,10 @@ const ENTRIES: Entry[] = [
         tr: "Süper Lig sayfalarında tüm sezonlarda kaybolan sarı/kırmızı kart, xG ve xA verileri de geri geldi.",
       },
       {
+        en: "Squad Audit's \"Missing from us\" list went from 321 players to 10. Every signing Transfermarkt showed but we didn't have is now in their club's squad with a real player card: photo, nationality, height, shirt number, age and market value, filled from SofaScore's current squad lists. This runs daily, so future transfers land on the site without waiting for their first match.",
+        tr: "Squad Audit'teki \"Bizde olmayan\" listesi 321 oyuncudan 10'a indi. Transfermarkt'ta olup bizde olmayan her transfer artık kulübünün kadrosunda ve gerçek bir oyuncu kartı var: fotoğraf, uyruk, boy, forma numarası, yaş ve piyasa değeri, SofaScore'un güncel kadro listelerinden dolduruluyor. Bu iş her gün çalışıyor, yani bundan sonraki transferler ilk maçlarını beklemeden siteye giriyor.",
+      },
+      {
         en: "A team's Player Stats tab now lists everyone who took the field, substitutes included. It used to hide anyone below the league ranking cut-off (30% of the season's highest minutes), which in the opening week meant every player with under 27 minutes vanished from their own club's page. League-wide Player Rankings keep the cut-off, as they should.",
         tr: "Takım sayfasındaki Oyuncu İstatistikleri sekmesi artık sahaya çıkan herkesi listeliyor, sonradan girenler dahil. Önceden lig sıralaması eşiğinin (sezonun en yüksek dakikasının %30'u) altında kalan gizleniyordu; sezonun ilk haftasında bu, 27 dakikanın altında oynayan herkesin kendi kulübünün sayfasından düşmesi demekti. Lig geneli Oyuncu Sıralamaları'nda eşik olması gerektiği gibi duruyor.",
       },
