@@ -313,8 +313,9 @@ export default function FixtureIdTab({
           <tbody>
             {rows.map((f) => {
               const v = inputs[f.fixtureId];
-              // Baslamis macta oneri gizlenir (bayat/canli oran uyarisi dahil).
-              const lk = fixtureStarted(f) ? undefined : links[f.fixtureId];
+              // Mac basladiysa oran duzenleme + Uygula kapali (canli/bayat oran girilmesin).
+              const started = fixtureStarted(f);
+              const lk = started ? undefined : links[f.fixtureId];
               return (
                 <tr key={f.fixtureId} className="border-t border-line/60 hover:bg-veil">
                   <td className="px-2 py-1.5 whitespace-nowrap text-ink">
@@ -361,15 +362,15 @@ export default function FixtureIdTab({
                     </span>
                   </td>
                   <td className="px-1.5 py-1.5">
-                    <input type="number" step="0.01" className={`${inp} w-14`} value={v?.homeOdds ?? ""}
+                    <input type="number" step="0.01" disabled={started} className={`${inp} w-14 disabled:opacity-40`} value={v?.homeOdds ?? ""}
                       onChange={(e) => edit(f.fixtureId, { homeOdds: e.target.value === "" ? null : parseFloat(e.target.value) })} />
                   </td>
                   <td className="px-1.5 py-1.5">
-                    <input type="number" step="0.01" className={`${inp} w-14`} value={v?.drawOdds ?? ""}
+                    <input type="number" step="0.01" disabled={started} className={`${inp} w-14 disabled:opacity-40`} value={v?.drawOdds ?? ""}
                       onChange={(e) => edit(f.fixtureId, { drawOdds: e.target.value === "" ? null : parseFloat(e.target.value) })} />
                   </td>
                   <td className="px-1.5 py-1.5">
-                    <input type="number" step="0.01" className={`${inp} w-14`} value={v?.awayOdds ?? ""}
+                    <input type="number" step="0.01" disabled={started} className={`${inp} w-14 disabled:opacity-40`} value={v?.awayOdds ?? ""}
                       onChange={(e) => edit(f.fixtureId, { awayOdds: e.target.value === "" ? null : parseFloat(e.target.value) })} />
                   </td>
                   <td className="px-2 py-1.5">
