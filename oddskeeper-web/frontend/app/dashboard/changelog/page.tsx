@@ -20,6 +20,16 @@ const TAG_NEW_TOOL: L = { en: "New tool", tr: "Yeni araç" };
 
 const ENTRIES: Entry[] = [
   {
+    date: { en: "16 August", tr: "16 Ağustos" },
+    title: { en: "Finished matches drop to the bottom per match", tr: "Biten maçlar maç bazında en alta iniyor" },
+    items: [
+      {
+        en: "In the Match Stats Model and Player Market fixture pickers, a played match used to move to the bottom of the list only once the whole matchweek was over. Now each match drops to the bottom on its own once it has finished, so the upcoming matches you're working on stay at the top without waiting for the rest of the round.",
+        tr: "Match Stats Model ve Player Market fikstür seçicilerinde oynanmış bir maç, ancak tüm hafta bittiğinde listenin en altına iniyordu. Artık her maç bittiğinde tek tek en alta iniyor; üzerinde çalıştığın yaklaşan maçlar, haftanın geri kalanını beklemeden en üstte kalıyor.",
+      },
+    ],
+  },
+  {
     date: { en: "15 August", tr: "15 Ağustos" },
     title: { en: "Player Market: current-season Avg is back", tr: "Player Market: güncel sezon Avg'si geri geldi" },
     items: [
