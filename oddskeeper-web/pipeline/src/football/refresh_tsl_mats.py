@@ -28,6 +28,11 @@ MATS = [
     "tsl_ss_squad_mat",
     "tsl_player_advanced_season_mat",
     "tsl_player_flashscore_season_mat",
+    # SofaScore profil koprusu (sql/2026-08-15_player_*_sofascore_bridge.sql):
+    # profil ONCE (digerleri slug'i ondan okur), sonra mac logu + kimlik/bio.
+    "player_profile_bridged_mat",
+    "player_match_log_sofascore_mat",
+    "player_current_info_bridged_mat",
 ]
 
 

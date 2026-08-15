@@ -120,7 +120,11 @@ export async function getPlayerMatchLog(
 
   const { data, error } = await supabase
     .schema("analytics")
-    .from("player_match_log_v1")
+    // Opta maç logu + Opta karşılığı olmayan oyuncu-sezonlar için SofaScore'dan
+    // türetilen loglar. Mükerrer olmaz: bir oyuncu-sezonun Opta logu varsa
+    // SofaScore satırları hiç eklenmez.
+    // Bkz. sql/2026-08-15_player_match_log_sofascore_bridge.sql
+    .from("player_match_log_bridged_v1")
     .select(
       `
         player_slug,

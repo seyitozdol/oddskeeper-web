@@ -71,7 +71,10 @@ export async function getPlayerProfile(
 
   const { data, error } = await supabase
     .schema("analytics")
-    .from("player_profile_v1")
+    // Opta profili + SofaScore'dan turetilmis profiller (Opta karsiligi olmayan
+    // yeni transferler / yukselen takim oyunculari). Opta satiri varsa o kazanir,
+    // slug'lar degismez. Bkz. sql/2026-08-15_player_profile_sofascore_bridge.sql
+    .from("player_profile_bridged_v1")
     .select(
       `
         team_slug,

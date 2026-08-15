@@ -54,7 +54,10 @@ export type PlayerAsset = {
 export async function getPlayerAssets(): Promise<Record<string, PlayerAsset>> {
   const supabase = await createClient();
   const out: Record<string, PlayerAsset> = {};
-  // player_current_info_v1: opta id -> slug/photo/nationality (guncel kadro)
+  // player_current_info_bridged_v1: opta id -> slug/foto/uyruk. Guncel kadro (Opta
+  // kimlikli) + Opta karsiligi olmayan oyuncular icin SofaScore'dan turetilenler;
+  // olmasa yeni transfer / yukselen takim oyuncusunun adi duz metin kalirdi.
+  // Bkz. sql/2026-08-15_player_current_info_sofascore_bridge.sql
   const data = await fetchAllPaged<{
     opta_player_id: string | null;
     player_slug: string | null;
@@ -63,7 +66,7 @@ export async function getPlayerAssets(): Promise<Record<string, PlayerAsset>> {
   }>((from, to) =>
     supabase
       .schema("analytics")
-      .from("player_current_info_v1")
+      .from("player_current_info_bridged_v1")
       .select("opta_player_id, player_slug, photo_url, nationality")
       .not("opta_player_id", "is", null)
       .order("player_slug", { ascending: true })

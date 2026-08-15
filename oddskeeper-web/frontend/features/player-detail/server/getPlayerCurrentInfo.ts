@@ -8,7 +8,10 @@ export async function getPlayerCurrentInfo(
 
   const { data, error } = await supabase
     .schema("analytics")
-    .from("player_current_info_v1")
+    // Güncel kadro bilgisi + Opta karşılığı olmayan oyuncular için SofaScore'dan
+    // türetilen bio (foto/uyruk/mevki/forma no).
+    // Bkz. sql/2026-08-15_player_current_info_sofascore_bridge.sql
+    .from("player_current_info_bridged_v1")
     .select(
       `
         player_slug,
