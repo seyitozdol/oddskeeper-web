@@ -22,6 +22,7 @@ export type UpcomingFixture = {
   fixture_id: number;
   fixture_date: string;
   fixture_datetime: string | null;
+  round_number: number | null;
   home_team_name: string;
   away_team_name: string;
   home_source_team_id: string;
@@ -200,7 +201,7 @@ export async function fetchUpcomingFixtures(): Promise<UpcomingFixture[]> {
     .schema("analytics")
     .from("tff1_fixtures_v1")
     .select(
-      "fixture_id, fixture_date, fixture_datetime, home_team_id, home_team_name, away_team_id, away_team_name"
+      "fixture_id, fixture_date, fixture_datetime, round_number, home_team_id, home_team_name, away_team_id, away_team_name"
     )
     .gte("fixture_date", since)
     .order("fixture_datetime", { ascending: true })
@@ -215,6 +216,7 @@ export async function fetchUpcomingFixtures(): Promise<UpcomingFixture[]> {
     fixture_id: row.fixture_id,
     fixture_date: row.fixture_date,
     fixture_datetime: row.fixture_datetime ?? null,
+    round_number: row.round_number ?? null,
     home_team_name: row.home_team_name,
     away_team_name: row.away_team_name,
     home_source_team_id: String(row.home_team_id),

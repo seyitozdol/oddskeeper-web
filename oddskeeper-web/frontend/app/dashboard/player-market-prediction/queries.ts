@@ -14,6 +14,7 @@ export type UpcomingFixture = {
   fixture_id: number;
   fixture_date: string;
   fixture_datetime: string | null;
+  round_number: number | null;
   home_team_name: string;
   away_team_name: string;
   home_source_team_id: string;
@@ -200,7 +201,7 @@ export async function fetchUpcomingFixtures(): Promise<UpcomingFixture[]> {
     .schema("analytics")
     .from("league_fixtures_v1")
     .select(
-      "fixture_id, fixture_date, fixture_datetime, home_team_name, away_team_name, home_team_source_id, away_team_source_id, home_team_slug, away_team_slug"
+      "fixture_id, fixture_date, fixture_datetime, round_number, home_team_name, away_team_name, home_team_source_id, away_team_source_id, home_team_slug, away_team_slug"
     )
     // football.fixtures artik TFF 1. Lig fiksturlerini de iceriyor; sizmasin
     .eq("competition", "Süper Lig")
@@ -217,6 +218,7 @@ export async function fetchUpcomingFixtures(): Promise<UpcomingFixture[]> {
     fixture_id: row.fixture_id,
     fixture_date: row.fixture_date,
     fixture_datetime: row.fixture_datetime ?? null,
+    round_number: row.round_number ?? null,
     home_team_name: row.home_team_name,
     away_team_name: row.away_team_name,
     home_source_team_id: row.home_team_source_id,

@@ -67,6 +67,17 @@ import { getTeamLogoPath } from "@/features/player-detail/utils/getTeamLogoPath"
 const BIG4 = new Set(["besiktas", "galatasaray", "fenerbahce", "trabzonspor"]);
 const TABS = ["model", "config", "fixtures", "input", "gsheet"] as const;
 
+// Fixture siralamasi: manuel HER ZAMAN en ustte, sonra kickoff'a gore EN YAKIN
+// ustte (round yerine baslama saati). datetime'siz maclar sona.
+const kickoffMs = (f: FixtureRow) =>
+  f.datetime ? new Date(f.datetime).getTime() : Number.POSITIVE_INFINITY;
+const cmpUpcoming = (a: FixtureRow, b: FixtureRow) => {
+  if (!!a.manual !== !!b.manual) return a.manual ? -1 : 1;
+  return kickoffMs(a) - kickoffMs(b);
+};
+// Arsiv (biten): en son biten en ustte.
+const cmpArchivedDesc = (a: FixtureRow, b: FixtureRow) => kickoffMs(b) - kickoffMs(a);
+
 // Güncel sezon maç logundan HF/HA/AF/AA (Excel U11-14): hafta penceresi + Big4/RedC istisnası.
 function currentHFAA(
   log: MatchLogRow[] | undefined,
@@ -468,8 +479,9 @@ export default function ResmiMatchStatsModel({
   // tamamlanan haftalar atlanır).
   useEffect(() => {
     if (!selectedFixtureId && fixtures.length) {
+      // Acilista EN YAKIN oynanacak resmi maci sec (round degil kickoff sirasi).
       const f =
-        fixtures.find((x) => !x.manual && !isArchived(x)) ??
+        fixtures.filter((x) => !x.manual && !isArchived(x)).sort(cmpUpcoming)[0] ??
         fixtures.find((x) => !x.manual) ??
         fixtures[0];
       setSelectedFixtureId(f.fixtureId);
@@ -1081,14 +1093,14 @@ export default function ResmiMatchStatsModel({
                 <div>
                   <label className={lblCls}>{t("msm.tab_fixtures")}</label>
                   <select className={`${selCls} w-full`} value={selectedFixtureId} onChange={(e) => selectFixture(e.target.value)}>
-                    {fixtures.filter((f) => !isArchived(f)).map((f) => (
+                    {fixtures.filter((f) => !isArchived(f)).sort(cmpUpcoming).map((f) => (
                       <option key={f.fixtureId} value={f.fixtureId} className="bg-field text-ink">
                         {f.manual ? "M" : `R${f.round}`} · {f.label}
                       </option>
                     ))}
                     {fixtures.some(isArchived) && (
                       <optgroup label={t("msm.archive")} className="bg-field text-ink">
-                        {fixtures.filter(isArchived).map((f) => (
+                        {fixtures.filter(isArchived).sort(cmpArchivedDesc).map((f) => (
                           <option key={f.fixtureId} value={f.fixtureId} className="bg-field text-ink">
                             R{f.round} · {f.label}
                           </option>
