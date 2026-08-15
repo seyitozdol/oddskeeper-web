@@ -86,9 +86,27 @@ def parse_squad(html):
     return players
 
 
-def collect_sofa_players():
-    """Lineup JSON'larindan sofascore oyuncu kimlikleri (son gorulen kayit kazanir)."""
+def collect_sofa_players(cur=None):
+    """SofaScore oyuncu kimlik havuzu: guncel kadrolar + lineup JSON'lari.
+
+    Lineup dosyalari yalniz OYNAMIS oyunculari icerir; yeni transferler ilk
+    maclarina kadar havuzda olmadigi icin TM'deki oyuncu eslesemiyor ve
+    tff1_player_market_values'a hic girmiyordu (dolayisiyla tff1_squad_v1'de de
+    yoklardi -> Squad Audit "TM'de var bizde yok"). football.sofascore_squad_current
+    (fetch_sofascore_squads.py) kulubun GUNCEL kadrosunu tuttugu icin bu bosluğu
+    kapatir. Lineup kayitlari sonra uygulanir (daha taze isim/boy bilgisi).
+    """
     players = {}
+    if cur is not None:
+        cur.execute(
+            """select sofascore_player_id, player_name, player_slug, birth_date,
+                      height_cm, country, position
+               from football.sofascore_squad_current"""
+        )
+        for pid, name, slug, birth, height, country, position in cur.fetchall():
+            players[int(pid)] = {"name": name, "slug": slug, "birth": birth,
+                                 "height": height, "country": country,
+                                 "position": position}
     for d in sorted((ROOT / "data" / "sofascore").glob("*/")):
         for f in d.glob("lineup_*.json"):
             data = json.loads(f.read_text(encoding="utf-8"))
@@ -135,7 +153,7 @@ def main():
         )""")
     conn.commit()
 
-    sofa = collect_sofa_players()
+    sofa = collect_sofa_players(cur)
     print(f"Sofa oyuncu kimligi: {len(sofa)}")
     psycopg2.extras.execute_values(
         cur,
@@ -176,8 +194,10 @@ def main():
                 continue
             matched = 0
             for p in squad:
-                if p["value"] is None:
-                    continue
+                # Piyasa degeri olmayan (genclik/yeni) oyuncular da yazilir: bu tablo
+                # ayni zamanda tff1_squad_v1'in KADRO UYELIGI kaynagi; atlanirsa oyuncu
+                # takimin kadrosunda hic gorunmuyor (Squad Audit "TM'de var bizde yok").
+                # Deger NULL kalir, sadece uyelik kurulur.
                 target = None
                 tm_toks = set(norm(p["name"]).split())
                 if p["birth"] and p["birth"] in by_birth:

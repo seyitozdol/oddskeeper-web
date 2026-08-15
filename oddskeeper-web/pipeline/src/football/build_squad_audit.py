@@ -98,6 +98,17 @@ def audit_tsl(cur) -> list[Row]:
         for p in players:
             cands = [c for c in ours
                      if any(_name_match(p["name"], v) for v in _our_name_variants(c))]
+            if not cands:
+                # Ad-soyad sirasi ters yazilmis kayitlar (API-Football'da sik:
+                # "Dorgeles Nene" -> "N. Dorgeles", "Thalisson" -> "Thalisson Kelven").
+                # Ters sira + guclu token kesisimi; yoksa bu oyuncular zaten
+                # kadromuzdayken "eksik" gorunuyordu.
+                rev = " ".join(reversed(norm(p["name"]).split()))
+                tt = {t for t in norm(p["name"]).split() if len(t) >= 4}
+                cands = [c for c in ours
+                         if any(_name_match(rev, v) for v in _our_name_variants(c))
+                         or any(tt and len(tt & {t for t in norm(v).split() if len(t) >= 4})
+                                >= min(2, len(tt)) for v in _our_name_variants(c))]
             if p["birth"]:
                 bc = [c for c in cands if c[6] == p["birth"]]
                 if bc:
@@ -116,15 +127,24 @@ def audit_tff1(cur) -> list[Row]:
     rows: list[Row] = []
     clubs = _clubs_from_league(fetch(f"{BASE}/1-lig/startseite/wettbewerb/TR2"))
 
-    # Bizim TFF1 kadrosu: en guncel sezonun oyuncu listesi + dogum tarihi.
+    # Bizim TFF1 kadrosu: tff1_squad_v1 (TM uyeligi + oynayanlar). Onceden yalnizca
+    # SEZON ISTATISTIGI olan oyunculara bakiliyordu; henuz mac oynamamis transferler
+    # kadroda olmalarina ragmen "TM'de var bizde yok" listesinde cikiyordu.
     cur.execute("select max(season_label) from analytics.tff1_player_season_stats_v1")
     season = cur.fetchone()[0]
     cur.execute(
-        """select p.player_id, coalesce(p.player_name, p.player_id), p.team_name,
-                  i.birth_date
-           from analytics.tff1_player_season_stats_v1 p
+        """select s.player_id, coalesce(s.player_name, s.player_id), s.team_name,
+                  coalesce(s.birth_date, i.birth_date)
+           from analytics.tff1_squad_v1 s
            left join football.sofascore_player_info i
-                  on i.sofascore_player_id = p.player_id
+                  on i.sofascore_player_id = s.player_id
+           where s.team_name is not null and s.membership_source = 'tm'
+           union
+           select p.player_id, coalesce(p.player_name, p.player_id), p.team_name,
+                  i2.birth_date
+           from analytics.tff1_player_season_stats_v1 p
+           left join football.sofascore_player_info i2
+                  on i2.sofascore_player_id = p.player_id
            where p.season_label = %s and p.team_name is not null""",
         (season,),
     )

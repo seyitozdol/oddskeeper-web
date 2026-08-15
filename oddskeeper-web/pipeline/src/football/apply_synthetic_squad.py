@@ -27,9 +27,10 @@ from fetch_transfermarkt_values import (  # noqa: E402
     BASE, LEAGUE_URL, fetch, norm, parse_squad, _name_match,
 )
 
-# Kuratif eksik listesi (2026-08-10 TM kiyas raporundan; yalniz net vakalar,
-# isim-sirasi ters yanlis pozitifler haric). team_slug -> TM'deki tam adlar.
-SEED_NAMES: dict[str, list[str]] = {
+# ELLE eklenecek ozel durumlar. Asil kaynak artik football.squad_audit'in
+# "tm_not_ours" satirlari (bkz. seed); bu sozluk yalnizca denetimin kacirdigi
+# oyuncular icin. Bos birakilabilir.
+MANUAL_EXTRA: dict[str, list[str]] = {
     "trabzonspor": ["Mohamed Salah", "John Lundstram"],
     "fenerbahce": ["Sofyan Amrabat", "Diego Carlos", "Dominik Livakovic"],
     "galatasaray": ["Mario Lemina", "Metehan Baltacı"],
@@ -195,7 +196,42 @@ def seed(cur) -> None:
                 best, best_score = team_slug, sc
         return best if best_score > 0 else None
 
-    wanted_by_team = {k: {norm(n): n for n in v} for k, v in SEED_NAMES.items()}
+    # Istenen oyuncular ARTIK KURATIF LISTEDEN DEGIL, kadro denetiminden gelir:
+    # squad_audit'in "tm_not_ours" (TM'de var bizde yok) TSL satirlari. Denetim her
+    # gun TM ile bizim kadroyu kiyaslayip yeniden yazildigi icin liste kendiliginden
+    # guncel kalir; elle isim eklemek gerekmez. MANUAL_EXTRA yalnizca denetimin
+    # kaciracagi ozel durumlar icin duruyor.
+    wanted_by_team: dict[str, dict[str, str]] = {}
+    for team_slug, names in MANUAL_EXTRA.items():
+        wanted_by_team.setdefault(team_slug, {}).update({norm(n): n for n in names})
+
+    cur.execute(
+        """select a.team_name, a.player_name
+           from football.squad_audit a
+           where a.section = 'tm_not_ours' and a.league = 'tsl'"""
+    )
+    audit_rows = cur.fetchall()
+    display_to_slug = {norm(d): k for k, d in our_teams}
+    unmapped_teams = set()
+    for team_display, player_name in audit_rows:
+        slug = display_to_slug.get(norm(team_display))
+        if slug is None:
+            # Denetim takim adini bizim gosterim adiyla yazar; yine de tutmazsa
+            # token kesisimiyle dene (or. "Basaksehir" vs "Başakşehir FK").
+            tt = set(norm(team_display).split()) - STOPWORDS
+            best, bs = None, 0
+            for k, d in our_teams:
+                sc = len(((set(norm(d).split()) | set(norm(k).split("-"))) - STOPWORDS) & tt)
+                if sc > bs:
+                    best, bs = k, sc
+            slug = best if bs > 0 else None
+        if slug is None:
+            unmapped_teams.add(team_display)
+            continue
+        wanted_by_team.setdefault(slug, {})[norm(player_name)] = player_name
+    print(f"denetimden {len(audit_rows)} eksik oyuncu, {len(wanted_by_team)} takim"
+          + (f"; takim eslenemedi: {sorted(unmapped_teams)}" if unmapped_teams else ""))
+
     found = 0
     for tm_id, tm_slug in clubs.items():
         team_slug = match_team(tm_slug)
@@ -222,6 +258,92 @@ def seed(cur) -> None:
             print(f"  seed: {team_slug} <- {p['name']} ({p.get('tm_position')}, "
                   f"{p['value'] and '€%.1fm' % (p['value']/1e6) or '-'})")
     print(f"seed tamam: {found} oyuncu yazildi/guncellendi")
+
+
+SOFA_IMG = "https://img.sofascore.com/api/v1/player/{sid}/image"
+
+
+def bridge_sofascore(cur) -> None:
+    """Sentetik oyuncularin eksik kart bilgisini SofaScore GUNCEL kadrosundan doldurur.
+
+    TM bize ad/mevki/dogum/deger veriyor; foto, uyruk, boy ve forma numarasi yok.
+    football.sofascore_squad_current (fetch_sofascore_squads.py) kulubun guncel
+    kadrosunu tuttugu icin HENUZ MAC OYNAMAMIS transferler de icinde; eslesme
+    takim + ad (+ dogum tarihi teyidi) ile kurulur. Onceki yontem elle yazilmis
+    NAME_OVERRIDES sozluguydu, her yeni oyuncuda elle mudahale gerekiyordu.
+
+    Yazilanlar (hepsi YALNIZ bos alana; mevcut veri ezilmez):
+      football.player_bio        full_name / birth_date / nationality / height_cm
+      football.team_squad_current photo_url / shirt_number
+      football.squad_synthetic_players.sofascore_player_id (kalici baglanti)
+    """
+    cur.execute(
+        """select coalesce(tm.team_slug, s.team_slug), s.sofascore_player_id,
+                  s.player_name, s.birth_date, s.height_cm, s.country, s.shirt_number
+           from football.sofascore_squad_current s
+           left join ref.team_mapping tm
+                  on tm.source_team_id = s.sofascore_team_id and tm.is_active"""
+    )
+    by_team: dict[str, list] = {}
+    for slug, pid, name, birth, height, country, shirt in cur.fetchall():
+        by_team.setdefault(slug, []).append((pid, name, birth, height, country, shirt))
+
+    cur.execute(
+        """select tm_player_id, team_slug, player_name, birth_date
+           from football.squad_synthetic_players where active"""
+    )
+    linked = unresolved = 0
+    for tm_id, team_slug, name, birth in cur.fetchall():
+        pool = by_team.get(team_slug) or []
+        rev = " ".join(reversed(norm(name).split()))
+        cands = [c for c in pool if _name_match(name, c[1]) or _name_match(rev, c[1])]
+        if not cands:
+            tt = tokens(name)
+            cands = [c for c in pool if tt and len(tt & tokens(c[1])) >= min(2, len(tt))]
+        if birth:
+            exact = [c for c in cands if c[2] == birth]
+            if exact:
+                cands = exact
+            elif not cands:
+                # ad tutmadi ama dogum tarihi takim icinde tekse yine de kabul et
+                bc = [c for c in pool if c[2] == birth]
+                if len(bc) == 1:
+                    cands = bc
+        if len(cands) != 1:
+            unresolved += 1
+            if cands:
+                print(f"  belirsiz: {name} ({team_slug}) -> {[c[1] for c in cands]}")
+            continue
+        sid, sofa_name, sofa_birth, height, country, shirt = cands[0]
+        syn_pid = f"tm{tm_id}"
+        cur.execute(
+            "update football.squad_synthetic_players set sofascore_player_id=%s "
+            "where tm_player_id=%s", (sid, tm_id))
+        cur.execute(
+            """insert into football.player_bio
+                 (source, source_player_id, full_name, birth_date, nationality, height_cm)
+               values ('apifootball', %s, %s, %s, %s, %s)
+               on conflict do nothing""",
+            (syn_pid, sofa_name or name, birth or sofa_birth, country, height))
+        cur.execute(
+            """update football.player_bio
+               set full_name = coalesce(full_name, %s),
+                   birth_date = coalesce(birth_date, %s),
+                   nationality = coalesce(nationality, %s),
+                   height_cm = coalesce(height_cm, %s)
+               where source='apifootball' and source_player_id=%s""",
+            (sofa_name or name, birth or sofa_birth, country, height, syn_pid))
+        # age: API-Football kadrolarinda hazir gelir, sentetikte yok; kart yasi
+        # bu kolondan okudugu icin dogum tarihinden hesaplayip yaziyoruz.
+        cur.execute(
+            """update football.team_squad_current
+               set photo_url = coalesce(photo_url, %s),
+                   shirt_number = coalesce(shirt_number, %s),
+                   age = coalesce(age, extract(year from age(%s))::int)
+               where source='synthetic-tm' and source_player_id=%s""",
+            (SOFA_IMG.format(sid=sid), shirt, birth or sofa_birth, syn_pid))
+        linked += 1
+    print(f"sofascore koprusu: {linked} oyuncu eslendi, {unresolved} cozulemedi")
 
 
 def apply(cur) -> None:
@@ -316,6 +438,8 @@ def main() -> None:
     if "--seed" in sys.argv:
         seed(cur)
     apply(cur)
+    # Kadro satirlari yazildiktan SONRA: eksik kart bilgisini SofaScore'dan doldur.
+    bridge_sofascore(cur)
     conn.commit()
     # Kadro profil mat'i (PSM fetchTeamPlayers bunu okur) kadro degisiminden
     # sonra tazelenmeli; agir tanim view'i sorgu aninda kosulamayacak kadar yavas.
@@ -324,7 +448,12 @@ def main() -> None:
         cur.execute("refresh materialized view concurrently analytics.team_current_squad_profile_mat")
         cur.execute("refresh materialized view analytics.player_metric_leaderboard_current_mat")
         cur.execute("refresh materialized view analytics.player_profile_mat")
-        print("[mat] squad profile + leaderboard + profil mat'lari tazelendi", flush=True)
+        # SofaScore kopru mat'lari: kadro degisince oyuncu karti/profil linkleri
+        # bunlardan okunuyor (sira: profil -> mac logu -> kimlik/bio).
+        cur.execute("refresh materialized view analytics.player_profile_bridged_mat")
+        cur.execute("refresh materialized view analytics.player_match_log_sofascore_mat")
+        cur.execute("refresh materialized view analytics.player_current_info_bridged_mat")
+        print("[mat] squad profile + leaderboard + profil + kopru mat'lari tazelendi", flush=True)
     except Exception as e:  # noqa
         print(f"UYARI: mat refresh basarisiz: {e}", flush=True)
     conn.close()
