@@ -21,12 +21,22 @@ const LEAGUE = "tff1";
 export type UpcomingFixture = {
   fixture_id: number;
   fixture_date: string;
+  fixture_datetime: string | null;
   home_team_name: string;
   away_team_name: string;
   home_source_team_id: string;
   away_source_team_id: string;
   label: string;
 };
+
+// Bir mac bitti mi? Kickoff + ~2.5s. Round/hafta beklemeden MAC BAZLI arsivleme:
+// biten fikstür dropdown'da en alta iner (fixture_status guvenilmez, bakilmaz).
+export const PSM_MATCH_DURATION_MS = 2.5 * 60 * 60 * 1000;
+export function fixtureFinished(f: UpcomingFixture): boolean {
+  if (!f.fixture_datetime) return false;
+  const t = new Date(f.fixture_datetime).getTime();
+  return Number.isFinite(t) && t + PSM_MATCH_DURATION_MS <= Date.now();
+}
 
 export type PlayerRow = {
   player_source_id: string;
@@ -179,18 +189,22 @@ export async function fetchAllCurrentPlayers(): Promise<DirectoryPlayer[]> {
 
 export async function fetchUpcomingFixtures(): Promise<UpcomingFixture[]> {
   const supabase = createClient();
-  const today = new Date().toISOString().slice(0, 10);
+  // Guncel haftanin biten maclari da listede kalsin (en altta) diye ~4 gun geriye
+  // bak; biten maclar client'ta bitis suresine gore en alta sıralanir. status
+  // guvenilmez -> filtre yerine bitis suresi.
+  const since = new Date(Date.now() - 4 * 24 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 10);
 
   const { data, error } = await supabase
     .schema("analytics")
     .from("tff1_fixtures_v1")
     .select(
-      "fixture_id, fixture_date, fixture_datetime, home_team_id, home_team_name, away_team_id, away_team_name, fixture_status"
+      "fixture_id, fixture_date, fixture_datetime, home_team_id, home_team_name, away_team_id, away_team_name"
     )
-    .gte("fixture_date", today)
-    .eq("fixture_status", "scheduled")
+    .gte("fixture_date", since)
     .order("fixture_datetime", { ascending: true })
-    .limit(50);
+    .limit(80);
 
   if (error) {
     console.error("fetchUpcomingFixtures error:", error);
@@ -200,6 +214,7 @@ export async function fetchUpcomingFixtures(): Promise<UpcomingFixture[]> {
   return (data ?? []).map((row) => ({
     fixture_id: row.fixture_id,
     fixture_date: row.fixture_date,
+    fixture_datetime: row.fixture_datetime ?? null,
     home_team_name: row.home_team_name,
     away_team_name: row.away_team_name,
     home_source_team_id: String(row.home_team_id),

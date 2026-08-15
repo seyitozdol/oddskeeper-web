@@ -92,6 +92,17 @@ export function fixtureStarted(f: FixtureRow): boolean {
   return Number.isFinite(t) && t <= Date.now();
 }
 
+// Bir mac bitti mi? Kickoff + tipik toplam mac suresi (2x45 + devre arasi + uzatma
+// + olasi VAR/gecikme icin guvenli tampon) gectiyse bitmis sayilir. Round beklemeden
+// MAC BAZLI arsivleme icin (fixture_status guvenilmez, ona bakilmaz; erteleme
+// edge-case'i disinda kickoff saati gectiyse mac oynanmis varsayilir).
+export const MATCH_DURATION_MS = 2.5 * 60 * 60 * 1000; // ~2.5 saat (kickoff -> kesin bitis)
+export function fixtureFinished(f: FixtureRow): boolean {
+  if (!f.datetime) return false;
+  const t = new Date(f.datetime).getTime();
+  return Number.isFinite(t) && t + MATCH_DURATION_MS <= Date.now();
+}
+
 // Tamamlanan haftalar: round'un SON macinin baslama saati gectiyse o round
 // "tamamlanan hafta" sayilir. Manuel fikstürler (round=0, datetime yok) haric.
 export function completedRoundSet(fixtures: FixtureRow[]): Set<number> {

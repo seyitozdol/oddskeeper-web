@@ -13,6 +13,7 @@ export type { StatusConfig };
 export type UpcomingFixture = {
   fixture_id: number;
   fixture_date: string;
+  fixture_datetime: string | null;
   home_team_name: string;
   away_team_name: string;
   home_source_team_id: string;
@@ -21,6 +22,16 @@ export type UpcomingFixture = {
   away_team_slug: string;
   label: string;
 };
+
+// Bir mac bitti mi? Kickoff + ~2.5s (2x45 + devre arasi + uzatma + tampon). Round/
+// hafta beklemeden MAC BAZLI arsivleme icin: biten fikstür listenin en altina iner.
+// fixture_status guvenilmez oldugu icin ona bakilmaz (erteleme edge-case'i disinda).
+export const PSM_MATCH_DURATION_MS = 2.5 * 60 * 60 * 1000;
+export function fixtureFinished(f: UpcomingFixture): boolean {
+  if (!f.fixture_datetime) return false;
+  const t = new Date(f.fixture_datetime).getTime();
+  return Number.isFinite(t) && t + PSM_MATCH_DURATION_MS <= Date.now();
+}
 
 export type PlayerRow = {
   player_source_id: string;
@@ -178,20 +189,24 @@ export async function fetchAllCurrentPlayers(): Promise<DirectoryPlayer[]> {
 
 export async function fetchUpcomingFixtures(): Promise<UpcomingFixture[]> {
   const supabase = createClient();
-  const today = new Date().toISOString().slice(0, 10);
+  // Guncel hafta biten maclari listenin ALTINDA gorunsun diye ~4 gun geriye de
+  // bakariz (round penceresi Cuma-Pzt); biten maclar client'ta en alta sıralanir.
+  // fixture_status guvenilmez -> filtrelemek yerine bitis suresine gore siralanir.
+  const since = new Date(Date.now() - 4 * 24 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 10);
 
   const { data, error } = await supabase
     .schema("analytics")
     .from("league_fixtures_v1")
     .select(
-      "fixture_id, fixture_date, home_team_name, away_team_name, home_team_source_id, away_team_source_id, home_team_slug, away_team_slug, fixture_status"
+      "fixture_id, fixture_date, fixture_datetime, home_team_name, away_team_name, home_team_source_id, away_team_source_id, home_team_slug, away_team_slug"
     )
     // football.fixtures artik TFF 1. Lig fiksturlerini de iceriyor; sizmasin
     .eq("competition", "Süper Lig")
-    .gte("fixture_date", today)
-    .neq("fixture_status", "played")
-    .order("fixture_date", { ascending: true })
-    .limit(50);
+    .gte("fixture_date", since)
+    .order("fixture_datetime", { ascending: true })
+    .limit(80);
 
   if (error) {
     console.error("fetchUpcomingFixtures error:", error);
@@ -201,6 +216,7 @@ export async function fetchUpcomingFixtures(): Promise<UpcomingFixture[]> {
   return (data ?? []).map((row) => ({
     fixture_id: row.fixture_id,
     fixture_date: row.fixture_date,
+    fixture_datetime: row.fixture_datetime ?? null,
     home_team_name: row.home_team_name,
     away_team_name: row.away_team_name,
     home_source_team_id: row.home_team_source_id,

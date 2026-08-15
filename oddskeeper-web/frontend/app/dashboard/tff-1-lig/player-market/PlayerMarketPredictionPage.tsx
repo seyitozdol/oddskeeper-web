@@ -16,6 +16,7 @@ import {
 } from "@/lib/model-history";
 import {
   fetchUpcomingFixtures,
+  fixtureFinished,
   fetchTeamPlayers,
   fetchPlayerRecentMatches,
   fetchPlayerMetricStats,
@@ -1346,11 +1347,17 @@ export default function PlayerMarketPredictionPage({
               className="rounded-lg border border-line bg-field px-3 py-2 text-[13px] text-ink focus:border-teal-500/50 focus:outline-none"
             >
               <option value="">{t("playerMarket.selectFixturePlaceholder")}</option>
-              {fixtures.map((f) => (
-                <option key={f.fixture_id} value={f.fixture_id}>
-                  {f.label}
-                </option>
-              ))}
+              {/* Biten maclar (kickoff+~2.5s) en alta; her render'da tazelenir. */}
+              {[...fixtures]
+                .sort(
+                  (a, b) =>
+                    (fixtureFinished(a) ? 1 : 0) - (fixtureFinished(b) ? 1 : 0)
+                )
+                .map((f) => (
+                  <option key={f.fixture_id} value={f.fixture_id}>
+                    {f.label}
+                  </option>
+                ))}
             </select>
           </div>
 

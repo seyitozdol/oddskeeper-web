@@ -45,7 +45,7 @@ import {
   fetchFixtures,
   fetchManualFixtures,
   setManualFixtureProxy,
-  completedRoundSet,
+  fixtureFinished,
   fetchFixtureInputs,
   logImport,
   resolveReferee,
@@ -455,12 +455,12 @@ export default function ResmiMatchStatsModel({
     loadConfig();
   }, [loadConfig, loadFixtures, LEAGUE]);
 
-  // Tamamlanan haftalar (son macin baslama saati gecen): dropdown'da en altta
-  // "Archive" grubuna iner; acilis secimi de aktif haftadan yapilir.
-  const completedRounds = useMemo(() => completedRoundSet(fixtures), [fixtures]);
+  // Biten maclar dropdown'da en altta "Archive" grubuna iner. Eskiden round
+  // bazliydi (haftanin SON maci bitene kadar bekliyordu); artik MAC BAZLI: bir
+  // macin kendi bitis suresi gectiyse (erteleme yoksa) haftayi beklemeden arsive.
   const isArchived = useCallback(
-    (f: FixtureRow) => !f.manual && completedRounds.has(f.round),
-    [completedRounds]
+    (f: FixtureRow) => !f.manual && fixtureFinished(f),
+    []
   );
 
   // Takımlar SADECE fikstürden gelir: fikstürler yüklenince ilk RESMİ maçı seç
