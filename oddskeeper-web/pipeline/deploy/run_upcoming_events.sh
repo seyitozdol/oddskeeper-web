@@ -12,3 +12,8 @@ mkdir -p "$LOG"
 
 "$VENV" "$PIPELINE/src/common/fetch_upcoming_events.py" \
   >> "$LOG/upcoming_events.log" 2>&1
+
+# Upcoming taze cekildikten hemen sonra: football.fixtures tarih/saat/durumunu
+# oradan senkronla (ozellikle 1.Lig elle-yuklu placeholder tarihlerini duzeltir).
+"$VENV" "$PIPELINE/src/football/sync_fixtures_from_upcoming.py" \
+  >> "$LOG/upcoming_events.log" 2>&1
