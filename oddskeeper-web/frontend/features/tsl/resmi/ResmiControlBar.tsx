@@ -18,6 +18,7 @@ const SECTION_KEY: Record<ResmiSection, string> = {
   referees: "tsl.sectionReferees",
   playerRankings: "tsl.sectionPlayerRankings",
   teamRankings: "tsl.sectionTeamRankings",
+  transfers: "tsl.sectionTransfers",
   matchStatsModel: "tsl.sectionMatchStatsModel",
   playerStatsModel: "tsl.sectionPlayerStatsModel",
 };
@@ -77,9 +78,11 @@ export default function ResmiControlBar({
         <SeasonToggle seasons={config.seasons} current={season} />
       </div>
 
-      {/* Alt: bolumler */}
+      {/* Alt: bolumler. Transfers yalniz TSL'de (1.Lig/kupada transfer verisi yok). */}
       <div className="mt-3 flex items-center gap-1 overflow-x-auto">
-        {config.sections.map((s) => {
+        {config.sections
+          .filter((s) => s !== "transfers" || config.source === "tsl")
+          .map((s) => {
           const active = s === section;
           return (
             <Link

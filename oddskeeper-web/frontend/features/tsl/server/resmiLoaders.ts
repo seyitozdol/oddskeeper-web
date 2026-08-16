@@ -395,6 +395,38 @@ export async function loadResmiTeams(config: LeagueConfig, season: string): Prom
   return { season, standings, meta, teamMetrics, aggression, transfers: transfersLinked, teamHrefById };
 }
 
+// ── Transferler (ayri sekme; eskiden Teams ekraninin sag sutunuydu) ──────────
+export type ResmiTransfersBundle = {
+  season: string;
+  transfers: ResmiTransfer[];
+};
+
+export async function loadResmiTransfers(
+  config: LeagueConfig,
+  season: string
+): Promise<ResmiTransfersBundle> {
+  const p = providerFor(config);
+  const transfers = await p.transfers(season);
+  if (!transfers.length) return { season, transfers: [] };
+
+  // TSL: hedef kulup href'i (normalize-isim eslesmesi ile football profiline).
+  const nameToHref: Record<string, string> = {};
+  if (config.source === "tsl") {
+    const meta = await p.teamMeta(season);
+    const valid = new Set(Object.keys(await getAllFootballTeamLogos()));
+    for (const m of Object.values(meta)) {
+      const slug = resolveFootballSlug(m.name, m.logo, valid);
+      const href = slug ? getTeamDetailHref(slug) : null;
+      if (href) nameToHref[normalizeSearch(m.name)] = href;
+    }
+  }
+  const linked = transfers.map((tr) => ({
+    ...tr,
+    toHref: tr.toName ? nameToHref[normalizeSearch(tr.toName)] ?? null : null,
+  }));
+  return { season, transfers: linked };
+}
+
 export type ResmiPlayersBundle = {
   season: string;
   rows: ResmiPlayerRow[];

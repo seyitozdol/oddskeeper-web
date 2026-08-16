@@ -44,6 +44,9 @@ export const RESMI_SECTIONS = [
   "referees",
   "playerRankings",
   "teamRankings",
+  // Team Rankings ile modeller arasinda; TSL-only (1.Lig'de transfer verisi yok,
+  // ResmiControlBar tff1'de gizler). Eskiden Teams ekraninin sag sutunundaydi.
+  "transfers",
   // Team Rankings sağındaki iki model sekmesi. matchStatsModel şimdilik boş;
   // playerStatsModel eski "Player Participant Tools" aracını lig kaynağına göre
   // (TSL / 1. Lig) gömer.

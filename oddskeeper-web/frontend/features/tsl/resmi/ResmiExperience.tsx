@@ -13,6 +13,7 @@ import {
   loadResmiResults,
   loadResmiTeamRankings,
   loadResmiTeams,
+  loadResmiTransfers,
 } from "../server/resmiLoaders";
 import ResmiControlBar from "./ResmiControlBar";
 import SectionTransition from "../shared/SectionTransition";
@@ -21,6 +22,7 @@ import ResmiLig from "./ResmiLig";
 import ResmiResults from "./ResmiResults";
 import ResmiReferees from "./ResmiReferees";
 import ResmiTeams from "./ResmiTeams";
+import ResmiTransfers from "./ResmiTransfers";
 import ResmiPlayers from "./ResmiPlayers";
 import ResmiPlayerRankings from "./ResmiPlayerRankings";
 import ResmiTeamRankings from "./ResmiTeamRankings";
@@ -92,6 +94,7 @@ export default async function ResmiExperience({
   else if (section === "results") content = <ResmiResults data={await loadResmiResults(config, season)} />;
   else if (section === "referees") content = <ResmiReferees data={await loadResmiReferees(config, season)} />;
   else if (section === "teams") content = <ResmiTeams data={await loadResmiTeams(config, season)} />;
+  else if (section === "transfers") content = <ResmiTransfers data={await loadResmiTransfers(config, season)} />;
   else if (section === "playerRankings")
     content = <ResmiPlayerRankings data={await loadResmiPlayerRankings(config, season, metric)} />;
   else if (section === "teamRankings")
