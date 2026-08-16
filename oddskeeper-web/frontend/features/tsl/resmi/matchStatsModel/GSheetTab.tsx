@@ -80,10 +80,17 @@ export default function GSheetTab({ league }: { league: string }) {
   const groups = useMemo(() => buildGroups(league), [league]);
   const flatKeys = useMemo(() => groups.flatMap((g) => g.cells.map((c) => c.key)), [groups]);
 
-  // Eslesme: tff1 fixtureId=source_match_id; tsl takim adi+ (id uzayi farkli).
+  // Eslesme onceligi: (1) fixtureId=source_match_id (tff1); (2) kanonik slug cifti
+  // (tsl: fixture apifootball, gsheet sofascore; ikisi de ref.team_mapping slug'ina
+  // gider); (3) son care takim adi (id uzayi + Turkce 'ı'/ek-farki yuzunden kirilgan).
   const byId = useMemo(() => {
     const m: Record<string, GsheetRow> = {};
     for (const r of rows) m[r.sourceMatchId] = r;
+    return m;
+  }, [rows]);
+  const bySlug = useMemo(() => {
+    const m: Record<string, GsheetRow> = {};
+    for (const r of rows) if (r.homeSlug && r.awaySlug) m[`${r.homeSlug}|${r.awaySlug}`] = r;
     return m;
   }, [rows]);
   const byName = useMemo(() => {
@@ -93,7 +100,9 @@ export default function GSheetTab({ league }: { league: string }) {
   }, [rows]);
 
   const matchFor = (f: FixtureRow): GsheetRow | undefined =>
-    byId[f.fixtureId] ?? byName[`${norm(f.homeName)}|${norm(f.awayName)}`];
+    byId[f.fixtureId] ??
+    bySlug[`${f.homeSlug}|${f.awaySlug}`] ??
+    byName[`${norm(f.homeName)}|${norm(f.awayName)}`];
 
   const fmt = (v: number | null | undefined) => (v == null ? "" : String(v));
 

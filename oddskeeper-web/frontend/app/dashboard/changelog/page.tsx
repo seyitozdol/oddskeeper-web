@@ -21,6 +21,16 @@ const TAG_NEW_TOOL: L = { en: "New tool", tr: "Yeni araç" };
 const ENTRIES: Entry[] = [
   {
     date: { en: "16 August", tr: "16 Ağustos" },
+    title: { en: "GSheet tab: Süper Lig rows now fill for every match", tr: "GSheet sekmesi: Süper Lig satırları artık her maçta doluyor" },
+    items: [
+      {
+        en: "In the Match Stats Model's GSheet tab, Süper Lig rows were only filling for a couple of matches while 1. Lig worked fine. The tab was matching fixtures to stats by team name, but the two data sources spell some clubs differently (\"Çaykur Rizespor\" vs \"Rizespor\", \"Gaziantep FK\" vs \"Gaziantep\", and the Turkish dotless 'ı'), so most matches came up empty. It now matches by team identity instead, so every match with published stats fills correctly.",
+        tr: "Match Stats Model'in GSheet sekmesinde Süper Lig satırları yalnızca birkaç maçta doluyordu; 1. Lig sorunsuz çalışıyordu. Sekme, fikstürleri istatistiklere takım adıyla eşleştiriyordu ama iki veri kaynağı bazı kulüpleri farklı yazıyor (\"Çaykur Rizespor\" ile \"Rizespor\", \"Gaziantep FK\" ile \"Gaziantep\" ve Türkçe noktasız 'ı') — bu yüzden çoğu maç boş kalıyordu. Artık takım kimliğiyle eşleşiyor; istatistiği yayınlanmış her maç doğru şekilde doluyor.",
+      },
+    ],
+  },
+  {
+    date: { en: "16 August", tr: "16 Ağustos" },
     title: { en: "Standings, cup groups & transfers — a big refresh", tr: "Puan durumu, kupa grupları & transferler — büyük yenileme" },
     items: [
       {

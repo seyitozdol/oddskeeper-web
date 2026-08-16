@@ -147,6 +147,8 @@ export interface GsheetRow {
   sourceMatchId: string;
   homeTeamName: string;
   awayTeamName: string;
+  homeSlug: string;
+  awaySlug: string;
   vals: Record<string, number | null>;
 }
 export async function fetchGsheetRows(league: string): Promise<GsheetRow[]> {
@@ -160,13 +162,16 @@ export async function fetchGsheetRows(league: string): Promise<GsheetRow[]> {
     const vals: Record<string, number | null> = {};
     for (const k of Object.keys(r)) {
       if (["source_match_id", "league", "competition", "match_datetime", "season_label",
-           "home_team_id", "away_team_id", "home_team_name", "away_team_name"].includes(k)) continue;
+           "home_team_id", "away_team_id", "home_team_name", "away_team_name",
+           "home_team_slug", "away_team_slug"].includes(k)) continue;
       vals[k] = r[k] != null ? Number(r[k]) : null;
     }
     return {
       sourceMatchId: String(r.source_match_id),
       homeTeamName: (r.home_team_name as string) ?? "",
       awayTeamName: (r.away_team_name as string) ?? "",
+      homeSlug: (r.home_team_slug as string) ?? "",
+      awaySlug: (r.away_team_slug as string) ?? "",
       vals,
     };
   });
