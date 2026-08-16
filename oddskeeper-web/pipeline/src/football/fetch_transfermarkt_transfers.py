@@ -175,22 +175,69 @@ def parse_transfer_rows(block):
 
 
 def build_name_index(cur):
-    """Tum oyuncularin ad -> (slug, foto) haritasi (isim eslesmesi icin)."""
+    """Tum oyuncularin ad -> (slug, foto, birth) haritasi (isim eslesmesi icin)."""
     cur.execute(
         """
-        select player_slug, player_name, coalesce(full_name,''), photo_url
+        select player_slug, player_name, coalesce(full_name,''), photo_url, birth_date
         from analytics.player_current_info_v1
         """
     )
-    rows = cur.fetchall()
-    return rows  # (slug, player_name, full_name, photo)
+    return cur.fetchall()  # (slug, player_name, full_name, photo, birth_date)
 
 
-def match_player(name, index):
-    for slug, pname, fname, photo in index:
-        for cand in (fname, pname):
-            if cand and _name_match(name, cand):
-                return slug, photo
+def _age_from(birth):
+    if not birth:
+        return None
+    from datetime import date
+    t = date.today()
+    return t.year - birth.year - ((t.month, t.day) < (birth.month, birth.day))
+
+
+def _strong_match(tm_name, our_name):
+    """_name_match'in siki hali: on ad TEK-HARF kisaltmadan (B. -> Berat/Baris)
+    eslesemez. On adlar ya birebir ayni, ya da en az 3 harflik gercek on-ek
+    olmali. Boylece "B. Yilmaz" hem Berat hem Baris Alper'e uymaz."""
+    a, b = norm(tm_name).split(), norm(our_name).split()
+    if not a or not b:
+        return False
+    if a[-1] != b[-1]:
+        if not (len(a) >= 2 and len(b) >= 2 and a[-2:] == b[-2:]):
+            return False
+    fa, fb = a[0], b[0]
+    if fa == fb:
+        return True
+    if len(fb) >= 3 and fa.startswith(fb):
+        return True
+    if len(fa) >= 3 and fb.startswith(fa):
+        return True
+    # Fazladan/eksik on ad (soyad ayni + tam bir on ad ortak, kisaltma degil)
+    given_a = {t for t in a[:-1] if len(t) >= 3}
+    given_b = {t for t in b[:-1] if len(t) >= 3}
+    return bool(given_a and given_b and (given_a & given_b))
+
+
+def match_player(name, age, index):
+    """TM oyuncu adini bizim oyuncuya esler. Guclu ad eslesmesi (tam on ad) tek
+    adaysa direkt alinir. Zayif eslesme (tek-harf kisaltma; DB'de cogu ad "V.
+    Muriqi" gibi kisaltmali) YAS ile dogrulanir: TM yasi ile DB dogum tarihinden
+    yasi ±1 icinde tek aday varsa alinir. Berat(20) vs "B. Yilmaz"=Baris(26)
+    yas tutmadigindan reddedilir; Muriqi/Ake/Nubel yas tuttugundan gecer.
+    Foto zaten TM'den gelir; slug yalniz profil linki + siralama onemini etkiler."""
+    strong, weak = [], []
+    for slug, pname, fname, photo, birth in index:
+        cand = fname or pname
+        if not cand:
+            continue
+        if _strong_match(name, cand):
+            strong.append((slug, photo, birth))
+        elif _name_match(name, cand):
+            weak.append((slug, photo, birth))
+    if len(strong) == 1:
+        return strong[0][0], strong[0][1]
+    if not strong and weak and age:
+        aged = [w for w in weak if w[2] and abs(_age_from(w[2]) - age) <= 1]
+        if len(aged) == 1:
+            return aged[0][0], aged[0][1]
     return None, None
 
 
@@ -261,7 +308,7 @@ def main():
             departures = parse_transfer_rows(tables[1])
             club_logo = wappen_url(tm_id)
             for p in arrivals:
-                slug, our_photo = match_player(p["name"], name_index)
+                slug, our_photo = match_player(p["name"], p["age"], name_index)
                 records.append({
                     "season_label": season_label, "player_name": p["name"],
                     "player_slug": slug, "player_photo_url": p["photo"] or our_photo,
@@ -271,7 +318,7 @@ def main():
                     "fee_text": p["fee_text"], "fee_eur": p["fee_eur"], "is_tsl_arrival": True,
                 })
             for p in departures:
-                slug, our_photo = match_player(p["name"], name_index)
+                slug, our_photo = match_player(p["name"], p["age"], name_index)
                 records.append({
                     "season_label": season_label, "player_name": p["name"],
                     "player_slug": slug, "player_photo_url": p["photo"] or our_photo,

@@ -287,7 +287,7 @@ async function getPlayerNameAssetMap(): Promise<
 
 export async function getResmiTransfers(season: string): Promise<ResmiTransfer[]> {
   const supabase = await createClient();
-  const [{ data, error }, nameAssets] = await Promise.all([
+  const [{ data, error }, nameAssets, { data: mvData }] = await Promise.all([
     supabase
       .schema("analytics")
       .from("tsl_transfers_v1")
@@ -298,28 +298,61 @@ export async function getResmiTransfers(season: string): Promise<ResmiTransfer[]
       .order("fee_eur", { ascending: false, nullsFirst: false })
       .limit(1200),
     getPlayerNameAssetMap(),
+    supabase
+      .schema("analytics")
+      .from("player_market_value_v1")
+      .select("player_slug, tm_player_name, market_value_eur")
+      .limit(2000),
   ]);
   if (error || !data) return [];
   const { normalizeSearch } = await import("../lib");
-  return data.map((r) => {
+
+  // Piyasa degeri haritalari: bedelsiz (free/loan) transferlerin de onemine gore
+  // siralanmasi icin (ör. Vlahovic bedava geldi ama €35m degerinde -> uste ciksin).
+  const mvBySlug = new Map<string, number>();
+  const mvByName = new Map<string, number>();
+  for (const m of mvData ?? []) {
+    const v = toNum(m.market_value_eur);
+    if (v == null) continue;
+    if (m.player_slug) mvBySlug.set(String(m.player_slug), v);
+    if (m.tm_player_name) {
+      const k = normalizeSearch(String(m.tm_player_name));
+      if (k && !mvByName.has(k)) mvByName.set(k, v);
+    }
+  }
+
+  const rows = data.map((r) => {
     const matched = nameAssets[normalizeSearch(r.player_name ?? "")];
     const feeText = r.fee_text ?? null;
+    const slug = r.player_slug ?? matched?.slug ?? null;
+    const mv =
+      (slug ? mvBySlug.get(slug) : undefined) ??
+      mvByName.get(normalizeSearch(r.player_name ?? "")) ??
+      null;
+    const feeEur = toNum(r.fee_eur);
     return {
-      playerName: r.player_name,
-      playerSlug: r.player_slug ?? matched?.slug ?? null,
-      photo: r.player_photo_url ?? matched?.photo ?? null,
-      fromName: r.from_team_name ?? null,
-      fromLogo: r.from_team_logo ?? null,
-      fromHref: null,
-      toName: r.to_team_name ?? null,
-      toHref: null,
-      toLogo: r.to_team_logo ?? null,
-      feeText,
-      feeEur: toNum(r.fee_eur),
-      isLoan: /loan|kiral/i.test(feeText ?? ""),
-      isArrival: r.is_tsl_arrival !== false,
+      transfer: {
+        playerName: r.player_name,
+        playerSlug: slug,
+        photo: r.player_photo_url ?? matched?.photo ?? null,
+        fromName: r.from_team_name ?? null,
+        fromLogo: r.from_team_logo ?? null,
+        fromHref: null,
+        toName: r.to_team_name ?? null,
+        toHref: null,
+        toLogo: r.to_team_logo ?? null,
+        feeText,
+        feeEur,
+        isLoan: /loan|kiral/i.test(feeText ?? ""),
+        isArrival: r.is_tsl_arrival !== false,
+      } as ResmiTransfer,
+      // Onem: odenen bedel ile piyasa degerinin buyugu.
+      weight: Math.max(feeEur ?? 0, mv ?? 0),
     };
   });
+
+  rows.sort((a, b) => b.weight - a.weight || (b.transfer.feeEur ?? 0) - (a.transfer.feeEur ?? 0));
+  return rows.map((r) => r.transfer);
 }
 
 // ---- Sezon-duyarli oyuncu listesi (Players sekmesi) ----
