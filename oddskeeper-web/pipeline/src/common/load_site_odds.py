@@ -65,10 +65,28 @@ def fold(text: str) -> str:
     return s.lower()
 
 
+# Yapisik jenerik son ekler: Turk kulup adlari 'spor' ekini kelimeye YAPISTIRIR
+# (Konyaspor, Kayserispor, Sivasspor). Ayri token olan 'spor' zaten CLUB_STOPWORDS
+# ile atiliyor ama yapisik hali kaliyordu; sonucta 'konyaspor' vs 'alanyaspor' gibi
+# FARKLI kulupler paylasilan 'spor' son eki uzerinden fuzzy eslesip (0.62-0.63) yanlis
+# mac kuruyordu (Kayserispor->Kocaelispor, Konyaspor->Alanyaspor). Son eki koke
+# indirgemek hem bu yanlis eslesmeleri keser hem de dogru varyantlari guclendirir
+# (Mardinspor <-> 'Mardin 1969 Spor', Istanbulspor <-> Istanbulspor).
+_GLUED_SUFFIXES = ("spor",)
+
+
+def _destem(t: str) -> str:
+    for suf in _GLUED_SUFFIXES:
+        if t.endswith(suf) and len(t) - len(suf) >= 3:
+            return t[: -len(suf)]
+    return t
+
+
 def tokens(name: str) -> set[str]:
     s = fold(name)
     raw = [t for t in "".join(c if c.isalnum() else " " for c in s).split() if t]
-    keep = [t for t in raw if t not in CLUB_STOPWORDS and len(t) > 1]
+    keep = [_destem(t) for t in raw if t not in CLUB_STOPWORDS and len(t) > 1]
+    keep = [t for t in keep if len(t) > 1]
     return set(keep or raw)
 
 
