@@ -63,9 +63,15 @@ def build_team_rows(event, statistics, incidents, competition):
     dt = datetime.fromtimestamp(ts, tz=timezone.utc).isoformat() if ts else None
     stat = _stat_map(statistics)
 
-    def sv(name, side):  # side 0=home 1=away
+    def sv(name, side, zero_default=False):  # side 0=home 1=away
         pair = stat.get(name)
-        return _num(pair[side]) if pair else None
+        if pair:
+            return _num(pair[side])
+        # SofaScore, iki takim da 0 ise o metrigin basligini HIC gostermez.
+        # Istatistigi yuklu macta (stat map dolu) izlenen sayisal metrik yoksa
+        # bu 0-0 demektir -> 0 yaz. Hic istatistik yoksa (map bos) null birak
+        # (mac istatistigi gelmemis; 0 uydurma).
+        return 0 if (zero_default and stat) else None
 
     yellow = {0: 0, 1: 0}; red = {0: 0, 1: 0}
     pen = {0: 0, 1: 0}; var = {0: 0, 1: 0}; og = {0: 0, 1: 0}
@@ -109,18 +115,20 @@ def build_team_rows(event, statistics, incidents, competition):
             "score_for": sf,
             "score_against": sa,
             "result_code": result_code(sf, sa),
-            "summary_shots": sv("Total shots", side),
-            "summary_shots_on_target": sv("Shots on target", side),
-            "summary_corners_won": sv("Corner kicks", side),
-            "summary_fouls_conceded": sv("Fouls", side),
-            "summary_fouls_won": sv("Fouls", 1 - side),
-            "summary_offsides": sv("Offsides", side),
-            "summary_saves": sv("Total saves", side),
-            "summary_tackles": sv("Total tackles", side),
+            # zero_default=True: SofaScore 0-0 metrigi basligi hic gostermez;
+            # istatistigi yuklu macta eksik = 0 (tabloda '-' yerine 0).
+            "summary_shots": sv("Total shots", side, True),
+            "summary_shots_on_target": sv("Shots on target", side, True),
+            "summary_corners_won": sv("Corner kicks", side, True),
+            "summary_fouls_conceded": sv("Fouls", side, True),
+            "summary_fouls_won": sv("Fouls", 1 - side, True),
+            "summary_offsides": sv("Offsides", side, True),
+            "summary_saves": sv("Total saves", side, True),
+            "summary_tackles": sv("Total tackles", side, True),
             "summary_yellow_cards": yellow[side],
             "summary_red_cards": red[side],
-            "details_goal_kicks": sv("Goal kicks", side),
-            "details_total_throws": sv("Throw-ins", side),
+            "details_goal_kicks": sv("Goal kicks", side, True),
+            "details_total_throws": sv("Throw-ins", side, True),
             "details_hit_woodwork": sv("Hit woodwork", side),
             "details_expected_goals": sv("Expected goals", side),
             "sofascore_extras": {
