@@ -16,6 +16,7 @@ Not: DOM kazima (parse_bets10_snapshot.py) yerine bu kullanilir; cok daha temiz.
 from __future__ import annotations
 
 import json
+import re
 import sys
 
 # marketTemplateId -> okunabilir market adi
@@ -34,11 +35,26 @@ SEL_NAME = {"DRAW": "Beraberlik", "OVER": "Üst", "UNDER": "Alt", "YES": "Var", 
 # yok); parser secimleri selectionTemplateId'den turettigi icin ek is gerekmez.
 SPORT_MAP = {"Futbol": "football", "Basketbol": "basketball", "Voleybol": "volleyball"}
 
+# SANAL / E-SPOR ELEME: Bets10 gercek kulup adlariyla 7/24 donen simulasyon
+# maclari sunuyor (competitionName 'eFutbol Turkiye - 8 dakika', 'e-Basketbol
+# Valhalla', 'eBasketball NextGen'...; takim adinda oyuncu takma adi
+# 'Galatasaray (lzrn)'). Bunlar GERCEK fiksture cok benziyor ve matcher'i
+# yaniltiyordu (Galatasaray (lzrn) -> gercek Galatasaray-Basaksehir 0.90). Tum
+# sanal ligler 'e' oneki + Futbol/Basketbol/Football/Basketball ile basliyor;
+# 'El Salvador', 'Euroleague', 'Ekvador' gibi GERCEK ligleri etkilemez.
+_ESPORTS_RE = re.compile(r"^\s*e-?\s*(futbol|basketbol|football|basketball)", re.IGNORECASE)
+
+
+def is_esports(competition: str | None) -> bool:
+    return bool(competition and _ESPORTS_RE.match(competition))
+
 
 def rows_from_events_table(body: dict, captured_at: str | None, label: str | None) -> list[dict]:
     data = body.get("data") or {}
     events = {}
     for ev in data.get("events") or []:
+        if is_esports(ev.get("competitionName")):
+            continue
         parts = sorted(ev.get("participants") or [], key=lambda p: p.get("side", 0))
         home = next((p.get("label") for p in parts if p.get("side") == 1), None)
         away = next((p.get("label") for p in parts if p.get("side") == 2), None)
