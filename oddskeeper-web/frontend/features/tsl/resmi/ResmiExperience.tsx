@@ -12,7 +12,7 @@ import {
   loadResmiPlayers,
   loadResmiResults,
   loadResmiTeamRankings,
-  loadResmiTeams,
+  loadResmiTeamsTable,
   loadResmiTransfers,
 } from "../server/resmiLoaders";
 import ResmiControlBar from "./ResmiControlBar";
@@ -21,7 +21,7 @@ import ResmiCupStages from "./ResmiCupStages";
 import ResmiLig from "./ResmiLig";
 import ResmiResults from "./ResmiResults";
 import ResmiReferees from "./ResmiReferees";
-import ResmiTeams from "./ResmiTeams";
+import ResmiTeamsTable from "./ResmiTeamsTable";
 import ResmiTransfers from "./ResmiTransfers";
 import ResmiPlayers from "./ResmiPlayers";
 import ResmiPlayerRankings from "./ResmiPlayerRankings";
@@ -93,7 +93,7 @@ export default async function ResmiExperience({
   else if (section === "league") content = <ResmiLig data={await loadResmiLig(config, season, leaderMetric)} />;
   else if (section === "results") content = <ResmiResults data={await loadResmiResults(config, season)} />;
   else if (section === "referees") content = <ResmiReferees data={await loadResmiReferees(config, season)} />;
-  else if (section === "teams") content = <ResmiTeams data={await loadResmiTeams(config, season)} />;
+  else if (section === "teams") content = <ResmiTeamsTable data={await loadResmiTeamsTable(config, season)} />;
   else if (section === "transfers") content = <ResmiTransfers data={await loadResmiTransfers(config, season)} />;
   else if (section === "playerRankings")
     content = <ResmiPlayerRankings data={await loadResmiPlayerRankings(config, season, metric)} />;

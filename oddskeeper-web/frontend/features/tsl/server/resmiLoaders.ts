@@ -7,6 +7,8 @@ import {
   type LeagueConfig,
 } from "../leagues";
 import { slugifyTeamName } from "../../../lib/football-teams";
+import { slugForSofascoreTeam } from "../../../lib/sofascore-team-map";
+import { previousSeasonLabel } from "../../../lib/season";
 import { normalizeSearch, slugFromLogo } from "../lib";
 import type {
   TslLeaderRow,
@@ -425,6 +427,243 @@ export async function loadResmiTransfers(
     toHref: tr.toName ? nameToHref[normalizeSearch(tr.toName)] ?? null : null,
   }));
   return { season, transfers: linked };
+}
+
+// ── Teams tablosu: ana marketler (MSM) L5/L10/LY + diger metrikler Avg/LY ────
+// Ana marketler MSM veri katmanindan (maç-basi team_slug'li): L5/L10
+// msm_team_match_log_v1 (guncel sezon), LY msm_team_season_stats_v1 (home/away
+// oyun sayisiyla tam toplam). Diger metrikler tsl_ss/tff1 sezon-agregatindan
+// (maç-basi log yok -> L5/L10 client'ta '—'). Season formati MSM'de tireli.
+const TABLE_MAIN_MARKETS = [
+  { key: "Shot", higherBetter: true },
+  { key: "SOT", higherBetter: true },
+  { key: "Corner", higherBetter: true },
+  { key: "Saves", higherBetter: true },
+  { key: "Tackle", higherBetter: true },
+  { key: "Throw-in", higherBetter: true },
+  { key: "Goal Kick", higherBetter: true },
+  { key: "Foul", higherBetter: false },
+  { key: "Card", higherBetter: false },
+  { key: "Offside", higherBetter: false },
+] as const;
+
+const TABLE_CATEGORY_LABELS: Record<string, string> = {
+  attacking: "Hücum",
+  build_up: "Oyun Kurma",
+  defending: "Savunma",
+  discipline: "Disiplin",
+};
+
+export type TableWindow = { mean: number; total: number; n: number };
+export type TeamMainCell = {
+  l5: TableWindow | null;
+  l10: TableWindow | null;
+  ly: TableWindow | null;
+  seasonMean: number | null;
+  seasonTotal: number | null;
+};
+export type TeamOtherCell = {
+  total: number | null;
+  perMatch: number | null;
+  lyTotal: number | null;
+  lyPerMatch: number | null;
+};
+export type TeamTableRow = { id: string; name: string; logo: string | null; href: string | null };
+export type ResmiTeamsTableBundle = {
+  season: string;
+  teams: TeamTableRow[];
+  mainMarkets: { key: string; higherBetter: boolean }[];
+  otherMetrics: {
+    key: string;
+    label: string;
+    category: string;
+    categoryLabel: string;
+    higherBetter: boolean;
+    format: string;
+  }[];
+  mainData: Record<string, Record<string, TeamMainCell>>;
+  otherData: Record<string, Record<string, TeamOtherCell>>;
+};
+
+export async function loadResmiTeamsTable(
+  config: LeagueConfig,
+  season: string
+): Promise<ResmiTeamsTableBundle> {
+  const p = providerFor(config);
+  const meta = await p.teamMeta(season);
+  const matches = await p.matches(season, meta);
+  const prevSeason = previousSeasonLabel(season) ?? season;
+  const [standingsReal, teamMetricsCur, teamMetricsLy, upcoming] = await Promise.all([
+    p.standings(season, meta, matches),
+    p.teamMetrics(season, meta),
+    p.teamMetrics(prevSeason, meta),
+    p.upcoming(season, meta),
+  ]);
+  const standings = standingsReal.length ? standingsReal : buildZeroStandings(upcoming, meta);
+  const teamHrefById = await buildTeamHrefs(
+    config,
+    collectEntries(meta, { standings, upcoming }),
+    season
+  );
+
+  const supabase = await createClient();
+  const curMsm = season.replace("/", "-");
+  const lyMsm = prevSeason.replace("/", "-");
+  const marketKeys = TABLE_MAIN_MARKETS.map((m) => m.key) as unknown as string[];
+
+  const [teamsRes, curLogRes, lyStatRes] = await Promise.all([
+    supabase
+      .schema("analytics")
+      .from("msm_teams_v1")
+      .select("team_slug, display_name")
+      .eq("league", config.source),
+    supabase
+      .schema("analytics")
+      .from("msm_team_match_log_v1")
+      .select("team_slug, market, for_value, team_match_index")
+      .eq("league", config.source)
+      .eq("season", curMsm)
+      .in("market", marketKeys)
+      .order("team_match_index", { ascending: true }),
+    supabase
+      .schema("analytics")
+      .from("msm_team_season_stats_v1")
+      .select("team_slug, market, hf, af, home_games, away_games")
+      .eq("league", config.source)
+      .eq("season", lyMsm)
+      .in("market", marketKeys),
+  ]);
+
+  // standings adi -> MSM slug (normalize-isim, slug, on-ek kirpma).
+  const slugSet = new Set<string>();
+  const slugByNorm = new Map<string, string>();
+  for (const r of teamsRes.data ?? []) {
+    const slug = String(r.team_slug);
+    slugSet.add(slug);
+    if (r.display_name) slugByNorm.set(normalizeSearch(String(r.display_name)), slug);
+  }
+  const resolveSlug = (name: string): string | null => {
+    const n = normalizeSearch(name);
+    if (slugByNorm.has(n)) return slugByNorm.get(n)!;
+    const base = slugifyTeamName(name);
+    if (slugSet.has(base)) return base;
+    const parts = base.split("-").filter(Boolean);
+    // once on-ekler (Amed Sportif Faaliyetler -> amed)
+    for (let k = parts.length - 1; k >= 1; k--) {
+      const cand = parts.slice(0, k).join("-");
+      if (slugSet.has(cand)) return cand;
+    }
+    // sonra herhangi tek token (Çaykur Rizespor -> rizespor, Fatih Karagümrük -> karagumruk)
+    for (const tok of parts) if (slugSet.has(tok)) return tok;
+    return null;
+  };
+  // TSL: sofascore id -> football slug (kesin) once; yoksa isim koprusu.
+  const slugForTeam = (teamId: string, name: string): string | null =>
+    (config.source === "tsl" ? slugForSofascoreTeam(teamId) : null) ?? resolveSlug(name);
+
+  // guncel maç logu: slug -> market -> sirali for_value (eskiden yeniye).
+  // Ayni maçin coklu-kaynak satiri olabilir -> maç-indeksine gore dedup.
+  const curBy = new Map<string, Map<string, number[]>>();
+  const seenMatch = new Set<string>();
+  for (const r of curLogRes.data ?? []) {
+    if (r.for_value == null) continue;
+    const slug = String(r.team_slug);
+    const mk = String(r.market);
+    const key = `${slug}|${mk}|${r.team_match_index}`;
+    if (seenMatch.has(key)) continue;
+    seenMatch.add(key);
+    if (!curBy.has(slug)) curBy.set(slug, new Map());
+    const mm = curBy.get(slug)!;
+    if (!mm.has(mk)) mm.set(mk, []);
+    mm.get(mk)!.push(Number(r.for_value));
+  }
+  // LY: home/away oyun sayisindan tam toplam + ortalama. season_stats'ta bazi
+  // takim+market icin mukerrer (partial) satir var -> EN COK oyunlu satiri tut.
+  const lyBy = new Map<string, Map<string, TableWindow>>();
+  for (const r of lyStatRes.data ?? []) {
+    const hg = Number(r.home_games ?? 0);
+    const ag = Number(r.away_games ?? 0);
+    const n = hg + ag;
+    if (!n) continue;
+    const total = Number(r.hf ?? 0) * hg + Number(r.af ?? 0) * ag;
+    const slug = String(r.team_slug);
+    const mk = String(r.market);
+    if (!lyBy.has(slug)) lyBy.set(slug, new Map());
+    const existing = lyBy.get(slug)!.get(mk);
+    if (!existing || existing.n < n) {
+      lyBy.get(slug)!.set(mk, { mean: total / n, total, n });
+    }
+  }
+
+  const win = (vals: number[]): TableWindow | null => {
+    if (!vals.length) return null;
+    const total = vals.reduce((a, b) => a + b, 0);
+    return { mean: total / vals.length, total, n: vals.length };
+  };
+
+  const mainData: Record<string, Record<string, TeamMainCell>> = {};
+  for (const m of TABLE_MAIN_MARKETS) mainData[m.key] = {};
+  for (const s of standings) {
+    const slug = slugForTeam(s.teamId, s.teamName);
+    const mm = slug ? curBy.get(slug) : undefined;
+    const lm = slug ? lyBy.get(slug) : undefined;
+    for (const m of TABLE_MAIN_MARKETS) {
+      const vals = mm?.get(m.key) ?? [];
+      const all = win(vals);
+      mainData[m.key][s.teamId] = {
+        l5: win(vals.slice(-5)),
+        l10: win(vals.slice(-10)),
+        ly: lm?.get(m.key) ?? null,
+        seasonMean: all?.mean ?? null,
+        seasonTotal: all?.total ?? null,
+      };
+    }
+  }
+
+  // diger metrikler: guncel total/perMatch + LY perMatch
+  const otherMap = new Map<
+    string,
+    { label: string; category: string; categoryLabel: string; higherBetter: boolean; format: string }
+  >();
+  const otherData: Record<string, Record<string, TeamOtherCell>> = {};
+  const lyMetric = new Map<string, Map<string, { total: number | null; perMatch: number | null }>>();
+  for (const m of teamMetricsLy) {
+    if (!lyMetric.has(m.metricKey)) lyMetric.set(m.metricKey, new Map());
+    lyMetric.get(m.metricKey)!.set(m.teamId, { total: m.total, perMatch: m.perMatch });
+  }
+  for (const m of teamMetricsCur) {
+    if (!otherMap.has(m.metricKey)) {
+      otherMap.set(m.metricKey, {
+        label: m.metricLabel,
+        category: m.categoryKey ?? "other",
+        categoryLabel: TABLE_CATEGORY_LABELS[m.categoryKey ?? ""] ?? m.categoryKey ?? "",
+        higherBetter: m.isHigherBetter,
+        format: m.valueFormat,
+      });
+      otherData[m.metricKey] = {};
+    }
+    const ly = lyMetric.get(m.metricKey)?.get(m.teamId);
+    otherData[m.metricKey][m.teamId] = {
+      total: m.total,
+      perMatch: m.perMatch,
+      lyTotal: ly?.total ?? null,
+      lyPerMatch: ly?.perMatch ?? null,
+    };
+  }
+
+  return {
+    season,
+    teams: standings.map((s) => ({
+      id: s.teamId,
+      name: s.teamName,
+      logo: s.logo,
+      href: teamHrefById[s.teamId] ?? null,
+    })),
+    mainMarkets: TABLE_MAIN_MARKETS.map((m) => ({ key: m.key, higherBetter: m.higherBetter })),
+    otherMetrics: [...otherMap.entries()].map(([key, v]) => ({ key, ...v })),
+    mainData,
+    otherData,
+  };
 }
 
 export type ResmiPlayersBundle = {
