@@ -47,8 +47,10 @@ def norm(text):
 
 
 def _name_match(tm_name, our_name):
-    """Kisaltmali ad uyumu: TM tam ad ("Batista Mendy") vs bizim "B. Mendy".
-    Soyad (son token) ayni VE ad-basi uyumlu (biri otekinin on-eki / bas harf)."""
+    """Kisaltmali/eksik-onad ad uyumu: TM tam ad ("Batista Mendy") vs bizim
+    "B. Mendy"; ayrica fazladan/eksik on ad ("Batuhan Yayikci" vs "Taha Batuhan
+    Yayikci" - Turkce'de 2-3 on ad kaynaga gore degisir). Soyad (son token) ayni
+    VE (ad-basi uyumlu VEYA soyad disi en az bir on ad token'i ortak)."""
     a, b = norm(tm_name).split(), norm(our_name).split()
     if not a or not b:
         return False
@@ -57,7 +59,12 @@ def _name_match(tm_name, our_name):
         if not (len(a) >= 2 and len(b) >= 2 and a[-2:] == b[-2:]):
             return False
     fa, fb = a[0], b[0]
-    return fa == fb or fa.startswith(fb) or fb.startswith(fa)
+    if fa == fb or fa.startswith(fb) or fb.startswith(fa):
+        return True
+    # Fazladan/eksik on ad: soyad zaten ayni + verilen adlardan (soyad haric) en
+    # az biri ortak. Yayikci ornegi: {batuhan} ∩ {taha, batuhan} -> eslesir.
+    given_a, given_b = set(a[:-1]), set(b[:-1])
+    return bool(given_a and given_b and (given_a & given_b))
 
 
 def _our_name_variants(c):
