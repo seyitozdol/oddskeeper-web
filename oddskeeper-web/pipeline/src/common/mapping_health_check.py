@@ -48,6 +48,17 @@ CHECKS = [
           select player_name, current_team_slug from analytics.player_current_info_bridged_v1
           where current_team_slug is not null group by 1,2 having count(*) > 1
         ) z"""),
+    ("squad_profile_broken_link", "HIGH",
+     """select count(*) from (
+          with sq as (select player_slug, split_part(player_slug,'--',1) base
+                      from analytics.team_current_squad_profile_v1),
+               pr as (select player_slug, split_part(player_slug,'--',1) base
+                      from analytics.player_profile_bridged_v1)
+          select 1 from sq
+          left join pr ps on ps.player_slug = sq.player_slug
+          join pr on pr.base = sq.base and pr.player_slug <> sq.player_slug
+          where ps.player_slug is null
+        ) z"""),
     # ---- BASKETBOL ----
     ("bsl_highmin_no_sofascore_position", "MED",
      """select count(*) from (
