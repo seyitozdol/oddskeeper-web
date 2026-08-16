@@ -21,6 +21,20 @@ const TAG_NEW_TOOL: L = { en: "New tool", tr: "Yeni araç" };
 const ENTRIES: Entry[] = [
   {
     date: { en: "16 August", tr: "16 Ağustos" },
+    title: { en: "Teams screen is now a table + a dedicated Transfers tab", tr: "Takımlar ekranı artık tablo + ayrı Transferler sekmesi" },
+    items: [
+      {
+        en: "The Teams section (Süper Lig and 1. Lig) replaces the bar charts with a sortable table. Pick a metric from the main market buttons (Shots, SOT, Throw-ins, Saves, Fouls, Corners, Cards, Offsides, Tackles, Goal Kicks) or the dropdown of every other team metric, and toggle Total vs Per-match at the top right. Each row shows the team's Last 5, Last 10 and last-season (LY) average plus its league rank for that metric, with team logos and clickable names.",
+        tr: "Takımlar bölümü (Süper Lig ve 1. Lig) bar grafiklerini sıralanabilir bir tabloyla değiştiriyor. Metriği ana market butonlarından (Şut, İsabetli Şut, Taç, Kurtarış, Faul, Korner, Kart, Ofsayt, Müdahale, Kale Vuruşu) ya da diğer tüm takım metriklerinin bulunduğu açılır menüden seç; sağ üstten Toplam ve Maç başına arasında geçiş yap. Her satır takımın o metrikteki Son 5, Son 10 ve geçen sezon (LY) ortalamasını ve lig sırasını gösteriyor; takım logoları ve tıklanabilir isimlerle.",
+      },
+      {
+        en: "Transfers moved out of the Teams screen into their own tab, between Team Rankings and the models. (Süper Lig only — 1. Lig has no transfer data.)",
+        tr: "Transferler, Takımlar ekranından çıkıp kendi sekmesine taşındı — Team Rankings ile modeller arasında. (Sadece Süper Lig; 1. Lig'de transfer verisi yok.)",
+      },
+    ],
+  },
+  {
+    date: { en: "16 August", tr: "16 Ağustos" },
     title: { en: "Fixture pickers: real kick-off times & nearest-first order", tr: "Fikstür seçici: gerçek maç saatleri & en yakın maç üstte" },
     items: [
       {
