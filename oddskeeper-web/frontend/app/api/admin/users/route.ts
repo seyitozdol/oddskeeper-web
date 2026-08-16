@@ -7,10 +7,6 @@ export type AdminUserRow = {
   email: string;
   createdAt: string | null;
   lastSignInAt: string | null;
-  // Son kullanim (sayfa gezinme heartbeat'inden; login olmasa da guncellenir).
-  lastUsedAt: string | null;
-  // GitHub tarzi aktiflik icin son ~1 yilin aktif gunleri.
-  activity: { day: string; hits: number }[];
   isAdmin: boolean;
   // null = kisitlama yok (tum basliklar)
   allowedKeys: string[] | null;
@@ -27,26 +23,14 @@ export async function GET() {
 
   const admin = createAdminClient();
 
-  // Aktiflik grafigi son ~1 yil.
-  const activitySince = new Date(Date.now() - 371 * 24 * 60 * 60 * 1000)
-    .toISOString()
-    .slice(0, 10);
-
   const [
     { data: list, error: listError },
     { data: perms, error: permError },
     { data: aliases, error: aliasError },
-    { data: activityRows },
-    { data: dailyRows },
   ] = await Promise.all([
     admin.auth.admin.listUsers({ page: 1, perPage: 500 }),
     admin.from("user_nav_permissions").select("user_id, is_admin, allowed_keys"),
     admin.from("direct_access_users").select("user_id, alias, active"),
-    admin.from("user_activity").select("user_id, last_seen_at"),
-    admin
-      .from("user_activity_daily")
-      .select("user_id, day, hits")
-      .gte("day", activitySince),
   ]);
 
   if (listError || permError || aliasError) {
@@ -65,16 +49,6 @@ export async function GET() {
       .filter((a) => a.active === true)
       .map((a) => [a.user_id as string, a.alias as string])
   );
-  const lastSeenByUserId = new Map(
-    (activityRows ?? []).map((a) => [a.user_id as string, a.last_seen_at as string])
-  );
-  const dailyByUserId = new Map<string, { day: string; hits: number }[]>();
-  for (const r of dailyRows ?? []) {
-    const uid = r.user_id as string;
-    const arr = dailyByUserId.get(uid) ?? [];
-    arr.push({ day: String(r.day), hits: Number(r.hits) });
-    dailyByUserId.set(uid, arr);
-  }
 
   const users: AdminUserRow[] = (list?.users ?? [])
     .map((u) => {
@@ -84,8 +58,6 @@ export async function GET() {
         email: u.email ?? "",
         createdAt: u.created_at ?? null,
         lastSignInAt: u.last_sign_in_at ?? null,
-        lastUsedAt: lastSeenByUserId.get(u.id) ?? null,
-        activity: dailyByUserId.get(u.id) ?? [],
         isAdmin: perm?.is_admin === true,
         allowedKeys: (perm?.allowed_keys as string[] | null) ?? null,
         directAlias: aliasByUserId.get(u.id) ?? null,
@@ -235,8 +207,6 @@ export async function POST(request: NextRequest) {
       email,
       createdAt: created.user.created_at ?? null,
       lastSignInAt: null,
-      lastUsedAt: null,
-      activity: [],
       isAdmin,
       allowedKeys: null,
       directAlias: directAlias || null,
