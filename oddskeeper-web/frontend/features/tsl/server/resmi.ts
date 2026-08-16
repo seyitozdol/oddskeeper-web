@@ -243,12 +243,14 @@ export type ResmiTransfer = {
   photo: string | null;
   fromName: string | null;
   fromLogo: string | null;
+  fromHref: string | null;
   toName: string | null;
   toHref: string | null;
   toLogo: string | null;
   feeText: string | null;
   feeEur: number | null;
   isLoan: boolean;
+  isArrival: boolean;
 };
 
 // TM oyuncu adini bizim oyuncu detayina (opta slug) ve fotografina (api-sports)
@@ -290,11 +292,11 @@ export async function getResmiTransfers(season: string): Promise<ResmiTransfer[]
       .schema("analytics")
       .from("tsl_transfers_v1")
       .select(
-        "player_name, player_slug, player_photo_url, from_team_name, from_team_logo, to_team_name, to_team_logo, fee_text, fee_eur"
+        "player_name, player_slug, player_photo_url, from_team_name, from_team_logo, to_team_name, to_team_logo, fee_text, fee_eur, is_tsl_arrival"
       )
       .eq("season_label", season)
       .order("fee_eur", { ascending: false, nullsFirst: false })
-      .limit(200),
+      .limit(1200),
     getPlayerNameAssetMap(),
   ]);
   if (error || !data) return [];
@@ -308,12 +310,14 @@ export async function getResmiTransfers(season: string): Promise<ResmiTransfer[]
       photo: r.player_photo_url ?? matched?.photo ?? null,
       fromName: r.from_team_name ?? null,
       fromLogo: r.from_team_logo ?? null,
+      fromHref: null,
       toName: r.to_team_name ?? null,
       toHref: null,
       toLogo: r.to_team_logo ?? null,
       feeText,
       feeEur: toNum(r.fee_eur),
       isLoan: /loan|kiral/i.test(feeText ?? ""),
+      isArrival: r.is_tsl_arrival !== false,
     };
   });
 }

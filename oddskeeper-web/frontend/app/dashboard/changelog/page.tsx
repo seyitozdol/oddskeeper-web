@@ -21,6 +21,24 @@ const TAG_NEW_TOOL: L = { en: "New tool", tr: "Yeni araç" };
 const ENTRIES: Entry[] = [
   {
     date: { en: "16 August", tr: "16 Ağustos" },
+    title: { en: "Standings, cup groups & transfers — a big refresh", tr: "Puan durumu, kupa grupları & transferler — büyük yenileme" },
+    items: [
+      {
+        en: "The league Standings (Süper Lig and 1. Lig) now read like SofaScore: a coloured bar marks each team's zone with a legend underneath — Champions League, Champions League / Europa League / Conference League qualification and relegation for the Süper Lig; direct promotion, play-off and relegation for 1. Lig. Two new columns join the table: GLS (goals for:against, e.g. 77:30) and a Last 5 form strip (W/D/L).",
+        tr: "Lig Puan Durumu (Süper Lig ve 1. Lig) artık SofaScore gibi: her takımın bölgesini renkli bir çubuk gösteriyor ve altında açıklaması var — Süper Lig'de Şampiyonlar Ligi, Şampiyonlar Ligi / Avrupa Ligi / Konferans Ligi elemesi ve küme düşme; 1. Lig'de direkt yükselme, play-off ve küme düşme. Tabloya iki kolon eklendi: GLS (attığı:yediği, ör. 77:30) ve Son 5 form şeridi (G/B/M).",
+      },
+      {
+        en: "The Turkish Cup 'Cup Stages' screen drops the round-by-round bar chart. The knockout bracket now sits at the top, and below it the group stage shows a proper standings table (played, won, drawn, lost, goal difference, points) alongside the fixtures.",
+        tr: "Türkiye Kupası 'Kupa Aşamaları' ekranından tur-tur bar grafiği kaldırıldı. Eleme bracket'i artık en üstte; altında grup aşaması, maçların yanında gerçek bir puan durumu tablosu (oynanan, galibiyet, beraberlik, mağlubiyet, averaj, puan) gösteriyor.",
+      },
+      {
+        en: "Transfers are now split into Arrivals and Departures, each sorted by fee, and pulled fresh from Transfermarkt for both windows. Every transfer now carries the player's photo and both clubs' badges, and clicking a Süper Lig club opens its profile.",
+        tr: "Transferler artık Gelenler ve Ayrılanlar olarak ikiye ayrıldı; her biri bonservise göre sıralı ve her iki pencere için Transfermarkt'tan güncellendi. Her transferde oyuncunun fotoğrafı ve iki kulübün arması var; bir Süper Lig kulübüne tıklayınca profili açılıyor.",
+      },
+    ],
+  },
+  {
+    date: { en: "16 August", tr: "16 Ağustos" },
     title: { en: "Teams screen is now a table + a dedicated Transfers tab", tr: "Takımlar ekranı artık tablo + ayrı Transferler sekmesi" },
     items: [
       {

@@ -1,5 +1,6 @@
 import { getLocale, getT } from "@/lib/i18n/server";
 import { formatMetric } from "@/features/tsl/lib";
+import { zoneLegend } from "@/features/tsl/standingsZones";
 import type { ResmiLigBundle } from "@/features/tsl/server/resmiLoaders";
 import LeaderTabs from "./LeaderTabs";
 import {
@@ -8,29 +9,21 @@ import {
   PlayerFace,
   PlayerNameLink,
   ResmiStandings,
+  standingsLabels,
   TeamNameLink,
 } from "./parts";
 
 export default async function ResmiLig({ data }: { data: ResmiLigBundle }) {
   const t = await getT();
   const locale = await getLocale();
-  const { standings, leaders, leaderMetric, lastRound, upcoming, teamHrefById, basePath, matchBase } = data;
+  const { standings, league, leaders, leaderMetric, lastRound, upcoming, teamHrefById, basePath, matchBase } = data;
 
   if (!standings.length && !upcoming.length) {
     return <p className="py-16 text-center text-sm text-ink-3">{t("tsl.noData")}</p>;
   }
 
-  const labels = {
-    rank: t("tsl.rank"),
-    team: t("tsl.team"),
-    played: t("tsl.played"),
-    won: t("tsl.won"),
-    drawn: t("tsl.drawn"),
-    lost: t("tsl.lost"),
-    goalDiff: t("tsl.goalDiff"),
-    form: t("tsl.form"),
-    points: t("tsl.points"),
-  };
+  const labels = standingsLabels(t);
+  const legend = zoneLegend(league, standings.length);
   const returnTo = `${basePath}?season=${encodeURIComponent(data.season)}&section=league`;
 
   return (
@@ -41,7 +34,7 @@ export default async function ResmiLig({ data }: { data: ResmiLigBundle }) {
           <h2 className="mb-2 text-[13px] font-semibold uppercase tracking-[0.12em] text-ink-2">
             {t("tsl.standings")}
           </h2>
-          <ResmiStandings standings={standings} teamHrefById={teamHrefById} compact labels={labels} />
+          <ResmiStandings standings={standings} teamHrefById={teamHrefById} labels={labels} league={league} legend={legend} />
         </div>
 
         {/* Gol krallligi / liderler */}

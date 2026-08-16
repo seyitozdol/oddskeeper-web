@@ -4,7 +4,6 @@ import { useState } from "react";
 import Link from "next/link";
 import { useI18n } from "../../../lib/i18n/LanguageProvider";
 import type { CupStageMatch, ResmiCupStagesBundle } from "../server/resmiLoaders";
-import CupRoundsChart from "./CupRoundsChart";
 
 // Kupa logolari harici CDN'den gelebildiginden next/image yerine duz <img>.
 function Crest({ src, alt, size = 18 }: { src: string | null; alt: string; size?: number }) {
@@ -52,6 +51,94 @@ function BracketCard({ m, matchBase, locale }: { m: CupStageMatch; matchBase: st
 const KNOCKOUT = ["Çeyrek Final", "Yarı Final", "Final"];
 const EARLY = ["1. Tur", "2. Tur", "3. Tur", "4. Tur", "5. Tur"];
 
+// Grup maclarindan mini puan durumu (oynanmis maclardan). Takim kimligi slug
+// varsa slug, yoksa ad. Siralama: puan, averaj, atilan gol.
+type GroupRow = {
+  key: string;
+  name: string;
+  logo: string | null;
+  played: number;
+  win: number;
+  draw: number;
+  loss: number;
+  gf: number;
+  ga: number;
+};
+
+function computeGroupStandings(matches: CupStageMatch[]): GroupRow[] {
+  const rows = new Map<string, GroupRow>();
+  const ensure = (key: string, name: string, logo: string | null) => {
+    let r = rows.get(key);
+    if (!r) {
+      r = { key, name, logo, played: 0, win: 0, draw: 0, loss: 0, gf: 0, ga: 0 };
+      rows.set(key, r);
+    } else if (!r.logo && logo) r.logo = logo;
+    return r;
+  };
+  for (const m of matches) {
+    const hKey = m.homeSlug ?? m.homeName;
+    const aKey = m.awaySlug ?? m.awayName;
+    const h = ensure(hKey, m.homeName, m.homeLogo);
+    const a = ensure(aKey, m.awayName, m.awayLogo);
+    if (m.homeScore == null || m.awayScore == null) continue;
+    h.played++; a.played++;
+    h.gf += m.homeScore; h.ga += m.awayScore;
+    a.gf += m.awayScore; a.ga += m.homeScore;
+    if (m.homeScore > m.awayScore) { h.win++; a.loss++; }
+    else if (m.homeScore < m.awayScore) { a.win++; h.loss++; }
+    else { h.draw++; a.draw++; }
+  }
+  const pts = (r: GroupRow) => r.win * 3 + r.draw;
+  return [...rows.values()].sort(
+    (x, y) => pts(y) - pts(x) || (y.gf - y.ga) - (x.gf - x.ga) || y.gf - x.gf || x.name.localeCompare(y.name, "tr")
+  );
+}
+
+function GroupStandings({ matches }: { matches: CupStageMatch[] }) {
+  const rows = computeGroupStandings(matches);
+  if (!rows.length) return null;
+  return (
+    <div className="overflow-hidden rounded-xl border border-line bg-card">
+      <table className="w-full text-[12px]">
+        <thead>
+          <tr className="border-b border-line text-[9px] uppercase tracking-[0.06em] text-ink-3">
+            <th className="py-1.5 pl-2.5 pr-1 text-left font-medium">#</th>
+            <th className="px-1 py-1.5 text-left font-medium">Takım</th>
+            <th className="px-1.5 py-1.5 text-center font-medium">O</th>
+            <th className="px-1.5 py-1.5 text-center font-medium">G</th>
+            <th className="px-1.5 py-1.5 text-center font-medium">B</th>
+            <th className="px-1.5 py-1.5 text-center font-medium">M</th>
+            <th className="px-1.5 py-1.5 text-center font-medium">AV</th>
+            <th className="px-1.5 py-1.5 pr-2.5 text-right font-semibold text-ink-2">P</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r, i) => {
+            const gd = r.gf - r.ga;
+            return (
+              <tr key={r.key} className={`${i % 2 ? "bg-veil/40" : ""} border-b border-line/50 last:border-0`}>
+                <td className="py-1 pl-2.5 pr-1 text-[11px] font-bold tabular-nums text-ink-2">{i + 1}</td>
+                <td className="px-1 py-1">
+                  <span className="flex items-center gap-1.5">
+                    <Crest src={r.logo} alt={r.name} size={16} />
+                    <span className="truncate text-ink">{r.name}</span>
+                  </span>
+                </td>
+                <td className="px-1.5 py-1 text-center tabular-nums text-ink-2">{r.played}</td>
+                <td className="px-1.5 py-1 text-center tabular-nums text-ink-2">{r.win}</td>
+                <td className="px-1.5 py-1 text-center tabular-nums text-ink-2">{r.draw}</td>
+                <td className="px-1.5 py-1 text-center tabular-nums text-ink-2">{r.loss}</td>
+                <td className="px-1.5 py-1 text-center tabular-nums text-ink-2">{gd > 0 ? `+${gd}` : gd}</td>
+                <td className="px-1.5 py-1 pr-2.5 text-right text-[13px] font-bold tabular-nums text-ink">{r.win * 3 + r.draw}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 export default function ResmiCupStages({ data }: { data: ResmiCupStagesBundle }) {
   const { t, locale } = useI18n();
   const { stages, matchesByRound, matchBase, season } = data;
@@ -72,8 +159,6 @@ export default function ResmiCupStages({ data }: { data: ResmiCupStagesBundle })
   return (
     <div className="mx-auto w-full max-w-4xl space-y-6">
       <h2 className="text-[15px] font-semibold text-ink">{t("tsl.sectionCupStages")} · {season}</h2>
-
-      <CupRoundsChart rounds={stages} />
 
       {/* Knockout bracket: Çeyrek → Yarı → Final, sütun sütun daralan */}
       {knockout.length > 0 && (
@@ -101,17 +186,27 @@ export default function ResmiCupStages({ data }: { data: ResmiCupStagesBundle })
         </div>
       )}
 
-      {/* Grup aşaması maçları */}
-      {groupRounds.map((round) => (
-        <div key={round}>
-          <h3 className="mb-2 text-[13px] font-semibold text-ink-2">{round}</h3>
-          <ul className="grid gap-1.5 sm:grid-cols-2">
-            {(matchesByRound[round] ?? []).map((m) => (
-              <MatchLine key={m.matchId} m={m} matchBase={matchBase} locale={locale} />
+      {/* Grup aşaması: her grup için mini puan durumu + maçlar */}
+      {groupRounds.length > 0 && (
+        <div>
+          <h3 className="mb-2 text-[13px] font-semibold text-ink-2">
+            {locale === "tr" ? "Grup Aşaması" : "Group Stage"}
+          </h3>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {groupRounds.map((round) => (
+              <div key={round} className="space-y-2">
+                <div className="text-[12px] font-semibold text-ink-3">{round}</div>
+                <GroupStandings matches={matchesByRound[round] ?? []} />
+                <ul className="grid gap-1">
+                  {(matchesByRound[round] ?? []).map((m) => (
+                    <MatchLine key={m.matchId} m={m} matchBase={matchBase} locale={locale} compact />
+                  ))}
+                </ul>
+              </div>
             ))}
-          </ul>
+          </div>
         </div>
-      ))}
+      )}
 
       {/* Erken turlar (katlanır — çok maç) */}
       {earlyRounds.length > 0 && (

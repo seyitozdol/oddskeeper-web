@@ -251,6 +251,7 @@ async function buildZeroTeamMetrics(
 
 export type ResmiLigBundle = {
   season: string;
+  league: string;
   basePath: string;
   matchBase: string;
   standings: TslStandingRow[];
@@ -302,13 +303,14 @@ export async function loadResmiLig(
 
   const rounds = clusterRounds(matches);
   return {
-    season, basePath: config.basePath, matchBase: config.matchBase, standings, leaderMetric, leaders,
+    season, league: config.source, basePath: config.basePath, matchBase: config.matchBase, standings, leaderMetric, leaders,
     lastRound: rounds.length ? rounds[rounds.length - 1] : null, upcoming, teamHrefById,
   };
 }
 
 export type ResmiResultsBundle = {
   season: string;
+  league: string;
   basePath: string;
   matchBase: string;
   standings: TslStandingRow[];
@@ -347,7 +349,7 @@ export async function loadResmiResults(config: LeagueConfig, season: string): Pr
   );
   const rounds = clusterRounds(matches).reverse();
   const cupRounds = config.source === "cup" ? await loadCupRounds(season) : undefined;
-  return { season, basePath: config.basePath, matchBase: config.matchBase, standings, rounds, teamHrefById, cupRounds };
+  return { season, league: config.source, basePath: config.basePath, matchBase: config.matchBase, standings, rounds, teamHrefById, cupRounds };
 }
 
 export type ResmiTeamsBundle = {
@@ -392,6 +394,7 @@ export async function loadResmiTeams(config: LeagueConfig, season: string): Prom
   const transfersLinked = transfers.map((tr) => ({
     ...tr,
     toHref: tr.toName ? nameToHref[normalizeSearch(tr.toName)] ?? null : null,
+    fromHref: tr.fromName ? nameToHref[normalizeSearch(tr.fromName)] ?? null : null,
   }));
 
   return { season, standings, meta, teamMetrics, aggression, transfers: transfersLinked, teamHrefById };
@@ -425,6 +428,7 @@ export async function loadResmiTransfers(
   const linked = transfers.map((tr) => ({
     ...tr,
     toHref: tr.toName ? nameToHref[normalizeSearch(tr.toName)] ?? null : null,
+    fromHref: tr.fromName ? nameToHref[normalizeSearch(tr.fromName)] ?? null : null,
   }));
   return { season, transfers: linked };
 }
