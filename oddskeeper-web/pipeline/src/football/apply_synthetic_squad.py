@@ -369,7 +369,7 @@ def bridge_sofascore(cur) -> None:
             """update football.team_squad_current
                set photo_url = coalesce(photo_url, %s),
                    shirt_number = coalesce(shirt_number, %s),
-                   age = coalesce(age, extract(year from age(%s))::int)
+                   age = coalesce(age, extract(year from age(%s::date))::int)
                where source='synthetic-tm' and source_player_id=%s""",
             (SOFA_IMG.format(sid=sid), shirt, birth or sofa_birth, syn_pid))
         linked += 1
