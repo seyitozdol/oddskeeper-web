@@ -21,6 +21,16 @@ const TAG_NEW_TOOL: L = { en: "New tool", tr: "Yeni araç" };
 const ENTRIES: Entry[] = [
   {
     date: { en: "16 August", tr: "16 Ağustos" },
+    title: { en: "Squad players with blank profiles now open with full stats", tr: "Profili boş açılan kadro oyuncuları artık tüm istatistikleriyle açılıyor" },
+    items: [
+      {
+        en: "On team squad panels, many players (new signings and players without an Opta identity — e.g. John Lundstram, Moatasem Al-Musrati) linked to an empty profile: the name and photo showed but season stats and the match log were blank. The squad was linking them by one identity while their stats lived under another. Their identities are now bridged, so clicking a player from the squad opens the correct profile with appearances, minutes, form and match log. This also removes duplicate entries that some players had in team lists.",
+        tr: "Takım kadro panellerinde birçok oyuncu (yeni transferler ve Opta kimliği olmayanlar — ör. John Lundstram, Moatasem Al-Musrati) boş profile bağlanıyordu: isim ve fotoğraf geliyor ama sezon istatistikleri ve maç logu boş kalıyordu. Kadro onları bir kimlikle linkliyor, istatistikleri ise başka bir kimlikte duruyordu. Kimlikler artık köprülendi; kadrodan bir oyuncuya tıklayınca doğru profil, maç sayısı, dakikalar, form ve maç loguyla açılıyor. Bu ayrıca bazı oyuncuların takım listelerindeki mükerrer görünmesini de düzeltiyor.",
+      },
+    ],
+  },
+  {
+    date: { en: "16 August", tr: "16 Ağustos" },
     title: { en: "GSheet tab: Süper Lig rows now fill for every match", tr: "GSheet sekmesi: Süper Lig satırları artık her maçta doluyor" },
     items: [
       {

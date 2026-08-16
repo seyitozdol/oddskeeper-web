@@ -33,6 +33,9 @@ MATS = [
     "player_profile_bridged_mat",
     "player_match_log_sofascore_mat",
     "player_current_info_bridged_mat",
+    # Kadro profili artik bridged'e dayaniyor (sql/2026-08-16_squad_profile_use_bridged.sql)
+    # -> bridged mat'lardan SONRA tazelensin ki sentetik-opta oyuncular kadroda gorunsun.
+    "team_current_squad_profile_mat",
 ]
 
 
