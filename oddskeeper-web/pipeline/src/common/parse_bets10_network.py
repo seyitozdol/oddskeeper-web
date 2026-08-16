@@ -43,22 +43,38 @@ SPORT_MAP = {"Futbol": "football", "Basketbol": "basketball", "Voleybol": "volle
 # sanal ligler 'e' oneki + Futbol/Basketbol/Football/Basketball ile basliyor;
 # 'El Salvador', 'Euroleague', 'Ekvador' gibi GERCEK ligleri etkilemez.
 _ESPORTS_RE = re.compile(r"^\s*e-?\s*(futbol|basketbol|football|basketball)", re.IGNORECASE)
+# Oyuncu takma adi / sunucu etiketi parantezi: 'Galatasaray (lzrn)', 'Boston
+# Celtics (Kiev)'. GERCEK maclarda parantez EN FAZLA bir tarafta olur ve ulke
+# kodu/ayirt edicidir ('CA River Plate (Arg)', 'FC Iberia 1999 (Saburtalo)').
+_TAG_RE = re.compile(r"\([^)]+\)")
 
 
 def is_esports(competition: str | None) -> bool:
     return bool(competition and _ESPORTS_RE.match(competition))
 
 
+def _has_tag(label: str | None) -> bool:
+    return bool(label and _TAG_RE.search(label))
+
+
+def is_virtual(competition: str | None, home: str | None, away: str | None) -> bool:
+    """Sanal/e-spor maci mi? (1) competitionName 'e-Futbol/Basketbol...' oneki,
+    veya (2) HER IKI takim adinda da parantez tag'i (competitionName bos gelen
+    sanal NBA maclarini yakalar: 'Boston Celtics (Kiev)' / 'Milwaukee Bucks
+    (Krakow)'). Tek tarafli parantez GERCEKtir (ulke kodu), elenmez."""
+    return is_esports(competition) or (_has_tag(home) and _has_tag(away))
+
+
 def rows_from_events_table(body: dict, captured_at: str | None, label: str | None) -> list[dict]:
     data = body.get("data") or {}
     events = {}
     for ev in data.get("events") or []:
-        if is_esports(ev.get("competitionName")):
-            continue
         parts = sorted(ev.get("participants") or [], key=lambda p: p.get("side", 0))
         home = next((p.get("label") for p in parts if p.get("side") == 1), None)
         away = next((p.get("label") for p in parts if p.get("side") == 2), None)
         if not home or not away:
+            continue
+        if is_virtual(ev.get("competitionName"), home, away):
             continue
         events[ev.get("id")] = {
             "home": home, "away": away,
