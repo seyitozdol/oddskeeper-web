@@ -1,8 +1,7 @@
 import { getLocale, getT } from "@/lib/i18n/server";
 import { formatDate } from "@/features/tsl/lib";
-import { zoneLegend } from "@/features/tsl/standingsZones";
 import type { ResmiResultsBundle } from "@/features/tsl/server/resmiLoaders";
-import { MatchRow, ResmiStandings, standingsLabels } from "./parts";
+import { MatchRow, ResmiCompactStandings, standingsLabels } from "./parts";
 import CupRoundsChart from "./CupRoundsChart";
 
 export default async function ResmiResults({ data }: { data: ResmiResultsBundle }) {
@@ -16,32 +15,11 @@ export default async function ResmiResults({ data }: { data: ResmiResultsBundle 
   }
 
   const labels = standingsLabels(t);
-  const legend = zoneLegend(league, standings.length);
   const returnTo = `${basePath}?season=${encodeURIComponent(data.season)}&section=results`;
 
   return (
-    <div className="grid gap-5 lg:grid-cols-[1fr_1fr]">
-      {/* Kupa: lig tablosu yerine tur grafiği. Diğer ligler: puan durumu. */}
-      <div>
-        {isCup ? (
-          <CupRoundsChart rounds={cupRounds!} />
-        ) : (
-          <>
-            <h2 className="mb-2 text-[13px] font-semibold uppercase tracking-[0.12em] text-ink-2">
-              {t("tsl.standings")}
-            </h2>
-            <ResmiStandings
-              standings={standings}
-              teamHrefById={teamHrefById}
-              labels={labels}
-              league={league}
-              legend={legend}
-            />
-          </>
-        )}
-      </div>
-
-      {/* Hafta hafta sonuclar */}
+    <div className="grid gap-5 lg:grid-cols-[1.5fr_1fr]">
+      {/* Hafta hafta sonuclar (en son hafta üstte; rounds loader'da ters çevrili) */}
       <div>
         <h2 className="mb-2 text-[13px] font-semibold uppercase tracking-[0.12em] text-ink-2">
           {t("tsl.weekResults")}
@@ -65,6 +43,25 @@ export default async function ResmiResults({ data }: { data: ResmiResultsBundle 
             </div>
           ))}
         </div>
+      </div>
+
+      {/* Sağ sütun: kompakt puan durumu (kupada tur grafiği). Detay için League. */}
+      <div>
+        {isCup ? (
+          <CupRoundsChart rounds={cupRounds!} />
+        ) : (
+          <>
+            <h2 className="mb-2 text-[13px] font-semibold uppercase tracking-[0.12em] text-ink-2">
+              {t("tsl.standings")}
+            </h2>
+            <ResmiCompactStandings
+              standings={standings}
+              teamHrefById={teamHrefById}
+              labels={labels}
+              league={league}
+            />
+          </>
+        )}
       </div>
     </div>
   );

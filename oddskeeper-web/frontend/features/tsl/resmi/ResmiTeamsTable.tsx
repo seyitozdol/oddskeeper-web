@@ -89,6 +89,21 @@ export default function ResmiTeamsTable({ data }: { data: ResmiTeamsTableBundle 
     return arr;
   }, [rows, sortCol, sortDir, rankById, higherBetter]);
 
+  // Lig ortalamasi: gorunen kolonlarin (Avg/L5/L10/LY) takimlar arasi ortalamasi
+  // (yalniz degeri olan takimlar sayilir).
+  const leagueAvg = useMemo(() => {
+    const mean = (pick: (r: (typeof rows)[number]) => number | null) => {
+      const vals = rows.map(pick).filter((v): v is number => v != null);
+      return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
+    };
+    return {
+      avg: mean((r) => r.avg),
+      l5: mean((r) => r.l5),
+      l10: mean((r) => r.l10),
+      ly: mean((r) => r.ly),
+    };
+  }, [rows]);
+
   const onSort = (c: SortCol) => {
     if (c === sortCol) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
     else {
@@ -127,6 +142,7 @@ export default function ResmiTeamsTable({ data }: { data: ResmiTeamsTableBundle 
     l5: "Last 5",
     l10: "Last 10",
     ly: "LY",
+    leagueAvg: tr ? "Lig ortalaması" : "League avg",
   };
 
   return (
@@ -237,6 +253,26 @@ export default function ResmiTeamsTable({ data }: { data: ResmiTeamsTableBundle 
               </tr>
             ))}
           </tbody>
+          <tfoot>
+            <tr className="border-t-2 border-line bg-card-2">
+              <td className="px-2 py-2 text-center text-[12px] text-ink-3" />
+              <td className="px-2 py-2 text-[12px] font-semibold uppercase tracking-wide text-ink-2">
+                {L.leagueAvg}
+              </td>
+              <td className="px-2 py-2 text-right text-[13px] font-bold tabular-nums text-ink">
+                {fmt(leagueAvg.avg)}
+              </td>
+              <td className="px-2 py-2 text-right text-[13px] font-semibold tabular-nums text-ink-2">
+                {fmt(leagueAvg.l5)}
+              </td>
+              <td className="px-2 py-2 text-right text-[13px] font-semibold tabular-nums text-ink-2">
+                {fmt(leagueAvg.l10)}
+              </td>
+              <td className="px-2 py-2 text-right text-[13px] font-semibold tabular-nums text-ink-2">
+                {fmt(leagueAvg.ly)}
+              </td>
+            </tr>
+          </tfoot>
         </table>
       </div>
     </div>

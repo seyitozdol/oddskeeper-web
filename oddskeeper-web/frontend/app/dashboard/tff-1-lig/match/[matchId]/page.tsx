@@ -11,6 +11,7 @@ import {
   getTff1MatchPlayers,
   getTff1TeamLogos,
 } from "@/features/tff1/server/getTff1Stats";
+import { getMatchMarketBars } from "@/features/match-detail/server/getMatchMarketBars";
 import type { Tff1MatchLogRow } from "@/features/tff1/types";
 import { getLocale, getT } from "@/lib/i18n/server";
 
@@ -136,34 +137,14 @@ export default async function Tff1MatchPage({
     playerRows.filter((p) => p.team_id === match.away_team_id)
   );
 
-  // Takım toplamları (oyuncu satırlarından): karşılaştırma barları için
-  const agg = (rows: Tff1MatchLogRow[], pick: (r: Tff1MatchLogRow) => number) =>
-    rows.reduce((sum, r) => sum + pick(r), 0);
-  const vsRow = (
-    key: string,
-    labelKey: string,
-    pick: (r: Tff1MatchLogRow) => number,
-    digits = 0
-  ): ShowcaseVsRow => ({
-    key,
-    label: t(labelKey),
-    home: agg(homeRows, pick),
-    away: agg(awayRows, pick),
-    digits,
-  });
-  const vsRows: ShowcaseVsRow[] =
-    playerRows.length === 0
-      ? []
-      : [
-          vsRow("shots", "tff1.colShots", (r) => num(r.shots)),
-          vsRow("sot", "tff1.colShotsOnTarget", (r) => num(r.shots_on_target)),
-          vsRow("passes", "tff1.colPasses", (r) => num(r.total_passes)),
-          vsRow("keypass", "tff1.colKeyPasses", (r) => num(r.key_passes)),
-          vsRow("duels", "tff1.colDuelsWon", (r) => num(r.duels_won)),
-          vsRow("tackles", "tff1.colTackles", (r) => num(r.tackles)),
-          vsRow("fouls", "tff1.colFouls", (r) => num(r.fouls)),
-          vsRow("saves", "tff1.colSaves", (r) => num(r.saves)),
-        ];
+  // Takim-market kiyasi (Teams sekmesindeki 10 ana market): SofaScore takim-mac
+  // stat'indan (match_team_stats_v1). Veri yoksa bolum gizlenir.
+  const vsRows: ShowcaseVsRow[] = await getMatchMarketBars(
+    matchId,
+    String(match.home_team_id ?? ""),
+    String(match.away_team_id ?? ""),
+    locale === "tr"
+  );
 
   const teamBlock = (
     teamId: string | null,

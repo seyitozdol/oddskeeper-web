@@ -20,6 +20,24 @@ const TAG_NEW_TOOL: L = { en: "New tool", tr: "Yeni araç" };
 
 const ENTRIES: Entry[] = [
   {
+    date: { en: "17 August", tr: "17 Ağustos" },
+    title: { en: "Teams league averages, a reshaped Results tab, and match stats on click", tr: "Takımlar lig ortalaması, yenilenen Sonuçlar sekmesi ve tıklayınca maç istatistikleri" },
+    items: [
+      {
+        en: "The Teams table (Süper Lig and 1. Lig) now has a bottom row showing the league average for the selected metric, across Avg, Last 5, Last 10 and last season (LY), so you can read each team against the league at a glance.",
+        tr: "Takımlar tablosu (Süper Lig ve 1. Lig) artık en altta seçili metriğin lig ortalamasını gösteren bir satıra sahip; Avg, Son 5, Son 10 ve geçen sezon (LY) için. Böylece her takımı lig geneline göre bir bakışta okuyabilirsiniz.",
+      },
+      {
+        en: "The Results tab is reshaped: week-by-week results now sit on the left with the most recent week at the top, and a compact standings table (rank, team, played, points) sits on the right. For the full table use the League tab.",
+        tr: "Sonuçlar sekmesi yenilendi: hafta hafta sonuçlar artık solda ve en son hafta en üstte; sağda ise kompakt bir puan durumu tablosu (sıra, takım, oynanan, puan) var. Tüm tablo için League sekmesini kullanın.",
+      },
+      {
+        en: "Clicking a finished match now opens its team stats: Shots, On target, Corners, Saves, Tackles, Throw-ins, Goal kicks, Fouls, Cards and Offsides, shown as a home-vs-away comparison. This is now on both Süper Lig and 1. Lig match pages (available for the current season on the Süper Lig side).",
+        tr: "Biten bir maça tıklayınca artık takım istatistikleri açılıyor: Şut, İsabetli şut, Korner, Kurtarış, Müdahale, Taç, Kale vuruşu, Faul, Kart ve Ofsayt; ev sahibi ve deplasman karşılaştırması olarak. Bu artık hem Süper Lig hem 1. Lig maç sayfalarında var (Süper Lig tarafında güncel sezon için).",
+      },
+    ],
+  },
+  {
     date: { en: "16 August", tr: "16 Ağustos" },
     title: { en: "Squad players with blank profiles now open with full stats", tr: "Profili boş açılan kadro oyuncuları artık tüm istatistikleriyle açılıyor" },
     items: [

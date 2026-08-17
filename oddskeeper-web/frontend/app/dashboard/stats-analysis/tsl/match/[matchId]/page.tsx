@@ -8,6 +8,8 @@ import {
   getTslMatchPlayers,
   type TslMatchPlayer,
 } from "@/features/tsl/server/match";
+import { getMatchMarketBars } from "@/features/match-detail/server/getMatchMarketBars";
+import { ShowcaseVsBars } from "@/components/showcase/ShowcaseCharts";
 import TeamCrest from "@/features/tsl/shared/TeamCrest";
 
 function statusRank(s: string | null): number {
@@ -40,6 +42,10 @@ export default async function TslMatchPage({
 
   const back = returnTo && returnTo.startsWith("/dashboard") ? returnTo : RESMI_BASE_PATH;
 
+  // Takim-market kiyasi (Teams sekmesindeki 10 ana market). SofaScore takim-mac
+  // stat'i olmayan tarihsel maclarda bos doner -> bolum gizlenir.
+  const vsRows = await getMatchMarketBars(matchId, match.homeId, match.awayId, locale === "tr");
+
   return (
     <section className="px-4 py-6 lg:px-8">
       <Link href={back} className="mb-4 inline-flex items-center gap-1 text-[13px] text-ink-2 transition hover:text-ink">
@@ -67,6 +73,20 @@ export default async function TslMatchPage({
           </div>
         </div>
       </div>
+
+      {/* Takim-market kiyasi */}
+      {vsRows.length > 0 ? (
+        <div className="mb-6 rounded-2xl border border-line bg-card p-5">
+          <h2 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-ink-3">
+            {t("tsl.matchStats")}
+          </h2>
+          <div className="mb-2 flex items-center justify-between text-[11px] font-semibold text-ink">
+            <span className="truncate">{match.homeName}</span>
+            <span className="truncate text-right">{match.awayName}</span>
+          </div>
+          <ShowcaseVsBars rows={vsRows} />
+        </div>
+      ) : null}
 
       {/* Kadrolar */}
       <div className="grid gap-5 xl:grid-cols-2">
