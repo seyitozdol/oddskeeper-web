@@ -28,12 +28,16 @@ export default async function ResmiPlayerRankings({
   }));
   const title = metricLabel(t, metricKey, metric?.metricLabel);
 
-  // Siralama: her zaman TOPLAM degere gore (gol krali = toplam gol).
-  const higher = metric?.isHigherBetter ?? true;
+  // Siralama: saglayicinin rank'ine gore. TSL'de nitelenen oyuncular (yeterli
+  // dakika) league_rank sirasiyla basta; esik-disi kisa-dakikali oyuncular (or.
+  // sezon basi 25 dk oynayan Kerem) en sonda ama listede/aranabilir. Rank
+  // kullanmak, oran metriklerinde (rating/per90) kucuk-ornek carpitmasini onler
+  // (toplam'a gore sortlayip esik-disi oyuncuyu tepeye tasimaz). tff1/cup rank'i
+  // zaten toplam-sirasidir, davranis degismez.
   const ranked = rows
     .filter((r) => r.total != null)
     .slice()
-    .sort((a, b) => (higher ? (b.total ?? 0) - (a.total ?? 0) : (a.total ?? 0) - (b.total ?? 0)));
+    .sort((a, b) => (a.rank ?? Number.POSITIVE_INFINITY) - (b.rank ?? Number.POSITIVE_INFINITY));
 
   const showMatches = ranked.some((r) => r.matches != null);
   const showPerMatch = ranked.some((r) => r.perMatch != null);
