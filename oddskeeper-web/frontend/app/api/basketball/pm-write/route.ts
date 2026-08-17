@@ -6,7 +6,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 // Tablolar yalnizca service-role erisimine acik; her istek once oturumu
 // dogrular. league kolonu cok-lig paylasimli tablolari ayirir.
 
-const LEAGUES = new Set(["basketball", "euroleague", "eurocup"]);
+const LEAGUES = new Set(["basketball", "euroleague", "eurocup", "volleyball"]);
 
 type Body = { league?: unknown; action?: unknown; payload?: unknown };
 
