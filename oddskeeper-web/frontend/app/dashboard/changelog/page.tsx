@@ -35,6 +35,10 @@ const ENTRIES: Entry[] = [
         en: "Clicking a finished match now opens its team stats: Shots, On target, Corners, Saves, Tackles, Throw-ins, Goal kicks, Fouls, Cards and Offsides, shown as a home-vs-away comparison. This is now on both Süper Lig and 1. Lig match pages (available for the current season on the Süper Lig side).",
         tr: "Biten bir maça tıklayınca artık takım istatistikleri açılıyor: Şut, İsabetli şut, Korner, Kurtarış, Müdahale, Taç, Kale vuruşu, Faul, Kart ve Ofsayt; ev sahibi ve deplasman karşılaştırması olarak. Bu artık hem Süper Lig hem 1. Lig maç sayfalarında var (Süper Lig tarafında güncel sezon için).",
       },
+      {
+        en: "The match detail page got a visual pass: the player performance table is now more compact so it fits without a side scrollbar, and the Süper Lig match page now uses the same layout as 1. Lig (team logos, score, stat comparison and player tables).",
+        tr: "Maç detay sayfası görsel olarak elden geçti: oyuncu performans tablosu artık daha derli toplu ve yan kaydırma çubuğu olmadan sığıyor; Süper Lig maç sayfası da artık 1. Lig ile aynı düzeni kullanıyor (takım logoları, skor, istatistik karşılaştırması ve oyuncu tabloları).",
+      },
     ],
   },
   {

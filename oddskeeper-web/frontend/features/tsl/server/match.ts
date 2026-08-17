@@ -31,6 +31,7 @@ export type TslMatchPlayer = {
   keyPasses: number | null;
   totalPasses: number | null;
   tackles: number | null;
+  fouls: number | null;
   saves: number | null;
 };
 
@@ -79,7 +80,7 @@ export async function getTslMatchPlayers(matchId: string): Promise<TslMatchPlaye
     .schema("analytics")
     .from("tff1_player_match_log_mat")
     .select(
-      "player_id, player_name, team_id, position_code, lineup_status, minutes, rating, goals, assists, shots, shots_on_target, key_passes, total_passes, tackles, saves"
+      "player_id, player_name, team_id, position_code, lineup_status, minutes, rating, goals, assists, shots, shots_on_target, key_passes, total_passes, tackles, fouls, saves"
     )
     .eq("match_id", matchId)
     .limit(60);
@@ -99,6 +100,7 @@ export async function getTslMatchPlayers(matchId: string): Promise<TslMatchPlaye
     keyPasses: toNum(r.key_passes),
     totalPasses: toNum(r.total_passes),
     tackles: toNum(r.tackles),
+    fouls: toNum(r.fouls),
     saves: toNum(r.saves),
   }));
 }

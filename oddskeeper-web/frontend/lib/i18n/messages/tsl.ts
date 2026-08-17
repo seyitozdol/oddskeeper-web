@@ -49,6 +49,9 @@ export const tsl = defineMessages({
     ofAvg: "league avg",
     weekResults: "Week-by-week results",
     matchStats: "Match stats",
+    matchDetailTitle: "Match detail",
+    lineupsSection: "Player performances",
+    noMatchLog: "No match log for this match yet.",
     noUpcoming: "No upcoming fixtures for this season.",
 
     // Section nav
@@ -219,6 +222,9 @@ export const tsl = defineMessages({
     ofAvg: "lig ort.",
     weekResults: "Hafta hafta sonuçlar",
     matchStats: "Maç istatistikleri",
+    matchDetailTitle: "Maç detayı",
+    lineupsSection: "Oyuncu performansları",
+    noMatchLog: "Bu maç için henüz maç logu yok.",
     noUpcoming: "Bu sezon için gelecek maç yok.",
 
     sectionLeague: "Lig",

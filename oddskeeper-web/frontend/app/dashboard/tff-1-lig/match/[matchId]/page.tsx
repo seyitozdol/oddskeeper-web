@@ -12,19 +12,15 @@ import {
   getTff1TeamLogos,
 } from "@/features/tff1/server/getTff1Stats";
 import { getMatchMarketBars } from "@/features/match-detail/server/getMatchMarketBars";
+import MatchPlayerTable, {
+  type MatchPlayerRow,
+} from "@/features/match-detail/components/MatchPlayerTable";
 import type { Tff1MatchLogRow } from "@/features/tff1/types";
 import { getLocale, getT } from "@/lib/i18n/server";
 
 function num(v: number | string | null | undefined): number {
   const x = typeof v === "string" ? Number(v) : v;
   return Number.isFinite(x as number) ? (x as number) : 0;
-}
-
-function fmt(v: number | string | null | undefined, digits = 0): string {
-  if (v === null || v === undefined) return "—";
-  const n = typeof v === "string" ? Number(v) : v;
-  if (!Number.isFinite(n)) return "—";
-  return digits > 0 ? n.toFixed(digits) : String(Math.round(n));
 }
 
 // Ilk 11 once, sonra oynayan yedekler, en sonda oynamayanlar; kendi icinde dakika desc
@@ -36,79 +32,25 @@ function sortPlayers(rows: Tff1MatchLogRow[]): Tff1MatchLogRow[] {
   );
 }
 
-function TeamTable({
-  rows,
-  t,
-}: {
-  rows: Tff1MatchLogRow[];
-  t: (k: string, p?: Record<string, string | number>) => string;
-}) {
-  return (
-    <div className="overflow-x-auto rounded-lg border border-line">
-      <table className="min-w-full border-collapse text-[13px]">
-        <thead>
-          <tr className="text-left text-[10px] uppercase tracking-[0.12em] text-ink-3">
-            <th className="px-3 py-2 font-medium">{t("tff1.colPlayer")}</th>
-            <th className="px-3 py-2 font-medium">{t("tff1.colPosition")}</th>
-            <th className="px-3 py-2 text-right font-medium">{t("tff1.colMinutes")}</th>
-            <th className="px-3 py-2 text-right font-medium">{t("tff1.colRating")}</th>
-            <th className="px-3 py-2 text-right font-medium">{t("tff1.colGoals")}</th>
-            <th className="px-3 py-2 text-right font-medium">{t("tff1.colAssists")}</th>
-            <th className="px-3 py-2 text-right font-medium">{t("tff1.colShots")}</th>
-            <th className="px-3 py-2 text-right font-medium">{t("tff1.colShotsOnTarget")}</th>
-            <th className="px-3 py-2 text-right font-medium">{t("tff1.colPasses")}</th>
-            <th className="px-3 py-2 text-right font-medium">{t("tff1.colKeyPasses")}</th>
-            <th className="px-3 py-2 text-right font-medium">{t("tff1.colTackles")}</th>
-            <th className="px-3 py-2 text-right font-medium">{t("tff1.colFouls")}</th>
-            <th className="px-3 py-2 text-right font-medium">{t("tff1.colSaves")}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((p) => {
-            const played = num(p.minutes) > 0;
-            const status =
-              p.lineup_status === "starter"
-                ? t("tff1.statusStarter")
-                : played
-                  ? t("tff1.statusSub")
-                  : t("tff1.statusBench");
-            return (
-              <tr
-                key={p.player_id}
-                className={`border-t border-line ${played ? "text-ink" : "text-ink-3"}`}
-              >
-                <td className="whitespace-nowrap px-3 py-1.5 font-medium">
-                  <Link
-                    href={`/dashboard/tff-1-lig/player/${p.player_id}`}
-                    className="transition hover:text-accent-ink hover:underline"
-                  >
-                    {p.player_name}
-                  </Link>
-                  <span className="ml-1.5 text-[10px] uppercase text-ink-3">{status}</span>
-                </td>
-                <td className="px-3 py-1.5 text-ink-2">{p.position_code ?? "—"}</td>
-                <td className="px-3 py-1.5 text-right tabular-nums">{fmt(p.minutes)}</td>
-                <td className="px-3 py-1.5 text-right tabular-nums">
-                  {played && p.rating !== null ? fmt(p.rating, 2) : "—"}
-                </td>
-                <td className="px-3 py-1.5 text-right tabular-nums">{fmt(p.goals)}</td>
-                <td className="px-3 py-1.5 text-right tabular-nums">{fmt(p.assists)}</td>
-                <td className="px-3 py-1.5 text-right tabular-nums">{fmt(p.shots)}</td>
-                <td className="px-3 py-1.5 text-right tabular-nums">{fmt(p.shots_on_target)}</td>
-                <td className="px-3 py-1.5 text-right tabular-nums">{fmt(p.total_passes)}</td>
-                <td className="px-3 py-1.5 text-right tabular-nums">{fmt(p.key_passes)}</td>
-                <td className="px-3 py-1.5 text-right tabular-nums">{fmt(p.tackles)}</td>
-                <td className="px-3 py-1.5 text-right tabular-nums">{fmt(p.fouls)}</td>
-                <td className="px-3 py-1.5 text-right tabular-nums">
-                  {p.position_code === "G" ? fmt(p.saves) : "—"}
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
-  );
+function toPlayerRow(p: Tff1MatchLogRow): MatchPlayerRow {
+  return {
+    playerId: String(p.player_id),
+    playerName: p.player_name ?? "—",
+    playerHref: `/dashboard/tff-1-lig/player/${p.player_id}`,
+    positionCode: p.position_code ?? null,
+    lineupStatus: p.lineup_status ?? null,
+    minutes: p.minutes ?? null,
+    rating: p.rating ?? null,
+    goals: p.goals ?? null,
+    assists: p.assists ?? null,
+    shots: p.shots ?? null,
+    shotsOnTarget: p.shots_on_target ?? null,
+    totalPasses: p.total_passes ?? null,
+    keyPasses: p.key_passes ?? null,
+    tackles: p.tackles ?? null,
+    fouls: p.fouls ?? null,
+    saves: p.saves ?? null,
+  };
 }
 
 export default async function Tff1MatchPage({
@@ -258,13 +200,13 @@ export default async function Tff1MatchPage({
               <h3 className="mb-2 text-sm font-semibold text-ink">
                 {match.home_team_name}
               </h3>
-              <TeamTable rows={homeRows} t={t} />
+              <MatchPlayerTable rows={homeRows.map(toPlayerRow)} tr={locale === "tr"} />
             </div>
             <div>
               <h3 className="mb-2 text-sm font-semibold text-ink">
                 {match.away_team_name}
               </h3>
-              <TeamTable rows={awayRows} t={t} />
+              <MatchPlayerTable rows={awayRows.map(toPlayerRow)} tr={locale === "tr"} />
             </div>
           </div>
         )}
