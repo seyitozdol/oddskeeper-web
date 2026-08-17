@@ -1,7 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { VALID_PLAYER_TABS } from "../constants";
-import type { PlayerProfileRow, ValidPlayerTab } from "../types";
+import type { PlayerProfileRow } from "../types";
 import { getTeamDetailHref } from "@/lib/routes";
 import { getTeamLogoPath } from "../utils/getTeamLogoPath";
 import { formatDecimal } from "../utils/formatDecimal";
@@ -15,7 +14,6 @@ import {
 
 type PlayerDetailHeaderProps = {
   profile: PlayerProfileRow;
-  activeTab: ValidPlayerTab;
   currentInfo?: PlayerCurrentInfoRow | null;
   marketValueEur?: number | null;
 };
@@ -28,15 +26,6 @@ function formatMarketValue(value: number): string {
 
   return `€${Math.round(value / 1_000)}K`;
 }
-
-// Tab görünür etiketleri: URL'de kullanılan tab değerleri (VALID_PLAYER_TABS)
-// değişmeden kalır, sadece görüntülenen metin çeviri anahtarına eşlenir.
-const TAB_LABEL_KEYS: Record<ValidPlayerTab, string> = {
-  overview: "playerDetail.tabOverview",
-  "detailed-stats": "playerDetail.tabDetailedStats",
-  advanced: "playerDetail.tabAdvanced",
-  "match-log": "playerDetail.tabMatchLog",
-};
 
 function StatInline({
   label,
@@ -59,7 +48,6 @@ function StatInline({
 
 export async function PlayerDetailHeader({
   profile,
-  activeTab,
   currentInfo = null,
   marketValueEur = null,
 }: PlayerDetailHeaderProps) {
@@ -250,37 +238,6 @@ export async function PlayerDetailHeader({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {VALID_PLAYER_TABS.map((tab) => {
-            const isActive = activeTab === tab;
-            const href = `/dashboard/stats-analysis/football/player-stats/detail?player=${encodeURIComponent(
-              profile.player_slug
-            )}&tab=${tab}`;
-
-            return (
-              <Link
-                key={tab}
-                href={href}
-                className={`rounded-xl border px-3 py-2 text-sm transition ${
-                  isActive
-                    ? "border-line-strong bg-card-2 text-ink"
-                    : "border-line bg-veil text-ink-2 hover:bg-veil"
-                }`}
-              >
-                {t(TAB_LABEL_KEYS[tab])}
-              </Link>
-            );
-          })}
-
-          <Link
-            href={`/dashboard/stats-analysis/football/player-stats/detail?player=${encodeURIComponent(
-              profile.player_slug
-            )}&tab=overview`}
-            className="rounded-xl border border-line-strong bg-accent-soft px-3 py-2 text-sm text-accent-ink transition hover:bg-accent-soft"
-            title={t("playerDetail.showcaseViewLabel")}
-          >
-            {t("playerDetail.showcaseViewLabel")}
-          </Link>
-
           <Link
             href={backToTeamHref}
             className="rounded-xl border border-line bg-veil px-3 py-2 text-sm text-ink transition hover:bg-veil"

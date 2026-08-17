@@ -3,23 +3,24 @@ import { VALID_PLAYER_TABS } from "@/features/player-detail/constants";
 import DetailedPlayerStatsPanel from "@/features/player-detail/panels/DetailedPlayerStatsPanel";
 import { PlayerMatchLogPanel } from "@/features/player-detail/panels/PlayerMatchLogPanel";
 import PlayerAdvancedOverviewPanel from "@/features/player-detail/panels/PlayerAdvancedOverviewPanel";
-import PlayerBenchmarksPanel from "@/features/player-detail/panels/PlayerBenchmarksPanel";
-import { PlayerOverviewPanel } from "@/features/player-detail/panels/PlayerOverviewPanel";
 import { PlayerShowcasePanel } from "@/features/player-detail/panels/PlayerShowcasePanel";
 import { getPlayerAdvancedOverview } from "@/features/player-detail/server/getPlayerAdvancedOverview";
 import { getPlayerDetailedMetrics } from "@/features/player-detail/server/getPlayerDetailedMetrics";
 import { getPlayerMatchLog } from "@/features/player-detail/server/getPlayerMatchLog";
-import { getPlayerMetricBenchmarks } from "@/features/player-detail/server/getPlayerMetricBenchmarks";
 import { getPlayerProfile } from "@/features/player-detail/server/getPlayerProfile";
 import { getPlayerCurrentInfo } from "@/features/player-detail/server/getPlayerCurrentInfo";
 import { getTeamAliases } from "@/features/player-detail/server/getTeamAliases";
 import { getLeagueLastMatchDate } from "@/features/player-detail/server/getLeagueLastMatchDate";
 import { getPlayerMarketValue } from "@/features/player-detail/server/getPlayerMarketValue";
+import { getTeamLogoPath } from "@/features/player-detail/utils/getTeamLogoPath";
 import type {
   PlayerCurrentInfoRow,
   PlayerProfileRow,
   ValidPlayerTab,
 } from "@/features/player-detail/types";
+import { SideTabMenu } from "@/components/nav/SideTabMenu";
+import { CalendarDays, Gauge, LayoutDashboard, Table2 } from "lucide-react";
+import type { ReactNode } from "react";
 import { getT } from "@/lib/i18n/server";
 import { knownDisplayName } from "@/lib/player-name";
 
@@ -27,13 +28,26 @@ type PageProps = {
   searchParams?: Promise<{
     player?: string;
     tab?: string;
-    design?: string;
   }>;
 };
 
 function isValidPlayerTab(value: string | undefined): value is ValidPlayerTab {
   return VALID_PLAYER_TABS.includes(value as ValidPlayerTab);
 }
+
+const TAB_LABEL_KEYS: Record<ValidPlayerTab, string> = {
+  overview: "playerDetail.tabOverview",
+  "detailed-stats": "playerDetail.tabDetailedStats",
+  advanced: "playerDetail.tabAdvanced",
+  "match-log": "playerDetail.tabMatchLog",
+};
+
+const TAB_ICONS: Record<ValidPlayerTab, ReactNode> = {
+  overview: <LayoutDashboard />,
+  "detailed-stats": <Table2 />,
+  advanced: <Gauge />,
+  "match-log": <CalendarDays />,
+};
 
 const POSITION_CODES: Record<string, { code: string; group: string }> = {
   Goalkeeper: { code: "GK", group: "GOALKEEPER" },
@@ -92,11 +106,10 @@ export default async function FootballPlayerDetailPage({
     ? requestedTab
     : "overview";
 
-  // Vitrin (showcase) tasarımı overview sekmesinin VARSAYILANI (2026-08-09);
-  // eski düzen design=classic ile hâlâ açılabilir. design=v2 de vitrine gider
-  // (eski linkler kırılmasın).
-  const showcaseDesign =
-    activeTab === "overview" && resolvedSearchParams.design !== "classic";
+  // Genel bakış (overview) sekmesi vitrin (showcase) düzenini gösterir; diğer
+  // sekmeler başlık + panel. Sekme navigasyonu artık soldaki dikey menüde
+  // (takım profiliyle aynı düzen); eski "classic" görünüm kaldırıldı.
+  const isOverview = activeTab === "overview";
 
   if (!playerSlug) {
     const t = await getT();
@@ -141,26 +154,56 @@ export default async function FootballPlayerDetailPage({
   const seasonLabel = profile.season_label ?? null;
 
   const [advancedOverview, detailedMetricRows] = await Promise.all([
-    (activeTab === "advanced" || showcaseDesign) && playerSourceId
+    (activeTab === "advanced" || isOverview) && playerSourceId
       ? getPlayerAdvancedOverview(playerSourceId)
       : Promise.resolve(null),
 
-
-
-    activeTab === "detailed-stats" || showcaseDesign
+    activeTab === "detailed-stats" || isOverview
       ? getPlayerDetailedMetrics(playerSlug, {
           seasonLabel: seasonLabel ?? undefined,
         })
       : Promise.resolve([]),
   ]);
 
-  if (showcaseDesign) {
+  const t = await getT();
+
+  // Sol dikey menü: sekmeler her sekmede aynı yerde sabit (takım profiliyle
+  // aynı SideTabMenu). Menü başlığında oyuncu kimliği (foto/logo + ad).
+  const displayPlayerName =
+    knownDisplayName(currentInfo?.player_name, currentInfo?.first_name) ||
+    currentInfo?.full_name ||
+    profile.player_name;
+  const displayTeamSlug = currentInfo?.current_team_slug ?? profile.team_slug;
+  const menuIcon = currentInfo?.photo_url ?? getTeamLogoPath(displayTeamSlug);
+
+  const detailBase = `/dashboard/stats-analysis/football/player-stats/detail?player=${encodeURIComponent(
+    playerSlug
+  )}`;
+  const sideItems = VALID_PLAYER_TABS.map((tab) => ({
+    key: tab,
+    href: `${detailBase}&tab=${tab}`,
+    label: t(TAB_LABEL_KEYS[tab]),
+    icon: TAB_ICONS[tab],
+  }));
+
+  const sideMenu = (
+    <SideTabMenu
+      items={sideItems}
+      activeKey={activeTab}
+      teamName={displayPlayerName}
+      teamLogo={menuIcon}
+    />
+  );
+
+  let content: React.ReactNode;
+
+  if (isOverview) {
     const [teamAliases, leagueLastMatchDate] = await Promise.all([
       getTeamAliases(),
       getLeagueLastMatchDate(profile.competition),
     ]);
 
-    return (
+    content = (
       <PlayerShowcasePanel
         profile={profile}
         currentInfo={currentInfo}
@@ -172,29 +215,35 @@ export default async function FootballPlayerDetailPage({
         leagueLastMatchDate={leagueLastMatchDate}
       />
     );
+  } else {
+    content = (
+      <div className="space-y-3">
+        <PlayerDetailHeader
+          profile={profile}
+          currentInfo={currentInfo}
+          marketValueEur={marketValueEur}
+        />
+
+        {activeTab === "detailed-stats" ? (
+          <DetailedPlayerStatsPanel
+            rows={detailedMetricRows}
+            playerSlug={playerSlug}
+          />
+        ) : activeTab === "advanced" ? (
+          <PlayerAdvancedOverviewPanel overview={advancedOverview} />
+        ) : activeTab === "match-log" ? (
+          <PlayerMatchLogPanel rows={matchLog} />
+        ) : null}
+      </div>
+    );
   }
 
   return (
-    <section className="w-full space-y-3">
-      <PlayerDetailHeader
-        profile={profile}
-        activeTab={activeTab}
-        currentInfo={currentInfo}
-        marketValueEur={marketValueEur}
-      />
-
-      {activeTab === "overview" ? (
-        <PlayerOverviewPanel profile={profile} matchLog={matchLog} />
-      ) : activeTab === "detailed-stats" ? (
-        <DetailedPlayerStatsPanel
-          rows={detailedMetricRows}
-          playerSlug={playerSlug}
-        />
-      ) : activeTab === "advanced" ? (
-        <PlayerAdvancedOverviewPanel overview={advancedOverview} />
-      ) : activeTab === "match-log" ? (
-        <PlayerMatchLogPanel rows={matchLog} />
-      ) : null}
+    <section className="w-full">
+      <div className="grid items-start gap-3 lg:grid-cols-[190px_minmax(0,1fr)]">
+        {sideMenu}
+        <div className="min-w-0">{content}</div>
+      </div>
     </section>
   );
 }

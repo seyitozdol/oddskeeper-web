@@ -23,14 +23,12 @@ import {
 import TeamLink from "@/components/links/TeamLink";
 import MatchLink from "@/components/links/MatchLink";
 import { PlayerResultBadge } from "../components/PlayerResultBadge";
-import { VALID_PLAYER_TABS } from "../constants";
 import type {
   PlayerAdvancedOverviewRow,
   PlayerCurrentInfoRow,
   PlayerDetailedMetricRow,
   PlayerMatchLogRow,
   PlayerProfileRow,
-  ValidPlayerTab,
 } from "../types";
 import { formatDate } from "../utils/formatDate";
 import { formatDecimal } from "../utils/formatDecimal";
@@ -60,13 +58,6 @@ type PlayerShowcasePanelProps = {
   detailedMetrics?: PlayerDetailedMetricRow[];
   teamAliases?: TeamAliasMap;
   leagueLastMatchDate?: string | null;
-};
-
-const TAB_LABEL_KEYS: Record<ValidPlayerTab, string> = {
-  overview: "playerDetail.tabOverview",
-  "detailed-stats": "playerDetail.tabDetailedStats",
-  advanced: "playerDetail.tabAdvanced",
-  "match-log": "playerDetail.tabMatchLog",
 };
 
 function toNumber(value: number | string | null | undefined) {
@@ -635,45 +626,14 @@ export async function PlayerShowcasePanel({
 
   return (
     <section className="w-full space-y-3">
-      {/* üst çubuk: geri + sekmeler */}
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <Link
-            href={backToTeamHref}
-            className="rounded-xl border border-line bg-card px-3 py-2 text-sm text-ink-2 transition hover:text-ink"
-          >
-            {t("playerDetail.backButton")}
-          </Link>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-1.5">
-          {VALID_PLAYER_TABS.map((tab) => {
-            const isActive = tab === "overview";
-            const href = isActive
-              ? overviewReturnTo
-              : `${detailHrefBase}&tab=${tab}`;
-            return (
-              <Link
-                key={tab}
-                href={href}
-                className={`rounded-xl border px-3 py-2 text-sm transition ${
-                  isActive
-                    ? "border-line-strong bg-accent-soft text-accent-ink"
-                    : "border-line bg-card text-ink-2 hover:text-ink"
-                }`}
-              >
-                {t(TAB_LABEL_KEYS[tab])}
-              </Link>
-            );
-          })}
-          <Link
-            href={`${detailHrefBase}&tab=overview&design=classic`}
-            className="rounded-xl border border-line bg-card px-3 py-2 text-sm text-ink-2 transition hover:text-ink"
-            title={t("playerDetail.classicViewLabel")}
-          >
-            {t("playerDetail.classicViewLabel")}
-          </Link>
-        </div>
+      {/* üst çubuk: takıma dön (sekme navigasyonu soldaki menüde) */}
+      <div className="flex items-center gap-2">
+        <Link
+          href={backToTeamHref}
+          className="rounded-xl border border-line bg-card px-3 py-2 text-sm text-ink-2 transition hover:text-ink"
+        >
+          {t("playerDetail.backButton")}
+        </Link>
       </div>
 
       {/* hero + özet paneli */}

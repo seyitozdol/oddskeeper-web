@@ -21,6 +21,16 @@ const TAG_NEW_TOOL: L = { en: "New tool", tr: "Yeni araç" };
 const ENTRIES: Entry[] = [
   {
     date: { en: "17 August", tr: "17 Ağustos" },
+    title: { en: "Player profiles now use the left-side tab menu", tr: "Oyuncu profilleri artık sol sekme menüsünü kullanıyor" },
+    items: [
+      {
+        en: "Player profile pages now use the same left-side tab menu as team profiles — Overview, Detailed Stats, Advanced and Match Log sit in a vertical menu on the left instead of buttons in the top-right corner, so moving between sections is consistent across the site. The separate 'classic view' has been removed.",
+        tr: "Oyuncu profil sayfaları artık takım profilleriyle aynı sol sekme menüsünü kullanıyor — Genel Bakış, Detaylı İstatistik, Gelişmiş ve Maç Logu, sağ üstteki butonlar yerine solda dikey bir menüde. Böylece bölümler arası geçiş sitenin her yerinde tutarlı. Ayrı 'klasik görünüm' kaldırıldı.",
+      },
+    ],
+  },
+  {
+    date: { en: "17 August", tr: "17 Ağustos" },
     title: { en: "Cards metric reworked: red counts double, and bench cards no longer count", tr: "Kart metriği yenilendi: kırmızı iki sayılır ve benchten kartlar sayılmıyor" },
     items: [
       {
