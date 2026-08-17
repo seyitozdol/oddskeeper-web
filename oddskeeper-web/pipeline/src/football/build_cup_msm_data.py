@@ -14,7 +14,7 @@ from dotenv import dotenv_values
 PIPELINE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 ENV = dotenv_values(os.path.join(PIPELINE_DIR, ".env"))
 
-# MSM market -> Mackolik stat_type (tekil). Card ayri (yellow+red).
+# MSM market -> Mackolik stat_type (tekil). Card ayri (yellow+red*2).
 MARKET_STAT = {
     "Shot": "shots", "SOT": "shots_on_target", "Corner": "corners", "Foul": "fouls",
     "Offside": "total_offside", "Throw-in": "throw_in", "Tackle": "successful_tackles",
@@ -61,14 +61,14 @@ INSERT_CARD = """
 insert into msm.histdata(league, season, market, team_name, team_slug, hf, ha, af, aa, updated_at)
 with sided as (
   select m.team_a_id team_id, m.team_a_name nm, true is_home,
-    coalesce(sy.value_a,0)+coalesce(sr.value_a,0) vfor, coalesce(sy.value_b,0)+coalesce(sr.value_b,0) vagainst
+    coalesce(sy.value_a,0)+coalesce(sr.value_a,0)*2 vfor, coalesce(sy.value_b,0)+coalesce(sr.value_b,0)*2 vagainst
   from football.mackolik_matches m
   left join football.mackolik_team_stats sy on sy.match_uuid=m.match_uuid and sy.stat_type='yellow_card'
   left join football.mackolik_team_stats sr on sr.match_uuid=m.match_uuid and sr.stat_type='red_card'
   where m.score_a is not null
   union all
   select m.team_b_id, m.team_b_name, false,
-    coalesce(sy.value_b,0)+coalesce(sr.value_b,0), coalesce(sy.value_a,0)+coalesce(sr.value_a,0)
+    coalesce(sy.value_b,0)+coalesce(sr.value_b,0)*2, coalesce(sy.value_a,0)+coalesce(sr.value_a,0)*2
   from football.mackolik_matches m
   left join football.mackolik_team_stats sy on sy.match_uuid=m.match_uuid and sy.stat_type='yellow_card'
   left join football.mackolik_team_stats sr on sr.match_uuid=m.match_uuid and sr.stat_type='red_card'

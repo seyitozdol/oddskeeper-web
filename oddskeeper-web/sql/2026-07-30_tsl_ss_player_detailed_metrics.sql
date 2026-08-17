@@ -177,28 +177,42 @@ derived_rows as (
   from psum p
   join analytics.tsl_ss_metric_catalog_v1 c on c.agg_kind = 'derived'
 ),
--- ── FlashScore kart overlay (SofaScore oyuncu istatistiginde kart YOK) ──
--- FlashScore oyuncu id -> opta id (ref.flashscore_player_map); FS TSL sadece 25/26.
+-- ── Kart overlay: SADECE sahada gorulen kartlar (SofaScore incident'lerinden) ──
+-- SofaScore oyuncu istatistiginde kart YOK. Kartlar football.match_player_cards'tan
+-- gelir; on_pitch=true (bench/oyun-disi kartlar HARIC) ve rescinded=false. Kimlik
+-- ref.sofascore_opta_player_map ile (diger tum sofascore metrikleriyle AYNI harita).
+-- Taban = pm_match (sofascore appearance'lar) -> apps/dakika direct yolla birebir
+-- ayni; kart sayimlari LEFT JOIN ile, kartsiz macta 0. Katalogda source_note hala
+-- 'flashscore' -> bu metrikleri direct yolundan (source_note='sofascore') dislar.
 fs_match as (
   select
-    fmap.opta_player_id                                          as player_source_id,
-    m.season_label,
-    d.source_match_id,
-    d.source_team_id,
-    d.team_name,
-    d.player_name,
-    m.match_datetime,
-    coalesce((d.raw_stats->>'MATCH_MINUTES_PLAYED')::numeric, 0) as minutes,
-    (m.home_team_source_id = d.source_team_id)                   as is_home,
-    coalesce((d.raw_stats->>'CARDS_YELLOW')::numeric, 0)         as yellow,
-    coalesce((d.raw_stats->>'CARDS_RED')::numeric, 0)            as red
-  from football.match_player_stats_details d
-  join football.matches m
-    on m.source = d.source and m.source_match_id = d.source_match_id
-  join ref.flashscore_player_map fmap
-    on fmap.flashscore_player_id = d.source_player_id
-  where d.source = 'flashscore' and m.competition = 'Süper Lig'
-    and fmap.opta_player_id is not null
+    b.player_source_id,
+    b.season_label,
+    b.source_match_id,
+    b.source_team_id,
+    b.team_name,
+    b.player_name,
+    b.match_datetime,
+    b.minutes,
+    b.is_home,
+    coalesce(pc.yellow, 0)                                       as yellow,
+    coalesce(pc.red, 0)                                          as red
+  from pm_match b
+  left join (
+    select m.season_label, smap.opta_player_id, pc0.source_match_id,
+           count(*) filter (where pc0.card_class = 'yellow')             as yellow,
+           count(*) filter (where pc0.card_class in ('red','yellowRed')) as red
+    from football.match_player_cards pc0
+    join football.matches m
+      on m.source = pc0.source and m.source_match_id = pc0.source_match_id
+    join ref.sofascore_opta_player_map smap
+      on smap.sofascore_player_id = pc0.source_player_id and smap.opta_player_id is not null
+    where pc0.source = 'sofascore' and pc0.on_pitch and not pc0.rescinded
+      and m.competition = 'Süper Lig'
+    group by m.season_label, smap.opta_player_id, pc0.source_match_id
+  ) pc
+    on pc.source_match_id = b.source_match_id
+   and pc.opta_player_id = b.player_source_id
 ),
 fs_card_long as (
   select player_source_id, season_label, source_team_id, team_name, player_name,

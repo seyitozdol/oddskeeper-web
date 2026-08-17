@@ -303,7 +303,7 @@ export async function tff1Aggression(season: string): Promise<Record<string, Tea
     if (!out[id]) out[id] = { yellow: 0, red: 0, total: 0, matches: 0 };
     out[id].yellow += toNum(r.yellow_cards) ?? 0;
     out[id].red += toNum(r.red_cards) ?? 0;
-    out[id].total = out[id].yellow + out[id].red;
+    out[id].total = out[id].yellow + out[id].red * 2;
   }
   return out;
 }

@@ -21,6 +21,20 @@ const TAG_NEW_TOOL: L = { en: "New tool", tr: "Yeni araç" };
 const ENTRIES: Entry[] = [
   {
     date: { en: "17 August", tr: "17 Ağustos" },
+    title: { en: "Cards metric reworked: red counts double, and bench cards no longer count", tr: "Kart metriği yenilendi: kırmızı iki sayılır ve benchten kartlar sayılmıyor" },
+    items: [
+      {
+        en: "Everywhere a single 'Cards' number is shown (team tables, match stat comparisons, team discipline and the model's card line), it is now yellow + 2×red — a red card weighs as much as two yellows, so the number reflects true match discipline consistently across the site.",
+        tr: "Tek bir 'Kart' değeri gösterilen her yerde (takım tabloları, maç istatistik karşılaştırmaları, takım disiplini ve modelin kart çizgisi) artık sarı + 2×kırmızı hesaplanıyor — bir kırmızı iki sarı kadar ağırlık taşıyor, böylece sayı sitenin her yerinde maç disiplinini tutarlı biçimde yansıtıyor.",
+      },
+      {
+        en: "Player yellow and red card totals (Süper Lig and 1. Lig) now only count a card the player was shown while on the pitch. A booking given on the bench or after being substituted off no longer adds to that player's tally, so the card stats match what actually happened during play.",
+        tr: "Oyuncu sarı ve kırmızı kart toplamları (Süper Lig ve 1. Lig) artık yalnızca oyuncunun sahadayken gördüğü kartı sayıyor. Yedek kulübesinde ya da oyundan çıktıktan sonra görülen bir kart artık o oyuncunun hanesine eklenmiyor; böylece kart istatistikleri sahada gerçekten olanı yansıtıyor.",
+      },
+    ],
+  },
+  {
+    date: { en: "17 August", tr: "17 Ağustos" },
     title: { en: "Teams league averages, a reshaped Results tab, and match stats on click", tr: "Takımlar lig ortalaması, yenilenen Sonuçlar sekmesi ve tıklayınca maç istatistikleri" },
     items: [
       {

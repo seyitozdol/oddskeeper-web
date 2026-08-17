@@ -31,8 +31,8 @@ with pair as (
     t.summary_offsides            as f_offside, o.summary_offsides            as a_offside,
     t.summary_saves               as f_saves,   o.summary_saves               as a_saves,
     t.summary_tackles             as f_tackle,  o.summary_tackles             as a_tackle,
-    (coalesce(t.summary_yellow_cards,0)+coalesce(t.summary_red_cards,0)) as f_card,
-    (coalesce(o.summary_yellow_cards,0)+coalesce(o.summary_red_cards,0)) as a_card,
+    (coalesce(t.summary_yellow_cards,0)+coalesce(t.summary_red_cards,0)*2) as f_card,
+    (coalesce(o.summary_yellow_cards,0)+coalesce(o.summary_red_cards,0)*2) as a_card,
     t.details_total_throws        as f_throw,   o.details_total_throws        as a_throw,
     t.details_goal_kicks          as f_gkick,   o.details_goal_kicks          as a_gkick,
     (coalesce(t.summary_red_cards,0)+coalesce(o.summary_red_cards,0)) as match_red_cards

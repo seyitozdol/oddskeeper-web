@@ -23,12 +23,12 @@ type Vals = {
 const n = (v: unknown): number | null =>
   v === null || v === undefined ? null : Number(v);
 
-// yellow + red toplam kart (kirmizi 1 sayilir; MSM "Card" pazariyla ayni mantik).
+// Kart = sari + kirmizi*2 (kirmizi 2 sayilir; MSM "Card" pazariyla ayni mantik).
 const cardTotal = (y: unknown, r: unknown): number | null => {
   const yy = n(y);
   const rr = n(r);
   if (yy === null && rr === null) return null;
-  return (yy ?? 0) + (rr ?? 0);
+  return (yy ?? 0) + (rr ?? 0) * 2;
 };
 
 export async function getMatchMarketBars(

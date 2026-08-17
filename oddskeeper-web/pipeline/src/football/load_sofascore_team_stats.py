@@ -145,6 +145,89 @@ def build_team_rows(event, statistics, incidents, competition):
     return [row(0), row(1)]
 
 
+def build_card_rows(event, incidents, lineup):
+    """Oyuncu-bazli kart olaylari -> football.match_player_cards satirlari.
+
+    on_pitch: kart, oyuncunun sahada oldugu dakika araliginda mi gorulmus.
+      - ilk 11: 0 .. (cikis dakikasi | mac sonu)
+      - sonradan giren: giris dakikasi .. (cikis | mac sonu)
+      - hic girmeyen (yedek): sahada degil -> tum kartlari off-pitch.
+    Kaynaklar: kartlar+degisiklikler /incidents'ten, ilk-11 lineup'tan,
+    mac sonu (uzatma) injuryTime(90)'dan.
+    """
+    mid = str(event["id"])
+    home_id = str(event["homeTeam"]["id"])
+    away_id = str(event["awayTeam"]["id"])
+    inc_list = (incidents or {}).get("incidents", []) or []
+
+    # mac sonu = 90 + 2. yari uzatmasi
+    add90 = None
+    sub_on, sub_off = {}, {}
+    for i in inc_list:
+        it = i.get("incidentType")
+        if it == "injuryTime" and i.get("time") == 90:
+            add90 = i.get("length")
+        elif it == "substitution":
+            mn = i.get("time") or 0
+            pin = (i.get("playerIn") or {}).get("id")
+            pout = (i.get("playerOut") or {}).get("id")
+            if pin is not None and str(pin) not in sub_on:
+                sub_on[str(pin)] = mn
+            if pout is not None and str(pout) not in sub_off:
+                sub_off[str(pout)] = mn
+    match_end = 90 + (add90 or 0)
+
+    # ilk 11 (lineup: substitute=False)
+    starters = set()
+    for side in ("home", "away"):
+        for p in (lineup.get(side) or {}).get("players") or []:
+            pid = (p.get("player") or {}).get("id")
+            if pid is not None and not p.get("substitute"):
+                starters.add(str(pid))
+
+    def interval(pid):
+        if pid in starters:
+            on = 0
+        elif pid in sub_on:
+            on = sub_on[pid]
+        else:
+            return None  # sahaya hic cikmamis
+        return on, sub_off.get(pid, match_end)
+
+    rows = []
+    for i in inc_list:
+        if i.get("incidentType") != "card":
+            continue
+        pl = i.get("player") or {}
+        pid = pl.get("id")
+        if pid is None:
+            continue  # teknik direktor/gorevli karti -> oyuncuya yazma
+        pid = str(pid)
+        minute = i.get("time")
+        iv = interval(pid)
+        if iv is None:
+            on_pitch = False
+        else:
+            on, off = iv
+            eff = minute if minute is not None else 0
+            on_pitch = (eff >= on) and (eff <= off)
+        rows.append({
+            "source": SOURCE,
+            "source_match_id": mid,
+            "source_team_id": home_id if i.get("isHome") else away_id,
+            "side": "home" if i.get("isHome") else "away",
+            "source_player_id": pid,
+            "player_name": pl.get("name"),
+            "card_class": i.get("incidentClass"),
+            "minute": minute,
+            "added_time": i.get("addedTime"),
+            "reason": i.get("reason"),
+            "rescinded": bool(i.get("rescinded")),
+            "on_pitch": on_pitch,
+        })
+    return rows
+
+
 def upsert(rows):
     if not rows:
         return
@@ -159,6 +242,25 @@ def upsert(rows):
     r = requests.post(url, headers=headers, data=json.dumps(rows), timeout=120)
     if r.status_code not in (200, 201, 204):
         raise RuntimeError(f"upsert match_team_stats hata {r.status_code}: {r.text[:300]}")
+
+
+def upsert_cards(rows):
+    if not rows:
+        return
+    url = (f"{SUPABASE_URL}/rest/v1/match_player_cards"
+           "?on_conflict=source,source_match_id,side,source_player_id,card_class,minute")
+    headers = {
+        "apikey": SUPABASE_KEY,
+        "Authorization": f"Bearer {SUPABASE_KEY}",
+        "Content-Profile": "football",
+        "Content-Type": "application/json",
+        "Prefer": "resolution=merge-duplicates,return=minimal",
+    }
+    for i in range(0, len(rows), 500):
+        chunk = rows[i:i + 500]
+        r = requests.post(url, headers=headers, data=json.dumps(chunk), timeout=120)
+        if r.status_code not in (200, 201, 204):
+            raise RuntimeError(f"upsert match_player_cards hata {r.status_code}: {r.text[:300]}")
 
 
 def _test():

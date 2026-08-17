@@ -131,7 +131,7 @@ def process_league(cfg: dict):
     loader.SEASON_LABEL = season_label
     loader.COMPETITION = comp
 
-    m_rows, p_rows, t_rows, s_rows = [], [], [], []
+    m_rows, p_rows, t_rows, s_rows, c_rows = [], [], [], [], []
     for ev in eligible:
         eid = ev["id"]
         try:
@@ -154,6 +154,9 @@ def process_league(cfg: dict):
             stats = get(f"{API}/event/{eid}/statistics")
             inc = get(f"{API}/event/{eid}/incidents")
             t_rows.extend(teamload.build_team_rows(ev, stats, inc, comp))
+            # Oyuncu-bazli kart olaylari (sahada-gorulen ayrimi icin). lineup
+            # yukarida cekildi; incidents'ten kart+degisiklik okunur.
+            c_rows.extend(teamload.build_card_rows(ev, inc, lineup))
         except Exception as e:  # noqa
             print(f"  takim-stat atlandi {eid}: {repr(e)[:80]}", flush=True)
         # Shotmap (kutu ici/disi sut kirilimlari). 404 = bu mac icin yok, zararsiz.
@@ -172,6 +175,9 @@ def process_league(cfg: dict):
     if t_rows:
         teamload.upsert(t_rows)
         print(f"[{comp}] takim-stat upsert: {len(t_rows)} satir", flush=True)
+    if c_rows:
+        teamload.upsert_cards(c_rows)
+        print(f"[{comp}] oyuncu-kart upsert: {len(c_rows)} kart", flush=True)
     if s_rows:
         shotload.upsert(s_rows)
         print(f"[{comp}] shotmap upsert: {len(s_rows)} sut", flush=True)

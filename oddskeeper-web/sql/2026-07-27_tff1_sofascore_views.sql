@@ -72,9 +72,6 @@ fs_agg as (
     round(sum((d.raw_stats->>'EXPECTED_GOALS')::numeric), 2)        as xg,
     round(sum((d.raw_stats->>'EXPECTED_GOALS_ON_TARGET')::numeric), 2) as xgot,
     round(sum((d.raw_stats->>'EXPECTED_ASSISTS')::numeric), 2)      as xa,
-    sum(coalesce((d.raw_stats->>'CARDS_YELLOW')::int, 0))           as yellow_cards,
-    -- CARDS_RED ikinci saridan atilmalari da icerir (dogrulandi), ekstra toplama yok
-    sum(coalesce((d.raw_stats->>'CARDS_RED')::int, 0))              as red_cards,
     -- FlashScore ayrintili pozisyon adi (Winger, Centre back vs.)
     mode() within group (order by d.raw_stats->>'_position')        as fs_position
   from football.match_player_stats_details d
@@ -83,6 +80,22 @@ fs_agg as (
   join ref.flashscore_player_map fmap
     on fmap.flashscore_player_id = d.source_player_id
   where d.source = 'flashscore'
+    and m.competition = 'Trendyol 1. Lig'
+  group by 1, 2
+),
+-- Kart overlay: SADECE sahada gorulen kartlar (football.match_player_cards,
+-- on_pitch=true, rescinded=false). SofaScore oyuncu id ile anahtarlanir (agg.player_id
+-- = source_player_id ile birebir). Bench/oyun-disi kartlar oyuncuya yazilmaz.
+card_agg as (
+  select
+    m.season_label,
+    pc.source_player_id                                            as player_id,
+    count(*) filter (where pc.card_class = 'yellow')               as yellow_cards,
+    count(*) filter (where pc.card_class in ('red','yellowRed'))   as red_cards
+  from football.match_player_cards pc
+  join football.matches m
+    on m.source = pc.source and m.source_match_id = pc.source_match_id
+  where pc.source = 'sofascore' and pc.on_pitch and not pc.rescinded
     and m.competition = 'Trendyol 1. Lig'
   group by 1, 2
 ),
@@ -149,12 +162,14 @@ select
   fs.xg,
   fs.xgot,
   fs.xa,
-  fs.yellow_cards,
-  fs.red_cards,
+  coalesce(cc.yellow_cards, 0)                                  as yellow_cards,
+  coalesce(cc.red_cards, 0)                                     as red_cards,
   fs.fs_position
 from agg
 left join fs_agg fs
-  on fs.season_label = agg.season_label and fs.player_id = agg.player_id;
+  on fs.season_label = agg.season_label and fs.player_id = agg.player_id
+left join card_agg cc
+  on cc.season_label = agg.season_label and cc.player_id = agg.player_id;
 
 create or replace view analytics.tff1_team_season_stats_v1 as
 with team_matches as (

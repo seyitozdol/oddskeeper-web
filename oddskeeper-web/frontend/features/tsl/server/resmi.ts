@@ -230,7 +230,7 @@ export async function getTeamAggression(
     const v = toNum(r.total_value) ?? 0;
     if (r.metric_key === "cards_yellow_total") out[id].yellow += v;
     else out[id].red += v;
-    out[id].total = out[id].yellow + out[id].red;
+    out[id].total = out[id].yellow + out[id].red * 2;
   }
   return out;
 }

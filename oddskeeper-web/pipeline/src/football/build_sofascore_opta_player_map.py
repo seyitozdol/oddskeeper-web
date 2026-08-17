@@ -200,6 +200,17 @@ def main():
         )
         conn.commit()
         print("COMMIT edildi")
+        # Kimlik haritasi degisince bagimli tsl_ss mat'lari bayatlar; harita
+        # sonradan eklenen oyuncu (or. Kerem) rankings/leaderboard'dan kaybolur.
+        # Harita yazilir yazilmaz mat'lari bagimlilik sirasiyla tazele.
+        try:
+            import importlib
+            importlib.import_module("refresh_tsl_mats").main()
+            print("[mat] tsl_ss mat'lar harita sonrasi tazelendi")
+        except SystemExit as e:  # bazi mat patlasa da harita yazildi
+            print(f"UYARI: bazi mat tazelenemedi: {e}")
+        except Exception as e:  # noqa
+            print(f"UYARI: mat refresh atlandi: {e}")
     else:
         conn.rollback()
         print("DRY RUN")

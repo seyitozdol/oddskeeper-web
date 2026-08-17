@@ -199,7 +199,7 @@ export async function cupAggression(season: string): Promise<Record<string, Team
     if (r.stat_type === "yellow_card" || r.stat_type === "second_yellow_card") out[id].yellow += v;
     else out[id].red += v;
     out[id].matches = Math.max(out[id].matches, toNum(r.apps) ?? 0);
-    out[id].total = out[id].yellow + out[id].red;
+    out[id].total = out[id].yellow + out[id].red * 2;
   }
   return out;
 }
