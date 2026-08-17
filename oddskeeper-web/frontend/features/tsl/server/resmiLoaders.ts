@@ -80,7 +80,7 @@ type Provider = {
   players(season: string, meta: Record<string, TslTeamMeta>, assets: Record<string, PlayerAsset>): Promise<ResmiPlayerRow[]>;
   assets(): Promise<Record<string, PlayerAsset>>;
   catalog(season: string): Promise<TslMetricOption[]>;
-  leaderboard(season: string, metricKey: string, meta: Record<string, TslTeamMeta>): Promise<TslLeaderRow[]>;
+  leaderboard(season: string, metricKey: string, meta: Record<string, TslTeamMeta>, includeUnqualified?: boolean): Promise<TslLeaderRow[]>;
   teamMetrics(season: string, meta: Record<string, TslTeamMeta>): Promise<TslTeamMetric[]>;
   teamLeaderboard(season: string, meta: Record<string, TslTeamMeta>): Promise<TslTeamLeaderRow[]>;
   aggression(season: string): Promise<Record<string, TeamAggression>>;
@@ -128,7 +128,7 @@ function providerFor(config: LeagueConfig): Provider {
     players: (s, meta, assets) => getResmiPlayers(s, meta, assets),
     assets: () => getPlayerAssets(),
     catalog: (s) => getTslPlayerCatalog(s),
-    leaderboard: (s, mk) => getTslLeaderboard(s, mk),
+    leaderboard: (s, mk, _meta, inc) => getTslLeaderboard(s, mk, { includeUnqualified: inc }),
     teamMetrics: (s, meta) => getTslTeamMetrics(s, meta),
     teamLeaderboard: (s, meta) => getTslTeamLeaderboard(s, meta),
     aggression: (s) => getTeamAggression(s),
@@ -725,7 +725,9 @@ export async function loadResmiPlayerRankings(
     catalog[0] ??
     null;
   const metricKey = metric?.metricKey ?? "goals_total";
-  const [rows, assets] = await Promise.all([p.leaderboard(season, metricKey, meta), p.assets()]);
+  // Player Rankings: esik-disi (kisa dakikali) oyuncular da gorunsun/aranabilsin
+  // ( or. sezon basi 25 dk oynayan Kerem). Liderler yine toplama gore ustte kalir.
+  const [rows, assets] = await Promise.all([p.leaderboard(season, metricKey, meta, true), p.assets()]);
   const teamHrefById = await buildTeamHrefs(
     config,
     collectEntries(meta, { leaders: rows }),
