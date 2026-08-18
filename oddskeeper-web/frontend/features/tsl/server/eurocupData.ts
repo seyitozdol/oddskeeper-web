@@ -2,6 +2,7 @@
 // view-prefix (ucl/uel/uecl) parametreli; uc kupa da bunu kullanir (tekrar yok).
 // prefix_* view'lari (matches/fixtures/player_season_stats/team_season_stats) her
 // kupaya ozel; team_logos/player_info generic tff1_* (id-bazli) paylasilir.
+import { cache } from "react";
 import { createClient } from "../../../lib/supabase/server";
 import { toNum } from "../lib";
 import type {
@@ -93,6 +94,30 @@ function catLabel(key: string | null): string {
   const m: Record<string, string> = { attacking: "Hücum", build_up: "Oyun Kurma", defending: "Savunma", discipline: "Disiplin" };
   return key ? m[key] ?? key : "";
 }
+
+// SofaScore oyuncu id -> football profil slug'i (tek-profil birlestirme).
+// Kupa yuzeylerindeki her oyuncu linki bu haritayla slug-keyed football
+// player-detail'e gider (ayri kupa profili YOK). Istek basina cache'li;
+// view Faz 2b sonrasi tum kupa oyuncularini kapsar (~10k satir, 2 kolon).
+export const getFootballSlugMap = cache(
+  async (): Promise<Record<string, string>> => {
+    const sb = await createClient();
+    const out: Record<string, string> = {};
+    for (let from = 0; ; from += 1000) {
+      const { data, error } = await sb
+        .schema("analytics")
+        .from("sofascore_football_player_link_v1")
+        .select("sofascore_player_id, player_slug")
+        .order("sofascore_player_id", { ascending: true })
+        .range(from, from + 999);
+      if (error || !data || data.length === 0) break;
+      for (const r of data)
+        if (r.player_slug) out[String(r.sofascore_player_id)] = String(r.player_slug);
+      if (data.length < 1000) break;
+    }
+    return out;
+  }
+);
 function formOf(teamId: string, matches: TslMatch[]): FormResult[] {
   const played = matches.filter((m) => m.homeId === teamId || m.awayId === teamId).slice().reverse().slice(-5);
   return played.map((m) => {
@@ -129,9 +154,10 @@ export function makeCupProvider(COMP: string, prefix: string) {
   }
 
   async function assets(): Promise<Record<string, PlayerAsset>> {
-    const info = await playerInfoMap();
+    const [info, slugs] = await Promise.all([playerInfoMap(), getFootballSlugMap()]);
     const out: Record<string, PlayerAsset> = {};
-    for (const [id, v] of Object.entries(info)) out[id] = { slug: null, photo: v.photo, nationality: v.country };
+    for (const [id, v] of Object.entries(info))
+      out[id] = { slug: slugs[id] ?? null, photo: v.photo, nationality: v.country };
     return out;
   }
 
@@ -206,7 +232,11 @@ export function makeCupProvider(COMP: string, prefix: string) {
   }
 
   async function players(season: string, meta: Record<string, TslTeamMeta>): Promise<ResmiPlayerRow[]> {
-    const [rows, info] = await Promise.all([playerRows(season), playerInfoMap()]);
+    const [rows, info, slugs] = await Promise.all([
+      playerRows(season),
+      playerInfoMap(),
+      getFootballSlugMap(),
+    ]);
     return rows.map((r) => {
       const id = String(r.player_id);
       const teamId = String(r.team_id ?? "");
@@ -225,7 +255,7 @@ export function makeCupProvider(COMP: string, prefix: string) {
       return {
         playerId: id, name: (r.player_name as string) ?? "—", positionCode: (r.position_code as string) ?? null,
         teamId, teamName: meta[teamId]?.name ?? (r.team_name as string) ?? null, teamLogo: meta[teamId]?.logo ?? null,
-        slug: null, playerHref: null, teamHref: null,
+        slug: slugs[id] ?? null, playerHref: null, teamHref: null,
         photo: info[id]?.photo ?? null, nationality: info[id]?.country ?? null, inCurrentSquad: true,
         metrics,
       };

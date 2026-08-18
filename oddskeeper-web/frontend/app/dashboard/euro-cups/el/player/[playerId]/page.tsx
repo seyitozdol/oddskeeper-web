@@ -1,25 +1,14 @@
-import EuroCupPlayerDetail from "@/features/tsl/resmi/EuroCupPlayerDetail";
+import { redirectCupPlayerToProfile } from "@/features/tsl/server/cupProfileRedirect";
 
-export const metadata = { title: "Oyuncu · Avrupa Ligi" };
-
+// Tek-profil birlestirme: eski EL oyuncu URL'i football profiline yonlenir.
 export default async function ElPlayerPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ playerId: string }>;
-  searchParams: Promise<{ tab?: string }>;
 }) {
   const { playerId } = await params;
-  const { tab } = await searchParams;
-  return (
-    <EuroCupPlayerDetail
-      playerId={playerId}
-      viewPrefix="uel"
-      competition="UEFA Avrupa Ligi"
-      matchBase="/dashboard/euro-cups/el/match"
-      playerBase="/dashboard/euro-cups/el/player"
-      backBase="/dashboard/euro-cups/el/resmi?season=2026%2F2027&section=players"
-      tab={tab}
-    />
+  await redirectCupPlayerToProfile(
+    playerId,
+    "/dashboard/euro-cups/el/resmi?season=2026%2F2027&section=players"
   );
 }

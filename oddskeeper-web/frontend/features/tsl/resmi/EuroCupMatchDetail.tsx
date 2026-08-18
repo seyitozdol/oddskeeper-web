@@ -8,6 +8,8 @@ import {
   getCupMatchPlayers,
   getCupMatchBars,
 } from "@/features/tsl/server/cupMatch";
+import { getFootballSlugsByIds } from "@/features/tsl/server/cupPlayerProfile";
+import { getPlayerDetailHref } from "@/lib/routes";
 import type { TslMatchPlayer } from "@/features/tsl/server/match";
 import MatchPlayerTable, {
   type MatchPlayerRow,
@@ -20,11 +22,16 @@ function statusRank(s: string | null): number {
   return 2;
 }
 
-function toPlayerRow(p: TslMatchPlayer): MatchPlayerRow {
+function toPlayerRow(
+  p: TslMatchPlayer,
+  slugById: Record<string, string>
+): MatchPlayerRow {
   return {
     playerId: p.playerId,
     playerName: p.playerName,
-    playerHref: null,
+    // Tek-profil: oyuncu adi football profiline (slug); slug yoksa duz metin
+    // (FS-fallback kimlikli eleme oyunculari gibi).
+    playerHref: getPlayerDetailHref(slugById[p.playerId] ?? null),
     positionCode: p.positionCode,
     lineupStatus: p.lineupStatus,
     minutes: p.minutes,
@@ -56,6 +63,7 @@ export default async function CupMatchDetail({
   const match = await getCupMatch(matchId);
   if (!match) notFound();
   const players = await getCupMatchPlayers(matchId, match.homeId, match.awayId);
+  const slugById = await getFootballSlugsByIds(players.map((p) => p.playerId));
 
   const sortRows = (rows: TslMatchPlayer[]) =>
     [...rows].sort(
@@ -164,11 +172,11 @@ export default async function CupMatchDetail({
           <div className="mt-3 grid gap-6 xl:grid-cols-2">
             <div>
               <h3 className="mb-2 text-sm font-semibold text-ink">{match.homeName}</h3>
-              <MatchPlayerTable rows={homeRows.map(toPlayerRow)} tr={locale === "tr"} />
+              <MatchPlayerTable rows={homeRows.map((p) => toPlayerRow(p, slugById))} tr={locale === "tr"} />
             </div>
             <div>
               <h3 className="mb-2 text-sm font-semibold text-ink">{match.awayName}</h3>
-              <MatchPlayerTable rows={awayRows.map(toPlayerRow)} tr={locale === "tr"} />
+              <MatchPlayerTable rows={awayRows.map((p) => toPlayerRow(p, slugById))} tr={locale === "tr"} />
             </div>
           </div>
         )}

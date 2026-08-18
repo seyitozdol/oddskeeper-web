@@ -76,6 +76,14 @@ function resultBadgeClass(res: "W" | "D" | "L" | null) {
   return "bg-veil text-ink-2";
 }
 
+// Lig dışı (kupa) maçlarını sonuç listesinde işaretlemek için kısa rozet.
+const CUP_SHORT: Record<string, string> = {
+  "UEFA Şampiyonlar Ligi": "CL",
+  "UEFA Avrupa Ligi": "EL",
+  "UEFA Konferans Ligi": "Konf",
+  "Türkiye Kupası": "TK",
+};
+
 // Kümülatif puan serisi (render dışı saf yardımcı; lint immutability kuralı
 // component gövdesinde closure mutasyonuna izin vermiyor).
 function buildCumulativeTrend(rows: TeamResultRow[]): ShowcaseTrendPoint[] {
@@ -251,20 +259,39 @@ export async function TeamShowcasePanel({
   const seasonLabel = summary?.season_label ?? null;
 
   // Sezon pilleri (en yeni önce)
-  const seasonsSorted = [...seasonHistory].sort((a, b) =>
+  // Sezon pilleri + mini sezon tablosu LİG satırlarından kurulur: dual
+  // takımlarda (GS/FB) aynı sezonun kupa kampanyası ayrı satır olarak gelir,
+  // filtrelenmezse sezon pili/tablosu çiftlenir. Kupa kampanyaları Season
+  // History sekmesinde rozetli görünür.
+  const seasonRowsAll = [...seasonHistory].sort((a, b) =>
     (b.season_label ?? "").localeCompare(a.season_label ?? "")
   );
+  const seasonsSorted = seasonRowsAll.filter((row, _i, arr) => {
+    if (!CUP_SHORT[row.competition ?? ""]) return true;
+    return !arr.some(
+      (o) =>
+        o.season_label === row.season_label && !CUP_SHORT[o.competition ?? ""]
+    );
+  });
 
-  // Sezon sonuçları: grafik için eskiden yeniye, tablo için yeniden eskiye
+  // Sezon sonuçları: grafik için eskiden yeniye, tablo için yeniden eskiye.
+  // Sonuç listesi TÜM rekabetleri içerir (kupa maçları competition rozetiyle);
+  // kümülatif puan trendi ve form ise yalnız LİG maçlarından hesaplanır
+  // (kupa galibiyeti lig puanı değildir).
   const seasonResults = results
     .filter((r) => !seasonLabel || r.season_label === seasonLabel)
     .sort((a, b) => (a.match_datetime ?? "").localeCompare(b.match_datetime ?? ""));
+  const leagueComp = summary?.competition ?? null;
+  const leagueResults = leagueComp
+    ? seasonResults.filter((r) => r.competition === leagueComp)
+    : seasonResults;
   const resultsDesc = [...seasonResults].reverse();
+  const leagueDesc = [...leagueResults].reverse();
   const tableRows = resultsDesc.slice(0, 6);
-  const last5 = recentForm.length > 0 ? recentForm.slice(0, 5) : resultsDesc.slice(0, 5);
+  const last5 = recentForm.length > 0 ? recentForm.slice(0, 5) : leagueDesc.slice(0, 5);
 
-  // Kümülatif puan grafiği
-  const trendPoints = buildCumulativeTrend(seasonResults);
+  // Kümülatif puan grafiği (yalnız lig)
+  const trendPoints = buildCumulativeTrend(leagueResults);
   const yMax = Math.max(trendPoints[trendPoints.length - 1]?.value ?? 0, 3);
   const yTicks = [0, Math.round(yMax / 3), Math.round((2 * yMax) / 3), yMax].filter(
     (v, i, a) => a.indexOf(v) === i
@@ -829,7 +856,7 @@ export async function TeamShowcasePanel({
                           <td className="whitespace-nowrap px-2 py-2 text-ink-2">
                             {formatDate(row.match_datetime)}
                           </td>
-                          <td className="max-w-[150px] px-2 py-2">
+                          <td className="max-w-[170px] px-2 py-2">
                             <span className="flex items-center gap-1.5">
                               {oppLogo ? (
                                 <Image
@@ -846,6 +873,14 @@ export async function TeamShowcasePanel({
                               >
                                 {shortOpp(row.opponent_team_slug, row.opponent_name)}
                               </span>
+                              {leagueComp && row.competition && row.competition !== leagueComp ? (
+                                <span
+                                  className="shrink-0 rounded bg-accent-soft px-1 py-0.5 text-[9px] font-semibold text-accent-ink"
+                                  title={row.competition}
+                                >
+                                  {CUP_SHORT[row.competition] ?? row.competition}
+                                </span>
+                              ) : null}
                             </span>
                           </td>
                           <td className="whitespace-nowrap px-2 py-2">

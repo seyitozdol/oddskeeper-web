@@ -7,6 +7,7 @@ import {
   teamHrefFor,
   type LeagueConfig,
 } from "../leagues";
+import { getFootballTeamSlugMap } from "./cupProfileRedirect";
 import { slugifyTeamName } from "../../../lib/football-teams";
 import { slugForSofascoreTeam } from "../../../lib/sofascore-team-map";
 import { previousSeasonLabel } from "../../../lib/season";
@@ -211,18 +212,23 @@ function collectEntries(
 
 // Takım id -> detay href. tff1: her id için geçerli URL (slug gerekmez).
 // tsl: ad/logo'dan çözülen slug varsa football profiline, yoksa null.
+// Avrupa kupası: dual (Süper Lig eşleşmeli) takım football profiline,
+// yabancı takım birleşik kupa takım sayfasına (tek-profil ilkesi).
 async function buildTeamHrefs(
   config: LeagueConfig,
   entries: HrefEntry[],
   season: string
 ): Promise<Record<string, string | null>> {
   const out: Record<string, string | null> = {};
-  // tsl + cup opta-slug'lı football profillerine gider; ikisi de valid slug seti ister.
-  // tff1 + Avrupa kupasi id-bazli (slug gerekmez; kupa null doner).
-  const idBased = config.source === "tff1" || isEuroCupSource(config.source);
-  const valid = !idBased ? new Set(Object.keys(await getAllFootballTeamLogos())) : null;
+  const euro = isEuroCupSource(config.source);
+  const idBased = config.source === "tff1";
+  const euroSlugs = euro ? await getFootballTeamSlugMap() : null;
+  const valid =
+    !idBased && !euro ? new Set(Object.keys(await getAllFootballTeamLogos())) : null;
   for (const e of entries) {
-    if (idBased) {
+    if (euro) {
+      out[e.teamId] = teamHrefFor(config, e.teamId, euroSlugs?.[e.teamId] ?? null, season);
+    } else if (idBased) {
       out[e.teamId] = teamHrefFor(config, e.teamId, null, season);
     } else {
       const slug = resolveFootballSlug(e.teamName, e.logo, valid!);

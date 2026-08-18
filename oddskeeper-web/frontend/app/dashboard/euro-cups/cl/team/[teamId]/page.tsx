@@ -1,7 +1,7 @@
-import EuroCupTeamDetail from "@/features/tsl/resmi/EuroCupTeamDetail";
+import { redirect } from "next/navigation";
 
-export const metadata = { title: "Takım · Şampiyonlar Ligi" };
-
+// Tek-profil birlestirme: eski kupa-basina takim URL'i birlesik takim
+// profiline yonlenir (dual takimlar oradan football profiline gider).
 export default async function ClTeamPage({
   params,
   searchParams,
@@ -9,20 +9,9 @@ export default async function ClTeamPage({
   params: Promise<{ teamId: string }>;
   searchParams: Promise<{ tab?: string; season?: string }>;
 }) {
-  const { teamId } = await params;
-  const { tab, season } = await searchParams;
-  return (
-    <EuroCupTeamDetail
-      teamId={teamId}
-      viewPrefix="ucl"
-      competition="UEFA Şampiyonlar Ligi"
-      matchBase="/dashboard/euro-cups/cl/match"
-      playerBase="/dashboard/euro-cups/cl/player"
-      teamBase="/dashboard/euro-cups/cl/team"
-      backBase="/dashboard/euro-cups/cl/resmi?season=2026%2F2027&section=teams"
-      leagueLogo="/images/leagues/ucl.png"
-      tab={tab}
-      season={season}
-    />
-  );
+  const [{ teamId }, { tab, season }] = await Promise.all([params, searchParams]);
+  const q = new URLSearchParams({ comp: "ucl" });
+  if (season) q.set("season", season);
+  if (tab) q.set("tab", tab);
+  redirect(`/dashboard/euro-cups/team/${encodeURIComponent(teamId)}?${q.toString()}`);
 }

@@ -1,5 +1,29 @@
 # Tek-Profil Birleştirme — Sonraki Oturum Prompt'u
 
+> **DURUM (2026-08-18): TÜM FAZLAR TAMAMLANDI (2b + 3 + 4).** Bu doküman artık
+> tarihsel kayıt. Yapılanların özeti:
+> - **Faz 2b**: `player_profile_sofascore_v1` + current-info köprüsü kupalara
+>   genişledi (yalnız synthetic + SL-verisi-olmayan oyuncular; opsiyon c) —
+>   kupa-only oyuncular (Mbappe) profil+foto aldı; Talisca/Uğurcan bire bir
+>   değişmedi, non-synthetic 553 sabit. Ek: Faz 2a'nın opta_seasons dışlaması
+>   yalnız SL satırlarına daraltıldı (Torreira'nın CL 25/26 12 maçı loga geldi).
+>   Migration: `sql/2026-08-18_player_profile_cup_widen.sql` (canlı).
+> - **Faz 3**: `sofascore_football_player_link_v1` synthetic dışlaması kalktı
+>   (`sql/2026-08-18_player_link_all_profiles.sql`, canlı); kupa Players/
+>   sıralama/kadro/maç-detay oyuncu linkleri TEK football profiline;
+>   EuroCupPlayerDetail + CupCrossLeagueToggle + player toggle loader'ları
+>   SİLİNDİ; eski /euro-cups/*/player/[id] URL'leri slug çözüp redirect eder.
+> - **Faz 4**: `team_results_v1` + `team_recent_form_v1` kaynak-öncelikli dedup
+>   (opta>apifootball>sofascore; GS 25/26'daki çift satır bug'ı da düzeldi) —
+>   `sql/2026-08-18_team_results_source_dedup.sql` (canlı). Dual takımlar
+>   football takım profiline (sonuçlarda kupa rozetli, form/trend/özet lig-öncelikli);
+>   yabancı takımlar TEK birleşik `/dashboard/euro-cups/team/[teamId]` sayfasında
+>   (kupa kırılımı sayfa içi ?comp= pilleri); eski 3 takım route'u redirect.
+> - Perf korumaları: getPlayerSlugMap sayfalama+filtre (1000-satır kırpılması da
+>   düzeldi), getPlayerAssets full-scan TSL filtresi.
+> - tsc 0 hata; dev tarayıcı doğrulaması yapıldı; changelog entry eklendi.
+
+> (Aşağısı tarihsel plan metnidir.)
 > Bunu bir sonraki oturuma **olduğu gibi** ver. Agent bu dosyayı baştan sona okumalı,
 > KOD YAZMADAN ÖNCE bahsedilen dosya/view'ları gerçekten okuyup DB'de doğrulamalı,
 > ve aşağıdaki "SAHİBİN ENDİŞELERİ"ni içselleştirmeli. Kolay yerden başlama; önce

@@ -1,7 +1,7 @@
-import EuroCupTeamDetail from "@/features/tsl/resmi/EuroCupTeamDetail";
+import { redirect } from "next/navigation";
 
-export const metadata = { title: "Takım · Konferans Ligi" };
-
+// Tek-profil birlestirme: eski kupa-basina takim URL'i birlesik takim
+// profiline yonlenir (dual takimlar oradan football profiline gider).
 export default async function ConfTeamPage({
   params,
   searchParams,
@@ -9,20 +9,9 @@ export default async function ConfTeamPage({
   params: Promise<{ teamId: string }>;
   searchParams: Promise<{ tab?: string; season?: string }>;
 }) {
-  const { teamId } = await params;
-  const { tab, season } = await searchParams;
-  return (
-    <EuroCupTeamDetail
-      teamId={teamId}
-      viewPrefix="uecl"
-      competition="UEFA Konferans Ligi"
-      matchBase="/dashboard/euro-cups/conf/match"
-      playerBase="/dashboard/euro-cups/conf/player"
-      teamBase="/dashboard/euro-cups/conf/team"
-      backBase="/dashboard/euro-cups/conf/resmi?season=2026%2F2027&section=teams"
-      leagueLogo="/images/leagues/uecl.png"
-      tab={tab}
-      season={season}
-    />
-  );
+  const [{ teamId }, { tab, season }] = await Promise.all([params, searchParams]);
+  const q = new URLSearchParams({ comp: "uecl" });
+  if (season) q.set("season", season);
+  if (tab) q.set("tab", tab);
+  redirect(`/dashboard/euro-cups/team/${encodeURIComponent(teamId)}?${q.toString()}`);
 }

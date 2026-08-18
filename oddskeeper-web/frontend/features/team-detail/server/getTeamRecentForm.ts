@@ -51,11 +51,14 @@ function mapRow(row: TeamRecentFormDbRow): TeamRecentFormRow {
 
 export async function getTeamRecentForm(
   teamSlug: string,
-  _competition: string,
+  competition: string,
   seasonLabel: string
 ): Promise<TeamRecentFormRow[]> {
   const supabase = await createClient();
 
+  // competition filtresi: view rekabet-bazlı partition'lı (lig + kupa ayrı ayrı
+  // son 5). Form kartı LİG formu gösterir; filtre olmadan dual takımlarda
+  // (GS/FB) kupa formu satırları lig formuna karışıyordu.
   const { data, error } = await supabase
     .schema("analytics")
     .from("team_recent_form_v1")
@@ -79,6 +82,7 @@ export async function getTeamRecentForm(
       `
     )
     .eq("team_slug", teamSlug)
+    .eq("competition", competition)
     .eq("season_label", seasonLabel)
     .order("recent_rank", { ascending: true })
     .returns<TeamRecentFormDbRow[]>();

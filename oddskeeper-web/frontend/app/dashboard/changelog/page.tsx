@@ -21,6 +21,24 @@ const TAG_NEW_TOOL: L = { en: "New tool", tr: "Yeni araç" };
 const ENTRIES: Entry[] = [
   {
     date: { en: "18 August", tr: "18 Ağustos" },
+    title: {
+      en: "One profile per player and team, across all competitions",
+      tr: "Oyuncu ve takım başına tek profil, tüm rekabetlerde",
+    },
+    tag: TAG_NEW,
+    items: [
+      {
+        en: "Player and team profiles are now unified. Clicking a player anywhere — Süper Lig, or the Champions, Europa and Conference League lists, rankings and match pages — opens the same single profile, and its match log covers every competition with a competition label (e.g. Torreira's league and Champions League matches in one list). Cup-only stars like Mbappé get the same full profile with photo. The separate per-cup profile pages and the toggle between them are gone; old links redirect automatically.",
+        tr: "Oyuncu ve takım profilleri artık birleşik. Bir oyuncuya nerede tıklarsanız tıklayın — Süper Lig ya da Şampiyonlar, Avrupa ve Konferans Ligi listeleri, sıralamalar ve maç sayfaları — aynı tek profil açılır; maç logu tüm rekabetleri rekabet etiketiyle tek listede gösterir (ör. Torreira'nın lig ve Şampiyonlar Ligi maçları bir arada). Mbappé gibi yalnız kupada oynayan yıldızlar da fotoğraflı aynı tam profili alır. Kupa başına ayrı profil sayfaları ve aralarındaki geçiş düğmeleri kaldırıldı; eski linkler otomatik yönlenir.",
+      },
+      {
+        en: "Team results on Süper Lig team profiles now include European cup matches with a small cup badge, the recent-form card counts league matches only, and a duplicate-row issue in results and form (the same match listed twice) is fixed. Foreign cup teams have one combined profile covering all the cups they play in.",
+        tr: "Süper Lig takım profillerindeki sonuç listesi artık Avrupa kupası maçlarını küçük kupa rozetiyle içeriyor, form kartı yalnız lig maçlarını sayıyor ve sonuç/form listelerinde aynı maçın iki kez görünmesi sorunu düzeltildi. Yabancı kupa takımlarının, oynadıkları tüm kupaları kapsayan tek birleşik profili var.",
+      },
+    ],
+  },
+  {
+    date: { en: "18 August", tr: "18 Ağustos" },
     title: { en: "Automatic sign-out at end of day", tr: "Gün sonunda otomatik çıkış" },
     items: [
       {

@@ -148,8 +148,26 @@ export default async function TeamDetailPage({
         .filter((label): label is string => Boolean(label))
     )
   );
+  // Sayfa bağlamı (özet, form, split, radar havuzu) LİG satırından kurulur:
+  // dual takımlarda (GS/FB) aynı sezonda kupa satırları da var; kupa maçları
+  // sonuç listesinde rozetle görünür ama sezon özeti kupaya kaymamalı.
+  const CUP_COMPETITIONS = new Set([
+    "UEFA Şampiyonlar Ligi",
+    "UEFA Avrupa Ligi",
+    "UEFA Konferans Ligi",
+    "Türkiye Kupası",
+  ]);
+  const leagueRowFor = (season: string | null | undefined) =>
+    seasonsSorted.find(
+      (row) =>
+        row.season_label === season &&
+        !CUP_COMPETITIONS.has(row.competition ?? "")
+    ) ?? seasonsSorted.find((row) => row.season_label === season);
   const statsSummary =
-    seasonsSorted.find((row) => row.season_label === requestedSeason) ??
+    leagueRowFor(requestedSeason) ??
+    seasonsSorted.find(
+      (row) => !CUP_COMPETITIONS.has(row.competition ?? "")
+    ) ??
     seasonsSorted[0] ??
     null;
 

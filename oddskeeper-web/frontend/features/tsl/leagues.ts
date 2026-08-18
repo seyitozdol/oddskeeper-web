@@ -18,8 +18,6 @@ export type LeagueConfig = {
   defaultSeason: string;
   basePath: string; // resmi deneyim kök yolu
   matchBase: string; // maç detay kök yolu (/{matchId})
-  playerBase?: string; // oyuncu profil kök yolu (/{playerId}); Avrupa kupası
-  teamBase?: string; // takım profil kök yolu (/{teamId}); Avrupa kupası
   logo: string; // public/images/leagues/*.png
   nameKey: string; // i18n lig adı anahtarı
   transfersLeague: string | null; // tsl_transfers.season_label yok; league yok -> tsl only
@@ -84,8 +82,6 @@ export const EUROCL_LEAGUE: LeagueConfig = {
   defaultSeason: "2026/2027",
   basePath: "/dashboard/euro-cups/cl/resmi",
   matchBase: "/dashboard/euro-cups/cl/match",
-  playerBase: "/dashboard/euro-cups/cl/player",
-  teamBase: "/dashboard/euro-cups/cl/team",
   logo: "/images/leagues/ucl.png",
   nameKey: "tsl.uclName",
   transfersLeague: null,
@@ -102,8 +98,6 @@ export const EUEL_LEAGUE: LeagueConfig = {
   defaultSeason: "2026/2027",
   basePath: "/dashboard/euro-cups/el/resmi",
   matchBase: "/dashboard/euro-cups/el/match",
-  playerBase: "/dashboard/euro-cups/el/player",
-  teamBase: "/dashboard/euro-cups/el/team",
   logo: "/images/leagues/uel.png",
   nameKey: "tsl.uelName",
   transfersLeague: null,
@@ -120,8 +114,6 @@ export const EUECL_LEAGUE: LeagueConfig = {
   defaultSeason: "2026/2027",
   basePath: "/dashboard/euro-cups/conf/resmi",
   matchBase: "/dashboard/euro-cups/conf/match",
-  playerBase: "/dashboard/euro-cups/conf/player",
-  teamBase: "/dashboard/euro-cups/conf/team",
   logo: "/images/leagues/uecl.png",
   nameKey: "tsl.ueclName",
   transfersLeague: null,
@@ -137,11 +129,12 @@ export function teamHrefFor(
   teamSlug: string | null,
   season?: string
 ): string | null {
-  // Avrupa kupasi: sofascore-keyed takim profili (teamBase configde).
+  // Avrupa kupasi: TEK profil ilkesi — Super Lig eslesmesi olan (dual) takim
+  // football takim profiline; yabanci takim birlesik kupa takim sayfasina
+  // (kupa kirilimi o sayfanin icinde, kupa basina ayri sayfa yok).
   if (isEuroCupSource(config.source)) {
-    return config.teamBase
-      ? `${config.teamBase}/${encodeURIComponent(teamId)}`
-      : null;
+    if (teamSlug) return getTeamDetailHref(teamSlug);
+    return `/dashboard/euro-cups/team/${encodeURIComponent(teamId)}`;
   }
   // tff1: sofascore takım id'li mevcut sayfa.
   if (config.source === "tff1") {
@@ -162,11 +155,12 @@ export function playerHrefFor(
   playerId: string,
   playerSlug: string | null
 ): string | null {
-  // Avrupa kupasi: sofascore-keyed oyuncu profili (playerBase configde).
+  // Avrupa kupasi: TEK football profili (slug). Faz 2b sonrasi her kupa
+  // oyuncusunun slug'i var (sofascore_football_player_link_v1 ile cozulur);
+  // slug gelmemisse (veri gecikmesi) link duz metne duser, ayri kupa
+  // profil sayfasi YOK.
   if (isEuroCupSource(config.source)) {
-    return config.playerBase
-      ? `${config.playerBase}/${encodeURIComponent(playerId)}`
-      : null;
+    return getPlayerDetailHref(playerSlug);
   }
   if (config.source === "tff1") return `/dashboard/tff-1-lig/player/${encodeURIComponent(playerId)}`;
   // cup: eşleşen (slug var) football profiline; eşleşmeyen kupa oyuncu profiline.

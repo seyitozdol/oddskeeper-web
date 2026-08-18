@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import type { PlayerMatchLogRow } from "../types";
 import { formatDate } from "../utils/formatDate";
@@ -31,6 +32,15 @@ function normalizeLineupStatus(value?: string | null) {
   if (normalized === "substitute") return "substitute";
   return "other";
 }
+
+// Tek profil tüm rekabetleri kapsar: lig dışı (kupa) maçlar rakip adının
+// yanında kısa rozetle işaretlenir ve maç linki kupanın kendi detay
+// sayfasına gider (football maç sayfası opta-id uzayındadır).
+const CUP_INFO: Record<string, { short: string; matchBase: string }> = {
+  "UEFA Şampiyonlar Ligi": { short: "CL", matchBase: "/dashboard/euro-cups/cl/match" },
+  "UEFA Avrupa Ligi": { short: "EL", matchBase: "/dashboard/euro-cups/el/match" },
+  "UEFA Konferans Ligi": { short: "Konf", matchBase: "/dashboard/euro-cups/conf/match" },
+};
 
 function toNumber(value: number | string | null | undefined) {
   if (value === null || value === undefined || value === "") return 0;
@@ -286,27 +296,52 @@ export function PlayerMatchLogPanel({ rows = [] }: PlayerMatchLogPanelProps) {
             </thead>
 
             <tbody>
-              {sortedRows.map((row) => (
+              {sortedRows.map((row) => {
+                const cup = row.competition ? CUP_INFO[row.competition] : undefined;
+                const cupHref = cup
+                  ? `${cup.matchBase}/${encodeURIComponent(row.source_match_id)}?returnTo=${encodeURIComponent(baseReturnTo)}`
+                  : null;
+                return (
                 <tr
                   key={`${row.source_match_id}-${row.player_source_id}`}
                   className="border-t border-line text-[13px] text-ink transition hover:bg-veil"
                 >
                   <td className="px-3 py-1.5 whitespace-nowrap">
-                    <MatchLink
-                      sourceMatchId={row.source_match_id}
-                      returnTo={baseReturnTo}
-                      className="transition hover:text-ink hover:underline"
-                      title={t("playerDetail.openMatchDetailTitle")}
-                    >
-                      {formatDate(row.match_datetime)}
-                    </MatchLink>
+                    {cupHref ? (
+                      <Link
+                        href={cupHref}
+                        className="transition hover:text-ink hover:underline"
+                        title={t("playerDetail.openMatchDetailTitle")}
+                      >
+                        {formatDate(row.match_datetime)}
+                      </Link>
+                    ) : (
+                      <MatchLink
+                        sourceMatchId={row.source_match_id}
+                        returnTo={baseReturnTo}
+                        className="transition hover:text-ink hover:underline"
+                        title={t("playerDetail.openMatchDetailTitle")}
+                      >
+                        {formatDate(row.match_datetime)}
+                      </MatchLink>
+                    )}
                   </td>
 
                   <td className="px-3 py-1.5 min-w-[220px]">
-                    <OpponentName
-                      teamSlug={row.opponent_team_slug}
-                      name={row.opponent_name}
-                    />
+                    <span className="inline-flex items-center gap-1.5">
+                      <OpponentName
+                        teamSlug={row.opponent_team_slug}
+                        name={row.opponent_name}
+                      />
+                      {cup ? (
+                        <span
+                          className="shrink-0 rounded bg-accent-soft px-1 py-0.5 text-[9px] font-semibold text-accent-ink"
+                          title={row.competition ?? undefined}
+                        >
+                          {cup.short}
+                        </span>
+                      ) : null}
+                    </span>
                   </td>
 
                   <td className="px-3 py-1.5 whitespace-nowrap">
@@ -316,14 +351,24 @@ export function PlayerMatchLogPanel({ rows = [] }: PlayerMatchLogPanelProps) {
                   </td>
 
                   <td className="px-3 py-1.5 whitespace-nowrap font-medium text-ink">
-                    <MatchLink
-                      sourceMatchId={row.source_match_id}
-                      returnTo={baseReturnTo}
-                      className="font-medium text-ink transition hover:text-ink hover:underline"
-                      title={t("playerDetail.openMatchDetailTitle")}
-                    >
-                      {row.score_display ?? "—"}
-                    </MatchLink>
+                    {cupHref ? (
+                      <Link
+                        href={cupHref}
+                        className="font-medium text-ink transition hover:text-ink hover:underline"
+                        title={t("playerDetail.openMatchDetailTitle")}
+                      >
+                        {row.score_display ?? "—"}
+                      </Link>
+                    ) : (
+                      <MatchLink
+                        sourceMatchId={row.source_match_id}
+                        returnTo={baseReturnTo}
+                        className="font-medium text-ink transition hover:text-ink hover:underline"
+                        title={t("playerDetail.openMatchDetailTitle")}
+                      >
+                        {row.score_display ?? "—"}
+                      </MatchLink>
+                    )}
                   </td>
 
                   <td className="px-3 py-1.5 whitespace-nowrap">
@@ -354,7 +399,8 @@ export function PlayerMatchLogPanel({ rows = [] }: PlayerMatchLogPanelProps) {
                     {formatDecimal(row.expected_goals, 3)}
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>

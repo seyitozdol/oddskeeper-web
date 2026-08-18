@@ -58,14 +58,26 @@ export async function SeasonHistoryPanel({
             <tbody>
               {rows.map((row) => {
                 const isCurrent = row.season_label === activeSeasonLabel;
+                // Dual takımlarda aynı sezonun lig + kupa kampanyaları ayrı
+                // satırlar; kupa satırı rekabet rozetiyle ayırt edilir.
+                const isCup =
+                  row.competition != null && row.competition !== "Süper Lig";
 
                 return (
                   <tr
-                    key={`${row.team_slug}-${row.season_label}`}
+                    key={`${row.team_slug}-${row.season_label}-${row.competition ?? ""}`}
                     className="border-t border-line text-[13px] text-ink-2"
                   >
                     <td className="px-3 py-1.5 font-medium text-ink">
                       {row.season_label ?? "—"}
+                      {isCup ? (
+                        <span
+                          className="ml-2 rounded bg-accent-soft px-1.5 py-0.5 text-[10px] font-medium text-accent-ink"
+                          title={row.competition ?? undefined}
+                        >
+                          {row.competition}
+                        </span>
+                      ) : null}
                       {isCurrent ? (
                         <span className="ml-2 rounded-full border border-accent/30 bg-accent-soft px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.08em] text-accent-ink">
                           {t("teamDetail.currentBadge")}

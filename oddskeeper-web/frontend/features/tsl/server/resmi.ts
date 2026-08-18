@@ -82,6 +82,9 @@ export async function getPlayerAssets(
   // kimlikli) + Opta karsiligi olmayan oyuncular icin SofaScore'dan turetilenler;
   // olmasa yeni transfer / yukselen takim oyuncusunun adi duz metin kalirdi.
   // Bkz. sql/2026-08-15_player_current_info_sofascore_bridge.sql
+  // current_team_slug filtresi: bu tam tarama yalniz Turk ligi yuzeylerini besler;
+  // kupa-only yabancilar (takimi team_mapping'te olmayan ~9k satir) haric ki
+  // sayfa basi tarama buyumesin (kupa yuzeyleri fotoyu tff1_player_info_v1'den alir).
   const data = await fetchAllPaged<{
     opta_player_id: string | null;
     player_slug: string | null;
@@ -93,6 +96,7 @@ export async function getPlayerAssets(
       .from("player_current_info_bridged_v1")
       .select("opta_player_id, player_slug, photo_url, nationality")
       .not("opta_player_id", "is", null)
+      .not("current_team_slug", "is", null)
       .order("player_slug", { ascending: true })
       .range(from, to)
   );

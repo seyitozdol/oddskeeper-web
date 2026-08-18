@@ -1,25 +1,14 @@
-import EuroCupPlayerDetail from "@/features/tsl/resmi/EuroCupPlayerDetail";
+import { redirectCupPlayerToProfile } from "@/features/tsl/server/cupProfileRedirect";
 
-export const metadata = { title: "Oyuncu · Şampiyonlar Ligi" };
-
+// Tek-profil birlestirme: eski CL oyuncu URL'i football profiline yonlenir.
 export default async function ClPlayerPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ playerId: string }>;
-  searchParams: Promise<{ tab?: string }>;
 }) {
   const { playerId } = await params;
-  const { tab } = await searchParams;
-  return (
-    <EuroCupPlayerDetail
-      playerId={playerId}
-      viewPrefix="ucl"
-      competition="UEFA Şampiyonlar Ligi"
-      matchBase="/dashboard/euro-cups/cl/match"
-      playerBase="/dashboard/euro-cups/cl/player"
-      backBase="/dashboard/euro-cups/cl/resmi?season=2026%2F2027&section=players"
-      tab={tab}
-    />
+  await redirectCupPlayerToProfile(
+    playerId,
+    "/dashboard/euro-cups/cl/resmi?season=2026%2F2027&section=players"
   );
 }
