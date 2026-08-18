@@ -43,14 +43,37 @@ export async function getTeamCurrentSquad(
     return [];
   }
 
-  const rows = data ?? [];
-  const slugs = rows
-    .map((row) => row.player_slug)
-    .filter((s): s is string => Boolean(s));
+  const rawRows = data ?? [];
+
+  // TEK-PROFIL: ham kadro view'i apifootball slug'i tasir (a-nubel--af399);
+  // oyuncunun gercek veri profili opta/ss slug'inda olabilir. Kopru view'i
+  // (team_current_squad_profile_v1: player_mapping + DOB'lu af->sofa->opta
+  // zinciri) af id -> profil slug'ini cozer; linkler o slug'a gider, cozulemeyen
+  // (verisiz yeni transfer) af slug'inda kalir (bio fallback sayfasi).
+  const { data: profData } = await supabase
+    .schema("analytics")
+    .from("team_current_squad_profile_v1")
+    .select("af_player_id, player_slug")
+    .eq("team_slug", teamSlug);
+  const profSlugByAf = new Map<string, string>();
+  for (const r of profData ?? []) {
+    if (r.af_player_id && r.player_slug) profSlugByAf.set(String(r.af_player_id), String(r.player_slug));
+  }
+  const rows = rawRows.map((row) => ({
+    ...row,
+    player_slug: profSlugByAf.get(String(row.player_source_id)) ?? row.player_slug,
+  }));
+
+  // Zenginlestirme tablolari (isim/uyruk/deger) af ya da profil slug'iyla
+  // yazilmis olabilir; iki slug'la da ara.
+  const slugSet = new Set<string>();
+  for (const row of rows) if (row.player_slug) slugSet.add(row.player_slug);
+  for (const row of rawRows) if (row.player_slug) slugSet.add(row.player_slug);
+  const slugs = [...slugSet];
 
   // Uyruk (bayrak) + TM piyasa degeri zenginlestirmesi; slug uzerinden.
   const [nameMap, natRes, mvRes] = await Promise.all([
-    getPlayerDisplayNameMap(rows.map((row) => row.player_slug)),
+    getPlayerDisplayNameMap(slugs),
     supabase
       .schema("analytics")
       .from("player_current_info_v1")
@@ -72,12 +95,17 @@ export async function getTeamCurrentSquad(
     if (r.player_slug) mvBySlug.set(r.player_slug, r.market_value_eur == null ? null : Number(r.market_value_eur));
   }
 
-  return rows.map((row) => ({
+  const lookup = <T,>(m: Map<string, T>, a?: string | null, b?: string | null): T | null => {
+    if (a && m.has(a)) return m.get(a) as T;
+    if (b && m.has(b)) return m.get(b) as T;
+    return null;
+  };
+
+  return rows.map((row, i) => ({
     ...row,
     player_name:
-      (row.player_slug ? nameMap.get(row.player_slug) : null) ??
-      row.player_name,
-    nationality: row.player_slug ? natBySlug.get(row.player_slug) ?? null : null,
-    market_value_eur: row.player_slug ? mvBySlug.get(row.player_slug) ?? null : null,
+      lookup(nameMap, row.player_slug, rawRows[i]?.player_slug) ?? row.player_name,
+    nationality: lookup(natBySlug, row.player_slug, rawRows[i]?.player_slug),
+    market_value_eur: lookup(mvBySlug, row.player_slug, rawRows[i]?.player_slug),
   }));
 }

@@ -43,6 +43,10 @@ const ENTRIES: Entry[] = [
         en: "Cup matches where our primary source publishes only the lineup (mostly qualifiers and the 2026/27 rounds) now show real player numbers in the match log — minutes, shots, xG and more are filled in from our secondary source instead of appearing empty.",
         tr: "Ana kaynağımızın yalnız kadroyu yayınladığı kupa maçlarında (çoğunlukla elemeler ve 2026/27 turları) maç logunda artık gerçek oyuncu verileri görünüyor — dakika, şut, xG ve diğerleri boş kalmak yerine ikincil kaynağımızdan dolduruluyor.",
       },
+      {
+        en: "Squad tab links now open the same single player profile as everywhere else. Some squad entries (e.g. İlhan Fakılı, Alexander Nübel at Beşiktaş) used to open an empty duplicate page because the squad list carried a different identity; the identity bridge now resolves them automatically, and only players with no data at all fall back to a plain bio page.",
+        tr: "Kadro sekmesindeki linkler artık her yerdeki aynı tek oyuncu profilini açıyor. Bazı kadro kayıtları (ör. Beşiktaş'ta İlhan Fakılı, Alexander Nübel) farklı bir kimlik taşıdığı için boş bir kopya sayfa açıyordu; kimlik köprüsü bunları artık otomatik çözüyor, yalnız hiç verisi olmayan oyuncular sade bio sayfasına düşüyor.",
+      },
     ],
   },
   {
