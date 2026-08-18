@@ -35,6 +35,10 @@ const ENTRIES: Entry[] = [
         en: "Team results on Süper Lig team profiles now include European cup matches with a small cup badge, the recent-form card counts league matches only, and a duplicate-row issue in results and form (the same match listed twice) is fixed. Foreign cup teams have one combined profile covering all the cups they play in.",
         tr: "Süper Lig takım profillerindeki sonuç listesi artık Avrupa kupası maçlarını küçük kupa rozetiyle içeriyor, form kartı yalnız lig maçlarını sayıyor ve sonuç/form listelerinde aynı maçın iki kez görünmesi sorunu düzeltildi. Yabancı kupa takımlarının, oynadıkları tüm kupaları kapsayan tek birleşik profili var.",
       },
+      {
+        en: "Competition filters inside the unified profiles: a team's Results tab and a player's Match Log now have quick filter chips (All / Süper Lig / each cup) so league and cup data can also be viewed separately. On teams that play in Europe, the Player Stats tab has a competition switch — pick Champions/Europa/Conference League to see the squad's stats in that cup, with the cup's own metric list (xG, distance covered and more).",
+        tr: "Birleşik profillerin içinde rekabet filtreleri: takım Sonuçlar sekmesi ve oyuncu Maç Logu'nda hızlı filtre düğmeleri var (Tümü / Süper Lig / her kupa) — lig ve kupa verisi istenirse ayrı ayrı da görülebiliyor. Avrupa'da oynayan takımlarda Player Stats sekmesine rekabet seçici eklendi — Şampiyonlar/Avrupa/Konferans Ligi'ni seçince kadronun o kupadaki istatistikleri, kupanın kendi metrik listesiyle (xG, koşu mesafesi vb.) geliyor.",
+      },
     ],
   },
   {

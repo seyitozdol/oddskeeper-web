@@ -52,6 +52,7 @@ type TeamDetailPageProps = {
     season?: string;
     design?: string;
     metric?: string;
+    comp?: string; // player-stats sekmesi rekabet secimi (tsl/ucl/uel/uecl)
   }>;
 };
 
@@ -276,7 +277,8 @@ export default async function TeamDetailPage({
       ? await getTeamPlayerStats(
           teamSlug,
           requestedSeason ?? null,
-          resolvedSearchParams.metric ?? null
+          resolvedSearchParams.metric ?? null,
+          resolvedSearchParams.comp ?? null
         )
       : null;
 

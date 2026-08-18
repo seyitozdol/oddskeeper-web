@@ -17,7 +17,9 @@ import type {
 } from "../types";
 import type { PlayerAsset, ResmiPlayerRow, TeamAggression } from "./resmi";
 
-const PLAYER_MAP: Record<string, string> = {
+// Kupa oyuncu-sezon view kolonu -> site metrik anahtari. Takim profili
+// Player Stats kupa dali da kullanir (getTeamPlayerStats).
+export const CUP_PLAYER_MAP: Record<string, string> = {
   appearances: "appearances", starts: "starts", minutes: "total_minutes",
   goals: "goals_total", assists: "assists_total", xg: "expected_goals_total",
   xgot: "expected_goals_on_target_total", xa: "expected_assists_total",
@@ -29,7 +31,7 @@ const PLAYER_MAP: Record<string, string> = {
   aerials_won: "aerials_won_total", dribbles_won: "dribbles_won_total", km_covered: "km_covered_total",
   sprints: "sprints_total", top_speed: "top_speed",
 };
-const RATE_KEYS = new Set(["pass_accuracy_pct", "rating_avg", "top_speed"]);
+export const CUP_RATE_KEYS = new Set(["pass_accuracy_pct", "rating_avg", "top_speed"]);
 
 export const CUP_PLAYER_CATALOG: TslMetricOption[] = [
   ["appearances", "playing_time", "Oynama Süresi", "count", true],
@@ -243,9 +245,9 @@ export function makeCupProvider(COMP: string, prefix: string) {
       const apps = toNum(r.appearances) ?? 0;
       const min = toNum(r.minutes) ?? 0;
       const metrics: ResmiPlayerRow["metrics"] = {};
-      for (const [col, key] of Object.entries(PLAYER_MAP)) {
+      for (const [col, key] of Object.entries(CUP_PLAYER_MAP)) {
         const total = toNum(r[col]);
-        if (RATE_KEYS.has(key)) metrics[key] = { total, perMatch: total, per90: total };
+        if (CUP_RATE_KEYS.has(key)) metrics[key] = { total, perMatch: total, per90: total };
         else metrics[key] = {
           total,
           perMatch: total != null && apps > 0 ? total / apps : null,
@@ -263,7 +265,7 @@ export function makeCupProvider(COMP: string, prefix: string) {
   }
 
   async function leaderboard(season: string, metricKey: string, meta: Record<string, TslTeamMeta>): Promise<TslLeaderRow[]> {
-    const col = Object.entries(PLAYER_MAP).find(([, k]) => k === metricKey)?.[0];
+    const col = Object.entries(CUP_PLAYER_MAP).find(([, k]) => k === metricKey)?.[0];
     if (!col) return [];
     const def = CUP_PLAYER_CATALOG.find((c) => c.metricKey === metricKey);
     const rows = await playerRows(season);
@@ -276,8 +278,8 @@ export function makeCupProvider(COMP: string, prefix: string) {
         teamName: meta[teamId]?.name ?? (r.team_name as string) ?? null, teamId: teamId || null,
         positionCode: (r.position_code as string) ?? null,
         metricKey, metricLabel: metricKey, total,
-        perMatch: RATE_KEYS.has(metricKey) ? total : total != null && apps > 0 ? total / apps : null,
-        per90: RATE_KEYS.has(metricKey) ? total : total != null && min > 0 ? (total / min) * 90 : null,
+        perMatch: CUP_RATE_KEYS.has(metricKey) ? total : total != null && apps > 0 ? total / apps : null,
+        per90: CUP_RATE_KEYS.has(metricKey) ? total : total != null && min > 0 ? (total / min) * 90 : null,
         matches: toNum(r.appearances),
         leagueAvg: null, vsAvgPct: null, valueFormat: def?.valueFormat ?? "count", isHigherBetter: def?.isHigherBetter ?? true,
       };

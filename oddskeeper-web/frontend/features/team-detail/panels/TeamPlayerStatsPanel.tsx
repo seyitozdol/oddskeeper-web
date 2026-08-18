@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { getT } from "@/lib/i18n/server";
 import { categoryLabel, metricLabel } from "@/lib/i18n/metricLabel";
 import MetricSelect from "@/components/rankings/MetricSelect";
@@ -12,6 +13,8 @@ import type { TeamPlayerStatsBundle } from "../server/getTeamPlayerStats";
 
 // Takim-kapsamli oyuncu istatistikleri: secili metrige gore sirali liste,
 // foto + bayrak + sezon/metrik secicileriyle (Player Rankings'in takim hali).
+// Rekabet kirilimi SEKME ICINDE: Avrupa'da oynayan takimda Super Lig / kupa
+// pilleri (tek-profil ilkesi; ayri sayfa yok).
 export default async function TeamPlayerStatsPanel({
   teamSlug,
   data,
@@ -20,7 +23,7 @@ export default async function TeamPlayerStatsPanel({
   data: TeamPlayerStatsBundle;
 }) {
   const t = await getT();
-  const { season, seasons, catalog, metricKey, metric, rows } = data;
+  const { season, seasons, catalog, metricKey, metric, rows, comp, availableComps } = data;
 
   const options = catalog.map((c) => ({
     key: c.metricKey,
@@ -80,19 +83,72 @@ export default async function TeamPlayerStatsPanel({
 
   return (
     <div className="space-y-3">
+      {availableComps.length > 1 ? (
+        <div className="flex flex-wrap items-center gap-1.5">
+          {availableComps.map((c) => {
+            const current = c.key === comp;
+            const cls = current
+              ? "inline-flex items-center gap-1.5 rounded-lg bg-accent px-2.5 py-1.5 text-[12px] font-semibold text-white"
+              : "inline-flex items-center gap-1.5 rounded-lg border border-line bg-card-2 px-2.5 py-1.5 text-[12px] font-medium text-ink-2 transition hover:text-ink";
+            const inner = (
+              <>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={c.logo}
+                  alt=""
+                  width={16}
+                  height={16}
+                  className={`h-4 w-4 shrink-0 object-contain${c.invert ? " tsl-league-mark" : ""}`}
+                />
+                {t(c.nameKey)}
+              </>
+            );
+            if (current) {
+              return (
+                <span key={c.key} className={cls}>
+                  {inner}
+                </span>
+              );
+            }
+            const q = new URLSearchParams({
+              team: teamSlug,
+              tab: "player-stats",
+              metric: metricKey,
+            });
+            if (c.key !== "tsl") q.set("comp", c.key);
+            return (
+              <Link
+                key={c.key}
+                href={`/dashboard/stats-analysis/football/team-stats/detail?${q.toString()}`}
+                className={cls}
+              >
+                {inner}
+              </Link>
+            );
+          })}
+        </div>
+      ) : null}
       <div className="flex flex-wrap items-center gap-2">
         <MetricSelect
           options={options}
           selectedKey={metricKey}
           basePath="/dashboard/stats-analysis/football/team-stats/detail"
-          baseParams={{ team: teamSlug, tab: "player-stats", season }}
+          baseParams={{
+            team: teamSlug,
+            tab: "player-stats",
+            season,
+            ...(comp !== "tsl" ? { comp } : {}),
+          }}
         />
         <SeasonSelect
           teamSlug={teamSlug}
           tab="player-stats"
           seasons={seasons}
           selectedSeason={season}
-          extraParams={{ metric: metricKey }}
+          extraParams={{
+            metric: metricKey,
+            ...(comp !== "tsl" ? { comp } : {}),
+          }}
         />
       </div>
 

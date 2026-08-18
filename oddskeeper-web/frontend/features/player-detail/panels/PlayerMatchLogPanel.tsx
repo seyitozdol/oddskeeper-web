@@ -102,11 +102,41 @@ function getSortValue(row: PlayerMatchLogRow, sortKey: SortKey) {
   return toNumber(row.expected_goals);
 }
 
+// Rekabet chip sirasi: lig(ler) once, kupalar sonra.
+const COMP_ORDER = [
+  "Süper Lig",
+  "Trendyol 1. Lig",
+  "Türkiye Kupası",
+  "UEFA Şampiyonlar Ligi",
+  "UEFA Avrupa Ligi",
+  "UEFA Konferans Ligi",
+];
+
 export function PlayerMatchLogPanel({ rows = [] }: PlayerMatchLogPanelProps) {
   const { t } = useI18n();
   const [lineupFilter, setLineupFilter] = useState<LineupFilter>("all");
+  // Tek profil tum rekabetleri listeler; rekabet chip'iyle suzulur (varsayilan tumu).
+  const [compFilter, setCompFilter] = useState<string>("all");
   const [sortKey, setSortKey] = useState<SortKey>("match_datetime");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
+
+  const competitions = useMemo(() => {
+    const present = new Set(
+      rows.map((r) => r.competition).filter((c): c is string => Boolean(c))
+    );
+    return [
+      ...COMP_ORDER.filter((c) => present.has(c)),
+      ...[...present].filter((c) => !COMP_ORDER.includes(c)).sort(),
+    ];
+  }, [rows]);
+
+  const compRows = useMemo(
+    () =>
+      compFilter === "all"
+        ? rows
+        : rows.filter((r) => r.competition === compFilter),
+    [rows, compFilter]
+  );
 
   function handleSort(key: SortKey) {
     if (sortKey === key) {
@@ -120,27 +150,27 @@ export function PlayerMatchLogPanel({ rows = [] }: PlayerMatchLogPanelProps) {
 
   const starterCount = useMemo(
     () =>
-      rows.filter(
+      compRows.filter(
         (row) => normalizeLineupStatus(row.lineup_status) === "starter"
       ).length,
-    [rows]
+    [compRows]
   );
 
   const substituteCount = useMemo(
     () =>
-      rows.filter(
+      compRows.filter(
         (row) => normalizeLineupStatus(row.lineup_status) === "substitute"
       ).length,
-    [rows]
+    [compRows]
   );
 
   const filteredRows = useMemo(() => {
-    if (lineupFilter === "all") return rows;
+    if (lineupFilter === "all") return compRows;
 
-    return rows.filter(
+    return compRows.filter(
       (row) => normalizeLineupStatus(row.lineup_status) === lineupFilter
     );
-  }, [rows, lineupFilter]);
+  }, [compRows, lineupFilter]);
 
   const sortedRows = useMemo(() => {
     const cloned = [...filteredRows];
@@ -184,6 +214,35 @@ export function PlayerMatchLogPanel({ rows = [] }: PlayerMatchLogPanelProps) {
 
   return (
     <div className="space-y-4">
+      {competitions.length > 1 ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setCompFilter("all")}
+            className={`rounded-xl border px-3 py-2 text-sm transition ${
+              compFilter === "all"
+                ? "border-line-strong bg-card-2 text-ink"
+                : "border-line bg-veil text-ink-2 hover:bg-veil"
+            }`}
+          >
+            {t("playerDetail.allWithCount", { count: rows.length })}
+          </button>
+          {competitions.map((c) => (
+            <button
+              key={c}
+              type="button"
+              onClick={() => setCompFilter(c)}
+              className={`rounded-xl border px-3 py-2 text-sm transition ${
+                compFilter === c
+                  ? "border-line-strong bg-card-2 text-ink"
+                  : "border-line bg-veil text-ink-2 hover:bg-veil"
+              }`}
+            >
+              {c} ({rows.filter((r) => r.competition === c).length})
+            </button>
+          ))}
+        </div>
+      ) : null}
       <div className="flex flex-wrap items-center gap-2">
         <button
           type="button"
@@ -194,7 +253,7 @@ export function PlayerMatchLogPanel({ rows = [] }: PlayerMatchLogPanelProps) {
               : "border-line bg-veil text-ink-2 hover:bg-veil"
           }`}
         >
-          {t("playerDetail.allWithCount", { count: rows.length })}
+          {t("playerDetail.allWithCount", { count: compRows.length })}
         </button>
 
         <button

@@ -1,3 +1,4 @@
+import { createClient } from "../../../lib/supabase/server";
 import { slugifyTeamName } from "@/lib/football-teams";
 import { sofascoreIdForTeamSlug } from "@/lib/sofascore-team-map";
 import {
@@ -5,13 +6,44 @@ import {
   getTslPlayerCatalog,
 } from "@/features/tsl/server/queries";
 import { getPlayerAssets } from "@/features/tsl/server/resmi";
+import {
+  CUP_PLAYER_CATALOG,
+  CUP_PLAYER_MAP,
+  CUP_RATE_KEYS,
+} from "@/features/tsl/server/eurocupData";
+import { getFootballSlugsByIds } from "@/features/tsl/server/cupPlayerProfile";
+import { toNum } from "@/features/tsl/lib";
 import type { TslLeaderRow, TslMetricOption } from "@/features/tsl/types";
 
 // Takim detayindaki "Player Stats" sekmesi: secili metrik + sezon icin
 // takimin oyuncularini liglik leaderboard'dan suzer (Player Rankings ile
 // ayni veri, takim-kapsamli). Sezonlar tsl_ss veri sezonlaridir.
+// Tek-profil ilkesi geregi rekabet kirilimi SEKME ICINDE: Avrupa'da oynayan
+// takimlarda comp secici (Super Lig / CL / EL / Konf) gorunur; kupa dali
+// {prefix}_player_season_stats_v1'den okur (sofascore takim id ile).
 
 export const TEAM_PLAYER_STATS_SEASONS = ["2026/2027", "2025/2026", "2024/2025"];
+
+export type TeamPlayerComp = "tsl" | "ucl" | "uel" | "uecl";
+export type TeamPlayerCompOption = {
+  key: TeamPlayerComp;
+  nameKey: string; // i18n lig adi
+  logo: string;
+  invert: boolean; // koyu modda logo beyaza cevrilsin (kupa logolari koyu)
+};
+
+const TSL_COMP: TeamPlayerCompOption = {
+  key: "tsl",
+  nameKey: "tsl.leagueName",
+  logo: "/images/leagues/super-lig.png",
+  invert: false,
+};
+const CUP_COMPS: (TeamPlayerCompOption & { prefix: string })[] = [
+  { key: "ucl", prefix: "ucl", nameKey: "tsl.uclName", logo: "/images/leagues/ucl.png", invert: true },
+  { key: "uel", prefix: "uel", nameKey: "tsl.uelName", logo: "/images/leagues/uel.png", invert: true },
+  { key: "uecl", prefix: "uecl", nameKey: "tsl.ueclName", logo: "/images/leagues/uecl.png", invert: true },
+];
+const CUP_SEASONS = ["2026/2027", "2025/2026"];
 
 // Leaderboard takim adi (SofaScore) -> football slug esleme: ad slug'i ya da
 // gitgide kisalan on-ekleri (Amed Sportif Faaliyetler -> amed).
@@ -53,13 +85,161 @@ export type TeamPlayerStatsBundle = {
   metricKey: string;
   metric: TslMetricOption | null;
   rows: TeamPlayerStatRow[];
+  comp: TeamPlayerComp;
+  availableComps: TeamPlayerCompOption[];
 };
+
+// Takimin veri sahibi oldugu kupalar (comp secicide gosterilecekler).
+// Sezondan bagimsiz probe: takim herhangi bir sezonda o kupada oynadiysa pil cikar.
+async function getAvailableComps(
+  sofaTeamId: string | null
+): Promise<TeamPlayerCompOption[]> {
+  if (!sofaTeamId) return [TSL_COMP];
+  const supabase = await createClient();
+  const probes = await Promise.all(
+    CUP_COMPS.map(async (c) => {
+      const { data } = await supabase
+        .schema("analytics")
+        .from(`${c.prefix}_player_season_stats_v1`)
+        .select("player_id")
+        .eq("team_id", sofaTeamId)
+        .limit(1);
+      return data && data.length > 0 ? c : null;
+    })
+  );
+  return [
+    TSL_COMP,
+    ...probes.filter((c): c is (typeof CUP_COMPS)[number] => c !== null)
+      .map(({ key, nameKey, logo, invert }) => ({ key, nameKey, logo, invert })),
+  ];
+}
+
+// Kupa dali: {prefix}_player_season_stats_v1'den takimin oyunculari + secili metrik.
+async function getCupTeamPlayerStats(
+  teamSlug: string,
+  sofaTeamId: string,
+  cup: (typeof CUP_COMPS)[number],
+  requestedSeason: string | null | undefined,
+  requestedMetric: string | null | undefined,
+  availableComps: TeamPlayerCompOption[]
+): Promise<TeamPlayerStatsBundle> {
+  const seasons = CUP_SEASONS;
+  let season = seasons.includes(requestedSeason ?? "")
+    ? (requestedSeason as string)
+    : seasons[0];
+
+  const catalog = CUP_PLAYER_CATALOG;
+  const metric =
+    catalog.find((c) => c.metricKey === requestedMetric) ??
+    catalog.find((c) => c.metricKey === "goals_total") ??
+    catalog[0] ??
+    null;
+  const metricKey = metric?.metricKey ?? "goals_total";
+  const col =
+    Object.entries(CUP_PLAYER_MAP).find(([, k]) => k === metricKey)?.[0] ?? "goals";
+
+  const supabase = await createClient();
+  const fetchRows = async (s: string) => {
+    const { data } = await supabase
+      .schema("analytics")
+      .from(`${cup.prefix}_player_season_stats_v1`)
+      .select("*")
+      .eq("team_id", sofaTeamId)
+      .eq("season_label", s)
+      .limit(200);
+    return (data ?? []) as Record<string, unknown>[];
+  };
+  let raw = await fetchRows(season);
+  if (!raw.length && !requestedSeason) {
+    for (const s of seasons.slice(1)) {
+      const rows = await fetchRows(s);
+      if (rows.length) {
+        season = s;
+        raw = rows;
+        break;
+      }
+    }
+  }
+
+  const ids = raw.map((r) => String(r.player_id));
+  const [slugById, infoRes] = await Promise.all([
+    getFootballSlugsByIds(ids),
+    ids.length
+      ? supabase
+          .schema("analytics")
+          .from("tff1_player_info_v1")
+          .select("player_id, photo_url, country")
+          .in("player_id", ids)
+      : Promise.resolve({ data: [] as { player_id: unknown; photo_url: string | null; country: string | null }[] }),
+  ]);
+  const infoById: Record<string, { photo: string | null; country: string | null }> = {};
+  for (const r of infoRes.data ?? [])
+    infoById[String(r.player_id)] = { photo: r.photo_url ?? null, country: r.country ?? null };
+
+  const rows: TeamPlayerStatRow[] = raw.map((r) => {
+    const id = String(r.player_id);
+    const apps = toNum(r.appearances) ?? 0;
+    const min = toNum(r.minutes) ?? 0;
+    const total = toNum(r[col]);
+    const slug = slugById[id] ?? null;
+    return {
+      rank: 0,
+      playerId: id,
+      playerName: (r.player_name as string) ?? "—",
+      teamName: (r.team_name as string) ?? null,
+      teamId: sofaTeamId,
+      positionCode: (r.position_code as string) ?? null,
+      metricKey,
+      metricLabel: metric?.metricLabel ?? metricKey,
+      total,
+      perMatch: CUP_RATE_KEYS.has(metricKey)
+        ? total
+        : total != null && apps > 0
+          ? total / apps
+          : null,
+      per90: CUP_RATE_KEYS.has(metricKey)
+        ? total
+        : total != null && min > 0
+          ? (total / min) * 90
+          : null,
+      matches: toNum(r.appearances),
+      leagueAvg: null,
+      vsAvgPct: null,
+      valueFormat: metric?.valueFormat ?? "count",
+      isHigherBetter: metric?.isHigherBetter ?? true,
+      photo: infoById[id]?.photo ?? null,
+      nationality: infoById[id]?.country ?? null,
+      href: slug
+        ? `/dashboard/stats-analysis/football/player-stats/detail?player=${encodeURIComponent(slug)}`
+        : null,
+    };
+  });
+
+  return { season, seasons, catalog, metricKey, metric, rows, comp: cup.key, availableComps };
+}
 
 export async function getTeamPlayerStats(
   teamSlug: string,
   requestedSeason?: string | null,
-  requestedMetric?: string | null
+  requestedMetric?: string | null,
+  requestedComp?: string | null
 ): Promise<TeamPlayerStatsBundle> {
+  const sofaTeamId = sofascoreIdForTeamSlug(teamSlug) ?? null;
+  const availableComps = await getAvailableComps(sofaTeamId);
+  const cup = CUP_COMPS.find(
+    (c) => c.key === requestedComp && availableComps.some((a) => a.key === c.key)
+  );
+  if (cup && sofaTeamId) {
+    return getCupTeamPlayerStats(
+      teamSlug,
+      sofaTeamId,
+      cup,
+      requestedSeason,
+      requestedMetric,
+      availableComps
+    );
+  }
+
   const seasons = TEAM_PLAYER_STATS_SEASONS;
   let season = seasons.includes(requestedSeason ?? "")
     ? (requestedSeason as string)
@@ -130,5 +310,5 @@ export async function getTeamPlayerStats(
     };
   });
 
-  return { season, seasons, catalog, metricKey, metric, rows };
+  return { season, seasons, catalog, metricKey, metric, rows, comp: "tsl", availableComps };
 }
