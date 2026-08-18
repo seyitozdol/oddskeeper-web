@@ -131,6 +131,16 @@ def proxy_config(session_id: str, country: str | None) -> dict | None:
     user = unquote(parts.username) if parts.username else ""
     if country and user:
         user = f"{user}__cr.{country}"
+    # DataImpulse STICKY session: ayni sessid ~30dk boyunca ayni exit IP'yi verir
+    # (2026-08-18 VPS'te ampirik dogrulandi: sessid.X 4/4 ayni IP). session_id kosu
+    # boyunca sabit (secrets.token_hex) -> tek kosunun TUM istekleri (SPA yuklemesi +
+    # widen pageNumber dongusu + sayfanin kurdugu sessiontoken) TEK exit IP'de kalir.
+    # ONCEDEN sessid YOKTU: gw rotating her istekte baska residential IP donuyordu;
+    # sayfanin kurdugu sessiontoken baska exit'te gecersiz -> events-table feed'i
+    # kismi/bos donuyor (1.Lig Round-3 maclarinin cogu kaciyordu) veya SPA hic
+    # yuklenemiyordu (ws=0 xhr=0). sessid yoksa ekle (env'de {session}/sessid varsa dokunma).
+    if user and "sessid." not in user:
+        user = f"{user};sessid.{session_id}"
     cfg: dict = {"server": f"{parts.scheme}://{parts.hostname}:{parts.port}"}
     if user:
         cfg["username"] = user
