@@ -213,171 +213,171 @@ create or replace view analytics.ucl_player_season_stats_v1 as
     agg.position_code,
         CASE
             WHEN agg.minutes > 0 THEN agg.appearances
-            ELSE fa.appearances
+            ELSE COALESCE(fa.appearances, agg.appearances)
         END AS appearances,
         CASE
             WHEN agg.minutes > 0 THEN agg.starts
-            ELSE fa.starts
+            ELSE COALESCE(fa.starts, agg.starts)
         END AS starts,
         CASE
             WHEN agg.minutes > 0 THEN agg.minutes
-            ELSE fa.minutes
+            ELSE COALESCE(fa.minutes, agg.minutes)
         END AS minutes,
         CASE
             WHEN agg.minutes > 0 THEN agg.goals
-            ELSE fa.goals
+            ELSE COALESCE(fa.goals, agg.goals)
         END AS goals,
         CASE
             WHEN agg.minutes > 0 THEN agg.assists
-            ELSE fa.assists
+            ELSE COALESCE(fa.assists, agg.assists)
         END AS assists,
         CASE
             WHEN agg.minutes > 0 THEN agg.own_goals
-            ELSE fa.own_goals
+            ELSE COALESCE(fa.own_goals, agg.own_goals)
         END AS own_goals,
         CASE
             WHEN agg.minutes > 0 THEN agg.shots
-            ELSE fa.shots
+            ELSE COALESCE(fa.shots, agg.shots)
         END AS shots,
         CASE
             WHEN agg.minutes > 0 THEN agg.shots_on_target
-            ELSE fa.shots_on_target
+            ELSE COALESCE(fa.shots_on_target, agg.shots_on_target)
         END AS shots_on_target,
         CASE
             WHEN agg.minutes > 0 THEN agg.big_chances_missed
-            ELSE fa.big_chances_missed
+            ELSE COALESCE(fa.big_chances_missed, agg.big_chances_missed)
         END AS big_chances_missed,
         CASE
             WHEN agg.minutes > 0 THEN agg.hit_woodwork
-            ELSE fa.hit_woodwork
+            ELSE COALESCE(fa.hit_woodwork, agg.hit_woodwork)
         END AS hit_woodwork,
         CASE
             WHEN agg.minutes > 0 THEN agg.total_passes
-            ELSE fa.total_passes
+            ELSE COALESCE(fa.total_passes, agg.total_passes)
         END AS total_passes,
         CASE
             WHEN agg.minutes > 0 THEN agg.accurate_passes
-            ELSE fa.accurate_passes
+            ELSE COALESCE(fa.accurate_passes, agg.accurate_passes)
         END AS accurate_passes,
         CASE
             WHEN agg.minutes > 0 THEN agg.pass_accuracy
-            ELSE fa.pass_accuracy
+            ELSE COALESCE(fa.pass_accuracy, agg.pass_accuracy)
         END AS pass_accuracy,
         CASE
             WHEN agg.minutes > 0 THEN agg.key_passes
-            ELSE fa.key_passes
+            ELSE COALESCE(fa.key_passes, agg.key_passes)
         END AS key_passes,
         CASE
             WHEN agg.minutes > 0 THEN agg.big_chances_created
-            ELSE fa.big_chances_created
+            ELSE COALESCE(fa.big_chances_created, agg.big_chances_created)
         END AS big_chances_created,
         CASE
             WHEN agg.minutes > 0 THEN agg.crosses
-            ELSE fa.crosses
+            ELSE COALESCE(fa.crosses, agg.crosses)
         END AS crosses,
         CASE
             WHEN agg.minutes > 0 THEN agg.accurate_crosses
-            ELSE fa.accurate_crosses
+            ELSE COALESCE(fa.accurate_crosses, agg.accurate_crosses)
         END AS accurate_crosses,
         CASE
             WHEN agg.minutes > 0 THEN agg.long_balls
-            ELSE fa.long_balls
+            ELSE COALESCE(fa.long_balls, agg.long_balls)
         END AS long_balls,
         CASE
             WHEN agg.minutes > 0 THEN agg.accurate_long_balls
-            ELSE fa.accurate_long_balls
+            ELSE COALESCE(fa.accurate_long_balls, agg.accurate_long_balls)
         END AS accurate_long_balls,
         CASE
             WHEN agg.minutes > 0 THEN agg.tackles
-            ELSE fa.tackles
+            ELSE COALESCE(fa.tackles, agg.tackles)
         END AS tackles,
         CASE
             WHEN agg.minutes > 0 THEN agg.tackles_won
-            ELSE fa.tackles_won
+            ELSE COALESCE(fa.tackles_won, agg.tackles_won)
         END AS tackles_won,
         CASE
             WHEN agg.minutes > 0 THEN agg.interceptions
-            ELSE fa.interceptions
+            ELSE COALESCE(fa.interceptions, agg.interceptions)
         END AS interceptions,
         CASE
             WHEN agg.minutes > 0 THEN agg.clearances
-            ELSE fa.clearances
+            ELSE COALESCE(fa.clearances, agg.clearances)
         END AS clearances,
         CASE
             WHEN agg.minutes > 0 THEN agg.blocks
-            ELSE fa.blocks
+            ELSE COALESCE(fa.blocks, agg.blocks)
         END AS blocks,
         CASE
             WHEN agg.minutes > 0 THEN agg.ball_recoveries
-            ELSE fa.ball_recoveries
+            ELSE COALESCE(fa.ball_recoveries, agg.ball_recoveries)
         END AS ball_recoveries,
         CASE
             WHEN agg.minutes > 0 THEN agg.duels_won
-            ELSE fa.duels_won
+            ELSE COALESCE(fa.duels_won, agg.duels_won)
         END AS duels_won,
         CASE
             WHEN agg.minutes > 0 THEN agg.duels_lost
-            ELSE fa.duels_lost
+            ELSE COALESCE(fa.duels_lost, agg.duels_lost)
         END AS duels_lost,
         CASE
             WHEN agg.minutes > 0 THEN agg.aerials_won
-            ELSE fa.aerials_won
+            ELSE COALESCE(fa.aerials_won, agg.aerials_won)
         END AS aerials_won,
         CASE
             WHEN agg.minutes > 0 THEN agg.aerials_lost
-            ELSE fa.aerials_lost
+            ELSE COALESCE(fa.aerials_lost, agg.aerials_lost)
         END AS aerials_lost,
         CASE
             WHEN agg.minutes > 0 THEN agg.fouls
-            ELSE fa.fouls
+            ELSE COALESCE(fa.fouls, agg.fouls)
         END AS fouls,
         CASE
             WHEN agg.minutes > 0 THEN agg.was_fouled
-            ELSE fa.was_fouled
+            ELSE COALESCE(fa.was_fouled, agg.was_fouled)
         END AS was_fouled,
         CASE
             WHEN agg.minutes > 0 THEN agg.offsides
-            ELSE fa.offsides
+            ELSE COALESCE(fa.offsides, agg.offsides)
         END AS offsides,
         CASE
             WHEN agg.minutes > 0 THEN agg.dispossessed
-            ELSE fa.dispossessed
+            ELSE COALESCE(fa.dispossessed, agg.dispossessed)
         END AS dispossessed,
         CASE
             WHEN agg.minutes > 0 THEN agg.possession_lost
-            ELSE fa.possession_lost
+            ELSE COALESCE(fa.possession_lost, agg.possession_lost)
         END AS possession_lost,
         CASE
             WHEN agg.minutes > 0 THEN agg.dribbles_won
-            ELSE fa.dribbles_won
+            ELSE COALESCE(fa.dribbles_won, agg.dribbles_won)
         END AS dribbles_won,
         CASE
             WHEN agg.minutes > 0 THEN agg.dribbles_attempted
-            ELSE fa.dribbles_attempted
+            ELSE COALESCE(fa.dribbles_attempted, agg.dribbles_attempted)
         END AS dribbles_attempted,
         CASE
             WHEN agg.minutes > 0 THEN agg.touches
-            ELSE fa.touches
+            ELSE COALESCE(fa.touches, agg.touches)
         END AS touches,
         CASE
             WHEN agg.minutes > 0 THEN agg.saves
-            ELSE fa.saves
+            ELSE COALESCE(fa.saves, agg.saves)
         END AS saves,
         CASE
             WHEN agg.minutes > 0 THEN agg.penalties_saved
-            ELSE fa.penalties_saved
+            ELSE COALESCE(fa.penalties_saved, agg.penalties_saved)
         END AS penalties_saved,
         CASE
             WHEN agg.minutes > 0 THEN agg.errors_leading_to_shot
-            ELSE fa.errors_leading_to_shot
+            ELSE COALESCE(fa.errors_leading_to_shot, agg.errors_leading_to_shot)
         END AS errors_leading_to_shot,
         CASE
             WHEN agg.minutes > 0 THEN agg.errors_leading_to_goal
-            ELSE fa.errors_leading_to_goal
+            ELSE COALESCE(fa.errors_leading_to_goal, agg.errors_leading_to_goal)
         END AS errors_leading_to_goal,
         CASE
             WHEN agg.minutes > 0 THEN agg.rating_avg
-            ELSE fa.rating_avg
+            ELSE COALESCE(fa.rating_avg, agg.rating_avg)
         END AS rating_avg,
     agg.km_covered,
     agg.sprints,
@@ -602,171 +602,171 @@ create or replace view analytics.uel_player_season_stats_v1 as
     agg.position_code,
         CASE
             WHEN agg.minutes > 0 THEN agg.appearances
-            ELSE fa.appearances
+            ELSE COALESCE(fa.appearances, agg.appearances)
         END AS appearances,
         CASE
             WHEN agg.minutes > 0 THEN agg.starts
-            ELSE fa.starts
+            ELSE COALESCE(fa.starts, agg.starts)
         END AS starts,
         CASE
             WHEN agg.minutes > 0 THEN agg.minutes
-            ELSE fa.minutes
+            ELSE COALESCE(fa.minutes, agg.minutes)
         END AS minutes,
         CASE
             WHEN agg.minutes > 0 THEN agg.goals
-            ELSE fa.goals
+            ELSE COALESCE(fa.goals, agg.goals)
         END AS goals,
         CASE
             WHEN agg.minutes > 0 THEN agg.assists
-            ELSE fa.assists
+            ELSE COALESCE(fa.assists, agg.assists)
         END AS assists,
         CASE
             WHEN agg.minutes > 0 THEN agg.own_goals
-            ELSE fa.own_goals
+            ELSE COALESCE(fa.own_goals, agg.own_goals)
         END AS own_goals,
         CASE
             WHEN agg.minutes > 0 THEN agg.shots
-            ELSE fa.shots
+            ELSE COALESCE(fa.shots, agg.shots)
         END AS shots,
         CASE
             WHEN agg.minutes > 0 THEN agg.shots_on_target
-            ELSE fa.shots_on_target
+            ELSE COALESCE(fa.shots_on_target, agg.shots_on_target)
         END AS shots_on_target,
         CASE
             WHEN agg.minutes > 0 THEN agg.big_chances_missed
-            ELSE fa.big_chances_missed
+            ELSE COALESCE(fa.big_chances_missed, agg.big_chances_missed)
         END AS big_chances_missed,
         CASE
             WHEN agg.minutes > 0 THEN agg.hit_woodwork
-            ELSE fa.hit_woodwork
+            ELSE COALESCE(fa.hit_woodwork, agg.hit_woodwork)
         END AS hit_woodwork,
         CASE
             WHEN agg.minutes > 0 THEN agg.total_passes
-            ELSE fa.total_passes
+            ELSE COALESCE(fa.total_passes, agg.total_passes)
         END AS total_passes,
         CASE
             WHEN agg.minutes > 0 THEN agg.accurate_passes
-            ELSE fa.accurate_passes
+            ELSE COALESCE(fa.accurate_passes, agg.accurate_passes)
         END AS accurate_passes,
         CASE
             WHEN agg.minutes > 0 THEN agg.pass_accuracy
-            ELSE fa.pass_accuracy
+            ELSE COALESCE(fa.pass_accuracy, agg.pass_accuracy)
         END AS pass_accuracy,
         CASE
             WHEN agg.minutes > 0 THEN agg.key_passes
-            ELSE fa.key_passes
+            ELSE COALESCE(fa.key_passes, agg.key_passes)
         END AS key_passes,
         CASE
             WHEN agg.minutes > 0 THEN agg.big_chances_created
-            ELSE fa.big_chances_created
+            ELSE COALESCE(fa.big_chances_created, agg.big_chances_created)
         END AS big_chances_created,
         CASE
             WHEN agg.minutes > 0 THEN agg.crosses
-            ELSE fa.crosses
+            ELSE COALESCE(fa.crosses, agg.crosses)
         END AS crosses,
         CASE
             WHEN agg.minutes > 0 THEN agg.accurate_crosses
-            ELSE fa.accurate_crosses
+            ELSE COALESCE(fa.accurate_crosses, agg.accurate_crosses)
         END AS accurate_crosses,
         CASE
             WHEN agg.minutes > 0 THEN agg.long_balls
-            ELSE fa.long_balls
+            ELSE COALESCE(fa.long_balls, agg.long_balls)
         END AS long_balls,
         CASE
             WHEN agg.minutes > 0 THEN agg.accurate_long_balls
-            ELSE fa.accurate_long_balls
+            ELSE COALESCE(fa.accurate_long_balls, agg.accurate_long_balls)
         END AS accurate_long_balls,
         CASE
             WHEN agg.minutes > 0 THEN agg.tackles
-            ELSE fa.tackles
+            ELSE COALESCE(fa.tackles, agg.tackles)
         END AS tackles,
         CASE
             WHEN agg.minutes > 0 THEN agg.tackles_won
-            ELSE fa.tackles_won
+            ELSE COALESCE(fa.tackles_won, agg.tackles_won)
         END AS tackles_won,
         CASE
             WHEN agg.minutes > 0 THEN agg.interceptions
-            ELSE fa.interceptions
+            ELSE COALESCE(fa.interceptions, agg.interceptions)
         END AS interceptions,
         CASE
             WHEN agg.minutes > 0 THEN agg.clearances
-            ELSE fa.clearances
+            ELSE COALESCE(fa.clearances, agg.clearances)
         END AS clearances,
         CASE
             WHEN agg.minutes > 0 THEN agg.blocks
-            ELSE fa.blocks
+            ELSE COALESCE(fa.blocks, agg.blocks)
         END AS blocks,
         CASE
             WHEN agg.minutes > 0 THEN agg.ball_recoveries
-            ELSE fa.ball_recoveries
+            ELSE COALESCE(fa.ball_recoveries, agg.ball_recoveries)
         END AS ball_recoveries,
         CASE
             WHEN agg.minutes > 0 THEN agg.duels_won
-            ELSE fa.duels_won
+            ELSE COALESCE(fa.duels_won, agg.duels_won)
         END AS duels_won,
         CASE
             WHEN agg.minutes > 0 THEN agg.duels_lost
-            ELSE fa.duels_lost
+            ELSE COALESCE(fa.duels_lost, agg.duels_lost)
         END AS duels_lost,
         CASE
             WHEN agg.minutes > 0 THEN agg.aerials_won
-            ELSE fa.aerials_won
+            ELSE COALESCE(fa.aerials_won, agg.aerials_won)
         END AS aerials_won,
         CASE
             WHEN agg.minutes > 0 THEN agg.aerials_lost
-            ELSE fa.aerials_lost
+            ELSE COALESCE(fa.aerials_lost, agg.aerials_lost)
         END AS aerials_lost,
         CASE
             WHEN agg.minutes > 0 THEN agg.fouls
-            ELSE fa.fouls
+            ELSE COALESCE(fa.fouls, agg.fouls)
         END AS fouls,
         CASE
             WHEN agg.minutes > 0 THEN agg.was_fouled
-            ELSE fa.was_fouled
+            ELSE COALESCE(fa.was_fouled, agg.was_fouled)
         END AS was_fouled,
         CASE
             WHEN agg.minutes > 0 THEN agg.offsides
-            ELSE fa.offsides
+            ELSE COALESCE(fa.offsides, agg.offsides)
         END AS offsides,
         CASE
             WHEN agg.minutes > 0 THEN agg.dispossessed
-            ELSE fa.dispossessed
+            ELSE COALESCE(fa.dispossessed, agg.dispossessed)
         END AS dispossessed,
         CASE
             WHEN agg.minutes > 0 THEN agg.possession_lost
-            ELSE fa.possession_lost
+            ELSE COALESCE(fa.possession_lost, agg.possession_lost)
         END AS possession_lost,
         CASE
             WHEN agg.minutes > 0 THEN agg.dribbles_won
-            ELSE fa.dribbles_won
+            ELSE COALESCE(fa.dribbles_won, agg.dribbles_won)
         END AS dribbles_won,
         CASE
             WHEN agg.minutes > 0 THEN agg.dribbles_attempted
-            ELSE fa.dribbles_attempted
+            ELSE COALESCE(fa.dribbles_attempted, agg.dribbles_attempted)
         END AS dribbles_attempted,
         CASE
             WHEN agg.minutes > 0 THEN agg.touches
-            ELSE fa.touches
+            ELSE COALESCE(fa.touches, agg.touches)
         END AS touches,
         CASE
             WHEN agg.minutes > 0 THEN agg.saves
-            ELSE fa.saves
+            ELSE COALESCE(fa.saves, agg.saves)
         END AS saves,
         CASE
             WHEN agg.minutes > 0 THEN agg.penalties_saved
-            ELSE fa.penalties_saved
+            ELSE COALESCE(fa.penalties_saved, agg.penalties_saved)
         END AS penalties_saved,
         CASE
             WHEN agg.minutes > 0 THEN agg.errors_leading_to_shot
-            ELSE fa.errors_leading_to_shot
+            ELSE COALESCE(fa.errors_leading_to_shot, agg.errors_leading_to_shot)
         END AS errors_leading_to_shot,
         CASE
             WHEN agg.minutes > 0 THEN agg.errors_leading_to_goal
-            ELSE fa.errors_leading_to_goal
+            ELSE COALESCE(fa.errors_leading_to_goal, agg.errors_leading_to_goal)
         END AS errors_leading_to_goal,
         CASE
             WHEN agg.minutes > 0 THEN agg.rating_avg
-            ELSE fa.rating_avg
+            ELSE COALESCE(fa.rating_avg, agg.rating_avg)
         END AS rating_avg,
     agg.km_covered,
     agg.sprints,
@@ -991,171 +991,171 @@ create or replace view analytics.uecl_player_season_stats_v1 as
     agg.position_code,
         CASE
             WHEN agg.minutes > 0 THEN agg.appearances
-            ELSE fa.appearances
+            ELSE COALESCE(fa.appearances, agg.appearances)
         END AS appearances,
         CASE
             WHEN agg.minutes > 0 THEN agg.starts
-            ELSE fa.starts
+            ELSE COALESCE(fa.starts, agg.starts)
         END AS starts,
         CASE
             WHEN agg.minutes > 0 THEN agg.minutes
-            ELSE fa.minutes
+            ELSE COALESCE(fa.minutes, agg.minutes)
         END AS minutes,
         CASE
             WHEN agg.minutes > 0 THEN agg.goals
-            ELSE fa.goals
+            ELSE COALESCE(fa.goals, agg.goals)
         END AS goals,
         CASE
             WHEN agg.minutes > 0 THEN agg.assists
-            ELSE fa.assists
+            ELSE COALESCE(fa.assists, agg.assists)
         END AS assists,
         CASE
             WHEN agg.minutes > 0 THEN agg.own_goals
-            ELSE fa.own_goals
+            ELSE COALESCE(fa.own_goals, agg.own_goals)
         END AS own_goals,
         CASE
             WHEN agg.minutes > 0 THEN agg.shots
-            ELSE fa.shots
+            ELSE COALESCE(fa.shots, agg.shots)
         END AS shots,
         CASE
             WHEN agg.minutes > 0 THEN agg.shots_on_target
-            ELSE fa.shots_on_target
+            ELSE COALESCE(fa.shots_on_target, agg.shots_on_target)
         END AS shots_on_target,
         CASE
             WHEN agg.minutes > 0 THEN agg.big_chances_missed
-            ELSE fa.big_chances_missed
+            ELSE COALESCE(fa.big_chances_missed, agg.big_chances_missed)
         END AS big_chances_missed,
         CASE
             WHEN agg.minutes > 0 THEN agg.hit_woodwork
-            ELSE fa.hit_woodwork
+            ELSE COALESCE(fa.hit_woodwork, agg.hit_woodwork)
         END AS hit_woodwork,
         CASE
             WHEN agg.minutes > 0 THEN agg.total_passes
-            ELSE fa.total_passes
+            ELSE COALESCE(fa.total_passes, agg.total_passes)
         END AS total_passes,
         CASE
             WHEN agg.minutes > 0 THEN agg.accurate_passes
-            ELSE fa.accurate_passes
+            ELSE COALESCE(fa.accurate_passes, agg.accurate_passes)
         END AS accurate_passes,
         CASE
             WHEN agg.minutes > 0 THEN agg.pass_accuracy
-            ELSE fa.pass_accuracy
+            ELSE COALESCE(fa.pass_accuracy, agg.pass_accuracy)
         END AS pass_accuracy,
         CASE
             WHEN agg.minutes > 0 THEN agg.key_passes
-            ELSE fa.key_passes
+            ELSE COALESCE(fa.key_passes, agg.key_passes)
         END AS key_passes,
         CASE
             WHEN agg.minutes > 0 THEN agg.big_chances_created
-            ELSE fa.big_chances_created
+            ELSE COALESCE(fa.big_chances_created, agg.big_chances_created)
         END AS big_chances_created,
         CASE
             WHEN agg.minutes > 0 THEN agg.crosses
-            ELSE fa.crosses
+            ELSE COALESCE(fa.crosses, agg.crosses)
         END AS crosses,
         CASE
             WHEN agg.minutes > 0 THEN agg.accurate_crosses
-            ELSE fa.accurate_crosses
+            ELSE COALESCE(fa.accurate_crosses, agg.accurate_crosses)
         END AS accurate_crosses,
         CASE
             WHEN agg.minutes > 0 THEN agg.long_balls
-            ELSE fa.long_balls
+            ELSE COALESCE(fa.long_balls, agg.long_balls)
         END AS long_balls,
         CASE
             WHEN agg.minutes > 0 THEN agg.accurate_long_balls
-            ELSE fa.accurate_long_balls
+            ELSE COALESCE(fa.accurate_long_balls, agg.accurate_long_balls)
         END AS accurate_long_balls,
         CASE
             WHEN agg.minutes > 0 THEN agg.tackles
-            ELSE fa.tackles
+            ELSE COALESCE(fa.tackles, agg.tackles)
         END AS tackles,
         CASE
             WHEN agg.minutes > 0 THEN agg.tackles_won
-            ELSE fa.tackles_won
+            ELSE COALESCE(fa.tackles_won, agg.tackles_won)
         END AS tackles_won,
         CASE
             WHEN agg.minutes > 0 THEN agg.interceptions
-            ELSE fa.interceptions
+            ELSE COALESCE(fa.interceptions, agg.interceptions)
         END AS interceptions,
         CASE
             WHEN agg.minutes > 0 THEN agg.clearances
-            ELSE fa.clearances
+            ELSE COALESCE(fa.clearances, agg.clearances)
         END AS clearances,
         CASE
             WHEN agg.minutes > 0 THEN agg.blocks
-            ELSE fa.blocks
+            ELSE COALESCE(fa.blocks, agg.blocks)
         END AS blocks,
         CASE
             WHEN agg.minutes > 0 THEN agg.ball_recoveries
-            ELSE fa.ball_recoveries
+            ELSE COALESCE(fa.ball_recoveries, agg.ball_recoveries)
         END AS ball_recoveries,
         CASE
             WHEN agg.minutes > 0 THEN agg.duels_won
-            ELSE fa.duels_won
+            ELSE COALESCE(fa.duels_won, agg.duels_won)
         END AS duels_won,
         CASE
             WHEN agg.minutes > 0 THEN agg.duels_lost
-            ELSE fa.duels_lost
+            ELSE COALESCE(fa.duels_lost, agg.duels_lost)
         END AS duels_lost,
         CASE
             WHEN agg.minutes > 0 THEN agg.aerials_won
-            ELSE fa.aerials_won
+            ELSE COALESCE(fa.aerials_won, agg.aerials_won)
         END AS aerials_won,
         CASE
             WHEN agg.minutes > 0 THEN agg.aerials_lost
-            ELSE fa.aerials_lost
+            ELSE COALESCE(fa.aerials_lost, agg.aerials_lost)
         END AS aerials_lost,
         CASE
             WHEN agg.minutes > 0 THEN agg.fouls
-            ELSE fa.fouls
+            ELSE COALESCE(fa.fouls, agg.fouls)
         END AS fouls,
         CASE
             WHEN agg.minutes > 0 THEN agg.was_fouled
-            ELSE fa.was_fouled
+            ELSE COALESCE(fa.was_fouled, agg.was_fouled)
         END AS was_fouled,
         CASE
             WHEN agg.minutes > 0 THEN agg.offsides
-            ELSE fa.offsides
+            ELSE COALESCE(fa.offsides, agg.offsides)
         END AS offsides,
         CASE
             WHEN agg.minutes > 0 THEN agg.dispossessed
-            ELSE fa.dispossessed
+            ELSE COALESCE(fa.dispossessed, agg.dispossessed)
         END AS dispossessed,
         CASE
             WHEN agg.minutes > 0 THEN agg.possession_lost
-            ELSE fa.possession_lost
+            ELSE COALESCE(fa.possession_lost, agg.possession_lost)
         END AS possession_lost,
         CASE
             WHEN agg.minutes > 0 THEN agg.dribbles_won
-            ELSE fa.dribbles_won
+            ELSE COALESCE(fa.dribbles_won, agg.dribbles_won)
         END AS dribbles_won,
         CASE
             WHEN agg.minutes > 0 THEN agg.dribbles_attempted
-            ELSE fa.dribbles_attempted
+            ELSE COALESCE(fa.dribbles_attempted, agg.dribbles_attempted)
         END AS dribbles_attempted,
         CASE
             WHEN agg.minutes > 0 THEN agg.touches
-            ELSE fa.touches
+            ELSE COALESCE(fa.touches, agg.touches)
         END AS touches,
         CASE
             WHEN agg.minutes > 0 THEN agg.saves
-            ELSE fa.saves
+            ELSE COALESCE(fa.saves, agg.saves)
         END AS saves,
         CASE
             WHEN agg.minutes > 0 THEN agg.penalties_saved
-            ELSE fa.penalties_saved
+            ELSE COALESCE(fa.penalties_saved, agg.penalties_saved)
         END AS penalties_saved,
         CASE
             WHEN agg.minutes > 0 THEN agg.errors_leading_to_shot
-            ELSE fa.errors_leading_to_shot
+            ELSE COALESCE(fa.errors_leading_to_shot, agg.errors_leading_to_shot)
         END AS errors_leading_to_shot,
         CASE
             WHEN agg.minutes > 0 THEN agg.errors_leading_to_goal
-            ELSE fa.errors_leading_to_goal
+            ELSE COALESCE(fa.errors_leading_to_goal, agg.errors_leading_to_goal)
         END AS errors_leading_to_goal,
         CASE
             WHEN agg.minutes > 0 THEN agg.rating_avg
-            ELSE fa.rating_avg
+            ELSE COALESCE(fa.rating_avg, agg.rating_avg)
         END AS rating_avg,
     agg.km_covered,
     agg.sprints,
