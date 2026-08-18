@@ -132,7 +132,18 @@ def load_sofascore_gaps(cur):
                  where ts.source='sofascore' and ts.source_match_id=m.source_match_id
                    and (coalesce(ts.summary_shots,0) > 0
                         or ts.details_expected_goals is not null)
-               ) as team_empty
+               ) as team_empty,
+               -- xG-eksik: SofaScore oyuncu-stat VERMIS ama hicbir oyuncuda
+               -- expectedGoals yok (26/27 gecikmesi) -> FS xG overlay'i gerekir.
+               (exists (
+                 select 1 from football.match_player_stats_details d
+                 where d.source='sofascore' and d.source_match_id=m.source_match_id
+                   and d.raw_stats ? 'minutesPlayed'
+               ) and not exists (
+                 select 1 from football.match_player_stats_details d
+                 where d.source='sofascore' and d.source_match_id=m.source_match_id
+                   and d.raw_stats ? 'expectedGoals'
+               )) as xg_missing
         from football.matches m
         where m.source='sofascore'
           and m.competition in ('UEFA Şampiyonlar Ligi','UEFA Avrupa Ligi','UEFA Konferans Ligi')
@@ -143,7 +154,7 @@ def load_sofascore_gaps(cur):
             "id": r[0], "competition": r[1], "date": r[2],
             "hn": r[3], "an": r[4], "hs": r[5], "as": r[6],
             "nhn": norm_name(r[3]), "nan": norm_name(r[4]),
-            "player_empty": r[7], "team_empty": r[8],
+            "player_empty": r[7], "team_empty": r[8], "xg_missing": r[9],
         })
     return out
 
@@ -262,7 +273,10 @@ def process_fs_match(g, fs_block, competition, cur, confidence=1.0):
             team_written = len(rows)
 
     # --- oyuncu istatistigi (epmsse+epmsd) ---
-    if g["player_empty"] and players:
+    # player_empty: SofaScore oyuncu vermemis -> FS tum tabloyu doldurur.
+    # xg_missing: SofaScore oyuncu vermis ama xG yok -> FS xG overlay'i (fs->sofa
+    # oyuncu haritasi + view coalesce ile sezon Players listesine akar).
+    if (g["player_empty"] or g.get("xg_missing")) and players:
         d = _get(f"{GQL}?_hash=epmsd&eventId={mid}&providerId=7", want_json=True) or {}
         dt = datetime.fromtimestamp(ts, tz=timezone.utc).strftime("%d.%m.%Y %H:%M")
         obj = {"ix": {"mid": mid, "h": home["name"], "a": away["name"],
@@ -293,8 +307,8 @@ def main():
     conn.autocommit = True
     cur = conn.cursor()
     gaps = load_sofascore_gaps(cur)
-    gap_ids = {g["id"] for g in gaps if g["player_empty"] or g["team_empty"]}
-    print(f"SofaScore kupa maci: {len(gaps)}, eksik (player/team): {len(gap_ids)}", flush=True)
+    gap_ids = {g["id"] for g in gaps if g["player_empty"] or g["team_empty"] or g["xg_missing"]}
+    print(f"SofaScore kupa maci: {len(gaps)}, eksik (player/team/xg): {len(gap_ids)}", flush=True)
     if not gaps:
         return
 
@@ -317,8 +331,8 @@ def main():
                     continue
             elig += 1
             for g, conf, reason in candidates(b, cup["competition"], gaps):
-                if not (g["player_empty"] or g["team_empty"]):
-                    continue  # SofaScore dolu, FS gerekmez
+                if not (g["player_empty"] or g["team_empty"] or g["xg_missing"]):
+                    continue  # SofaScore tam (oyuncu+takim+xG) -> FS gerekmez
                 cand.append((conf, cup["competition"], b, g, reason))
         print(f"[{cup['competition']}] blok={len(blocks)}, uygun blok={elig}", flush=True)
 
