@@ -3,8 +3,11 @@
 
 OddsPortal VPS Alman IP'sinden direkt yukleniyor (Cloudflare challenge YOK,
 proxy/GB gerekmez - 2026-07-30 dogrulandi). Oranlar DOM'da render:
-  mac satiri = div.group.flex; ilk cocuk "20:30Galatasaray–Corum" (saat+ev–dep),
-  sonraki 3 cocuk 1X2 orani. Lig sayfasi o ligin yaklasan maclarini + 1X2 verir.
+  mac satiri = div[data-testid="game-row"]; icinde time-item (saat),
+  game-host/game-guest (participant-name = takim adi) ve 3 odd-container-default
+  (1X2 orani). Lig sayfasi o ligin yaklasan maclarini + 1X2 verir.
+  NOT: 2026-08 arayuz yenilemesiyle eski div.group.flex yapisi kalkti; artik
+  kararli data-testid tutamaklarina baglaniyoruz (class'lar Tailwind ile degisir).
 
 Turk domestic (Super Lig/1.Lig) + Avrupa kupalarini kapsar - en genis kaynak.
 Headful Chromium + Xvfb (sistem chromium). Eslestirme load_site_odds.resolve.
@@ -39,24 +42,33 @@ LEAGUES = [
 UA = ("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36")
 
-# Sayfadaki mac satirlarini cikaran JS. div.group.flex: [saat+ev–dep, o1, ox, o2].
+# Sayfadaki mac satirlarini cikaran JS. Her mac div[data-testid="game-row"]:
+# game-host/game-guest -> participant-name (takim), odd-container-default x3 -> 1X2.
 EXTRACT_JS = r"""() => {
+  const clean = (s) => (s || '').replace(/\s+/g, ' ').trim();
+  // OddsPortal Avrupa sayfalarinda takim adina " (Tur)" gibi ulke eki koyuyor;
+  // eslestirmeyi bozmasin diye temizle.
+  const strip = (s) => clean(s).replace(/\s*\([A-Za-z]{2,3}\)\s*$/, '').trim();
   const out = [];
-  const rows = document.querySelectorAll('div.group.flex, div[class~="group"]');
+  const rows = document.querySelectorAll('[data-testid="game-row"]');
   for (const row of rows) {
-    const kids = Array.from(row.children).map(c => (c.textContent || '').replace(/\s+/g, ' ').trim());
-    if (kids.length < 4) continue;
-    const head = kids[0];
-    // saat (HH:MM) opsiyonel + ev–dep (en-dash veya tire)
-    const m = head.match(/^(\d{1,2}:\d{2})?\s*(.+?)\s*[–—]\s*(.+)$/);
-    if (!m) continue;
-    const odds = kids.slice(1).filter(k => /^\d+\.\d{1,2}$/.test(k));
-    if (odds.length < 3) continue;
-    // OddsPortal Avrupa sayfalarinda takim adina " (Tur)" gibi ulke eki koyuyor;
-    // eslestirmeyi bozmasin diye temizle.
-    const strip = (s) => s.replace(/\s*\([A-Za-z]{2,3}\)\s*$/, '').trim();
-    const home = strip(m[2]), away = strip(m[3]);
+    const host = row.querySelector('[data-testid="game-host"]');
+    const guest = row.querySelector('[data-testid="game-guest"]');
+    let home = '', away = '';
+    if (host && guest) {
+      home = (host.querySelector('[data-testid="participant-name"]') || host).textContent;
+      away = (guest.querySelector('[data-testid="participant-name"]') || guest).textContent;
+    } else {
+      // yedek: game-host/guest yoksa iki participant-name'i sirayla al
+      const names = row.querySelectorAll('[data-testid="participant-name"]');
+      if (names.length >= 2) { home = names[0].textContent; away = names[1].textContent; }
+    }
+    home = strip(home); away = strip(away);
+    const odds = Array.from(row.querySelectorAll('[data-testid="odd-container-default"]'))
+      .map(e => clean(e.textContent))
+      .filter(k => /^\d+\.\d{1,2}$/.test(k));
     if (!home || !away || home.length > 40 || away.length > 40) continue;
+    if (odds.length < 3) continue;
     out.push({ home, away, o1: odds[0], ox: odds[1], o2: odds[2] });
   }
   // benzersiz (home,away)
@@ -91,7 +103,7 @@ def scrape(chromium_path: str | None) -> list[dict]:
                 prev = -1
                 for _ in range(15):
                     n = p.evaluate(
-                        "() => document.querySelectorAll('div.group.flex, div[class~=\"group\"]').length"
+                        "() => document.querySelectorAll('[data-testid=\"game-row\"]').length"
                     )
                     if n == prev:
                         break
