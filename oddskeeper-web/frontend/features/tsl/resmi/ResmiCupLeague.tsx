@@ -51,7 +51,7 @@ export default function ResmiCupLeague({ data }: { data: CupLeagueBundle }) {
             type="button"
             onClick={() => setStage(s.key)}
             className={`rounded-lg px-3 py-1.5 text-[13px] font-medium transition ${
-              active === s.key ? "bg-accent text-accent-ink" : "bg-card-2 text-ink-2 hover:bg-veil hover:text-ink"
+              active === s.key ? "bg-accent text-white" : "bg-card-2 text-ink-2 hover:bg-veil hover:text-ink"
             }`}
           >
             {s.label}

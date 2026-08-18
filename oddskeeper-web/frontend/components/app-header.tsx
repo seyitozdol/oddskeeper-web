@@ -112,7 +112,7 @@ const LEAGUE_ITEMS: LeagueItem[] = [
   // Avrupa kupasi — Sampiyonlar Ligi. Opt-in (varsayilanda yalniz admin; bkz.
   // OPT_IN_NAV_KEYS). Logo /images/leagues/ucl.png.
   { key: "eurocl", navKey: "league-eurocl", label: "CL", logoSrc: "/images/leagues/ucl.png", invertOnDark: true, href: "/dashboard/euro-cups/cl/resmi?season=2025%2F2026&section=league", group: "football" },
-  { key: "euel", navKey: "league-euel", label: "EL", logoSrc: "/images/leagues/uel.png", invertOnDark: true, href: "/dashboard/euro-cups/el/resmi?season=2025%2F2026&section=league", group: "football" },
+  { key: "euel", navKey: "league-euel", label: "EL", logoSrc: "/images/leagues/uel.png", invertOnDark: true, href: "/dashboard/euro-cups/el/resmi?season=2026%2F2027&section=league", group: "football" },
   { key: "euecl", navKey: "league-euecl", label: "Con", logoSrc: "/images/leagues/uecl.png", invertOnDark: true, href: "/dashboard/euro-cups/conf/resmi?season=2025%2F2026&section=league", group: "football" },
   { key: "tbl", navKey: "league-tbl", label: "BSL", Icon: TblMark, href: BASKETBALL_LEAGUE_HREF, group: "basketball", sport: "basketball" },
   { key: "euroleague", navKey: "league-tbl", label: "EL", logoSrc: "/images/leagues/euroleague.svg", href: "/dashboard/euro/euroleague", group: "basketball", sport: "basketball" },

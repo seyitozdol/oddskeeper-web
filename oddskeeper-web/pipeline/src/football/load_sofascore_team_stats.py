@@ -73,6 +73,17 @@ def build_team_rows(event, statistics, incidents, competition):
         # (mac istatistigi gelmemis; 0 uydurma).
         return 0 if (zero_default and stat) else None
 
+    def total_shots(side):
+        # SofaScore eski format: tek "Total shots". Yeni format (2026/27): bunu
+        # kaldirip "Shots on target"+"Shots off target"+"Blocked shots"e bolmus ->
+        # Total yoksa parcalardan topla (yoksa ust grafikte shots=0 gorunur).
+        if stat.get("Total shots"):
+            return sv("Total shots", side, True)
+        parts = ("Shots on target", "Shots off target", "Blocked shots")
+        if any(stat.get(p) for p in parts):
+            return sum((_num(stat[p][side]) or 0) for p in parts if stat.get(p))
+        return sv("Total shots", side, True)
+
     yellow = {0: 0, 1: 0}; red = {0: 0, 1: 0}
     pen = {0: 0, 1: 0}; var = {0: 0, 1: 0}; og = {0: 0, 1: 0}
     add = {45: None, 90: None}
@@ -117,7 +128,7 @@ def build_team_rows(event, statistics, incidents, competition):
             "result_code": result_code(sf, sa),
             # zero_default=True: SofaScore 0-0 metrigi basligi hic gostermez;
             # istatistigi yuklu macta eksik = 0 (tabloda '-' yerine 0).
-            "summary_shots": sv("Total shots", side, True),
+            "summary_shots": total_shots(side),
             "summary_shots_on_target": sv("Shots on target", side, True),
             "summary_corners_won": sv("Corner kicks", side, True),
             "summary_fouls_conceded": sv("Fouls", side, True),

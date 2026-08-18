@@ -95,7 +95,7 @@ export const NAV_PERMISSION_ITEMS: NavPermissionItem[] = [
   {
     key: "league-euel",
     labelKey: "nav.leagueEuel",
-    href: "/dashboard/euro-cups/el/resmi?season=2025%2F2026&section=league",
+    href: "/dashboard/euro-cups/el/resmi?season=2026%2F2027&section=league",
     pathPrefixes: ["/dashboard/euro-cups/el"],
   },
   {

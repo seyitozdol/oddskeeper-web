@@ -95,7 +95,7 @@ export const EUEL_LEAGUE: LeagueConfig = {
   source: "euel",
   competition: "UEFA Avrupa Ligi",
   seasons: ["2026/2027", "2025/2026"],
-  defaultSeason: "2025/2026",
+  defaultSeason: "2026/2027",
   basePath: "/dashboard/euro-cups/el/resmi",
   matchBase: "/dashboard/euro-cups/el/match",
   logo: "/images/leagues/uel.png",

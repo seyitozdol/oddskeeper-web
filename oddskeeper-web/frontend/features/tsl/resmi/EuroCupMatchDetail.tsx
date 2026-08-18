@@ -62,6 +62,9 @@ export default async function CupMatchDetail({
     );
   const homeRows = sortRows(players.filter((p) => p.teamId === match.homeId));
   const awayRows = sortRows(players.filter((p) => p.teamId === match.awayId));
+  // SofaScore bazi (ozellikle eleme) maclarinda kadroyu verir ama oyuncu istatistigini
+  // (henuz) yayinlamaz -> tum degerler 0. Sifir-dolu tablo yerine not goster.
+  const hasPlayerStats = players.some((p) => (p.minutes ?? 0) > 0 || p.rating != null);
 
   const back = returnTo && returnTo.startsWith("/dashboard") ? returnTo : backBase;
   const vsRows = await getMatchMarketBars(matchId, match.homeId, match.awayId, locale === "tr");
@@ -148,9 +151,11 @@ export default async function CupMatchDetail({
           {t("tsl.lineupsSection")}
         </h2>
 
-        {players.length === 0 ? (
+        {players.length === 0 || !hasPlayerStats ? (
           <div className="mt-2 rounded-lg border border-line bg-veil p-4 text-sm text-ink-2">
-            {t("tsl.noMatchLog")}
+            {locale === "tr"
+              ? "Bu maç için oyuncu istatistiği henüz mevcut değil."
+              : "Player statistics are not yet available for this match."}
           </div>
         ) : (
           <div className="mt-3 grid gap-6 xl:grid-cols-2">
