@@ -95,7 +95,7 @@ export default async function ResmiExperience({
   else if (section === "league")
     content =
       isEuroCupSource(config.source) ? (
-        <ResmiCupLeague data={await loadEurocupLeague(config.competition, season)} />
+        <ResmiCupLeague data={await loadEurocupLeague(config.competition, season, config.matchBase)} />
       ) : (
         <ResmiLig data={await loadResmiLig(config, season, leaderMetric)} />
       );

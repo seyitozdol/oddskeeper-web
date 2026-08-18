@@ -76,6 +76,7 @@ export type CupBracketRound = { roundLabel: string; order: number; ties: CupTie[
 export type CupLeagueBundle = {
   season: string;
   competition: string;
+  matchBase: string; // mac detay link koku (tie skorlari tiklanabilir)
   hasLeaguePhase: boolean;
   standings: CupStandingRow[];
   leaguePhaseMatchCount: number;
@@ -112,7 +113,8 @@ async function teamLogos(): Promise<Record<string, string>> {
 
 export async function loadEurocupLeague(
   competition: string,
-  season: string
+  season: string,
+  matchBase: string
 ): Promise<CupLeagueBundle> {
   const sb = await createClient();
   const [{ data }, logos] = await Promise.all([
@@ -321,6 +323,7 @@ export async function loadEurocupLeague(
   return {
     season,
     competition,
+    matchBase,
     hasLeaguePhase: standings.length > 0,
     standings,
     leaguePhaseMatchCount: leagueRows.length,

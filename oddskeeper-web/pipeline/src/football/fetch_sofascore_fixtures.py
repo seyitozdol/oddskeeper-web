@@ -22,7 +22,8 @@ from dotenv import dotenv_values
 ROOT = Path(__file__).resolve().parents[2]
 ENV = dotenv_values(ROOT / ".env")
 PROXY = (ENV.get("PROXY_URL") or "").strip()
-PROXIES = {"http": PROXY, "https": PROXY}
+# Proxy OPSIYONEL: VPS'te PROXY_URL, lokalde proxysiz (curl_cffi impersonate direkt calisir).
+PROXIES = {"http": PROXY, "https": PROXY} if PROXY else None
 DSN = (ENV.get("DATABASE_URL") or "").strip().strip('"')
 API = "https://api.sofascore.com/api/v1"
 
@@ -73,8 +74,6 @@ def sl_from_name(name: str) -> str:
 
 
 def main():
-    if not PROXY:
-        raise SystemExit("Eksik PROXY_URL (.env)")
     seasons = get(f"{API}/unique-tournament/{UT}/seasons")["seasons"]
     if SEASON_LABEL:
         season = next((s for s in seasons if sl_from_name(s["name"]) == SEASON_LABEL), None)

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useI18n } from "@/lib/i18n/LanguageProvider";
 import TeamCrest from "../shared/TeamCrest";
@@ -59,11 +60,36 @@ export default function ResmiCupLeague({ data }: { data: CupLeagueBundle }) {
       </div>
 
       {active === "league" ? <Standings rows={data.standings} tr={tr} /> : null}
-      {active === "qualifying" ? <TieRounds rounds={data.qualifying} tr={tr} /> : null}
-      {active === "playoff" ? (
-        <TieRounds rounds={[{ roundName: tr ? "Play-off Turu" : "Play-off Round", ties: data.playoffEntry }]} tr={tr} />
+      {active === "qualifying" ? (
+        <SplitMatches tr={tr}>
+          <TieRounds rounds={data.qualifying} tr={tr} matchBase={data.matchBase} />
+        </SplitMatches>
       ) : null}
-      {active === "bracket" ? <Bracket rounds={data.bracket} tr={tr} /> : null}
+      {active === "playoff" ? (
+        <SplitMatches tr={tr}>
+          <TieRounds rounds={[{ roundName: tr ? "Play-off Turu" : "Play-off Round", ties: data.playoffEntry }]} tr={tr} matchBase={data.matchBase} />
+        </SplitMatches>
+      ) : null}
+      {active === "bracket" ? <Bracket rounds={data.bracket} tr={tr} matchBase={data.matchBase} /> : null}
+    </div>
+  );
+}
+
+// ---- Ekran-böl: sol maçlar, sağ ileride istatistik alanı ----
+function SplitMatches({ children, tr }: { children: React.ReactNode; tr: boolean }) {
+  return (
+    <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
+      <div className="min-w-0 lg:flex-[3]">{children}</div>
+      <aside className="w-full shrink-0 rounded-xl border border-dashed border-line bg-card/50 p-4 lg:sticky lg:top-32 lg:flex-[2]">
+        <div className="text-[11px] font-semibold uppercase tracking-wide text-ink-3">
+          {tr ? "İstatistikler" : "Statistics"}
+        </div>
+        <p className="mt-2 text-[12px] text-ink-3">
+          {tr
+            ? "Eşleşme istatistikleri ve detayları yakında burada."
+            : "Tie statistics and details coming soon here."}
+        </p>
+      </aside>
     </div>
   );
 }
@@ -194,7 +220,7 @@ function legDate(iso: string | null, tr: boolean): string {
 
 // ---- Tek tie kartı: TAKIM-BAŞINA-SATIR (isim tam genişlik, kırpma yok) +
 // her leg icin ayri skor sutunu (iki maç da görünür, toplam skor yok). ----
-function TieCard({ tie, tr, isFinal }: { tie: CupTie; tr: boolean; isFinal?: boolean }) {
+function TieCard({ tie, tr, matchBase, isFinal }: { tie: CupTie; tr: boolean; matchBase: string; isFinal?: boolean }) {
   const advancedId = tie.advanced === "home" ? tie.homeId : tie.advanced === "away" ? tie.awayId : null;
   const droppedId = tie.homeDropped ? tie.homeId : tie.awayDropped ? tie.awayId : null;
   const dropDest = tie.homeDropped ?? tie.awayDropped;
@@ -216,13 +242,14 @@ function TieCard({ tie, tr, isFinal }: { tie: CupTie; tr: boolean; isFinal?: boo
         </div>
         {tie.legs.map((leg, i) => {
           const s = scoreOf(teamId, leg);
-          return (
-            <span
-              key={i}
-              className={`w-7 shrink-0 text-center tabular-nums ${adv ? "font-bold text-ink" : "text-ink-2"}`}
-            >
+          const cls = `w-7 shrink-0 text-center tabular-nums ${adv ? "font-bold text-ink" : "text-ink-2"}`;
+          // Skor -> o ayagin maç detayina link (Results gibi).
+          return matchBase && leg.matchId ? (
+            <Link key={i} href={`${matchBase}/${encodeURIComponent(leg.matchId)}`} className={`${cls} rounded hover:bg-veil hover:text-accent-ink`}>
               {s ?? "–"}
-            </span>
+            </Link>
+          ) : (
+            <span key={i} className={cls}>{s ?? "–"}</span>
           );
         })}
       </div>
@@ -250,7 +277,7 @@ function TieCard({ tie, tr, isFinal }: { tie: CupTie; tr: boolean; isFinal?: boo
 }
 
 // ---- Tur bazlı tie'ler (ön elemeler / play-off) — grid ----
-function TieRounds({ rounds, tr }: { rounds: CupTieRound[]; tr: boolean }) {
+function TieRounds({ rounds, tr, matchBase }: { rounds: CupTieRound[]; tr: boolean; matchBase: string }) {
   if (!rounds.length || rounds.every((r) => !r.ties.length)) {
     return <div className="rounded-xl border border-line bg-card p-6 text-center text-[13px] text-ink-2">{tr ? "Veri yok." : "No data."}</div>;
   }
@@ -259,9 +286,9 @@ function TieRounds({ rounds, tr }: { rounds: CupTieRound[]; tr: boolean }) {
       {rounds.map((rd) => (
         <div key={rd.roundName}>
           <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-ink-2">{rd.roundName}</div>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-2 xl:grid-cols-2">
             {rd.ties.map((t, i) => (
-              <TieCard key={`${t.homeId}-${t.awayId}-${i}`} tie={t} tr={tr} />
+              <TieCard key={`${t.homeId}-${t.awayId}-${i}`} tie={t} tr={tr} matchBase={matchBase} />
             ))}
           </div>
         </div>
@@ -279,7 +306,7 @@ const BRACKET_LABEL_TR: Record<string, string> = {
   Final: "Final",
 };
 
-function Bracket({ rounds, tr }: { rounds: CupBracketRound[]; tr: boolean }) {
+function Bracket({ rounds, tr, matchBase }: { rounds: CupBracketRound[]; tr: boolean; matchBase: string }) {
   // Sola dayali, tum turlar tek satirda sigar (kaydirma yok): esit flex sutunlar.
   return (
     <div className="flex gap-3">
@@ -290,7 +317,7 @@ function Bracket({ rounds, tr }: { rounds: CupBracketRound[]; tr: boolean }) {
           </div>
           <div className="space-y-2">
             {rd.ties.map((t, i) => (
-              <TieCard key={`${t.homeId}-${t.awayId}-${i}`} tie={t} tr={tr} isFinal={rd.roundLabel === "Final"} />
+              <TieCard key={`${t.homeId}-${t.awayId}-${i}`} tie={t} tr={tr} matchBase={matchBase} isFinal={rd.roundLabel === "Final"} />
             ))}
           </div>
         </div>
