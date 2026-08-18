@@ -123,6 +123,13 @@ def main():
                  fixture_status, source, source_fixture_id, created_at, updated_at
                ) values (%s,%s,%s,%s,%s,%s,true,%s,%s,%s,%s,%s,%s,%s,'sofascore',%s,now(),now())
                on conflict (fixture_id) do update set
+                 -- competition/season_label AUTORITE burada: ayni event'i
+                 -- fetch_sofascore_team_events.py once SofaScore'un Ingilizce
+                 -- turnuva adiyla ("UEFA Champions League") yazmis olabilir; kupa
+                 -- view'lari Turkce etikete gore filtreledigi icin bu upsert
+                 -- canonical COMP etiketini (ör. 'UEFA Şampiyonlar Ligi') dayatir.
+                 competition = excluded.competition,
+                 season_label = excluded.season_label,
                  round_number = excluded.round_number,
                  fixture_date = excluded.fixture_date,
                  fixture_datetime = excluded.fixture_datetime,
