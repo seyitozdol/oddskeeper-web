@@ -19,6 +19,7 @@ export type LeagueConfig = {
   basePath: string; // resmi deneyim kök yolu
   matchBase: string; // maç detay kök yolu (/{matchId})
   playerBase?: string; // oyuncu profil kök yolu (/{playerId}); Avrupa kupası
+  teamBase?: string; // takım profil kök yolu (/{teamId}); Avrupa kupası
   logo: string; // public/images/leagues/*.png
   nameKey: string; // i18n lig adı anahtarı
   transfersLeague: string | null; // tsl_transfers.season_label yok; league yok -> tsl only
@@ -84,6 +85,7 @@ export const EUROCL_LEAGUE: LeagueConfig = {
   basePath: "/dashboard/euro-cups/cl/resmi",
   matchBase: "/dashboard/euro-cups/cl/match",
   playerBase: "/dashboard/euro-cups/cl/player",
+  teamBase: "/dashboard/euro-cups/cl/team",
   logo: "/images/leagues/ucl.png",
   nameKey: "tsl.uclName",
   transfersLeague: null,
@@ -101,6 +103,7 @@ export const EUEL_LEAGUE: LeagueConfig = {
   basePath: "/dashboard/euro-cups/el/resmi",
   matchBase: "/dashboard/euro-cups/el/match",
   playerBase: "/dashboard/euro-cups/el/player",
+  teamBase: "/dashboard/euro-cups/el/team",
   logo: "/images/leagues/uel.png",
   nameKey: "tsl.uelName",
   transfersLeague: null,
@@ -118,6 +121,7 @@ export const EUECL_LEAGUE: LeagueConfig = {
   basePath: "/dashboard/euro-cups/conf/resmi",
   matchBase: "/dashboard/euro-cups/conf/match",
   playerBase: "/dashboard/euro-cups/conf/player",
+  teamBase: "/dashboard/euro-cups/conf/team",
   logo: "/images/leagues/uecl.png",
   nameKey: "tsl.ueclName",
   transfersLeague: null,
@@ -133,8 +137,12 @@ export function teamHrefFor(
   teamSlug: string | null,
   season?: string
 ): string | null {
-  // Avrupa kupasi: drill-down detay sayfalari henuz yok -> tiklanmaz (kirik link yok).
-  if (isEuroCupSource(config.source)) return null;
+  // Avrupa kupasi: sofascore-keyed takim profili (teamBase configde).
+  if (isEuroCupSource(config.source)) {
+    return config.teamBase
+      ? `${config.teamBase}/${encodeURIComponent(teamId)}`
+      : null;
+  }
   // tff1: sofascore takım id'li mevcut sayfa.
   if (config.source === "tff1") {
     const s = season ? `?season=${encodeURIComponent(season)}` : "";

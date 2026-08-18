@@ -1,4 +1,3 @@
-import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
@@ -32,11 +31,15 @@ export function SideTabMenu({
       {teamName ? (
         <div className="flex items-center gap-2.5 border-b border-line bg-gradient-to-b from-card-2 to-card px-4 py-3">
           {teamLogo ? (
-            <Image
+            // Harici CDN (SofaScore/FlashScore) hotlink referrer'i bloklar +
+            // Vercel optimizer bunlari guvenilmez ceker -> plain img + no-referrer.
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
               src={teamLogo}
               alt={teamName}
               width={32}
               height={32}
+              referrerPolicy="no-referrer"
               className="h-8 w-8 shrink-0 object-contain"
             />
           ) : null}

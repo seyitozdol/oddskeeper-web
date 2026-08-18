@@ -672,6 +672,7 @@ export function Tff1PlayerShowcase({
                   <img
                     src={info.photo_url}
                     alt={latest.player_name ?? ""}
+                    referrerPolicy="no-referrer"
                     className="h-full w-full object-cover"
                   />
                 ) : (

@@ -1,6 +1,7 @@
 import { createClient } from "../../../lib/supabase/server";
 import type {
   Tff1MatchLogRow,
+  Tff1MatchRow,
   Tff1PlayerRow,
   Tff1TeamRow,
 } from "../../tff1/types";
@@ -61,16 +62,17 @@ export async function getCupTeamSeasonStats(
 // koprusu). current=bulunulan sayfa. Tek link varsa toggle gizlenir.
 export type CupCrossLink = {
   key: string;
-  label: string;
+  nameKey: string; // i18n anahtari (EN/TR lokalize)
   logo: string;
+  invert: boolean; // koyu modda logo beyaza cevrilsin (kupa logolari koyu)
   href: string;
   current: boolean;
 };
 
 const CUP_LINKS = [
-  { key: "ucl", view: "ucl_player_season_stats_v1", label: "Şampiyonlar Ligi", logo: "/images/leagues/ucl.png", base: "/dashboard/euro-cups/cl/player" },
-  { key: "uel", view: "uel_player_season_stats_v1", label: "Avrupa Ligi", logo: "/images/leagues/uel.png", base: "/dashboard/euro-cups/el/player" },
-  { key: "uecl", view: "uecl_player_season_stats_v1", label: "Konferans Ligi", logo: "/images/leagues/uecl.png", base: "/dashboard/euro-cups/conf/player" },
+  { key: "ucl", view: "ucl_player_season_stats_v1", nameKey: "tsl.uclName", logo: "/images/leagues/ucl.png", base: "/dashboard/euro-cups/cl/player" },
+  { key: "uel", view: "uel_player_season_stats_v1", nameKey: "tsl.uelName", logo: "/images/leagues/uel.png", base: "/dashboard/euro-cups/el/player" },
+  { key: "uecl", view: "uecl_player_season_stats_v1", nameKey: "tsl.ueclName", logo: "/images/leagues/uecl.png", base: "/dashboard/euro-cups/conf/player" },
 ];
 
 export async function getCupPlayerCrossLinks(
@@ -91,8 +93,9 @@ export async function getCupPlayerCrossLinks(
     }
     links.push({
       key: cup.key,
-      label: cup.label,
+      nameKey: cup.nameKey,
       logo: cup.logo,
+      invert: true,
       href: `${cup.base}/${encodeURIComponent(sofascoreId)}`,
       current: cup.key === currentKey,
     });
@@ -107,10 +110,89 @@ export async function getCupPlayerCrossLinks(
   if (fb && fb.length > 0 && fb[0].player_slug) {
     links.push({
       key: "tsl",
-      label: "Süper Lig",
+      nameKey: "tsl.leagueName",
       logo: "/images/leagues/super-lig.png",
+      invert: false,
       href: `/dashboard/stats-analysis/football/player-stats/detail?player=${encodeURIComponent(
         fb[0].player_slug as string
+      )}`,
+      current: false,
+    });
+  }
+  return links;
+}
+
+// Bir kupanin tum maclari (takim profili Results/form icin). eurocup_stage_
+// matches_v1 uc kupayi kapsar -> competition ile suzulur. Tff1MatchRow uyumlu.
+export async function getCupMatches(
+  competition: string
+): Promise<Tff1MatchRow[]> {
+  const supabase = await createClient();
+  const rows: Tff1MatchRow[] = [];
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await supabase
+      .schema("analytics")
+      .from("eurocup_stage_matches_v1")
+      .select("*")
+      .eq("competition", competition)
+      .order("match_datetime", { ascending: false })
+      .range(from, from + PAGE_SIZE - 1)
+      .returns<Tff1MatchRow[]>();
+    if (error) {
+      console.error("getCupMatches error:", error.message);
+      return rows;
+    }
+    rows.push(...(data ?? []));
+    if (!data || data.length < PAGE_SIZE) return rows;
+  }
+}
+
+// Takim capraz-lig baglantilari (oyuncudaki getCupPlayerCrossLinks'in takim surumu):
+// 3 kupa (sofascore team_id) + Super Lig (sofascore_football_team_link_v1 -> slug).
+export async function getCupTeamCrossLinks(
+  sofascoreTeamId: string,
+  currentKey: string
+): Promise<CupCrossLink[]> {
+  const supabase = await createClient();
+  const links: CupCrossLink[] = [];
+  const cups = [
+    { key: "ucl", view: "ucl_team_season_stats_v1", nameKey: "tsl.uclName", logo: "/images/leagues/ucl.png", base: "/dashboard/euro-cups/cl/team" },
+    { key: "uel", view: "uel_team_season_stats_v1", nameKey: "tsl.uelName", logo: "/images/leagues/uel.png", base: "/dashboard/euro-cups/el/team" },
+    { key: "uecl", view: "uecl_team_season_stats_v1", nameKey: "tsl.ueclName", logo: "/images/leagues/uecl.png", base: "/dashboard/euro-cups/conf/team" },
+  ];
+  for (const cup of cups) {
+    if (cup.key !== currentKey) {
+      const { data } = await supabase
+        .schema("analytics")
+        .from(cup.view)
+        .select("team_id")
+        .eq("team_id", sofascoreTeamId)
+        .limit(1);
+      if (!data || data.length === 0) continue;
+    }
+    links.push({
+      key: cup.key,
+      nameKey: cup.nameKey,
+      logo: cup.logo,
+      invert: true,
+      href: `${cup.base}/${encodeURIComponent(sofascoreTeamId)}`,
+      current: cup.key === currentKey,
+    });
+  }
+  const { data: fb } = await supabase
+    .schema("analytics")
+    .from("sofascore_football_team_link_v1")
+    .select("team_slug")
+    .eq("sofascore_team_id", sofascoreTeamId)
+    .limit(1);
+  if (fb && fb.length > 0 && fb[0].team_slug) {
+    links.push({
+      key: "tsl",
+      nameKey: "tsl.leagueName",
+      logo: "/images/leagues/super-lig.png",
+      invert: false,
+      href: `/dashboard/stats-analysis/football/team-stats/detail?team=${encodeURIComponent(
+        fb[0].team_slug as string
       )}`,
       current: false,
     });

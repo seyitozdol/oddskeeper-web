@@ -204,6 +204,17 @@ function AvgStat({
 
 /* ── ana bileşen ────────────────────────────────────────────── */
 
+// Lig-bağımlı ("chrome") parçalar. Verilmezse Trendyol 1. Lig varsayılanları
+// (mevcut tff1 davranışı korunur); Avrupa kupası bunları geçerek aynı bileşeni
+// yeniden kullanır (kupada piyasa değeri yok -> showSquadValue=false).
+export type TeamShowcaseChrome = {
+  competitionLabel: string;
+  leagueLogoSrc: string;
+  teamSeasonHref: (season: string) => string;
+  matchHref: (matchId: string) => string;
+  showSquadValue: boolean;
+};
+
 export type Tff1TeamShowcaseProps = {
   teamId: string;
   team: Tff1TeamRow;
@@ -222,6 +233,7 @@ export type Tff1TeamShowcaseProps = {
   resultFor: (m: Tff1MatchRow) => Res;
   t: Translator;
   locale: string;
+  chrome?: TeamShowcaseChrome;
 };
 
 export function Tff1TeamShowcase({
@@ -240,10 +252,25 @@ export function Tff1TeamShowcase({
   resultFor,
   t,
   locale,
+  chrome,
 }: Tff1TeamShowcaseProps) {
   const season = team.season_label;
   const teamName = team.team_name ?? teamId;
   const played = num(team.played);
+
+  // Lig-bağımlı parçalar (chrome verilmezse tff1 varsayılanı).
+  const ui = {
+    competitionLabel: chrome?.competitionLabel ?? "Trendyol 1. Lig",
+    leagueLogoSrc: chrome?.leagueLogoSrc ?? "/images/leagues/tff-1-lig-ss.png",
+    teamSeasonHref:
+      chrome?.teamSeasonHref ??
+      ((s: string) =>
+        `/dashboard/tff-1-lig/team/${teamId}?season=${encodeURIComponent(s)}`),
+    matchHref:
+      chrome?.matchHref ??
+      ((mid: string) => `/dashboard/tff-1-lig/match/${mid}`),
+    showSquadValue: chrome?.showSquadValue ?? true,
+  };
 
   const resultLetter = (r: Res) =>
     r === "W"
@@ -325,9 +352,9 @@ export function Tff1TeamShowcase({
                   {/* Lig logosu (SELF-HOST; Vercel optimizer SofaScore'u cekemiyor).
                       tsl-league-mark: koyu temalarda duz beyaz, acik temada renkli. */}
                   <Image
-                    src="/images/leagues/tff-1-lig-ss.png"
-                    alt="Trendyol 1. Lig"
-                    title="Trendyol 1. Lig"
+                    src={ui.leagueLogoSrc}
+                    alt={ui.competitionLabel}
+                    title={ui.competitionLabel}
                     width={56}
                     height={56}
                     className="tsl-league-mark h-12 w-12 shrink-0 object-contain sm:h-14 sm:w-14"
@@ -335,12 +362,12 @@ export function Tff1TeamShowcase({
                 </h1>
 
                 <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1.5 text-sm text-ink-2">
-                  <span className="font-medium text-ink">Trendyol 1. Lig</span>
+                  <span className="font-medium text-ink">{ui.competitionLabel}</span>
                   <span className="flex flex-wrap items-center gap-1">
                     {teamSeasons.map((tr) => (
                       <Link
                         key={tr.season_label}
-                        href={`/dashboard/tff-1-lig/team/${teamId}?season=${encodeURIComponent(tr.season_label)}`}
+                        href={ui.teamSeasonHref(tr.season_label)}
                         className={`rounded-md border px-2 py-0.5 text-[12px] transition ${
                           tr.season_label === season
                             ? "border-line-strong bg-card-2 text-ink"
@@ -360,14 +387,16 @@ export function Tff1TeamShowcase({
                     </div>
                     <div className="mt-1 text-sm font-semibold text-ink">{rank}.</div>
                   </div>
-                  <div>
-                    <div className="text-[9px] font-medium uppercase tracking-[0.16em] text-ink-3">
-                      {t("tff1.drawerSquadValue")}
+                  {ui.showSquadValue ? (
+                    <div>
+                      <div className="text-[9px] font-medium uppercase tracking-[0.16em] text-ink-3">
+                        {t("tff1.drawerSquadValue")}
+                      </div>
+                      <div className="mt-1 text-sm font-semibold text-pos">
+                        {formatMarketValue(squadValue || null)}
+                      </div>
                     </div>
-                    <div className="mt-1 text-sm font-semibold text-pos">
-                      {formatMarketValue(squadValue || null)}
-                    </div>
-                  </div>
+                  ) : null}
                   <div>
                     <div className="text-[9px] font-medium uppercase tracking-[0.16em] text-ink-3">
                       {t("tff1.colRating")}
@@ -453,13 +482,15 @@ export function Tff1TeamShowcase({
                 label={t("teamDetail.statPointsPerGame")}
                 value={played > 0 ? (num(team.points) / played).toFixed(2) : "—"}
               />
-              <SnapshotRow
-                icon={<Euro size={14} />}
-                label={t("tff1.drawerSquadValue")}
-                value={
-                  <span className="text-pos">{formatMarketValue(squadValue || null)}</span>
-                }
-              />
+              {ui.showSquadValue ? (
+                <SnapshotRow
+                  icon={<Euro size={14} />}
+                  label={t("tff1.drawerSquadValue")}
+                  value={
+                    <span className="text-pos">{formatMarketValue(squadValue || null)}</span>
+                  }
+                />
+              ) : null}
               <SnapshotRow
                 icon={<CalendarDays size={14} />}
                 label={t("playerDetail.lastMatchLabel")}
@@ -632,7 +663,7 @@ export function Tff1TeamShowcase({
                   {t("common.competition")}
                 </div>
                 <div className="mt-1 truncate text-sm font-medium text-ink">
-                  Trendyol 1. Lig
+                  {ui.competitionLabel}
                 </div>
               </div>
               <div>
@@ -773,7 +804,7 @@ export function Tff1TeamShowcase({
                         >
                           <td className="whitespace-nowrap px-2 py-2 text-ink-2">
                             <Link
-                              href={`/dashboard/tff-1-lig/match/${m.match_id}`}
+                              href={ui.matchHref(m.match_id)}
                               className="transition hover:text-ink hover:underline"
                             >
                               {formatMatchDate(m.match_datetime, locale)}
@@ -856,7 +887,7 @@ export function Tff1TeamShowcase({
                       >
                         <td className="whitespace-nowrap px-2 py-2 font-medium">
                           <Link
-                            href={`/dashboard/tff-1-lig/team/${teamId}?season=${encodeURIComponent(row.season_label)}`}
+                            href={ui.teamSeasonHref(row.season_label)}
                             className="transition hover:text-ink hover:underline"
                           >
                             {row.season_label}

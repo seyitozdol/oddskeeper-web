@@ -21,6 +21,17 @@ const TAG_NEW_TOOL: L = { en: "New tool", tr: "Yeni araç" };
 const ENTRIES: Entry[] = [
   {
     date: { en: "18 August", tr: "18 Ağustos" },
+    title: { en: "Team profiles for European cups", tr: "Avrupa kupaları için takım profilleri" },
+    tag: TAG_NEW,
+    items: [
+      {
+        en: "Cup teams are now clickable too. Open a team's profile — Overview (form, an attribute radar versus the competition, per-match averages and season history), Squad and Results — with the same left-side tab menu as other team profiles. A toggle at the top links across to the same team's profile in the other cups and, for Süper Lig sides, to their league profile.",
+        tr: "Kupa takımları da artık tıklanabilir. Bir takımın profilini açın — Genel Bakış (form, rakiplere göre yetenek radarı, maç başı ortalamalar ve sezon geçmişi), Kadro ve Sonuçlar — diğer takım profilleriyle aynı sol sekme menüsüyle. Üstteki geçiş menüsü, aynı takımın diğer kupalardaki profiline ve Süper Lig takımları için lig profiline bağlanır.",
+      },
+    ],
+  },
+  {
+    date: { en: "18 August", tr: "18 Ağustos" },
     title: { en: "Player profiles for European cups", tr: "Avrupa kupaları için oyuncu profilleri" },
     tag: TAG_NEW,
     items: [
