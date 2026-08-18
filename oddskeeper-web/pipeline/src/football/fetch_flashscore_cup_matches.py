@@ -148,15 +148,23 @@ def load_sofascore_gaps(cur):
     return out
 
 
-def resolve(fs_block, competition, gaps):
-    """FS blogunu SofaScore macina cozumle. Doner (sofa_match, score, reason) veya None.
-    Guven: skor tam eslesme + ad benzerligi + tarih yakinligi."""
+def candidates(fs_block, competition, gaps):
+    """FS blogu icin KABUL EDILEBILIR tum SofaScore adaylari, guvene gore sirali.
+    Doner [(gap, conf, reason), ...] (bos = eslesme yok).
+
+    Eskiden (resolve) yalniz EN IYI aday donerdi; claim-tracking icin ikinci-en-iyi
+    de gerekli: bir blogun en iyi maci baska bir blok tarafindan claim'lendiyse, o
+    blok bu listedeki bir sonraki uygun maca dusebilsin.
+
+    Kabul: (1) guclu ad benzerligi (>=0.6), VEYA (2) skor TAM eslesir + en az bir
+    taraf makul eslesir (max>=0.4, toplam>=0.5). FS kisaltmalari (KuPS<->Kuopion)
+    tek tarafi sifirlayabilir; skor+tarih+diger taraf yeterli ayirt edicidir."""
     ts = fs_block["ts"]
     fdate = datetime.fromtimestamp(ts, tz=timezone.utc).date()
     fhn, fan = norm_name(fs_block["h"]), norm_name(fs_block["a"])
     fhs = int(fs_block["hs"]) if (fs_block["hs"] or "").isdigit() else None
     fas = int(fs_block["as"]) if (fs_block["as"] or "").isdigit() else None
-    best = None
+    out = []
     for g in gaps:
         if g["competition"] != competition:
             continue
@@ -169,24 +177,13 @@ def resolve(fs_block, competition, gaps):
         # skor eslesmesi (guclu sinyal)
         score_ok = (fhs is not None and g["hs"] is not None
                     and fhs == g["hs"] and fas == g["as"])
-        # guven skoru: skor eslesirse +0.6, ad benzerligi agirlik
-        conf = no + (0.6 if score_ok else 0.0)
-        # ayni gun ise +0.1
-        if g["date"] == fdate:
-            conf += 0.1
-        if best is None or conf > best[1]:
-            best = (g, conf, score_ok, no, hov, aov)
-    if best is None:
-        return None
-    g, conf, score_ok, no, hov, aov = best
-    # Kabul: (1) guclu ad benzerligi (>=0.6), VEYA (2) skor TAM eslesir + en az bir
-    # taraf makul eslesir (max>=0.4, toplam>=0.5). FS kisaltmalari (KuPS<->Kuopion)
-    # tek tarafi sifirlayabilir; skor+tarih+diger taraf yeterli ayirt edicidir.
-    if no >= 0.6:
-        return g, conf, "name"
-    if score_ok and max(hov, aov) >= 0.4 and (hov + aov) >= 0.5:
-        return g, conf, "score+name"
-    return None
+        # guven skoru: skor eslesirse +0.6, ayni gun +0.1, ad benzerligi agirlik
+        conf = no + (0.6 if score_ok else 0.0) + (0.1 if g["date"] == fdate else 0.0)
+        accept = (no >= 0.6) or (score_ok and max(hov, aov) >= 0.4 and (hov + aov) >= 0.5)
+        if accept:
+            out.append((g, conf, "name" if no >= 0.6 else "score+name"))
+    out.sort(key=lambda x: x[1], reverse=True)
+    return out
 
 
 def upsert_match_map(cur, sofa_id, fs_mid, competition, confidence):
@@ -229,7 +226,7 @@ def write_match_row(mid, competition, home, away, ts, hs, as_):
         fsplayer.upsert("matches", [row], "source,source_match_id")
 
 
-def process_fs_match(g, fs_block, competition, cur):
+def process_fs_match(g, fs_block, competition, cur, confidence=1.0):
     """Cozulmus bir FS macini cek + yaz. Doner (team_written, player_written)."""
     mid = fs_block["mid"]
     ts = fs_block["ts"]
@@ -287,7 +284,7 @@ def process_fs_match(g, fs_block, competition, cur):
         write_match_row(mid, competition, home, away, ts, hs, as_)
 
     if not DRY_RUN:
-        upsert_match_map(cur, g["id"], mid, competition, 1.0)
+        upsert_match_map(cur, g["id"], mid, competition, confidence)
     return team_written, player_written
 
 
@@ -302,10 +299,12 @@ def main():
         return
 
     now_ts = datetime.now(tz=timezone.utc).timestamp()
-    total_t = total_p = total_m = 0
+
+    # 1) Uygun tum bloklar icin ADAY ciftleri topla (blok basina 1+ olabilir).
+    cand = []  # (conf, competition, block, gap, reason)
     for cup in CUPS:
         blocks = fsfetch.discover(cup["url"])
-        picks = []
+        elig = 0
         for b in blocks:
             if TEST_MID and b["mid"] != TEST_MID:
                 continue
@@ -316,23 +315,39 @@ def main():
                 age_h = (now_ts - b["ts"]) / 3600.0
                 if not (MIN_AGE_H <= age_h <= MAX_AGE_H):
                     continue
-            res = resolve(b, cup["competition"], gaps)
-            if not res:
-                continue
-            g, conf, reason = res
-            if not (g["player_empty"] or g["team_empty"]):
-                continue  # SofaScore dolu, FS gerekmez
-            picks.append((g, b, reason, conf))
-        print(f"[{cup['competition']}] blok={len(blocks)}, islenecek={len(picks)}", flush=True)
-        for g, b, reason, conf in picks:
-            try:
-                tw, pw = process_fs_match(g, b, cup["competition"], cur)
-                total_t += tw; total_p += pw; total_m += 1
-                print(f"  + {b['mid']} -> sofa {g['id']} ({reason} {conf:.2f}) "
-                      f"team={tw} player={pw}  {b['h']} {b['hs']}-{b['as']} {b['a']}", flush=True)
-                time.sleep(SLEEP)
-            except Exception as e:  # noqa
-                print(f"  ATLANDI {b['mid']} (sofa {g['id']}): {repr(e)[:160]}", flush=True)
+            elig += 1
+            for g, conf, reason in candidates(b, cup["competition"], gaps):
+                if not (g["player_empty"] or g["team_empty"]):
+                    continue  # SofaScore dolu, FS gerekmez
+                cand.append((conf, cup["competition"], b, g, reason))
+        print(f"[{cup['competition']}] blok={len(blocks)}, uygun blok={elig}", flush=True)
+
+    # 2) CLAIM-TRACKING: guven sirasi (buyukten kucuge); her FS blogu ve her SofaScore
+    #    maci EN FAZLA BIR kez tahsis edilir. En guvenli ciftler once kilitlenir ->
+    #    cakisan blok kaybederse listedeki bir sonraki uygun macina duser (mac-basina
+    #    tek FS kaynagi; iki farkli mac ayni sofascore id'sine yazamaz).
+    cand.sort(key=lambda x: x[0], reverse=True)
+    claimed_gap, claimed_mid = set(), set()
+    picks = []  # (competition, block, gap, reason, conf)
+    for conf, comp, b, g, reason in cand:
+        if b["mid"] in claimed_mid or g["id"] in claimed_gap:
+            continue
+        claimed_mid.add(b["mid"])
+        claimed_gap.add(g["id"])
+        picks.append((comp, b, g, reason, conf))
+    print(f"aday cift={len(cand)}, tahsis edilen mac={len(picks)}", flush=True)
+
+    # 3) Tahsis edilen maclari isle.
+    total_t = total_p = total_m = 0
+    for comp, b, g, reason, conf in picks:
+        try:
+            tw, pw = process_fs_match(g, b, comp, cur, conf)
+            total_t += tw; total_p += pw; total_m += 1
+            print(f"  + {b['mid']} -> sofa {g['id']} ({reason} {conf:.2f}) "
+                  f"team={tw} player={pw}  {b['h']} {b['hs']}-{b['as']} {b['a']}", flush=True)
+            time.sleep(SLEEP)
+        except Exception as e:  # noqa
+            print(f"  ATLANDI {b['mid']} (sofa {g['id']}): {repr(e)[:160]}", flush=True)
     print(f"TOPLAM: {total_m} mac, {total_t} takim-satiri, {total_p} oyuncu "
           f"(backfill={BACKFILL}, dry_run={DRY_RUN})", flush=True)
 
