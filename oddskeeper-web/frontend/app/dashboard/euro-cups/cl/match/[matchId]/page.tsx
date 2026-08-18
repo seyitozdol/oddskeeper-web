@@ -15,7 +15,7 @@ export default async function ClMatchPage({
     <CupMatchDetail
       matchId={matchId}
       returnTo={returnTo}
-      backBase="/dashboard/euro-cups/cl/resmi?season=2025%2F2026&section=league"
+      backBase="/dashboard/euro-cups/cl/resmi?season=2026%2F2027&section=league"
     />
   );
 }

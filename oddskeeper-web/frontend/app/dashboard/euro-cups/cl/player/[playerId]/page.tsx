@@ -14,7 +14,7 @@ export default async function ClPlayerPage({
       viewPrefix="ucl"
       competition="UEFA Şampiyonlar Ligi"
       matchBase="/dashboard/euro-cups/cl/match"
-      backBase="/dashboard/euro-cups/cl/resmi?season=2025%2F2026&section=players"
+      backBase="/dashboard/euro-cups/cl/resmi?season=2026%2F2027&section=players"
     />
   );
 }

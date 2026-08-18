@@ -14,7 +14,7 @@ export default async function ConfPlayerPage({
       viewPrefix="uecl"
       competition="UEFA Konferans Ligi"
       matchBase="/dashboard/euro-cups/conf/match"
-      backBase="/dashboard/euro-cups/conf/resmi?season=2025%2F2026&section=players"
+      backBase="/dashboard/euro-cups/conf/resmi?season=2026%2F2027&section=players"
     />
   );
 }
