@@ -57,6 +57,12 @@ SLEEP = float(os.environ.get("SOFA_SLEEP", "0.6"))
 LEAGUES = [
     {"ut": 52, "competition": "Süper Lig"},
     {"ut": 98, "competition": "Trendyol 1. Lig"},
+    # Avrupa kulup kupalari (sofascore-keyed, guncel sezonu otomatik alir). match_row
+    # roundInfo yakalar -> asama (on eleme/lig-fazi/braket) verisi kendiliginden gelir.
+    # competition etiketleri guard + ucl/uel/uecl view'lariyla birebir.
+    {"ut": 7, "competition": "UEFA Şampiyonlar Ligi"},
+    {"ut": 679, "competition": "UEFA Avrupa Ligi"},
+    {"ut": 17015, "competition": "UEFA Konferans Ligi"},
 ]
 
 

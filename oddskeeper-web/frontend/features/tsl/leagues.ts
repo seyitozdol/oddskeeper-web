@@ -1,9 +1,15 @@
 import { getPlayerDetailHref, getTeamDetailHref } from "@/lib/routes";
-import { RESMI_SECTIONS, CUP_SECTIONS, type ResmiSection } from "./constants";
+import { RESMI_SECTIONS, CUP_SECTIONS, EUROCUP_SECTIONS, type ResmiSection } from "./constants";
 
 // Resmi deneyimini besleyen lig yapilandirmasi. TSL tsl_ss_* (opta-keyed)
-// kaynaktan; 1. Lig tff1_* (sofascore-keyed); Kupa cup_* (mackolik, uuid=opta).
-export type LeagueSource = "tsl" | "tff1" | "cup";
+// kaynaktan; 1. Lig tff1_* (sofascore-keyed); Kupa cup_* (mackolik, uuid=opta);
+// Avrupa kupasi ucl_* (sofascore-keyed, tff1 deseni).
+export type LeagueSource = "tsl" | "tff1" | "cup" | "eurocl" | "euel" | "euecl";
+
+// Avrupa kupasi kaynaklari (ortak Cup League/Teams mantigi + prefix_* view'lar).
+export function isEuroCupSource(source: LeagueSource): boolean {
+  return source === "eurocl" || source === "euel" || source === "euecl";
+}
 
 export type LeagueConfig = {
   source: LeagueSource;
@@ -17,6 +23,7 @@ export type LeagueConfig = {
   transfersLeague: string | null; // tsl_transfers.season_label yok; league yok -> tsl only
   sections: readonly ResmiSection[]; // gösterilecek sekmeler (sırayla)
   defaultSection: ResmiSection; // section paramı yoksa/lig amblemi linki
+  viewPrefix?: string; // Avrupa kupasi: prefix_* view seti (ucl/uel/uecl)
 };
 
 const SEASONS = ["2026/2027", "2025/2026", "2024/2025"];
@@ -64,6 +71,57 @@ export const CUP_LEAGUE: LeagueConfig = {
   defaultSection: "cupStages",
 };
 
+// Avrupa kupasi — Sampiyonlar Ligi (ucl_* view'lari, sofascore-keyed). v1: veri/
+// goruntuleme ekranlari; takim/oyuncu/mac drill-down detay sayfalari sonraki artis
+// (href'ler simdilik null -> tiklanmaz, kirik link yok). 24/25 yok; 25/26 tam veri
+// oldugundan varsayilan sezon o (26/27 elemeler/lig fazi basi, kismi).
+export const EUROCL_LEAGUE: LeagueConfig = {
+  source: "eurocl",
+  competition: "UEFA Şampiyonlar Ligi",
+  seasons: ["2026/2027", "2025/2026"],
+  defaultSeason: "2025/2026",
+  basePath: "/dashboard/euro-cups/cl/resmi",
+  matchBase: "", // mac detay sayfasi henuz yok -> MatchRow tiklanmaz (404 yok)
+  logo: "/images/leagues/ucl.png",
+  nameKey: "tsl.uclName",
+  transfersLeague: null,
+  sections: EUROCUP_SECTIONS,
+  defaultSection: "league",
+  viewPrefix: "ucl",
+};
+
+// Avrupa Ligi — CL ile ayni yapi (uel_* view'lari, eurocup_* paylasimli katman).
+export const EUEL_LEAGUE: LeagueConfig = {
+  source: "euel",
+  competition: "UEFA Avrupa Ligi",
+  seasons: ["2026/2027", "2025/2026"],
+  defaultSeason: "2025/2026",
+  basePath: "/dashboard/euro-cups/el/resmi",
+  matchBase: "",
+  logo: "/images/leagues/uel.png",
+  nameKey: "tsl.uelName",
+  transfersLeague: null,
+  sections: EUROCUP_SECTIONS,
+  defaultSection: "league",
+  viewPrefix: "uel",
+};
+
+// Konferans Ligi — uecl_* view'lari.
+export const EUECL_LEAGUE: LeagueConfig = {
+  source: "euecl",
+  competition: "UEFA Konferans Ligi",
+  seasons: ["2026/2027", "2025/2026"],
+  defaultSeason: "2025/2026",
+  basePath: "/dashboard/euro-cups/conf/resmi",
+  matchBase: "",
+  logo: "/images/leagues/uecl.png",
+  nameKey: "tsl.ueclName",
+  transfersLeague: null,
+  sections: EUROCUP_SECTIONS,
+  defaultSection: "league",
+  viewPrefix: "uecl",
+};
+
 // Takım detay linki (lig kaynağına göre).
 export function teamHrefFor(
   config: LeagueConfig,
@@ -71,6 +129,8 @@ export function teamHrefFor(
   teamSlug: string | null,
   season?: string
 ): string | null {
+  // Avrupa kupasi: drill-down detay sayfalari henuz yok -> tiklanmaz (kirik link yok).
+  if (isEuroCupSource(config.source)) return null;
   // tff1: sofascore takım id'li mevcut sayfa.
   if (config.source === "tff1") {
     const s = season ? `?season=${encodeURIComponent(season)}` : "";
@@ -90,6 +150,7 @@ export function playerHrefFor(
   playerId: string,
   playerSlug: string | null
 ): string | null {
+  if (isEuroCupSource(config.source)) return null; // drill-down henuz yok
   if (config.source === "tff1") return `/dashboard/tff-1-lig/player/${encodeURIComponent(playerId)}`;
   // cup: eşleşen (slug var) football profiline; eşleşmeyen kupa oyuncu profiline.
   if (config.source === "cup") {

@@ -319,7 +319,8 @@ export function MatchRow({
       </div>
     </div>
   );
-  if (isFixture) return inner;
+  // matchBase bos ise (or. Avrupa kupasi v1: mac detay sayfasi henuz yok) tiklanmaz.
+  if (isFixture || !matchBase) return inner;
   const href = `${matchBase}/${encodeURIComponent(match.matchId)}?returnTo=${encodeURIComponent(returnTo)}`;
   return (
     <Link href={href} className="block">

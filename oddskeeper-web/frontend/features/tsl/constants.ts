@@ -69,6 +69,18 @@ export const CUP_SECTIONS = [
   "playerStatsModel",
 ] as const;
 
+// Avrupa kupasi (CL/EL/ConL) sekmeleri. Sofascore-keyed, tff1 deseni. v1'de
+// veri/goruntuleme: transfer (kupada yok), MSM/PSM (Faz 5), cupStages (Mackolik'e
+// ozel) ve referees (CL hakem view'i henuz yok) HARIC.
+export const EUROCUP_SECTIONS = [
+  "league",
+  "players",
+  "teams",
+  "results",
+  "playerRankings",
+  "teamRankings",
+] as const;
+
 const ALL_SECTIONS = [...RESMI_SECTIONS, "cupStages"] as const;
 export type ResmiSection = (typeof ALL_SECTIONS)[number];
 

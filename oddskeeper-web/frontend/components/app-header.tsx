@@ -8,7 +8,7 @@ import { createClient } from "../lib/supabase/client";
 import { useI18n } from "../lib/i18n/LanguageProvider";
 import { LOCALES, type Locale } from "../lib/i18n/config";
 import { THEMES, type Theme } from "../lib/theme";
-import { isNavKeyAllowed, type NavKey } from "../lib/nav-permissions";
+import { isNavKeyVisible, type NavKey } from "../lib/nav-permissions";
 import ThemeSelect from "./ThemeSelect";
 import { ClipboardList } from "lucide-react";
 
@@ -44,6 +44,9 @@ type LeagueItem = {
   group: "football" | "basketball" | "volleyball";
   Icon?: (props: { className?: string }) => ReactElement;
   logoSrc?: string;
+  // Koyu temada beyaz silue (tsl-league-mark filtresi) — TSL/1.Lig/Kupa gibi tek-renk
+  // amblemler icin. EL/EC (basketbol) ve voleybol bayragi kendi renginde kalir.
+  invertOnDark?: boolean;
   competition?: string;
   sport?: string;
 };
@@ -106,6 +109,11 @@ const LEAGUE_ITEMS: LeagueItem[] = [
   { key: "tsl", navKey: "league-tsl", label: "TSL", Icon: TslMark, href: TSL_HUB_HREF, group: "football" },
   { key: "1lig", navKey: "league-1lig", label: "1.Lig", Icon: Lig1Mark, href: TFF1_RESMI_HREF, group: "football" },
   { key: "cup", navKey: "league-cup", label: "Cup", Icon: CupMark, href: CUP_HREF, group: "football" },
+  // Avrupa kupasi — Sampiyonlar Ligi. Opt-in (varsayilanda yalniz admin; bkz.
+  // OPT_IN_NAV_KEYS). Logo /images/leagues/ucl.png.
+  { key: "eurocl", navKey: "league-eurocl", label: "CL", logoSrc: "/images/leagues/ucl.png", invertOnDark: true, href: "/dashboard/euro-cups/cl/resmi?season=2025%2F2026&section=league", group: "football" },
+  { key: "euel", navKey: "league-euel", label: "EL", logoSrc: "/images/leagues/uel.png", invertOnDark: true, href: "/dashboard/euro-cups/el/resmi?season=2025%2F2026&section=league", group: "football" },
+  { key: "euecl", navKey: "league-euecl", label: "Con", logoSrc: "/images/leagues/uecl.png", invertOnDark: true, href: "/dashboard/euro-cups/conf/resmi?season=2025%2F2026&section=league", group: "football" },
   { key: "tbl", navKey: "league-tbl", label: "BSL", Icon: TblMark, href: BASKETBALL_LEAGUE_HREF, group: "basketball", sport: "basketball" },
   { key: "euroleague", navKey: "league-tbl", label: "EL", logoSrc: "/images/leagues/euroleague.svg", href: "/dashboard/euro/euroleague", group: "basketball", sport: "basketball" },
   { key: "eurocup", navKey: "league-tbl", label: "EC", logoSrc: "/images/leagues/eurocup.svg", href: "/dashboard/euro/eurocup", group: "basketball", sport: "basketball" },
@@ -116,7 +124,7 @@ const LEAGUE_ITEMS: LeagueItem[] = [
 // Lig kisayolu markasi (inline SVG ya da public logo).
 function LeagueMark({ item }: { item: LeagueItem }) {
   if (item.logoSrc) {
-    return <Image src={item.logoSrc} alt={item.label} width={16} height={16} className="h-4 w-4 shrink-0 object-contain" />;
+    return <Image src={item.logoSrc} alt={item.label} width={16} height={16} className={`h-4 w-4 shrink-0 object-contain ${item.invertOnDark ? "tsl-league-mark" : ""}`} />;
   }
   if (item.Icon) return <item.Icon className="h-4 w-4 shrink-0" />;
   return null;
@@ -175,6 +183,15 @@ export default function AppHeader({
     if (item.key === "1lig") {
       return pathname.startsWith("/dashboard/stats-analysis/tff1");
     }
+    if (item.key === "eurocl") {
+      return pathname.startsWith("/dashboard/euro-cups/cl");
+    }
+    if (item.key === "euel") {
+      return pathname.startsWith("/dashboard/euro-cups/el");
+    }
+    if (item.key === "euecl") {
+      return pathname.startsWith("/dashboard/euro-cups/conf");
+    }
     if (item.key === "tbl") {
       return pathname.startsWith("/dashboard/basketball");
     }
@@ -190,7 +207,7 @@ export default function AppHeader({
     return false;
   };
 
-  const can = (key: NavKey) => isNavKeyAllowed(key, allowedNavKeys);
+  const can = (key: NavKey) => isNavKeyVisible(key, allowedNavKeys, isAdmin);
 
   async function handleSignOut() {
     try {

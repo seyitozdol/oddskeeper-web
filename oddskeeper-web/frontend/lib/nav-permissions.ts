@@ -17,6 +17,11 @@ export const NAV_KEYS = [
   // Turkiye Kupasi panosu (Mackolik verisi). Temiz yol prefix'i /dashboard/cup
   // (proxy gercekten kilitler). Header'da 1.Lig'den sonra, SofaScore kupa logosu.
   "league-cup",
+  // Avrupa kupalari (CL/UL/Con). OPT-IN: varsayilanda yalniz admin gorur
+  // (bkz. OPT_IN_NAV_KEYS); soft-launch.
+  "league-eurocl",
+  "league-euel",
+  "league-euecl",
   "league-tbl",
   "volleyball",
   // Match Stats Model içindeki GSheet alt sekmesi. Bir header/route DEĞİL, salt
@@ -82,6 +87,24 @@ export const NAV_PERMISSION_ITEMS: NavPermissionItem[] = [
     pathPrefixes: ["/dashboard/cup"],
   },
   {
+    key: "league-eurocl",
+    labelKey: "nav.leagueEurocl",
+    href: "/dashboard/euro-cups/cl/resmi?season=2025%2F2026&section=league",
+    pathPrefixes: ["/dashboard/euro-cups/cl"],
+  },
+  {
+    key: "league-euel",
+    labelKey: "nav.leagueEuel",
+    href: "/dashboard/euro-cups/el/resmi?season=2025%2F2026&section=league",
+    pathPrefixes: ["/dashboard/euro-cups/el"],
+  },
+  {
+    key: "league-euecl",
+    labelKey: "nav.leagueEuecl",
+    href: "/dashboard/euro-cups/conf/resmi?season=2025%2F2026&section=league",
+    pathPrefixes: ["/dashboard/euro-cups/conf"],
+  },
+  {
     key: "league-tbl",
     labelKey: "nav.leagueTbl",
     href: "/dashboard/basketball",
@@ -118,6 +141,30 @@ export const NAV_PERMISSION_ITEMS: NavPermissionItem[] = [
 
 export function isValidNavKey(value: string): value is NavKey {
   return (NAV_KEYS as readonly string[]).includes(value);
+}
+
+// OPT-IN anahtarlar: NULL (tam erisim) kullanicilar bunlari GORMEZ. Yalniz admin
+// VEYA allowed_keys'te ACIKCA listelenmisse gorunur/erisilir. Yeni veya soft-launch
+// bolumleri varsayilanda admin'e ozel tutmak icin (or. league-eurocl).
+export const OPT_IN_NAV_KEYS: readonly NavKey[] = ["league-eurocl", "league-euel", "league-euecl"];
+
+export function isOptInNavKey(key: NavKey): boolean {
+  return OPT_IN_NAV_KEYS.includes(key);
+}
+
+// Gorunurluk/erisim karari (header + proxy ortak). Admin her seyi gorur. Opt-in
+// anahtar admin degilse yalniz ACIK izinle acilir (NULL tam-erisim onu kapsamaz).
+// Opt-in olmayan anahtarlar mevcut NULL=tam-erisim davranisini korur.
+export function isNavKeyVisible(
+  key: NavKey,
+  allowedKeys: string[] | null | undefined,
+  isAdmin: boolean
+): boolean {
+  if (isAdmin) return true;
+  if (isOptInNavKey(key)) {
+    return Array.isArray(allowedKeys) && allowedKeys.includes(key);
+  }
+  return isNavKeyAllowed(key, allowedKeys);
 }
 
 // allowedKeys NULL ise kisitlama yok (tam erisim).

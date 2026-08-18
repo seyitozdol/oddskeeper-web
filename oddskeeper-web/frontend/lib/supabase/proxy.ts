@@ -2,7 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import {
   isAdminPath,
-  isNavKeyAllowed,
+  isNavKeyVisible,
   navAccessKeysForPath,
 } from "../nav-permissions";
 
@@ -49,11 +49,14 @@ export async function updateSession(request: NextRequest) {
     // Izin satiri olmayan kullanici (kendi kaydolan) hicbir basliga erisemez:
     // satirsiz durumu bos diziye cevir. Satir icindeki null tam erisim demek.
     const effectiveKeys = perm ? (perm.allowed_keys ?? null) : [];
+    const isAdmin = perm?.is_admin === true;
 
     // accessKeys birden fazla anahtar donebilir (OR): herhangi biri izinliyse gecer.
+    // isNavKeyVisible opt-in anahtarlari (or. league-eurocl) admin/acik-izin disinda
+    // NULL tam-erisimli kullaniciya bile KAPATIR.
     const allowed = adminPath
-      ? perm?.is_admin === true
-      : accessKeys!.some((key) => isNavKeyAllowed(key, effectiveKeys));
+      ? isAdmin
+      : accessKeys!.some((key) => isNavKeyVisible(key, effectiveKeys, isAdmin));
 
     if (!allowed) {
       const redirectResponse = NextResponse.redirect(

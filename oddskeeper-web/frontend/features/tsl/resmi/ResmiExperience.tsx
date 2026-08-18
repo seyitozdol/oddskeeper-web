@@ -3,7 +3,7 @@ import {
   isResmiSection,
   type ResmiSection,
 } from "../constants";
-import type { LeagueConfig } from "../leagues";
+import { isEuroCupSource, type LeagueConfig } from "../leagues";
 import {
   loadResmiCupStages,
   loadResmiLig,
@@ -15,9 +15,11 @@ import {
   loadResmiTeamsTable,
   loadResmiTransfers,
 } from "../server/resmiLoaders";
+import { loadEurocupLeague } from "../server/eurocupLeague";
 import ResmiControlBar from "./ResmiControlBar";
 import SectionTransition from "../shared/SectionTransition";
 import ResmiCupStages from "./ResmiCupStages";
+import ResmiCupLeague from "./ResmiCupLeague";
 import ResmiLig from "./ResmiLig";
 import ResmiResults from "./ResmiResults";
 import ResmiReferees from "./ResmiReferees";
@@ -90,7 +92,13 @@ export default async function ResmiExperience({
   let content: React.ReactNode = null;
   if (cupPending) content = <CupComingSoon />;
   else if (section === "cupStages") content = <ResmiCupStages data={await loadResmiCupStages(config, season)} />;
-  else if (section === "league") content = <ResmiLig data={await loadResmiLig(config, season, leaderMetric)} />;
+  else if (section === "league")
+    content =
+      isEuroCupSource(config.source) ? (
+        <ResmiCupLeague data={await loadEurocupLeague(config.competition, season)} />
+      ) : (
+        <ResmiLig data={await loadResmiLig(config, season, leaderMetric)} />
+      );
   else if (section === "results") content = <ResmiResults data={await loadResmiResults(config, season)} />;
   else if (section === "referees") content = <ResmiReferees data={await loadResmiReferees(config, season)} />;
   else if (section === "teams") content = <ResmiTeamsTable data={await loadResmiTeamsTable(config, season)} />;

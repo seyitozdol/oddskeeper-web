@@ -2,6 +2,7 @@ import { createClient } from "../../../lib/supabase/server";
 import { getAllFootballTeamLogos } from "../../../lib/football-teams";
 import { getTeamDetailHref } from "../../../lib/routes";
 import {
+  isEuroCupSource,
   playerHrefFor,
   teamHrefFor,
   type LeagueConfig,
@@ -70,6 +71,7 @@ import {
   cupTeamMetrics,
   cupUpcoming,
 } from "./cupdata";
+import { makeCupProvider } from "./eurocupData";
 
 // ---- Lig kaynak sağlayıcısı (tsl_ss vs tff1 vs cup) ----
 type Provider = {
@@ -119,6 +121,10 @@ function providerFor(config: LeagueConfig): Provider {
       aggression: (s) => tff1Aggression(s),
       transfers: () => Promise.resolve([]),
     };
+  }
+  if (isEuroCupSource(config.source)) {
+    // Uc Avrupa kupasi da ayni fabrikayi kullanir; fark competition + view prefix.
+    return makeCupProvider(config.competition, config.viewPrefix ?? "ucl");
   }
   return {
     teamMeta: (s) => getTslTeamMeta(s),
@@ -212,12 +218,11 @@ async function buildTeamHrefs(
 ): Promise<Record<string, string | null>> {
   const out: Record<string, string | null> = {};
   // tsl + cup opta-slug'lı football profillerine gider; ikisi de valid slug seti ister.
-  const valid =
-    config.source !== "tff1"
-      ? new Set(Object.keys(await getAllFootballTeamLogos()))
-      : null;
+  // tff1 + Avrupa kupasi id-bazli (slug gerekmez; kupa null doner).
+  const idBased = config.source === "tff1" || isEuroCupSource(config.source);
+  const valid = !idBased ? new Set(Object.keys(await getAllFootballTeamLogos())) : null;
   for (const e of entries) {
-    if (config.source === "tff1") {
+    if (idBased) {
       out[e.teamId] = teamHrefFor(config, e.teamId, null, season);
     } else {
       const slug = resolveFootballSlug(e.teamName, e.logo, valid!);
@@ -515,87 +520,137 @@ export async function loadResmiTeamsTable(
   const lyMsm = prevSeason.replace("/", "-");
   const marketKeys = TABLE_MAIN_MARKETS.map((m) => m.key) as unknown as string[];
 
-  const [teamsRes, curLogRes, lyStatRes] = await Promise.all([
-    supabase
-      .schema("analytics")
-      .from("msm_teams_v1")
-      .select("team_slug, display_name")
-      .eq("league", config.source),
-    supabase
-      .schema("analytics")
-      .from("msm_team_match_log_v1")
-      .select("team_slug, market, for_value, team_match_index")
-      .eq("league", config.source)
-      .eq("season", curMsm)
-      .in("market", marketKeys)
-      .order("team_match_index", { ascending: true }),
-    supabase
-      .schema("analytics")
-      .from("msm_team_season_stats_v1")
-      .select("team_slug, market, hf, af, home_games, away_games")
-      .eq("league", config.source)
-      .eq("season", lyMsm)
-      .in("market", marketKeys),
-  ]);
-
-  // standings adi -> MSM slug (normalize-isim, slug, on-ek kirpma).
-  const slugSet = new Set<string>();
-  const slugByNorm = new Map<string, string>();
-  for (const r of teamsRes.data ?? []) {
-    const slug = String(r.team_slug);
-    slugSet.add(slug);
-    if (r.display_name) slugByNorm.set(normalizeSearch(String(r.display_name)), slug);
-  }
-  const resolveSlug = (name: string): string | null => {
-    const n = normalizeSearch(name);
-    if (slugByNorm.has(n)) return slugByNorm.get(n)!;
-    const base = slugifyTeamName(name);
-    if (slugSet.has(base)) return base;
-    const parts = base.split("-").filter(Boolean);
-    // once on-ekler (Amed Sportif Faaliyetler -> amed)
-    for (let k = parts.length - 1; k >= 1; k--) {
-      const cand = parts.slice(0, k).join("-");
-      if (slugSet.has(cand)) return cand;
-    }
-    // sonra herhangi tek token (Çaykur Rizespor -> rizespor, Fatih Karagümrük -> karagumruk)
-    for (const tok of parts) if (slugSet.has(tok)) return tok;
-    return null;
-  };
-  // TSL: sofascore id -> football slug (kesin) once; yoksa isim koprusu.
-  const slugForTeam = (teamId: string, name: string): string | null =>
-    (config.source === "tsl" ? slugForSofascoreTeam(teamId) : null) ?? resolveSlug(name);
-
-  // guncel maç logu: slug -> market -> sirali for_value (eskiden yeniye).
-  // Ayni maçin coklu-kaynak satiri olabilir -> maç-indeksine gore dedup.
+  // Ana marketler (Shot/SOT/...): TSL/1.Lig MSM katmanindan (team_slug); Avrupa
+  // kupasi MSM'de YOK -> eurocup_team_match_log_v1'den (match_team_stats, team_id).
   const curBy = new Map<string, Map<string, number[]>>();
-  const seenMatch = new Set<string>();
-  for (const r of curLogRes.data ?? []) {
-    if (r.for_value == null) continue;
-    const slug = String(r.team_slug);
-    const mk = String(r.market);
-    const key = `${slug}|${mk}|${r.team_match_index}`;
-    if (seenMatch.has(key)) continue;
-    seenMatch.add(key);
-    if (!curBy.has(slug)) curBy.set(slug, new Map());
-    const mm = curBy.get(slug)!;
-    if (!mm.has(mk)) mm.set(mk, []);
-    mm.get(mk)!.push(Number(r.for_value));
-  }
-  // LY: home/away oyun sayisindan tam toplam + ortalama. season_stats'ta bazi
-  // takim+market icin mukerrer (partial) satir var -> EN COK oyunlu satiri tut.
   const lyBy = new Map<string, Map<string, TableWindow>>();
-  for (const r of lyStatRes.data ?? []) {
-    const hg = Number(r.home_games ?? 0);
-    const ag = Number(r.away_games ?? 0);
-    const n = hg + ag;
-    if (!n) continue;
-    const total = Number(r.hf ?? 0) * hg + Number(r.af ?? 0) * ag;
-    const slug = String(r.team_slug);
-    const mk = String(r.market);
-    if (!lyBy.has(slug)) lyBy.set(slug, new Map());
-    const existing = lyBy.get(slug)!.get(mk);
-    if (!existing || existing.n < n) {
-      lyBy.get(slug)!.set(mk, { mean: total / n, total, n });
+  let slugForTeam: (teamId: string, name: string) => string | null;
+  // Cup: Teams sekmesi lig-fazi 36 takima kapsanir (League tablosuyla tutarli).
+  let leaguePhaseTeamIds: Set<string> | null = null;
+
+  if (isEuroCupSource(config.source)) {
+    // Sadece lig-fazi maclari (round_name IS NULL): adil 8-mac ornekem, elemeler haric.
+    // PostgREST db-max-rows=1000 -> SAYFALA (yoksa lig-fazi 36 takim eksik geliyordu).
+    const fetchLog = async (seasonLabel: string) => {
+      const rows: { team_id: string; market: string; for_value: number | null }[] = [];
+      for (let from = 0; ; from += 1000) {
+        const { data } = await supabase
+          .schema("analytics")
+          .from("eurocup_team_match_log_v1")
+          .select("team_id, market, for_value, team_match_index")
+          .eq("competition", config.competition)
+          .eq("season_label", seasonLabel)
+          .is("round_name", null)
+          .in("market", marketKeys)
+          .order("team_id", { ascending: true })
+          .order("market", { ascending: true })
+          .order("team_match_index", { ascending: true })
+          .range(from, from + 999);
+        if (!data || !data.length) break;
+        rows.push(...(data as typeof rows));
+        if (data.length < 1000) break;
+      }
+      return rows;
+    };
+    const [curLogData, lyLogData] = await Promise.all([fetchLog(season), fetchLog(prevSeason)]);
+    for (const r of curLogData) {
+      if (r.for_value == null) continue;
+      const id = String(r.team_id);
+      const mk = String(r.market);
+      if (!curBy.has(id)) curBy.set(id, new Map());
+      const mm = curBy.get(id)!;
+      if (!mm.has(mk)) mm.set(mk, []);
+      mm.get(mk)!.push(Number(r.for_value));
+    }
+    // LY: onceki sezon ortalamasi (kupada 24/25 yok -> genelde bos).
+    const lyAcc = new Map<string, Map<string, number[]>>();
+    for (const r of lyLogData) {
+      if (r.for_value == null) continue;
+      const id = String(r.team_id);
+      const mk = String(r.market);
+      if (!lyAcc.has(id)) lyAcc.set(id, new Map());
+      const mm = lyAcc.get(id)!;
+      if (!mm.has(mk)) mm.set(mk, []);
+      mm.get(mk)!.push(Number(r.for_value));
+    }
+    for (const [id, mm] of lyAcc) {
+      const w = new Map<string, TableWindow>();
+      for (const [mk, vals] of mm) {
+        const total = vals.reduce((a, b) => a + b, 0);
+        w.set(mk, { mean: total / vals.length, total, n: vals.length });
+      }
+      lyBy.set(id, w);
+    }
+    slugForTeam = (teamId) => teamId; // cup: anahtar = sofascore team_id
+    leaguePhaseTeamIds = new Set(curBy.keys()); // lig-fazi maci olan takimlar (36)
+  } else {
+    const [teamsRes, curLogRes, lyStatRes] = await Promise.all([
+      supabase.schema("analytics").from("msm_teams_v1").select("team_slug, display_name").eq("league", config.source),
+      supabase
+        .schema("analytics")
+        .from("msm_team_match_log_v1")
+        .select("team_slug, market, for_value, team_match_index")
+        .eq("league", config.source)
+        .eq("season", curMsm)
+        .in("market", marketKeys)
+        .order("team_match_index", { ascending: true }),
+      supabase
+        .schema("analytics")
+        .from("msm_team_season_stats_v1")
+        .select("team_slug, market, hf, af, home_games, away_games")
+        .eq("league", config.source)
+        .eq("season", lyMsm)
+        .in("market", marketKeys),
+    ]);
+
+    // standings adi -> MSM slug (normalize-isim, slug, on-ek kirpma).
+    const slugSet = new Set<string>();
+    const slugByNorm = new Map<string, string>();
+    for (const r of teamsRes.data ?? []) {
+      const slug = String(r.team_slug);
+      slugSet.add(slug);
+      if (r.display_name) slugByNorm.set(normalizeSearch(String(r.display_name)), slug);
+    }
+    const resolveSlug = (name: string): string | null => {
+      const n = normalizeSearch(name);
+      if (slugByNorm.has(n)) return slugByNorm.get(n)!;
+      const base = slugifyTeamName(name);
+      if (slugSet.has(base)) return base;
+      const parts = base.split("-").filter(Boolean);
+      for (let k = parts.length - 1; k >= 1; k--) {
+        const cand = parts.slice(0, k).join("-");
+        if (slugSet.has(cand)) return cand;
+      }
+      for (const tok of parts) if (slugSet.has(tok)) return tok;
+      return null;
+    };
+    slugForTeam = (teamId, name) =>
+      (config.source === "tsl" ? slugForSofascoreTeam(teamId) : null) ?? resolveSlug(name);
+
+    const seenMatch = new Set<string>();
+    for (const r of curLogRes.data ?? []) {
+      if (r.for_value == null) continue;
+      const slug = String(r.team_slug);
+      const mk = String(r.market);
+      const key = `${slug}|${mk}|${r.team_match_index}`;
+      if (seenMatch.has(key)) continue;
+      seenMatch.add(key);
+      if (!curBy.has(slug)) curBy.set(slug, new Map());
+      const mm = curBy.get(slug)!;
+      if (!mm.has(mk)) mm.set(mk, []);
+      mm.get(mk)!.push(Number(r.for_value));
+    }
+    for (const r of lyStatRes.data ?? []) {
+      const hg = Number(r.home_games ?? 0);
+      const ag = Number(r.away_games ?? 0);
+      const n = hg + ag;
+      if (!n) continue;
+      const total = Number(r.hf ?? 0) * hg + Number(r.af ?? 0) * ag;
+      const slug = String(r.team_slug);
+      const mk = String(r.market);
+      if (!lyBy.has(slug)) lyBy.set(slug, new Map());
+      const existing = lyBy.get(slug)!.get(mk);
+      if (!existing || existing.n < n) lyBy.get(slug)!.set(mk, { mean: total / n, total, n });
     }
   }
 
@@ -605,9 +660,14 @@ export async function loadResmiTeamsTable(
     return { mean: total / vals.length, total, n: vals.length };
   };
 
+  // Cup: yalniz lig-fazi takimlari (36); diger ligler tum standings.
+  const displayStandings = leaguePhaseTeamIds
+    ? standings.filter((s) => leaguePhaseTeamIds!.has(s.teamId))
+    : standings;
+
   const mainData: Record<string, Record<string, TeamMainCell>> = {};
   for (const m of TABLE_MAIN_MARKETS) mainData[m.key] = {};
-  for (const s of standings) {
+  for (const s of displayStandings) {
     const slug = slugForTeam(s.teamId, s.teamName);
     const mm = slug ? curBy.get(slug) : undefined;
     const lm = slug ? lyBy.get(slug) : undefined;
@@ -657,7 +717,7 @@ export async function loadResmiTeamsTable(
 
   return {
     season,
-    teams: standings.map((s) => ({
+    teams: displayStandings.map((s) => ({
       id: s.teamId,
       name: s.teamName,
       logo: s.logo,

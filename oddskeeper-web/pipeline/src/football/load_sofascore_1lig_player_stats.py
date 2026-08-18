@@ -67,10 +67,16 @@ def match_row(ev: dict, playoff: bool = False) -> dict:
     url = f"https://www.sofascore.com/match/{slug}/{custom}#id:{ev['id']}" if slug and custom else None
     ref = ev.get("referee")
     referee = ref.get("name") if isinstance(ref, dict) else None
+    # roundInfo: lig maclarinda round=hafta (name bos); kupada elemeler/playoff/
+    # braket ayrimi bundan cikar (name='Qualification Round X'/'Playoff round'/
+    # 'Round of 16'/... ; lig-fazi maci name bos). Frontend asama seciciyi besler.
+    ri = ev.get("roundInfo") or {}
     return {
         "source": SOURCE,
         "source_match_id": str(ev["id"]),
         "referee": referee,
+        "round_number": ri.get("round"),
+        "round_name": (ri.get("name") or None),
         "competition": COMPETITION + (" Play-off" if playoff else ""),
         "season_label": SEASON_LABEL,
         "match_datetime": iso(ts) if ts else None,
