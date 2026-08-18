@@ -3,9 +3,12 @@ import { notFound } from "next/navigation";
 import { CalendarDays } from "lucide-react";
 import { getLocale, getT } from "@/lib/i18n/server";
 import { formatDate } from "@/features/tsl/lib";
-import { getCupMatch, getCupMatchPlayers } from "@/features/tsl/server/cupMatch";
+import {
+  getCupMatch,
+  getCupMatchPlayers,
+  getCupMatchBars,
+} from "@/features/tsl/server/cupMatch";
 import type { TslMatchPlayer } from "@/features/tsl/server/match";
-import { getMatchMarketBars } from "@/features/match-detail/server/getMatchMarketBars";
 import MatchPlayerTable, {
   type MatchPlayerRow,
 } from "@/features/match-detail/components/MatchPlayerTable";
@@ -52,7 +55,7 @@ export default async function CupMatchDetail({
 
   const match = await getCupMatch(matchId);
   if (!match) notFound();
-  const players = await getCupMatchPlayers(matchId);
+  const players = await getCupMatchPlayers(matchId, match.homeId, match.awayId);
 
   const sortRows = (rows: TslMatchPlayer[]) =>
     [...rows].sort(
@@ -67,7 +70,7 @@ export default async function CupMatchDetail({
   const hasPlayerStats = players.some((p) => (p.minutes ?? 0) > 0 || p.rating != null);
 
   const back = returnTo && returnTo.startsWith("/dashboard") ? returnTo : backBase;
-  const vsRows = await getMatchMarketBars(matchId, match.homeId, match.awayId, locale === "tr");
+  const vsRows = await getCupMatchBars(matchId, locale === "tr");
 
   const teamBlock = (logo: string | null, name: string, align: "left" | "right") => (
     <div
