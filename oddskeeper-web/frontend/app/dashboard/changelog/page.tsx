@@ -39,6 +39,10 @@ const ENTRIES: Entry[] = [
         en: "Competition filters inside the unified profiles: a team's Results tab and a player's Match Log now have quick filter chips (All / Süper Lig / each cup) so league and cup data can also be viewed separately. On teams that play in Europe, the Player Stats tab has a competition switch — pick Champions/Europa/Conference League to see the squad's stats in that cup, with the cup's own metric list (xG, distance covered and more).",
         tr: "Birleşik profillerin içinde rekabet filtreleri: takım Sonuçlar sekmesi ve oyuncu Maç Logu'nda hızlı filtre düğmeleri var (Tümü / Süper Lig / her kupa) — lig ve kupa verisi istenirse ayrı ayrı da görülebiliyor. Avrupa'da oynayan takımlarda Player Stats sekmesine rekabet seçici eklendi — Şampiyonlar/Avrupa/Konferans Ligi'ni seçince kadronun o kupadaki istatistikleri, kupanın kendi metrik listesiyle (xG, koşu mesafesi vb.) geliyor.",
       },
+      {
+        en: "Cup matches where our primary source publishes only the lineup (mostly qualifiers and the 2026/27 rounds) now show real player numbers in the match log — minutes, shots, xG and more are filled in from our secondary source instead of appearing empty.",
+        tr: "Ana kaynağımızın yalnız kadroyu yayınladığı kupa maçlarında (çoğunlukla elemeler ve 2026/27 turları) maç logunda artık gerçek oyuncu verileri görünüyor — dakika, şut, xG ve diğerleri boş kalmak yerine ikincil kaynağımızdan dolduruluyor.",
+      },
     ],
   },
   {
