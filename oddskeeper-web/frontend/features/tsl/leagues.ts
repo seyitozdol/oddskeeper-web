@@ -18,6 +18,7 @@ export type LeagueConfig = {
   defaultSeason: string;
   basePath: string; // resmi deneyim kök yolu
   matchBase: string; // maç detay kök yolu (/{matchId})
+  playerBase?: string; // oyuncu profil kök yolu (/{playerId}); Avrupa kupası
   logo: string; // public/images/leagues/*.png
   nameKey: string; // i18n lig adı anahtarı
   transfersLeague: string | null; // tsl_transfers.season_label yok; league yok -> tsl only
@@ -82,6 +83,7 @@ export const EUROCL_LEAGUE: LeagueConfig = {
   defaultSeason: "2025/2026",
   basePath: "/dashboard/euro-cups/cl/resmi",
   matchBase: "/dashboard/euro-cups/cl/match",
+  playerBase: "/dashboard/euro-cups/cl/player",
   logo: "/images/leagues/ucl.png",
   nameKey: "tsl.uclName",
   transfersLeague: null,
@@ -98,6 +100,7 @@ export const EUEL_LEAGUE: LeagueConfig = {
   defaultSeason: "2026/2027",
   basePath: "/dashboard/euro-cups/el/resmi",
   matchBase: "/dashboard/euro-cups/el/match",
+  playerBase: "/dashboard/euro-cups/el/player",
   logo: "/images/leagues/uel.png",
   nameKey: "tsl.uelName",
   transfersLeague: null,
@@ -114,6 +117,7 @@ export const EUECL_LEAGUE: LeagueConfig = {
   defaultSeason: "2025/2026",
   basePath: "/dashboard/euro-cups/conf/resmi",
   matchBase: "/dashboard/euro-cups/conf/match",
+  playerBase: "/dashboard/euro-cups/conf/player",
   logo: "/images/leagues/uecl.png",
   nameKey: "tsl.ueclName",
   transfersLeague: null,
@@ -150,7 +154,12 @@ export function playerHrefFor(
   playerId: string,
   playerSlug: string | null
 ): string | null {
-  if (isEuroCupSource(config.source)) return null; // drill-down henuz yok
+  // Avrupa kupasi: sofascore-keyed oyuncu profili (playerBase configde).
+  if (isEuroCupSource(config.source)) {
+    return config.playerBase
+      ? `${config.playerBase}/${encodeURIComponent(playerId)}`
+      : null;
+  }
   if (config.source === "tff1") return `/dashboard/tff-1-lig/player/${encodeURIComponent(playerId)}`;
   // cup: eşleşen (slug var) football profiline; eşleşmeyen kupa oyuncu profiline.
   if (config.source === "cup") {

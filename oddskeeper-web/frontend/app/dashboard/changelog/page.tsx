@@ -20,6 +20,17 @@ const TAG_NEW_TOOL: L = { en: "New tool", tr: "Yeni araç" };
 
 const ENTRIES: Entry[] = [
   {
+    date: { en: "18 August", tr: "18 Ağustos" },
+    title: { en: "Player profiles for European cups", tr: "Avrupa kupaları için oyuncu profilleri" },
+    tag: TAG_NEW,
+    items: [
+      {
+        en: "Every player in the Champions, Europa and Conference League is now clickable. From the cup Players list or the rankings, open a full profile — season stats, an attribute radar versus everyone in that competition, a rating chart over recent matches, recent games and full career history, and each match links straight to its detail page. Same rich layout as the 1. Lig player profile.",
+        tr: "Şampiyonlar, Avrupa ve Konferans Ligi'ndeki her oyuncu artık tıklanabilir. Kupa Oyuncular listesinden veya sıralamalardan tam profili açın — sezon istatistikleri, o kupadaki herkese göre yetenek radarı, son maçların reyting grafiği, son maçlar ve tam kariyer geçmişi; her maç doğrudan detay sayfasına bağlı. 1. Lig oyuncu profiliyle aynı zengin düzen.",
+      },
+    ],
+  },
+  {
     date: { en: "17 August", tr: "17 Ağustos" },
     title: { en: "Player profiles now use the left-side tab menu", tr: "Oyuncu profilleri artık sol sekme menüsünü kullanıyor" },
     items: [

@@ -536,6 +536,18 @@ function RatingChart({
 
 /* ── ana bileşen ────────────────────────────────────────────── */
 
+// Ekranın lig-bağımlı ("chrome") parçaları. Verilmezse Trendyol 1. Lig
+// varsayılanları kullanılır (mevcut tff1 davranışı birebir korunur); Avrupa
+// kupası gibi başka kaynaklar bunları geçerek aynı bileşeni yeniden kullanır.
+export type PlayerShowcaseChrome = {
+  backHref: string;
+  backLabel: string;
+  competitionLabel: string;
+  teamHref: string | null; // null -> takım adı düz metin (kupa takım profili henüz yok)
+  matchHref: (m: Tff1MatchLogRow) => string | null;
+  showMarketValue: boolean;
+};
+
 export type Tff1PlayerShowcaseProps = {
   latest: Tff1PlayerRow;
   seasonRows: Tff1PlayerRow[];
@@ -551,6 +563,7 @@ export type Tff1PlayerShowcaseProps = {
   matchLog: Tff1MatchLogRow[];
   t: Translator;
   locale: string;
+  chrome?: PlayerShowcaseChrome;
 };
 
 export function Tff1PlayerShowcase({
@@ -566,6 +579,7 @@ export function Tff1PlayerShowcase({
   matchLog,
   t,
   locale,
+  chrome,
 }: Tff1PlayerShowcaseProps) {
   const isKeeper = latest.position_code === "G";
   const apps = num(latest.appearances) ?? 0;
@@ -579,9 +593,26 @@ export function Tff1PlayerShowcase({
     latest.teams && latest.teams !== latest.team_name
       ? latest.teams
       : latest.team_name;
-  const teamHref = latest.team_id
+  const defaultTeamHref = latest.team_id
     ? `/dashboard/tff-1-lig/team/${latest.team_id}?season=${encodeURIComponent(latest.season_label)}`
     : null;
+  // Lig-bağımlı parçalar: chrome verilmezse mevcut tff1 davranışı.
+  const ui = {
+    backHref:
+      chrome?.backHref ??
+      "/dashboard/stats-analysis/tff1/resmi?season=2026%2F2027&section=league",
+    backLabel: chrome?.backLabel ?? t("tff1.backToLeague"),
+    competitionLabel: chrome?.competitionLabel ?? "Trendyol 1. Lig",
+    teamHref: chrome ? chrome.teamHref : defaultTeamHref,
+    matchHref:
+      chrome?.matchHref ??
+      ((m: Tff1MatchLogRow) =>
+        m.competition.startsWith("Trendyol 1. Lig")
+          ? `/dashboard/tff-1-lig/match/${m.match_id}`
+          : null),
+    showMarketValue: chrome?.showMarketValue ?? true,
+  };
+  const teamHref = ui.teamHref;
 
   const flagUrl = info?.country ? getCountryFlagUrl(info.country) : null;
 
@@ -613,13 +644,13 @@ export function Tff1PlayerShowcase({
       {/* üst çubuk */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <Link
-          href="/dashboard/stats-analysis/tff1/resmi?season=2026%2F2027&section=league"
+          href={ui.backHref}
           className="rounded-xl border border-line bg-card px-3 py-2 text-sm text-ink-2 transition hover:text-ink"
         >
-          ← {t("tff1.backToLeague")}
+          ← {ui.backLabel}
         </Link>
         <span className="rounded-full border border-line-strong bg-accent-soft px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.12em] text-accent-ink">
-          Trendyol 1. Lig
+          {ui.competitionLabel}
         </span>
       </div>
 
@@ -680,7 +711,7 @@ export function Tff1PlayerShowcase({
                   <span className="text-ink-3">•</span>
                   <span>{positionLabel(latest, locale)}</span>
                   <span className="text-ink-3">•</span>
-                  <span>Trendyol 1. Lig</span>
+                  <span>{ui.competitionLabel}</span>
                   <span className="text-ink-3">•</span>
                   <span>{latest.season_label}</span>
                   <span
@@ -726,14 +757,16 @@ export function Tff1PlayerShowcase({
                 </div>
 
                 <div className="mt-5 grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4">
-                  <div>
-                    <div className="text-[9px] font-medium uppercase tracking-[0.16em] text-ink-3">
-                      {t("common.marketValue")}
+                  {ui.showMarketValue ? (
+                    <div>
+                      <div className="text-[9px] font-medium uppercase tracking-[0.16em] text-ink-3">
+                        {t("common.marketValue")}
+                      </div>
+                      <div className="mt-1 text-sm font-semibold text-pos">
+                        {formatMarketValue(marketValue?.market_value_eur)}
+                      </div>
                     </div>
-                    <div className="mt-1 text-sm font-semibold text-pos">
-                      {formatMarketValue(marketValue?.market_value_eur)}
-                    </div>
-                  </div>
+                  ) : null}
                   <div>
                     <div className="text-[9px] font-medium uppercase tracking-[0.16em] text-ink-3">
                       {t("playerDetail.positionLabel")}
@@ -835,19 +868,21 @@ export function Tff1PlayerShowcase({
                 label={t("tff1.drawerHeight")}
                 value={info?.height_cm ? `${info.height_cm} cm` : "—"}
               />
-              <SnapshotRow
-                icon={<Euro size={14} />}
-                label={t("common.marketValue")}
-                value={
-                  marketValue?.market_value_eur ? (
-                    <span className="text-pos">
-                      {formatMarketValue(marketValue.market_value_eur)}
-                    </span>
-                  ) : (
-                    "—"
-                  )
-                }
-              />
+              {ui.showMarketValue ? (
+                <SnapshotRow
+                  icon={<Euro size={14} />}
+                  label={t("common.marketValue")}
+                  value={
+                    marketValue?.market_value_eur ? (
+                      <span className="text-pos">
+                        {formatMarketValue(marketValue.market_value_eur)}
+                      </span>
+                    ) : (
+                      "—"
+                    )
+                  }
+                />
+              ) : null}
               <SnapshotRow
                 icon={<Clock size={14} />}
                 label={t("playerDetail.lastMatchLabel")}
@@ -1079,7 +1114,7 @@ export function Tff1PlayerShowcase({
                   {t("common.competition")}
                 </div>
                 <div className="mt-1 truncate text-sm font-medium text-ink">
-                  Trendyol 1. Lig
+                  {ui.competitionLabel}
                 </div>
               </div>
               <div>
@@ -1224,7 +1259,7 @@ export function Tff1PlayerShowcase({
                       const opponentLogo = m.opponent_id
                         ? logoByTeam[m.opponent_id] ?? null
                         : null;
-                      const isLig = m.competition.startsWith("Trendyol 1. Lig");
+                      const mHref = ui.matchHref(m);
                       const opponentCell = (
                         <span className="flex items-center gap-1.5">
                           {opponentLogo ? (
@@ -1250,9 +1285,9 @@ export function Tff1PlayerShowcase({
                           className="border-t border-line text-[12px] text-ink transition hover:bg-veil"
                         >
                           <td className="whitespace-nowrap px-2 py-2 text-ink-2">
-                            {isLig ? (
+                            {mHref ? (
                               <Link
-                                href={`/dashboard/tff-1-lig/match/${m.match_id}`}
+                                href={mHref}
                                 className="transition hover:text-ink hover:underline"
                               >
                                 {formatMatchDate(m.match_datetime, locale)}
