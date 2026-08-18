@@ -25,8 +25,12 @@ const ENTRIES: Entry[] = [
     tag: TAG_NEW,
     items: [
       {
-        en: "Every player in the Champions, Europa and Conference League is now clickable. From the cup Players list or the rankings, open a full profile — season stats, an attribute radar versus everyone in that competition, a rating chart over recent matches, recent games and full career history, and each match links straight to its detail page. Same rich layout as the 1. Lig player profile.",
-        tr: "Şampiyonlar, Avrupa ve Konferans Ligi'ndeki her oyuncu artık tıklanabilir. Kupa Oyuncular listesinden veya sıralamalardan tam profili açın — sezon istatistikleri, o kupadaki herkese göre yetenek radarı, son maçların reyting grafiği, son maçlar ve tam kariyer geçmişi; her maç doğrudan detay sayfasına bağlı. 1. Lig oyuncu profiliyle aynı zengin düzen.",
+        en: "Every player in the Champions, Europa and Conference League is now clickable. From the cup Players list or the rankings, open a full profile with the same left-side tab menu as other profiles — Overview (season stats, an attribute radar versus everyone in the competition, a rating chart), Detailed Stats and Match Log — and each match links straight to its detail page.",
+        tr: "Şampiyonlar, Avrupa ve Konferans Ligi'ndeki her oyuncu artık tıklanabilir. Kupa Oyuncular listesinden veya sıralamalardan, diğer profillerle aynı sol sekme menülü tam profili açın — Genel Bakış (sezon istatistikleri, o kupadaki herkese göre yetenek radarı, reyting grafiği), Detaylı İstatistik ve Maç Logu — her maç doğrudan detay sayfasına bağlı.",
+      },
+      {
+        en: "When a player features in more than one of these competitions — or also plays in the Süper Lig — a toggle at the top of the profile links straight across to their profile in each competition, so you can follow the same player everywhere without searching again.",
+        tr: "Bir oyuncu bu kupalardan birden fazlasında yer alıyorsa — ya da Süper Lig'de de oynuyorsa — profilin üstündeki bir geçiş menüsü, o oyuncunun her rekabetteki profiline doğrudan bağlanır; böylece aynı oyuncuyu tekrar aramadan her yerde takip edebilirsiniz.",
       },
     ],
   },

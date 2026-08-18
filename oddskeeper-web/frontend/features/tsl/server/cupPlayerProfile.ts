@@ -56,6 +56,68 @@ export async function getCupTeamSeasonStats(
   return data ?? [];
 }
 
+// Capraz-lig profil baglantilari (basketbol toggle deseni). Ayni oyuncunun
+// bulundugu ligler: 3 kupa (sofascore player_id) + Super Lig (sofascore->football
+// koprusu). current=bulunulan sayfa. Tek link varsa toggle gizlenir.
+export type CupCrossLink = {
+  key: string;
+  label: string;
+  logo: string;
+  href: string;
+  current: boolean;
+};
+
+const CUP_LINKS = [
+  { key: "ucl", view: "ucl_player_season_stats_v1", label: "Şampiyonlar Ligi", logo: "/images/leagues/ucl.png", base: "/dashboard/euro-cups/cl/player" },
+  { key: "uel", view: "uel_player_season_stats_v1", label: "Avrupa Ligi", logo: "/images/leagues/uel.png", base: "/dashboard/euro-cups/el/player" },
+  { key: "uecl", view: "uecl_player_season_stats_v1", label: "Konferans Ligi", logo: "/images/leagues/uecl.png", base: "/dashboard/euro-cups/conf/player" },
+];
+
+export async function getCupPlayerCrossLinks(
+  sofascoreId: string,
+  currentKey: string
+): Promise<CupCrossLink[]> {
+  const supabase = await createClient();
+  const links: CupCrossLink[] = [];
+  for (const cup of CUP_LINKS) {
+    if (cup.key !== currentKey) {
+      const { data } = await supabase
+        .schema("analytics")
+        .from(cup.view)
+        .select("player_id")
+        .eq("player_id", sofascoreId)
+        .limit(1);
+      if (!data || data.length === 0) continue;
+    }
+    links.push({
+      key: cup.key,
+      label: cup.label,
+      logo: cup.logo,
+      href: `${cup.base}/${encodeURIComponent(sofascoreId)}`,
+      current: cup.key === currentKey,
+    });
+  }
+  // Super Lig (football) profili varsa
+  const { data: fb } = await supabase
+    .schema("analytics")
+    .from("sofascore_football_player_link_v1")
+    .select("player_slug")
+    .eq("sofascore_player_id", sofascoreId)
+    .limit(1);
+  if (fb && fb.length > 0 && fb[0].player_slug) {
+    links.push({
+      key: "tsl",
+      label: "Süper Lig",
+      logo: "/images/leagues/super-lig.png",
+      href: `/dashboard/stats-analysis/football/player-stats/detail?player=${encodeURIComponent(
+        fb[0].player_slug as string
+      )}`,
+      current: false,
+    });
+  }
+  return links;
+}
+
 // Oyuncunun bu kupadaki mac-bazli logu. eurocup_player_match_log_v1 uc kupayi
 // kapsar -> competition ile ayirt edilir.
 export async function getCupPlayerMatchLog(

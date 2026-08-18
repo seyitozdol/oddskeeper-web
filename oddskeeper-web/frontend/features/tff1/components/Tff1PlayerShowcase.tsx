@@ -546,6 +546,7 @@ export type PlayerShowcaseChrome = {
   teamHref: string | null; // null -> takım adı düz metin (kupa takım profili henüz yok)
   matchHref: (m: Tff1MatchLogRow) => string | null;
   showMarketValue: boolean;
+  showBackBar?: boolean; // sol-menü layout'ta üst geri-çubuğu gizlenir (varsayılan göster)
 };
 
 export type Tff1PlayerShowcaseProps = {
@@ -611,6 +612,7 @@ export function Tff1PlayerShowcase({
           ? `/dashboard/tff-1-lig/match/${m.match_id}`
           : null),
     showMarketValue: chrome?.showMarketValue ?? true,
+    showBackBar: chrome?.showBackBar ?? true,
   };
   const teamHref = ui.teamHref;
 
@@ -641,18 +643,20 @@ export function Tff1PlayerShowcase({
 
   return (
     <section className="w-full space-y-3">
-      {/* üst çubuk */}
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <Link
-          href={ui.backHref}
-          className="rounded-xl border border-line bg-card px-3 py-2 text-sm text-ink-2 transition hover:text-ink"
-        >
-          ← {ui.backLabel}
-        </Link>
-        <span className="rounded-full border border-line-strong bg-accent-soft px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.12em] text-accent-ink">
-          {ui.competitionLabel}
-        </span>
-      </div>
+      {/* üst çubuk (sol-menü layout'ta gizlenir) */}
+      {ui.showBackBar ? (
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <Link
+            href={ui.backHref}
+            className="rounded-xl border border-line bg-card px-3 py-2 text-sm text-ink-2 transition hover:text-ink"
+          >
+            ← {ui.backLabel}
+          </Link>
+          <span className="rounded-full border border-line-strong bg-accent-soft px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.12em] text-accent-ink">
+            {ui.competitionLabel}
+          </span>
+        </div>
+      ) : null}
 
       {/* hero + özet paneli */}
       <div className="overflow-hidden rounded-2xl border border-line bg-card">
