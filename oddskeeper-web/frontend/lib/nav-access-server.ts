@@ -1,3 +1,4 @@
+import { isDailyLogoutEnabled, isSessionPastDailyLogout } from "./auth/daily-logout";
 import { createClient } from "./supabase/server";
 
 export type NavAccess = {
@@ -41,10 +42,24 @@ export async function getNavAccess(): Promise<NavAccess> {
     .eq("user_id", user.id)
     .maybeSingle();
 
+  const isAdmin = perm?.is_admin === true;
+
+  // Gunluk otomatik logout (savunma katmani): admin OLMAYAN ve oturumu en son
+  // 23:59 UTC sinirindan once acilmis kullaniciyi cikmis say -> layout /sign-in'e
+  // yonlendirir. Asil cookie temizligi + refresh iptali proxy'de (o once calisir);
+  // burada Server Component cookie yazamadigi icin yalniz "cikmis" durumu doneriz.
+  if (!isAdmin && isDailyLogoutEnabled()) {
+    const { data: claimsData } = await supabase.auth.getClaims();
+    const iat = claimsData?.claims?.iat;
+    if (isSessionPastDailyLogout(typeof iat === "number" ? iat : undefined)) {
+      return { userId: null, userEmail: null, isAdmin: false, allowedKeys: null };
+    }
+  }
+
   return {
     userId: user.id,
     userEmail: user.email ?? null,
-    isAdmin: perm?.is_admin === true,
+    isAdmin,
     // Izin satiri OLMAYAN kullanici ( or. kendi kaydolan biri) hicbir basliga
     // erisemez: satirsiz durumu bos diziye cevir. Satir icinde allowed_keys
     // null ise bu bilincli "tam erisim" demektir (admin panelinden acilan

@@ -21,6 +21,16 @@ const TAG_NEW_TOOL: L = { en: "New tool", tr: "Yeni araç" };
 const ENTRIES: Entry[] = [
   {
     date: { en: "18 August", tr: "18 Ağustos" },
+    title: { en: "Automatic sign-out at end of day", tr: "Gün sonunda otomatik çıkış" },
+    items: [
+      {
+        en: "For security, everyone is now signed out automatically at the end of each day (23:59 server time, UTC). The next time you open the dashboard after that, you'll be asked to sign in again. Nothing else changes — your data and settings are untouched.",
+        tr: "Güvenlik için artık her gün sonunda (sunucu saatiyle 23:59, UTC) herkes otomatik olarak çıkış yapılıyor. Bundan sonra paneli ilk açtığınızda tekrar giriş yapmanız istenir. Başka bir şey değişmez — verileriniz ve ayarlarınız olduğu gibi kalır.",
+      },
+    ],
+  },
+  {
+    date: { en: "18 August", tr: "18 Ağustos" },
     title: { en: "Team profiles for European cups", tr: "Avrupa kupaları için takım profilleri" },
     tag: TAG_NEW,
     items: [
