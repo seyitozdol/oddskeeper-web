@@ -56,12 +56,12 @@ def main():
           created_at timestamptz default now()
         )""")
 
-    def pool(source):
-        cur.execute("""
+    def pool(source, comp_filter="m.competition like 'S%%per Lig%%'"):
+        cur.execute(f"""
             select d.source_player_id, max(d.player_name), max(d.team_name)
             from football.match_player_stats_details d
             join football.matches m on m.source=d.source and m.source_match_id=d.source_match_id
-            where d.source=%s and m.competition like 'S%%per Lig%%'
+            where d.source=%s and {comp_filter}
             group by 1""", (source,))
         return {r[0]: (r[1], r[2]) for r in cur.fetchall()}
 
@@ -177,6 +177,20 @@ def main():
     synthetic = [(sid, SYNTH_PREFIX + sid, name, "synthetic")
                  for sid, (name, _team) in sofa.items() if sid not in covered]
     rows.extend(synthetic)
+
+    # KUPA (opta yok): Avrupa kupalarinda oynayip Super Lig'de OLMAYAN oyuncular
+    # (kupa-only yabanci) -> sentetik ss id (tek-profil birlestirmesi icin kimlik).
+    # Super Lig'de de oynayan oyuncunun sofa id'si AYNI (SofaScore global tek id) ->
+    # zaten yukarida esli/sentetik. tsl_ss + Super Lig bridge competition-filtreli
+    # oldugundan bu satirlar mevcut Super Lig yuzeylerini ETKILEMEZ (yalniz kupa
+    # bridge'i genisleyince aktif olur).
+    sofa_cup = pool("sofascore",
+                    "m.competition in ('UEFA Şampiyonlar Ligi','UEFA Avrupa Ligi','UEFA Konferans Ligi')")
+    covered_all = {r[0] for r in rows}
+    cup_syn = [(sid, SYNTH_PREFIX + sid, name, "synthetic")
+               for sid, (name, _t) in sofa_cup.items() if sid not in covered_all]
+    rows.extend(cup_syn)
+    print(f"kupa-only sentetik eklendi: {len(cup_syn)}")
 
     meth = {}
     for _s, _o, _n, m in rows:
