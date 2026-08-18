@@ -42,7 +42,7 @@ export default function ResmiCupLeague({ data }: { data: CupLeagueBundle }) {
   }
 
   return (
-    <div className="mx-auto w-full max-w-5xl">
+    <div className="w-full">
       <div className="mb-4 flex flex-wrap gap-1.5">
         {stages.map((s) => (
           <button
@@ -157,6 +157,16 @@ function AdvanceArrow() {
   );
 }
 
+// ---- Şampiyon kupası (final galibi) ----
+function Trophy({ tr }: { tr: boolean }) {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-amber-400" fill="currentColor" aria-hidden="true">
+      <title>{tr ? "Şampiyon" : "Champion"}</title>
+      <path d="M6 3h12v2h3v3a4 4 0 0 1-4 4h-.4A6 6 0 0 1 13 15.9V18h2.5a1 1 0 0 1 1 1v1H7.5v-1a1 1 0 0 1 1-1H11v-2.1A6 6 0 0 1 7.4 12H7a4 4 0 0 1-4-4V5h3V3Zm0 4H5v1a2 2 0 0 0 1 1.7V7Zm12 0v2.7A2 2 0 0 0 19 8V7h-1Z" />
+    </svg>
+  );
+}
+
 // ---- Alt kupaya düşüş ikonu (elenen takım UL/Con'a düştüyse) ----
 const DROP_ICON: Record<"uel" | "uecl", { src: string; tr: string; en: string }> = {
   uel: { src: "/images/leagues/uel.png", tr: "Avrupa Ligi'ne düştü", en: "Dropped to Europa League" },
@@ -184,7 +194,7 @@ function legDate(iso: string | null, tr: boolean): string {
 
 // ---- Tek tie kartı: TAKIM-BAŞINA-SATIR (isim tam genişlik, kırpma yok) +
 // her leg icin ayri skor sutunu (iki maç da görünür, toplam skor yok). ----
-function TieCard({ tie, tr }: { tie: CupTie; tr: boolean }) {
+function TieCard({ tie, tr, isFinal }: { tie: CupTie; tr: boolean; isFinal?: boolean }) {
   const advancedId = tie.advanced === "home" ? tie.homeId : tie.advanced === "away" ? tie.awayId : null;
   const droppedId = tie.homeDropped ? tie.homeId : tie.awayDropped ? tie.awayId : null;
   const dropDest = tie.homeDropped ?? tie.awayDropped;
@@ -194,13 +204,14 @@ function TieCard({ tie, tr }: { tie: CupTie; tr: boolean }) {
 
   const row = (teamId: string, name: string, logo: string | null) => {
     const adv = teamId === advancedId;
+    const champ = adv && isFinal; // final galibi = sampiyon -> kupa logosu
     const dropped = teamId === droppedId ? dropDest : null;
     return (
       <div className="flex items-center gap-1.5 px-2 py-1.5">
         <TeamCrest logo={logo} name={name} size="xs" />
         <div className="flex min-w-0 flex-1 items-center gap-1">
           <span className={`truncate ${adv ? "font-semibold text-ink" : "text-ink-2"}`}>{name}</span>
-          {adv ? <AdvanceArrow /> : null}
+          {champ ? <Trophy tr={tr} /> : adv ? <AdvanceArrow /> : null}
           {dropped ? <DropIcon dest={dropped} tr={tr} /> : null}
         </div>
         {tie.legs.map((leg, i) => {
@@ -269,16 +280,17 @@ const BRACKET_LABEL_TR: Record<string, string> = {
 };
 
 function Bracket({ rounds, tr }: { rounds: CupBracketRound[]; tr: boolean }) {
+  // Sola dayali, tum turlar tek satirda sigar (kaydirma yok): esit flex sutunlar.
   return (
-    <div className="flex gap-4 overflow-x-auto pb-2">
+    <div className="flex gap-3">
       {rounds.map((rd) => (
-        <div key={rd.roundLabel} className="min-w-[260px] flex-1">
-          <div className="mb-2 text-center text-[11px] font-semibold uppercase tracking-wide text-ink-2">
+        <div key={rd.roundLabel} className="min-w-0 flex-1">
+          <div className="mb-2 rounded-md bg-accent-soft px-2 py-1.5 text-center text-[11px] font-bold uppercase tracking-wide text-accent-ink">
             {tr ? BRACKET_LABEL_TR[rd.roundLabel] ?? rd.roundLabel : rd.roundLabel}
           </div>
           <div className="space-y-2">
             {rd.ties.map((t, i) => (
-              <TieCard key={`${t.homeId}-${t.awayId}-${i}`} tie={t} tr={tr} />
+              <TieCard key={`${t.homeId}-${t.awayId}-${i}`} tie={t} tr={tr} isFinal={rd.roundLabel === "Final"} />
             ))}
           </div>
         </div>

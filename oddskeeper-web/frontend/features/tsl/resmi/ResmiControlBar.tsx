@@ -6,7 +6,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { useI18n } from "../../../lib/i18n/LanguageProvider";
 import { type ResmiSection } from "../constants";
-import type { LeagueConfig } from "../leagues";
+import { isEuroCupSource, type LeagueConfig } from "../leagues";
 import SeasonToggle from "../../../components/SeasonToggle";
 
 const SECTION_KEY: Record<ResmiSection, string> = {
@@ -64,13 +64,16 @@ export default function ResmiControlBar({
             <span className="text-2xl font-bold tracking-tight text-ink">
               {leagueName}
             </span>
-            <Image
-              src="/images/flags/tr.png"
-              alt="TR"
-              width={24}
-              height={24}
-              className="h-6 w-6 shrink-0 rounded-full object-cover ring-1 ring-line"
-            />
+            {/* TR bayragi yalniz yerel ligler (TSL/1.Lig/Kupa); Avrupa kupalarinda yok. */}
+            {!isEuroCupSource(config.source) ? (
+              <Image
+                src="/images/flags/tr.png"
+                alt="TR"
+                width={24}
+                height={24}
+                className="h-6 w-6 shrink-0 rounded-full object-cover ring-1 ring-line"
+              />
+            ) : null}
           </Link>
         </div>
 
