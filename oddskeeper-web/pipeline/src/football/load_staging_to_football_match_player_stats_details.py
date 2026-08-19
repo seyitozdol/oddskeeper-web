@@ -225,6 +225,9 @@ class SupabaseRestClient:
             return
         body = {k: row[k] for k in ("source", "source_match_id", "source_player_id")}
         body["raw_stats"] = raw
+        # updated_at ACIKCA: PostgREST upsert'inde tablo default'u yalniz INSERT'te
+        # isler; gonderilmezse guncellenen satirda tarih bayat kalir.
+        body["updated_at"] = datetime.now(timezone.utc).isoformat()
         response = self.session.post(
             self._endpoint(RAW_TARGET_TABLE),
             headers={

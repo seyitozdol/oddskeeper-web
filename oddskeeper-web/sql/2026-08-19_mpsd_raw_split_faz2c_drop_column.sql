@@ -11,6 +11,7 @@
 --      football.match_player_stats_raw'a yaziyor (commit: mpsd Faz 2 writer).
 --      En az bir gercek mac isleme turu sonrasi kontrol:
 --        select max(updated_at) from football.match_player_stats_raw;  -- taze olmali
+--        (updated_at writer tarafindan ACIKCA gonderiliyor; bkz mpsd_raw.split)
 --        select count(*) from football.match_player_stats_details
 --          where raw_stats is not null and updated_at > now() - interval '6 hours';
 --        -- 0 bekleniyor (yeni satirlar artik mpsd'ye ham yazmiyor)
