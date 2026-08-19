@@ -3,6 +3,31 @@
 import { createClient } from "@/lib/supabase/client";
 import type { MarketConfig, ModelConfig, HFAA } from "@/features/match-stats-model/engine";
 
+// MSM YAZMA: tarayicidan dogrudan RPC DEGIL, service-role route uzerinden
+// (2.1 Faz 2, pm_* deseni). RPC'lerin authenticated EXECUTE yetkisi kaldirildi;
+// tek yazma kapisi burasi. Okuma yollari degismedi (PostgREST select).
+async function msmWrite(
+  action: string,
+  payload: Record<string, unknown>
+): Promise<{ ok: boolean; id?: string | null }> {
+  try {
+    const res = await fetch("/api/msm/write", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action, payload }),
+    });
+    const j = (await res.json().catch(() => ({}))) as { ok?: boolean; id?: string | null; error?: string };
+    if (!res.ok || !j.ok) {
+      console.error(`msmWrite ${action}`, j.error ?? res.status);
+      return { ok: false };
+    }
+    return { ok: true, id: j.id ?? null };
+  } catch (e) {
+    console.error(`msmWrite ${action}`, e);
+    return { ok: false };
+  }
+}
+
 // Excel'deki market sırası. Sona eklenen 3 STS marketi (Crosses/Interceptions/
 // Long Balls) veri gelene kadar Config'te enabled=false durur.
 export const MARKETS = [
@@ -229,15 +254,11 @@ export async function saveFixtureInputs(
   league: string,
   rows: Array<{ fixture_id: string; external_fixture_id: string; home_odds: number | null; draw_odds: number | null; away_odds: number | null }>
 ): Promise<boolean> {
-  const { error } = await createClient().rpc("msm_upsert_fixture_inputs", { p_league: league, p_rows: rows });
-  if (error) { console.error("saveFixtureInputs", error); return false; }
-  return true;
+  return (await msmWrite("saveFixtureInputs", { league, rows })).ok;
 }
 
 export async function logImport(league: string, row: Record<string, unknown>): Promise<boolean> {
-  const { error } = await createClient().rpc("msm_log_import", { p_league: league, p_row: row });
-  if (error) { console.error("logImport", error); return false; }
-  return true;
+  return (await msmWrite("logImport", { league, row })).ok;
 }
 
 // ── Manuel fikstürler ──────────────────────────────────────────────────────
@@ -285,11 +306,7 @@ export async function setManualFixtureProxy(
   side: "home" | "away",
   proxySlug: string
 ): Promise<boolean> {
-  const { error } = await createClient().rpc("msm_set_manual_fixture_proxy", {
-    p_id: id, p_side: side, p_proxy_slug: proxySlug,
-  });
-  if (error) { console.error("setManualFixtureProxy", error); return false; }
-  return true;
+  return (await msmWrite("setManualFixtureProxy", { id, side, proxySlug })).ok;
 }
 
 export async function addManualFixture(
@@ -299,21 +316,12 @@ export async function addManualFixture(
   awaySlug: string,
   awayName: string
 ): Promise<string | null> {
-  const { data, error } = await createClient().rpc("msm_add_manual_fixture", {
-    p_league: league,
-    p_home_slug: homeSlug,
-    p_home_name: homeName,
-    p_away_slug: awaySlug,
-    p_away_name: awayName,
-  });
-  if (error) { console.error("addManualFixture", error); return null; }
-  return (data as string) ?? null;
+  const r = await msmWrite("addManualFixture", { league, homeSlug, homeName, awaySlug, awayName });
+  return r.ok ? (r.id ?? null) : null;
 }
 
 export async function deleteManualFixture(id: string): Promise<boolean> {
-  const { error } = await createClient().rpc("msm_delete_manual_fixture", { p_id: id });
-  if (error) { console.error("deleteManualFixture", error); return false; }
-  return true;
+  return (await msmWrite("deleteManualFixture", { id })).ok;
 }
 
 // Takım logoları: tsl → null (lokal /images/football_logos/{slug}.png kullanılır);
@@ -558,15 +566,11 @@ export async function fetchTemplates(league: string): Promise<TemplateRow[]> {
 }
 
 export async function saveModelConfig(league: string, patch: Partial<RawModelConfig>): Promise<boolean> {
-  const { error } = await createClient().rpc("msm_update_model_config", { p_league: league, p_patch: patch });
-  if (error) { console.error("saveModelConfig", error); return false; }
-  return true;
+  return (await msmWrite("saveModelConfig", { league, patch })).ok;
 }
 
 export async function saveMarketConfig(league: string, market: string, patch: Partial<RawMarketConfig>): Promise<boolean> {
-  const { error } = await createClient().rpc("msm_update_market_config", { p_league: league, p_market: market, p_patch: patch });
-  if (error) { console.error("saveMarketConfig", error); return false; }
-  return true;
+  return (await msmWrite("saveMarketConfig", { league, market, patch })).ok;
 }
 
 // Güncel sezon MAÇ LOGU (Excel AM-BC alanı): seçili market, takım başına maç-maç.
