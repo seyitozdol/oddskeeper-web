@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { createClient } from "../../../lib/supabase/server";
 import type { PlayerProfileRow } from "../types";
 
@@ -64,9 +65,11 @@ function mapRow(row: PlayerProfileDbRow): PlayerProfileRow {
   };
 }
 
-export async function getPlayerProfile(
+// react cache(): ayni render icinde ayni slug ile ikinci cagri (or. sayfa +
+// getPlayerDetailedMetrics) DB'ye tekrar gitmez. Istek-kapsamli, bayatlama yok.
+export const getPlayerProfile = cache(async (
   playerSlug: string
-): Promise<PlayerProfileRow | null> {
+): Promise<PlayerProfileRow | null> => {
   const supabase = await createClient();
 
   const { data, error } = await supabase
@@ -116,4 +119,4 @@ export async function getPlayerProfile(
 
   const row = data?.[0] ?? null;
   return row ? mapRow(row) : null;
-}
+});

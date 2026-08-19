@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { isDailyLogoutEnabled, isSessionPastDailyLogout } from "./auth/daily-logout";
 import { createClient } from "./supabase/server";
 
@@ -22,7 +23,9 @@ export function isDevAuthBypass(): boolean {
 
 // Oturumdaki kullanicinin header erisim iznini ve admin bayragini dondurur.
 // Satiri olmayan kullanici varsayilan olarak tum basliklara erisebilir.
-export async function getNavAccess(): Promise<NavAccess> {
+// react cache(): ayni render icinde layout + sayfa ayri ayri cagirdiginda
+// auth.getUser + izin sorgusu bir kez kosar (istek-kapsamli, bayatlama yok).
+export const getNavAccess = cache(async (): Promise<NavAccess> => {
   const supabase = await createClient();
 
   const {
@@ -66,4 +69,4 @@ export async function getNavAccess(): Promise<NavAccess> {
     // kullanici varsayilani), oyle kalir.
     allowedKeys: perm ? (perm.allowed_keys ?? null) : [],
   };
-}
+});
