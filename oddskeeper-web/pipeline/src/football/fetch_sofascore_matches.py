@@ -44,6 +44,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 loader = importlib.import_module("load_sofascore_1lig_player_stats")
 teamload = importlib.import_module("load_sofascore_team_stats")  # takim-mac stat (GSheet + MSM feed)
 shotload = importlib.import_module("load_sofascore_shotmap")  # sut kirilimlari (PSM kutu ici/disi)
+scrape_hash = importlib.import_module("scrape_hash")  # H2: mac payload hash (gozlem)
 
 MIN_AGE_H = float(os.environ.get("SOFA_MIN_AGE_H", "4"))
 MAX_AGE_H = float(os.environ.get("SOFA_MAX_AGE_H", "60"))
@@ -138,6 +139,7 @@ def process_league(cfg: dict):
     loader.COMPETITION = comp
 
     m_rows, p_rows, t_rows, s_rows, c_rows = [], [], [], [], []
+    event_hashes = []  # H2 (gozlem): [(source_match_id, payload_hash)]
     for ev in eligible:
         eid = ev["id"]
         try:
@@ -152,25 +154,37 @@ def process_league(cfg: dict):
                 ev["referee"] = det["referee"]
         except Exception as e:  # noqa
             print(f"  hakem cekilemedi {eid}: {repr(e)[:80]}", flush=True)
-        m_rows.append(loader.match_row(ev, playoff=False))
-        p_rows.extend(loader.player_rows(ev, lineup))
+        # H2: bu macin satirlarini once yerelde topla (payload hash icin), sonra
+        # paylasimli listelere ekle (upsert davranisi birebir ayni kalir).
+        m_one = loader.match_row(ev, playoff=False)
+        p_ev = loader.player_rows(ev, lineup)
+        t_ev, c_ev, s_ev = [], [], []
         # Takim-mac statlari (statistics + incidents -> match_team_stats, source='sofascore').
         # Eksik/404 ise sadece takim-stat atlanir, oyuncu verisi etkilenmez.
         try:
             stats = get(f"{API}/event/{eid}/statistics")
             inc = get(f"{API}/event/{eid}/incidents")
-            t_rows.extend(teamload.build_team_rows(ev, stats, inc, comp))
+            t_ev = teamload.build_team_rows(ev, stats, inc, comp)
             # Oyuncu-bazli kart olaylari (sahada-gorulen ayrimi icin). lineup
             # yukarida cekildi; incidents'ten kart+degisiklik okunur.
-            c_rows.extend(teamload.build_card_rows(ev, inc, lineup))
+            c_ev = teamload.build_card_rows(ev, inc, lineup)
         except Exception as e:  # noqa
             print(f"  takim-stat atlandi {eid}: {repr(e)[:80]}", flush=True)
         # Shotmap (kutu ici/disi sut kirilimlari). 404 = bu mac icin yok, zararsiz.
         try:
             sm = get(f"{API}/event/{eid}/shotmap")
-            s_rows.extend(shotload.build_shot_rows(eid, sm.get("shotmap", [])))
+            s_ev = shotload.build_shot_rows(eid, sm.get("shotmap", []))
         except Exception as e:  # noqa
             print(f"  shotmap atlandi {eid}: {repr(e)[:80]}", flush=True)
+        m_rows.append(m_one)
+        p_rows.extend(p_ev)
+        t_rows.extend(t_ev)
+        c_rows.extend(c_ev)
+        s_rows.extend(s_ev)
+        try:
+            event_hashes.append((str(eid), scrape_hash.event_payload_hash(m_one, p_ev, t_ev, c_ev, s_ev)))
+        except Exception as e:  # noqa
+            print(f"  H2 hash hata {eid}: {repr(e)[:80]}", flush=True)
         hs = (ev.get("homeScore") or {}).get("current")
         as_ = (ev.get("awayScore") or {}).get("current")
         print(f"  + {ev['homeTeam']['name']} {hs}-{as_} {ev['awayTeam']['name']} (event {eid})", flush=True)
@@ -195,7 +209,12 @@ def process_league(cfg: dict):
     if p_rows:
         loader.upsert("match_player_stats_details", p_rows, "source,source_match_id,source_player_id")
     print(f"[{comp}] upsert: {len(m_rows)} mac, {len(p_rows)} oyuncu", flush=True)
-    return len(m_rows), len(p_rows)
+    # H2 (FAZ 1 gozlem): degisen/degismeyen mac tespiti. Refresh davranisini
+    # DEGISTIRMEZ; yalniz sayar/loglar. FAZ 2'de 'changed=0' ise refresh atlanacak.
+    h2 = scrape_hash.check_and_store(loader.SOURCE, event_hashes)
+    print(f"[{comp}] H2 gozlem: {len(event_hashes)} mac, degisen={h2['changed']} "
+          f"(yeni={h2['new']}), degismeyen={h2['unchanged']}", flush=True)
+    return len(m_rows), len(p_rows), h2["changed"]
 
 
 def main():
@@ -205,16 +224,20 @@ def main():
         raise SystemExit("Eksik env: SUPABASE_URL / SUPABASE_SECRET_KEY")
     total_m = total_p = 0
     cup_m = 0  # H3: Avrupa kupasi maci sayisi (kupa mat refresh gate'i icin)
+    changed_m = 0  # H2 (gozlem): bu turda gercekten degisen mac sayisi
     CUP_COMPS = {"UEFA Şampiyonlar Ligi", "UEFA Avrupa Ligi", "UEFA Konferans Ligi"}
     for cfg in LEAGUES:
         try:
-            m, p = process_league(cfg)
+            m, p, ch = process_league(cfg)
             total_m += m
             total_p += p
+            changed_m += ch
             if cfg["competition"] in CUP_COMPS:
                 cup_m += m
         except Exception as e:  # noqa
             print(f"[{cfg['competition']}] HATA: {e}", flush=True)
+    # H2 FAZ 1 (gozlem): refresh HALA total_m'e gore kosuyor (davranis degismedi).
+    # FAZ 2'de bu 'if total_m' -> 'if changed_m' olacak; simdilik yalniz logluyoruz.
     if total_m:
         loader.refresh_mats()
     print(f"TOPLAM: {total_m} mac, {total_p} oyuncu", flush=True)
@@ -222,6 +245,9 @@ def main():
     # maci islenen turda tazeler (gated). SofaScore'un stat vermedigi kupa maclari
     # icin FlashScore cup adimi (2b) ayrica tetikler.
     print(f"CUP_M: {cup_m}", flush=True)
+    # H2 (gozlem): bu turda kac mac degisti. total_m>0 ama changed_m=0 gorulen
+    # turlar FAZ 2'de refresh'i atlayabilecegimiz turlardir.
+    print(f"CHANGED_M: {changed_m}", flush=True)
 
 
 if __name__ == "__main__":
