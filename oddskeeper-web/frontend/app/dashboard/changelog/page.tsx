@@ -23,6 +23,20 @@ const ENTRIES: Entry[] = [
   {
     date: { en: "19 August", tr: "19 Ağustos" },
     title: {
+      en: "Upcoming Events: league badge next to each match",
+      tr: "Yaklaşan Maçlar: her maçın yanında lig amblemi",
+    },
+    tag: TAG_NEW,
+    items: [
+      {
+        en: "Every match row now carries its league badge to the left of the sport icon, so Süper Lig, 1. Lig, Türkiye Kupası, Champions League, Europa League and Conference League matches can be told apart at a glance without reading the tournament column. Basketball leagues (BSL, EuroLeague, EuroCup) are covered too and show up as their seasons start. Badges follow the active theme: white on the dark themes, original colors on Calimla Light. Tournaments without a badge keep an empty slot, so team names stay aligned down the list.",
+        tr: "Artık her maç satırında, spor ikonunun solunda ligin amblemi var; Süper Lig, 1. Lig, Türkiye Kupası, Şampiyonlar Ligi, Avrupa Ligi ve Konferans Ligi maçları turnuva kolonunu okumadan ilk bakışta ayırt ediliyor. Basketbol ligleri (BSL, EuroLeague, EuroCup) de kapsamda, sezonları başladıkça görünecekler. Amblemler aktif temaya uyar: koyu temalarda beyaz, Calimla Light'ta kendi renginde. Ambleminin olmadığı turnuvalarda yer boş bırakılır, böylece takım adları liste boyunca hizalı kalır.",
+      },
+    ],
+  },
+  {
+    date: { en: "19 August", tr: "19 Ağustos" },
+    title: {
       en: "Player Stats Model: saved player IDs now reach the Input",
       tr: "Player Stats Model: kayıtlı oyuncu ID'leri artık Input'a gidiyor",
     },

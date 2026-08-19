@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { useI18n } from "@/lib/i18n/LanguageProvider";
+import { leagueLogoFor } from "@/lib/league-logos";
 import {
   TRACKED_SPORTS,
   type TrackedSport,
@@ -292,6 +293,35 @@ export default function UpcomingEventsPanel({
     );
   }
 
+  // Lig amblemi: spor ikonunun SOLUNDA, turnuvanın kendi logosu (lib/league-logos
+  // tek kaynağı). Amblemi olmayan turnuvada yer boş bırakılır; genişlik sabit
+  // olduğu için takım adları satırlar arasında hizalı kalır. Tema: düz amblemler
+  // tsl-league-mark ile koyu temada beyaz, calimla-light'ta orijinal renginde.
+  function LeagueMark({
+    sport,
+    tournament,
+  }: {
+    sport: TrackedSport;
+    tournament: string;
+  }) {
+    const logo = leagueLogoFor(sport, tournament);
+    if (!logo) {
+      return <span className="w-[14px] shrink-0" aria-hidden="true" />;
+    }
+    return (
+      <Image
+        src={logo.src}
+        alt={logo.label}
+        title={logo.label}
+        width={14}
+        height={14}
+        className={`h-[14px] w-[14px] shrink-0 object-contain ${
+          logo.themed ? "tsl-league-mark" : ""
+        }`}
+      />
+    );
+  }
+
   // Takım sayfası varsa (Süper Lig / 1. Lig) ad linklenir; yoksa düz metin.
   function TeamName({
     href,
@@ -474,6 +504,10 @@ export default function UpcomingEventsPanel({
                         </td>
                         <td className="whitespace-nowrap px-2 py-1">
                           <span className="flex items-center gap-1.5">
+                            <LeagueMark
+                              sport={e.sport}
+                              tournament={e.tournament_name}
+                            />
                             <Image
                               src={SPORT_ICON[e.sport] ?? SPORT_ICON.football}
                               alt={e.sport}
