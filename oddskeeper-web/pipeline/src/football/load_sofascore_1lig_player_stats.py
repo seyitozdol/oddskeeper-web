@@ -227,6 +227,8 @@ def refresh_mats():
             print("[mat] tsl_ss refresh adim 3b'ye ertelendi (DEFER_TSL_MATS)", flush=True)
         else:
             cur.execute("refresh materialized view analytics.tsl_ss_player_detailed_metrics_global_mat")
+            # H4: Players pivot mat'i, detailed_global'den HEMEN SONRA.
+            cur.execute("refresh materialized view analytics.tsl_ss_player_table_mat")
             cur.execute("refresh materialized view analytics.tsl_ss_player_metric_benchmarks_mat")
             cur.execute("refresh materialized view analytics.tsl_ss_player_overview_advanced_mat")
             cur.execute("refresh materialized view analytics.tsl_ss_player_metric_leaderboard_mat")

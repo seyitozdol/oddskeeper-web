@@ -19,6 +19,9 @@ ENV = dotenv_values(ROOT / ".env")
 # Bagimlilik sirasi: once temel detay mat'lari, sonra onlari okuyanlar.
 MATS = [
     "tsl_ss_player_detailed_metrics_global_mat",
+    # H4: Players sekmesi pivot mat'i (oyuncu-basina jsonb); detailed_global'den
+    # turedigi icin ondan HEMEN SONRA tazelenir.
+    "tsl_ss_player_table_mat",
     "tsl_ss_player_metric_leaderboard_mat",
     "tsl_ss_player_metric_benchmarks_mat",
     "tsl_ss_player_overview_advanced_mat",

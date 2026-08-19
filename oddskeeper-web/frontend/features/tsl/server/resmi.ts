@@ -396,72 +396,61 @@ export async function getResmiPlayers(
   assets: Record<string, PlayerAsset>
 ): Promise<ResmiPlayerRow[]> {
   const supabase = await createClient();
-  const base = supabase
-    .schema("analytics")
-    .from("tsl_ss_player_detailed_metrics_global_mat")
-    .select(
-      "player_source_id, player_name, position_code, source_team_id, team_name, metric_key, total_value, per_match_value, per90_value",
-      { count: "exact", head: true }
-    )
-    .eq("competition", TSL_COMPETITION)
-    .eq("season_label", season)
-    .in("metric_key", RESMI_PLAYER_METRIC_KEYS);
-
-  const { count } = await base;
-  const total = count ?? 0;
-  if (!total) return [];
-
-  const PAGE = 1000;
-  const pages = Math.ceil(total / PAGE);
-  const chunks = await Promise.all(
-    Array.from({ length: pages }, (_, i) =>
-      supabase
-        .schema("analytics")
-        .from("tsl_ss_player_detailed_metrics_global_mat")
-        .select(
-          "player_source_id, player_name, position_code, source_team_id, team_name, metric_key, total_value, per_match_value, per90_value"
-        )
-        .eq("competition", TSL_COMPETITION)
-        .eq("season_label", season)
-        .in("metric_key", RESMI_PLAYER_METRIC_KEYS)
-        .range(i * PAGE, i * PAGE + PAGE - 1)
-    )
-  );
-
-  const byPlayer = new Map<string, ResmiPlayerRow>();
-  for (const ch of chunks) {
-    for (const r of ch.data ?? []) {
-      const id = String(r.player_source_id ?? "");
-      if (!id) continue;
-      let row = byPlayer.get(id);
-      if (!row) {
-        const teamId = String(r.source_team_id ?? "");
-        const a = assets[id];
-        row = {
-          playerId: id,
-          name: r.player_name ?? "—",
-          positionCode: r.position_code ?? null,
-          teamId,
-          teamName: meta[teamId]?.name ?? r.team_name ?? null,
-          teamLogo: meta[teamId]?.logo ?? null,
-          slug: a?.slug ?? null,
-          playerHref: null,
-          teamHref: null,
-          photo: a?.photo ?? null,
-          nationality: a?.nationality ?? null,
-          inCurrentSquad: !!a,
-          metrics: {},
-        };
-        byPlayer.set(id, row);
-      }
-      row.metrics[r.metric_key] = {
-        total: toNum(r.total_value),
-        perMatch: toNum(r.per_match_value),
-        per90: toNum(r.per90_value),
-      };
-    }
+  // H4: pivot mat (tsl_ss_player_table_mat) — oyuncu-basina 1 satir, tum metrikler
+  // jsonb'de. Eski hal detailed_metrics_global_mat'i uzun-format (28 metrik x ~691
+  // oyuncu = ~19.348 satir, 1 count + 20 range istegi) cekip JS'te pivotluyordu.
+  // Simdi tek istek/~691 satir. TSL bir sezonda <1000 oyuncu; yine de db-max-rows'a
+  // karsi sayfala (deterministik player_source_id sirasi).
+  type MatRow = {
+    player_source_id: string | null;
+    player_name: string | null;
+    position_code: string | null;
+    source_team_id: string | null;
+    team_name: string | null;
+    metrics: Record<string, { total: unknown; perMatch: unknown; per90: unknown }> | null;
+  };
+  const rows: MatRow[] = [];
+  for (let from = 0; ; from += 1000) {
+    const { data } = await supabase
+      .schema("analytics")
+      .from("tsl_ss_player_table_mat")
+      .select("player_source_id, player_name, position_code, source_team_id, team_name, metrics")
+      .eq("competition", TSL_COMPETITION)
+      .eq("season_label", season)
+      .order("player_source_id", { ascending: true })
+      .range(from, from + 999);
+    if (!data || !data.length) break;
+    rows.push(...(data as MatRow[]));
+    if (data.length < 1000) break;
   }
-  return [...byPlayer.values()];
+
+  const out: ResmiPlayerRow[] = [];
+  for (const r of rows) {
+    const id = String(r.player_source_id ?? "");
+    if (!id) continue;
+    const teamId = String(r.source_team_id ?? "");
+    const a = assets[id];
+    const metrics: Record<string, ResmiPlayerStat> = {};
+    for (const [k, v] of Object.entries(r.metrics ?? {})) {
+      metrics[k] = { total: toNum(v.total), perMatch: toNum(v.perMatch), per90: toNum(v.per90) };
+    }
+    out.push({
+      playerId: id,
+      name: r.player_name ?? "—",
+      positionCode: r.position_code ?? null,
+      teamId,
+      teamName: meta[teamId]?.name ?? r.team_name ?? null,
+      teamLogo: meta[teamId]?.logo ?? null,
+      slug: a?.slug ?? null,
+      playerHref: null,
+      teamHref: null,
+      photo: a?.photo ?? null,
+      nationality: a?.nationality ?? null,
+      inCurrentSquad: !!a,
+      metrics,
+    });
+  }
+  return out;
 }
 
 // ---- Yardimci: meta'dan isim->slug (yerel logo yolundan) ----
