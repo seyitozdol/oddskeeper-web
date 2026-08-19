@@ -253,18 +253,31 @@ export async function fetchTeamPlayers(sourceTeamId: string): Promise<PlayerRow[
     return [];
   }
 
-  return (data ?? []).map((row) => ({
-    player_source_id: row.player_key,
-    player_name: row.display_name ?? row.player_name,
-    player_slug: row.player_slug,
-    primary_position_code: row.primary_position_code,
-    position_group: row.position_group,
-    appearances: row.appearances ?? 0,
-    starts: row.starts ?? 0,
-    sub_appearances: row.sub_appearances ?? 0,
-    starter_rate_pct: row.starter_rate_pct ?? null,
-    last_match_datetime: row.last_match_datetime ?? null,
-  }));
+  // Ayni oyuncu birden cok kimlik satiriyla gelebilir (or. Galatasaray'da C. Güner:
+  // apifootball native + synthetic-tm ayni opta'ya cozulup player_key AYNI donuyor).
+  // player_source_id (= opta/kanonik key) bazinda tekillestir; yoksa listede
+  // mukerrer + ayni React key -> tekrar sort'ta gorsel cogaltma (7x) olur.
+  // (Kalici cozum team_current_squad_profile_v1 view dedup'u; bu savunma katmani.)
+  const seen = new Set<string>();
+  const out: PlayerRow[] = [];
+  for (const row of data ?? []) {
+    const id = String(row.player_key);
+    if (seen.has(id)) continue;
+    seen.add(id);
+    out.push({
+      player_source_id: row.player_key,
+      player_name: row.display_name ?? row.player_name,
+      player_slug: row.player_slug,
+      primary_position_code: row.primary_position_code,
+      position_group: row.position_group,
+      appearances: row.appearances ?? 0,
+      starts: row.starts ?? 0,
+      sub_appearances: row.sub_appearances ?? 0,
+      starter_rate_pct: row.starter_rate_pct ?? null,
+      last_match_datetime: row.last_match_datetime ?? null,
+    });
+  }
+  return out;
 }
 
 // ─── Fetch last N matches per player for status inference ────────────────────

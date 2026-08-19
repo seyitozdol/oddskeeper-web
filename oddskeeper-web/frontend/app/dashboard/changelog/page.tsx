@@ -23,6 +23,20 @@ const ENTRIES: Entry[] = [
   {
     date: { en: "19 August", tr: "19 Ağustos" },
     title: {
+      en: "Duplicate player rows in squad lists fixed",
+      tr: "Kadro listelerinde mükerrer oyuncu satırı düzeltildi",
+    },
+    tag: TAG_FIX,
+    items: [
+      {
+        en: "A player could appear more than once in a team's squad (seen on Galatasaray, where the same player was carried under two identities that resolve to one profile). This affected the squad list on team profiles and the Player Stats Model, where repeated sorting could multiply the duplicate row. Squad lists now show one row per player.",
+        tr: "Bir oyuncu takım kadrosunda birden çok kez görünebiliyordu (Galatasaray'da gözlendi: aynı oyuncu tek profile çözülen iki kimlikle taşınıyordu). Bu, takım profillerindeki kadro listesini ve Player Stats Model'i etkiliyordu; tekrar sıralamada mükerrer satır çoğalabiliyordu. Kadro listeleri artık oyuncu başına tek satır gösteriyor.",
+      },
+    ],
+  },
+  {
+    date: { en: "19 August", tr: "19 Ağustos" },
+    title: {
       en: "Correct season and recent-form averages on the Teams table",
       tr: "Takımlar tablosunda doğru sezon ve son-form ortalamaları",
     },
