@@ -224,7 +224,8 @@ def main():
         raise SystemExit("Eksik env: SUPABASE_URL / SUPABASE_SECRET_KEY")
     total_m = total_p = 0
     cup_m = 0  # H3: Avrupa kupasi maci sayisi (kupa mat refresh gate'i icin)
-    changed_m = 0  # H2 (gozlem): bu turda gercekten degisen mac sayisi
+    changed_m = 0  # H2: bu turda payload'i gercekten degisen mac sayisi
+    cup_changed = 0  # H2 FAZ 2: degisen KUPA maci (wrapper 3d kupa mat gate'i)
     CUP_COMPS = {"UEFA Şampiyonlar Ligi", "UEFA Avrupa Ligi", "UEFA Konferans Ligi"}
     for cfg in LEAGUES:
         try:
@@ -234,20 +235,27 @@ def main():
             changed_m += ch
             if cfg["competition"] in CUP_COMPS:
                 cup_m += m
+                cup_changed += ch
         except Exception as e:  # noqa
             print(f"[{cfg['competition']}] HATA: {e}", flush=True)
-    # H2 FAZ 1 (gozlem): refresh HALA total_m'e gore kosuyor (davranis degismedi).
-    # FAZ 2'de bu 'if total_m' -> 'if changed_m' olacak; simdilik yalniz logluyoruz.
-    if total_m:
+    # H2 FAZ 2: refresh yalniz payload'i degisen mac varsa kosar (yeni mac da
+    # degisen sayilir; hash hatasi da muhafazakar olarak degisen sayilir, bkz
+    # scrape_hash). Grace penceresinde ayni bitmis macin ~21 tur yeniden
+    # islenmesi artik her turda mat refresh tetiklemez. SLA (sahip, 2026-08-19):
+    # veri mac-sonrasi scrape bitisi +10dk icinde gorunsun; ilk isleme turu
+    # changed>0 verdigi icin bu sinir korunur.
+    if changed_m:
         loader.refresh_mats()
+    elif total_m:
+        print("H2 FAZ 2: islenen mac var ama payload degismedi, mat refresh atlandi", flush=True)
     print(f"TOPLAM: {total_m} mac, {total_p} oyuncu", flush=True)
     # H3: wrapper bu satiri grep'leyip kupa mat'larini (ucl/uel/uecl) SADECE kupa
     # maci islenen turda tazeler (gated). SofaScore'un stat vermedigi kupa maclari
     # icin FlashScore cup adimi (2b) ayrica tetikler.
     print(f"CUP_M: {cup_m}", flush=True)
-    # H2 (gozlem): bu turda kac mac degisti. total_m>0 ama changed_m=0 gorulen
-    # turlar FAZ 2'de refresh'i atlayabilecegimiz turlardir.
+    # H2 FAZ 2: wrapper gate'leri bu iki satiri okur (yoksa fail-open eski davranis).
     print(f"CHANGED_M: {changed_m}", flush=True)
+    print(f"CUP_CHANGED_M: {cup_changed}", flush=True)
 
 
 if __name__ == "__main__":

@@ -77,6 +77,16 @@ fi
   sofa_islendi=0;  echo "$SOFA_OUT"  | grep -qE 'TOPLAM: [1-9]'    && sofa_islendi=1
   flash_islendi=0; echo "$FLASH_OUT" | grep -qE 'islenecek=[1-9]'  && flash_islendi=1
 
+  # H2 FAZ 2: SofaScore tarafinin harita+mat tetigi "islendi" degil "DEGISTI".
+  # Grace penceresinde ayni bitmis mac ~21 tur yeniden islenir; payload hash'i
+  # ayni kaldikca (CHANGED_M: 0) harita rebuild + mat refresh gereksizdir.
+  # Fail-open: CHANGED_M satiri hic yoksa (fetcher yarim kaldi / eski surum)
+  # islendi=degisti sayilir, eski davranisa duser.
+  sofa_degisti=$sofa_islendi
+  if echo "$SOFA_OUT" | grep -q 'CHANGED_M:'; then
+    echo "$SOFA_OUT" | grep -qE 'CHANGED_M: [1-9]' || sofa_degisti=0
+  fi
+
   # 3) FlashScore overlay: SADECE FlashScore bu turda mac islediyse. Yeni
   #    oyunculari FS->Sofa esle + fotolar + tff1 player/team mat tazele.
   #    Yoksa yeni 26/27 oyuncularinin kart/xG overlay'i 04:00 gunluk job'a kadar
@@ -102,7 +112,12 @@ fi
   #     harita+mat tazelenmiyor, yeni yuklenen takim ~1 saat analytics'e girmiyordu
   #     (Kasimpasa-Trabzonspor 2026-08-15). Artik SofaScore de tetikliyor.
   #     Sira: sofa->opta ONCE (fs->opta onu kopru olarak okur), sonra mat'lar.
-  if [ "$sofa_islendi" -eq 1 ] || [ "$flash_islendi" -eq 1 ]; then
+  #     H2 FAZ 2: sofa tarafinda tetik sofa_degisti (payload degisen mac);
+  #     FlashScore yolu ayri kaynak, hash onu kapsamaz -> flash_islendi aynen kalir.
+  if [ "$sofa_islendi" -eq 1 ] && [ "$sofa_degisti" -eq 0 ] && [ "$flash_islendi" -eq 0 ]; then
+    echo "===== $(date -u '+%F %T UTC') H2 SKIP (islenen mac var, degisen yok) ====="
+  fi
+  if [ "$sofa_degisti" -eq 1 ] || [ "$flash_islendi" -eq 1 ]; then
     "$VENV" "$PIPE/src/football/build_sofascore_opta_player_map.py"
     "$VENV" "$PIPE/src/football/build_flashscore_opta_player_map.py" >/dev/null
     # apifootball<->sofascore kimlik haritasi: PSM (Player Market) guncel sezon
@@ -121,8 +136,14 @@ fi
   # 3d) H3: Avrupa kupasi oyuncu-sezon mat'lari (ucl/uel/uecl) - SADECE bu turda
   #     kupa maci islendiyse. SofaScore cup: SOFA_OUT 'CUP_M: N'; FlashScore cup:
   #     CUP_OUT 'TOPLAM: N'. Mat'lar unique index'li -> CONCURRENTLY (okuyucu bloklanmaz).
+  #     H2 FAZ 2: sofa kupa tetigi de degisiklik-bazli (CUP_CHANGED_M); satir hic
+  #     yoksa fail-open olarak CUP_M'e duser. FS kupa yolu (CUP_OUT) aynen kalir.
   cup_islendi=0
-  echo "$SOFA_OUT" | grep -qE 'CUP_M: [1-9]'  && cup_islendi=1
+  if echo "$SOFA_OUT" | grep -q 'CUP_CHANGED_M:'; then
+    echo "$SOFA_OUT" | grep -qE 'CUP_CHANGED_M: [1-9]' && cup_islendi=1
+  else
+    echo "$SOFA_OUT" | grep -qE 'CUP_M: [1-9]' && cup_islendi=1
+  fi
   echo "$CUP_OUT"  | grep -qE 'TOPLAM: [1-9]' && cup_islendi=1
   if [ "$cup_islendi" -eq 1 ]; then
     if "$VENV" "$PIPE/src/football/refresh_cup_mats.py"; then
