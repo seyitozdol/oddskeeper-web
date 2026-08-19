@@ -20,6 +20,18 @@
 --
 -- GERI ALINAMAZ: kolonu dusurmeden once yan tablonun butunlugunu son kez dogrula
 -- (asagidaki ilk sorgu 0 donmeli), yedek icin gerekirse pg_dump al.
+--
+-- ================== UYGULANDI: 2026-08-19 21:10 UTC ==================
+-- Onkosullar saglandi: bagimlilik 0, butunluk 0 uyusmayan, writer canli
+-- (3 CL maci / 134 oyuncu ile gercek veri uzerinde dogrulandi), pipeline sessiz.
+-- SONUC (olculdu):
+--   mpsd  340 MB -> 68 MB      (%80 kucullme, VACUUM FULL 20.1s)
+--   DB   1042 MB -> 770 MB     (272 MB geri kazanildi)
+--   mat refresh: tsl_ss global 39.2s->31.0s, tff1 17.4s->11.3s,
+--                shot_zones 25.6s->15.4s  (yan kazanc)
+--   32 nesnenin satir sayisi + icerik md5'i gecis oncesiyle BIREBIR ayni;
+--   kolon drop SONRASI writer tekrar kosuldu (hatasiz), site smoke temiz
+--   (TSL Players + CL Players 100'er satir).
 
 -- 0) SON BUTUNLUK KONTROLU (0 donmeli; donmuyorsa DURDUR)
 select count(*) as uyusmayan
