@@ -119,9 +119,10 @@ export const msm = defineMessages({
     payback: "Payback",
     halfShare: "Share",
     marketsNote:
-      "Per-market controls. FT: number of lines (1-5). For each half: the halve share, how many lines open (1-5), whether Under is offered, and the half's own payback (price margin). FT prices always use the global margin from Model parameters. LVL: the market's own supremacy divisor; a lower value means a stronger favourite effect for that market.",
+      "Per-market controls. Show: unticked markets are hidden from the Model market dropdown. FT: number of lines (1-5). For each half: the halve share, how many lines open (1-5), whether Under is offered, and the half's own payback (price margin). FT prices always use the global margin from Model parameters. LVL + Supr. work together: LVL is the market's own supremacy divisor (lower = stronger favourite effect) and Supr. toggles whether supremacy applies at all.",
     supremacyCol: "Supr.",
     lvlCol: "LVL",
+    showCol: "Show",
     refereeCol: "Ref.",
     save: "Save",
     saved: "Saved",
@@ -260,9 +261,10 @@ export const msm = defineMessages({
     payback: "Payback",
     halfShare: "Pay",
     marketsNote:
-      "Market başına kontroller. FT: çizgi sayısı (1-5). Her yarı için: yarı payı, kaç çizgi açılacağı (1-5), Under açılıp açılmayacağı ve yarının kendi payback (fiyat marjı) değeri. FT fiyatları her zaman Model parametrelerindeki global marjı kullanır. LVL: marketin kendi supremacy böleni; küçük değer o markette favori etkisini güçlendirir.",
+      "Market başına kontroller. Göster: tiki kaldırılan market Model'deki market dropdown'unda listelenmez. FT: çizgi sayısı (1-5). Her yarı için: yarı payı, kaç çizgi açılacağı (1-5), Under açılıp açılmayacağı ve yarının kendi payback (fiyat marjı) değeri. FT fiyatları her zaman Model parametrelerindeki global marjı kullanır. LVL + Supr. birlikte çalışır: LVL marketin kendi supremacy böleni (küçük değer favori etkisini güçlendirir), Supr. ise supremacy'nin o markette uygulanıp uygulanmayacağını açar/kapatır.",
     supremacyCol: "Supr.",
     lvlCol: "LVL",
+    showCol: "Göster",
     refereeCol: "Hkm.",
     save: "Kaydet",
     saved: "Kaydedildi",

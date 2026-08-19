@@ -23,6 +23,20 @@ const ENTRIES: Entry[] = [
   {
     date: { en: "19 August", tr: "19 Ağustos" },
     title: {
+      en: "Match Stats Model: market visibility and three new STS markets",
+      tr: "Match Stats Model: market görünürlüğü ve üç yeni STS marketi",
+    },
+    tag: TAG_NEW,
+    items: [
+      {
+        en: "Config > Markets got a Show tick to the left of each market name: untick it and the market disappears from the Model tab's market dropdown. The Supr. tick moved to the far right, next to the LVL column, since the two settings work together. Three new markets were added ready for future data: Crosses, Interceptions and Long Balls, with their STS templates (Total/Home/Away). They start hidden; they will be ticked on once their data pipeline is ready.",
+        tr: "Config > Markets tablosunda market adlarının soluna Göster tiki geldi: tik kaldırılınca o market Model sekmesindeki market dropdown'undan kalkıyor. Supr. tiki de LVL kolonunun yanına, tablonun en sağına taşındı; çünkü iki ayar birlikte çalışıyor. Gelecekteki veri için üç yeni market eklendi: Crosses, Interceptions ve Long Balls, STS şablonlarıyla (Total/Home/Away). Şimdilik gizli başlıyorlar; veri hattı hazır olunca tik ile açılacaklar.",
+      },
+    ],
+  },
+  {
+    date: { en: "19 August", tr: "19 Ağustos" },
+    title: {
       en: "Match Stats Model: per-market supremacy (LVL)",
       tr: "Match Stats Model: market başına supremacy (LVL)",
     },

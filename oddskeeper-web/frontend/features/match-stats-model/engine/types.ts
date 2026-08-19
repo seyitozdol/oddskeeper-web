@@ -36,6 +36,8 @@ export interface MarketConfig {
   under2h?: boolean;
   // Market bazlı supremacy böleni (LVL). Boşsa modelCfg.supremacyDivisor kullanılır.
   supremacyDivisor?: number;
+  // Görünürlük (motor kullanmaz): false ise Model market dropdown'unda listelenmez.
+  enabled?: boolean;
 }
 
 // Model global sabitleri (msm.model_config).

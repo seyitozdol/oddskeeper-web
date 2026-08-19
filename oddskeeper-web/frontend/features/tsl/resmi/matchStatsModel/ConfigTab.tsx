@@ -235,19 +235,20 @@ export default function ConfigTab({
         <div className="space-y-4">
           <Card id="cfg-markets" title={t("msm.cfgMarkets")} hint={t("msm.marketsNote")}>
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[940px] text-left text-[11px] tabular-nums">
+              <table className="w-full min-w-[980px] text-left text-[11px] tabular-nums">
                 <thead>
                   <tr className="text-ink-3">
+                    <th rowSpan={2} className="px-1 py-1 text-center align-bottom font-medium">{t("msm.showCol")}</th>
                     <th rowSpan={2} className="px-1 py-1 align-bottom font-medium">{t("msm.market")}</th>
                     <th colSpan={2} className="border-l border-line/60 px-1 py-1 text-center font-medium">{t("msm.halfShare")}</th>
-                    <th rowSpan={2} className="border-l border-line/60 px-1 py-1 text-center align-bottom font-medium">{t("msm.supremacyCol")}</th>
-                    <th rowSpan={2} className="px-1 py-1 text-center align-bottom font-medium">{t("msm.refereeCol")}</th>
+                    <th rowSpan={2} className="border-l border-line/60 px-1 py-1 text-center align-bottom font-medium">{t("msm.refereeCol")}</th>
                     <th rowSpan={2} className="px-1 py-1 text-center align-bottom font-medium">{t("msm.sendHalves")}</th>
                     <th rowSpan={2} className="px-1 py-1 text-center align-bottom font-medium">{t("msm.midOnly")}</th>
                     <th colSpan={1} className="border-l border-line/60 px-1 py-1 text-center font-medium">FT</th>
                     <th colSpan={3} className="border-l border-line/60 px-1 py-1 text-center font-medium">{t("msm.firstHalf")}</th>
                     <th colSpan={3} className="border-l border-line/60 px-1 py-1 text-center font-medium">{t("msm.secondHalf")}</th>
                     <th rowSpan={2} className="border-l border-line/60 px-1 py-1 text-center align-bottom font-medium">{t("msm.lvlCol")}</th>
+                    <th rowSpan={2} className="px-1 py-1 text-center align-bottom font-medium">{t("msm.supremacyCol")}</th>
                   </tr>
                   <tr className="text-ink-3">
                     <th className="border-l border-line/60 px-1 py-0.5 text-center font-normal">{t("msm.firstHalf")}</th>
@@ -285,11 +286,11 @@ export default function ConfigTab({
                     );
                     return (
                       <tr key={m.market} className="border-t border-line/60 text-ink-2 odd:bg-veil/30">
+                        {chk(m.enabled, (x) => setMk(i, { enabled: x }))}
                         <td className="px-1 py-0.5 font-medium text-ink">{m.market}</td>
                         {cell(m.split_1h, (x) => setMk(i, { split_1h: x }), true)}
                         {cell(m.split_2h, (x) => setMk(i, { split_2h: x }))}
-                        {chk(m.supremacy_applies, (x) => setMk(i, { supremacy_applies: x }), true)}
-                        {chk(m.referee_applies, (x) => setMk(i, { referee_applies: x }))}
+                        {chk(m.referee_applies, (x) => setMk(i, { referee_applies: x }), true)}
                         {chk(m.send_halves, (x) => setMk(i, { send_halves: x }))}
                         {chk(m.mid_only, (x) => setMk(i, { mid_only: x }))}
                         {lines(m.line_count, (x) => setMk(i, { line_count: x }), true)}
@@ -300,6 +301,7 @@ export default function ConfigTab({
                         {chk(m.under_2h, (x) => setMk(i, { under_2h: x }))}
                         {cell(m.payback_2h, (x) => setMk(i, { payback_2h: x }))}
                         {cell(m.supremacy_divisor, (x) => setMk(i, { supremacy_divisor: x }), true)}
+                        {chk(m.supremacy_applies, (x) => setMk(i, { supremacy_applies: x }))}
                       </tr>
                     );
                   })}

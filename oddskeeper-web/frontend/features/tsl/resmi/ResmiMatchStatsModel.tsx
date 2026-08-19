@@ -448,6 +448,16 @@ export default function ResmiMatchStatsModel({
     });
   }, [LEAGUE]);
 
+  // Seçili market Config'te kapatıldıysa (enabled=false) ilk açık markete düş;
+  // dropdown'da listelenmeyen bir değer seçili kalmasın.
+  useEffect(() => {
+    if (Object.keys(marketCfgs).length === 0) return;
+    if (marketCfgs[market]?.enabled === false) {
+      const first = MARKETS.find((m) => marketCfgs[m]?.enabled !== false);
+      if (first) setMarket(first);
+    }
+  }, [marketCfgs, market]);
+
   // Fikstürler: manuel (en üstte) + resmi. Manuel eklen/silinince tekrar çağrılır.
   const loadFixtures = useCallback(() => {
     Promise.all([fetchManualFixtures(LEAGUE), fetchFixtures(LEAGUE)]).then(
@@ -1171,7 +1181,7 @@ export default function ResmiMatchStatsModel({
                     <ConfigGear onClick={() => goConfig("markets")} title={t("msm.cfgMarkets")} />
                   </label>
                   <select className={`${selCls} w-full`} value={market} onChange={(e) => setMarket(e.target.value)}>
-                    {MARKETS.map((m) => (
+                    {MARKETS.filter((m) => marketCfgs[m]?.enabled !== false).map((m) => (
                       <option key={m} value={m} className="bg-field text-ink">{m}</option>
                     ))}
                   </select>
