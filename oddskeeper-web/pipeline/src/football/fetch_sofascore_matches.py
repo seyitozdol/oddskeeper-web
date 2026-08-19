@@ -204,16 +204,24 @@ def main():
     if not (loader.SUPABASE_URL and loader.SUPABASE_KEY):
         raise SystemExit("Eksik env: SUPABASE_URL / SUPABASE_SECRET_KEY")
     total_m = total_p = 0
+    cup_m = 0  # H3: Avrupa kupasi maci sayisi (kupa mat refresh gate'i icin)
+    CUP_COMPS = {"UEFA Şampiyonlar Ligi", "UEFA Avrupa Ligi", "UEFA Konferans Ligi"}
     for cfg in LEAGUES:
         try:
             m, p = process_league(cfg)
             total_m += m
             total_p += p
+            if cfg["competition"] in CUP_COMPS:
+                cup_m += m
         except Exception as e:  # noqa
             print(f"[{cfg['competition']}] HATA: {e}", flush=True)
     if total_m:
         loader.refresh_mats()
     print(f"TOPLAM: {total_m} mac, {total_p} oyuncu", flush=True)
+    # H3: wrapper bu satiri grep'leyip kupa mat'larini (ucl/uel/uecl) SADECE kupa
+    # maci islenen turda tazeler (gated). SofaScore'un stat vermedigi kupa maclari
+    # icin FlashScore cup adimi (2b) ayrica tetikler.
+    print(f"CUP_M: {cup_m}", flush=True)
 
 
 if __name__ == "__main__":

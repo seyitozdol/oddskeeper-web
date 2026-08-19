@@ -91,4 +91,16 @@ fi
     #     Uyari verirse logda 'UYARI' satiri olur (gol dusuren kimlik arizasi).
     "$VENV" "$PIPE/src/football/check_match_coverage.py" --days 2 || true
   fi
+
+  # 3d) H3: Avrupa kupasi oyuncu-sezon mat'lari (ucl/uel/uecl) — SADECE bu turda
+  #     kupa maci islendiyse. SofaScore cup sinyali: SOFA_OUT 'CUP_M: N'. (VPS kopyasi
+  #     ayrica FlashScore cup adimini CUP_OUT ile gate'ler; repo kopyasinda o adim yok.)
+  #     Mat'lar unique index'li -> CONCURRENTLY (okuyucu bloklanmaz).
+  if echo "$SOFA_OUT" | grep -qE 'CUP_M: [1-9]'; then
+    if "$VENV" "$PIPE/src/football/refresh_cup_mats.py"; then
+      echo "===== $(date -u '+%F %T UTC') CUP MAT OK ====="
+    else
+      echo "===== $(date -u '+%F %T UTC') CUP MAT FAILED ====="
+    fi
+  fi
 } >> "$LOG" 2>&1
