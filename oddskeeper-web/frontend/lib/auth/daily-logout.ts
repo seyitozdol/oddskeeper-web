@@ -8,10 +8,13 @@
 // (JWT iat sinirdan kucukse) kullanici cikarilir. Cron/servis-rol/Vercel
 // zamanlayici GEREKMEZ; kontrol her istekte auth kapisinda yapilir.
 //
-// Not: iat token yenilendikce ilerler; bu yuzden gece boyu KESINTISIZ aktif
-// bir kullanici token'ini sinirdan sonraya yenileyip o geceyi atlatabilir
-// (kenar durum). 23:59 UTC = 02:59 TSI oldugundan pratikte onemsiz; tam
-// determinizm istenirse ayrica sinirda refresh-token iptali (cron) eklenebilir.
+// Not: iat token yenilendikce ilerler ve proxy'deki getClaims() suresi dolmus
+// token'i kontrol ONCESI refresh eder -> gece boyu bosta kalan kullanicinin
+// iat'i sabah ilk istekte "simdi" olur, bu kontrol onu YAKALAYAMAZ. Bu yuzden
+// asil zorlama VPS cron'undaki sunucu tarafi oturum iptalidir
+// (pipeline/src/common/daily_logout_revoke.py, 23:59 UTC sinirinda non-admin
+// auth.sessions delete). Buradaki kontrol tamamlayici katman: sinirdan onceki
+// ~1 saatte basilmis, suresi HENUZ dolmamis token'lari yakalar.
 
 const DEFAULT_HOUR = 23;
 const DEFAULT_MINUTE = 59;

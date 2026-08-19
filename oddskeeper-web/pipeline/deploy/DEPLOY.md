@@ -85,6 +85,11 @@ chmod +x /opt/oddskeeper/run_upcoming_events.sh /opt/oddskeeper/run_odds_capture
 #    GEÇİCİ: TSL maçları BAŞLAYANA KADAR günlük; sezon başlayınca bu satırı kaldır
 #    (maçlar başlayınca kadrolar maç scrape'inden zaten güncellenir). 05:00 (CEST).
 0 5 * * *     /opt/oddskeeper/run_tsl_squad_refresh.sh
+
+# 8) Günlük otomatik logout (non-admin oturum iptali, auth.sessions delete):
+#    01:59 CEST = 23:59 UTC (kışın 00:59 UTC'ye kayar, zararsız — script sınırı
+#    kendisi hesaplar). Frontend iat kontrolünün ana katmanı.
+59 1 * * *    /opt/oddskeeper/run_daily_logout.sh
 ```
 `public.pipeline_triggers` tablosu gerekir (sql/2026-07-31_pipeline_triggers.sql).
 Wrapper'ları kopyala: `cp oddskeeper-web/pipeline/deploy/run_*.sh /opt/oddskeeper/ && chmod +x /opt/oddskeeper/run_*.sh`
