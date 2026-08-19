@@ -11,6 +11,11 @@
 -- Aksi halde MSM yazma islemleri 403 doner (okuma etkilenmez).
 --
 -- Geri alma: asagidaki revoke'lari grant'a cevir (ROLLBACK dosyasi yok, tek satir).
+--
+-- ================== UYGULANDI: 2026-08-19 21:40 UTC ==================
+-- Onkosul saglandi: frontend commit 7d95e5c canliydi (/api/version ile dogrulandi).
+-- Sonuc: 7 RPC'nin hepsinde anon=f, authenticated=f, service_role=t.
+-- Revoke SONRASI route tekrar test edildi: 200 ok (service-role yolu saglam).
 
 revoke execute on function public.msm_upsert_fixture_inputs(text, jsonb) from authenticated;
 revoke execute on function public.msm_log_import(text, jsonb) from authenticated;
