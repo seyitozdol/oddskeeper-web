@@ -1105,14 +1105,14 @@ export default function ResmiMatchStatsModel({
                   <select className={`${selCls} w-full`} value={selectedFixtureId} onChange={(e) => selectFixture(e.target.value)}>
                     {fixtures.filter((f) => !isArchived(f)).sort(cmpUpcoming).map((f) => (
                       <option key={f.fixtureId} value={f.fixtureId} className="bg-field text-ink">
-                        {f.manual ? "M" : `R${f.round}`} · {f.label}
+                        {f.label}
                       </option>
                     ))}
                     {fixtures.some(isArchived) && (
                       <optgroup label={t("msm.archive")} className="bg-field text-ink">
                         {fixtures.filter(isArchived).sort(cmpArchivedDesc).map((f) => (
                           <option key={f.fixtureId} value={f.fixtureId} className="bg-field text-ink">
-                            R{f.round} · {f.label}
+                            {f.label}
                           </option>
                         ))}
                       </optgroup>
