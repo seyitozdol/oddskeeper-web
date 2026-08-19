@@ -10,7 +10,7 @@ import {
 import { getFootballTeamSlugMap } from "./cupProfileRedirect";
 import { slugifyTeamName } from "../../../lib/football-teams";
 import { slugForSofascoreTeam } from "../../../lib/sofascore-team-map";
-import { previousSeasonLabel } from "../../../lib/season";
+import { currentSeasonLabel, previousSeasonLabel } from "../../../lib/season";
 import { normalizeSearch, slugFromLogo } from "../lib";
 import type {
   TslLeaderRow,
@@ -243,7 +243,12 @@ async function buildZeroTeamMetrics(
   teams: TslStandingRow[],
   meta: Record<string, TslTeamMeta>
 ): Promise<TslTeamMetric[]> {
-  const defsRaw = await p.teamMetrics("2025/2026", meta);
+  // Metrik TANIM sablonu (deger degil) veri dolu son sezondan cekilir; sezon
+  // devrinde elle guncelleme gerekmesin diye "onceki sezon"a baglandi.
+  const defsRaw = await p.teamMetrics(
+    previousSeasonLabel(currentSeasonLabel()) ?? "2025/2026",
+    meta
+  );
   const defMap = new Map<string, TslTeamMetric>();
   for (const d of defsRaw) if (!defMap.has(d.metricKey)) defMap.set(d.metricKey, d);
   const defs = [...defMap.values()];

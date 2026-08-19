@@ -1,4 +1,5 @@
 import { getPlayerDetailHref, getTeamDetailHref } from "@/lib/routes";
+import { currentSeasonLabel, previousSeasonLabel } from "@/lib/season";
 import { RESMI_SECTIONS, CUP_SECTIONS, EUROCUP_SECTIONS, type ResmiSection } from "./constants";
 
 // Resmi deneyimini besleyen lig yapilandirmasi. TSL tsl_ss_* (opta-keyed)
@@ -26,13 +27,20 @@ export type LeagueConfig = {
   viewPrefix?: string; // Avrupa kupasi: prefix_* view seti (ucl/uel/uecl)
 };
 
-const SEASONS = ["2026/2027", "2025/2026", "2024/2025"];
+// Sezon listeleri takvimden turetilir (24 Haziran siniri, lib/season.ts; DB esi
+// ref.current_season_label). Her yaz elle guncelleme GEREKMEZ (sahip karari
+// 2026-08-19). Kupa (CUP_LEAGUE) istisna: sezonu Aralik'ta basladigi ve veri
+// kapsami ayri oldugu icin elle yonetilir.
+const CUR_SEASON = currentSeasonLabel();
+const PREV_SEASON = previousSeasonLabel(CUR_SEASON) ?? CUR_SEASON;
+const PREV2_SEASON = previousSeasonLabel(PREV_SEASON) ?? PREV_SEASON;
+const SEASONS = [CUR_SEASON, PREV_SEASON, PREV2_SEASON];
 
 export const TSL_LEAGUE: LeagueConfig = {
   source: "tsl",
   competition: "Süper Lig",
   seasons: SEASONS,
-  defaultSeason: "2026/2027",
+  defaultSeason: CUR_SEASON,
   basePath: "/dashboard/stats-analysis/tsl/resmi",
   matchBase: "/dashboard/stats-analysis/tsl/match",
   logo: "/images/leagues/super-lig.png",
@@ -46,7 +54,7 @@ export const TFF1_LEAGUE: LeagueConfig = {
   source: "tff1",
   competition: "Trendyol 1. Lig",
   seasons: SEASONS,
-  defaultSeason: "2026/2027",
+  defaultSeason: CUR_SEASON,
   basePath: "/dashboard/stats-analysis/tff1/resmi",
   matchBase: "/dashboard/tff-1-lig/match",
   logo: "/images/leagues/tff-1-lig.png",
@@ -78,8 +86,8 @@ export const CUP_LEAGUE: LeagueConfig = {
 export const EUROCL_LEAGUE: LeagueConfig = {
   source: "eurocl",
   competition: "UEFA Şampiyonlar Ligi",
-  seasons: ["2026/2027", "2025/2026"],
-  defaultSeason: "2026/2027",
+  seasons: [CUR_SEASON, PREV_SEASON],
+  defaultSeason: CUR_SEASON,
   basePath: "/dashboard/euro-cups/cl/resmi",
   matchBase: "/dashboard/euro-cups/cl/match",
   logo: "/images/leagues/ucl.png",
@@ -94,8 +102,8 @@ export const EUROCL_LEAGUE: LeagueConfig = {
 export const EUEL_LEAGUE: LeagueConfig = {
   source: "euel",
   competition: "UEFA Avrupa Ligi",
-  seasons: ["2026/2027", "2025/2026"],
-  defaultSeason: "2026/2027",
+  seasons: [CUR_SEASON, PREV_SEASON],
+  defaultSeason: CUR_SEASON,
   basePath: "/dashboard/euro-cups/el/resmi",
   matchBase: "/dashboard/euro-cups/el/match",
   logo: "/images/leagues/uel.png",
@@ -110,8 +118,8 @@ export const EUEL_LEAGUE: LeagueConfig = {
 export const EUECL_LEAGUE: LeagueConfig = {
   source: "euecl",
   competition: "UEFA Konferans Ligi",
-  seasons: ["2026/2027", "2025/2026"],
-  defaultSeason: "2026/2027",
+  seasons: [CUR_SEASON, PREV_SEASON],
+  defaultSeason: CUR_SEASON,
   basePath: "/dashboard/euro-cups/conf/resmi",
   matchBase: "/dashboard/euro-cups/conf/match",
   logo: "/images/leagues/uecl.png",
