@@ -21,6 +21,9 @@ from pathlib import Path
 import requests
 from dotenv import dotenv_values
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import mpsd_raw  # noqa: E402  (Faz 2: ham jsonb yan tablo ayrimi)
+
 ROOT = Path(__file__).resolve().parents[2]          # oddskeeper/
 KESTIRIM = Path(r"C:\Users\zygom\PycharmProjects\kestirim")  # ham fixtures/statistics cache bu projede duruyor
 
@@ -106,6 +109,12 @@ def cached_fetch(path: str, cache_file: Path) -> dict:
 
 def upsert(table: str, rows: list, conflict_cols: str) -> None:
     if not rows:
+        return
+    # Faz 2 (2026-08-19): mpsd artik raw_stats tasimiyor; ham jsonb yan tabloya.
+    if table == "match_player_stats_details" and any("raw_stats" in r for r in rows):
+        hot_rows, raw_rows = mpsd_raw.split(rows)
+        upsert(table, hot_rows, conflict_cols)
+        upsert(mpsd_raw.TABLE, raw_rows, mpsd_raw.CONFLICT)
         return
     url = f"{SUPABASE_URL}/rest/v1/{table}?on_conflict={conflict_cols}"
     headers = {

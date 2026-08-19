@@ -21,6 +21,9 @@ from pathlib import Path
 import requests
 from dotenv import dotenv_values
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import mpsd_raw  # noqa: E402  (Faz 2: ham jsonb yan tablo ayrimi)
+
 ROOT = Path(__file__).resolve().parents[2]
 ENV = dotenv_values(ROOT / ".env")
 SUPABASE_URL = (ENV.get("SUPABASE_URL") or "").strip().strip('"')
@@ -193,8 +196,11 @@ def load_folder(folder, season_label, competition, do_refresh=True, dry_run=Fals
         return len(m_rows), len(p_rows)
     upsert("matches", m_rows, "source,source_match_id")
     print(f"[matches] {len(m_rows)} upsert", flush=True)
-    upsert("match_player_stats_details", p_rows, "source,source_match_id,source_player_id")
-    print(f"[players] {len(p_rows)} upsert", flush=True)
+    # Faz 2: ham jsonb yan tabloya (bkz mpsd_raw).
+    hot_rows, raw_rows = mpsd_raw.split(p_rows)
+    upsert("match_player_stats_details", hot_rows, "source,source_match_id,source_player_id")
+    upsert(mpsd_raw.TABLE, raw_rows, mpsd_raw.CONFLICT)
+    print(f"[players] {len(hot_rows)} upsert ({len(raw_rows)} ham)", flush=True)
     if do_refresh:
         refresh_mats()
     return len(m_rows), len(p_rows)

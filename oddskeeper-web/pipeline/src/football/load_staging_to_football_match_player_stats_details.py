@@ -20,6 +20,7 @@ RAW_SCHEMA = "raw"
 RAW_TABLE = "match_json_staging"
 TARGET_SCHEMA = "football"
 TARGET_TABLE = "match_player_stats_details"
+RAW_TARGET_TABLE = "match_player_stats_raw"  # Faz 2: ham jsonb yan tablosu
 PAGE_SIZE = 1000
 REQUEST_TIMEOUT = 60
 
@@ -216,7 +217,29 @@ class SupabaseRestClient:
         payload = response.json()
         return len(payload) > 0
 
+    def upsert_raw(self, row: Dict[str, Any]) -> None:
+        """Faz 2: ham jsonb yan tabloya (football.match_player_stats_raw).
+        Sicak tablo yazimindan SONRA cagrilir; hata halinde loader patlar."""
+        raw = row.get("raw_stats")
+        if raw is None:
+            return
+        body = {k: row[k] for k in ("source", "source_match_id", "source_player_id")}
+        body["raw_stats"] = raw
+        response = self.session.post(
+            self._endpoint(RAW_TARGET_TABLE),
+            headers={
+                **self._schema_headers(TARGET_SCHEMA),
+                "Content-Type": "application/json",
+                "Prefer": "resolution=merge-duplicates,return=minimal",
+            },
+            params={"on_conflict": "source,source_match_id,source_player_id"},
+            data=json.dumps(body, ensure_ascii=False),
+            timeout=REQUEST_TIMEOUT,
+        )
+        self._raise_for_status(response, "RAW UPSERT")
+
     def insert_row(self, row: Dict[str, Any]) -> None:
+        hot = {k: v for k, v in row.items() if k != "raw_stats"}
         response = self.session.post(
             self._endpoint(TARGET_TABLE),
             headers={
@@ -224,10 +247,11 @@ class SupabaseRestClient:
                 "Content-Type": "application/json",
                 "Prefer": "return=minimal",
             },
-            data=json.dumps(row, ensure_ascii=False),
+            data=json.dumps(hot, ensure_ascii=False),
             timeout=REQUEST_TIMEOUT,
         )
         self._raise_for_status(response, "INSERT")
+        self.upsert_raw(row)
 
     def update_row(self, row: Dict[str, Any]) -> None:
         params = {
@@ -235,6 +259,7 @@ class SupabaseRestClient:
             "source_match_id": f"eq.{row['source_match_id']}",
             "source_player_id": f"eq.{row['source_player_id']}",
         }
+        hot = {k: v for k, v in row.items() if k != "raw_stats"}
         response = self.session.patch(
             self._endpoint(TARGET_TABLE),
             headers={
@@ -243,10 +268,11 @@ class SupabaseRestClient:
                 "Prefer": "return=minimal",
             },
             params=params,
-            data=json.dumps(row, ensure_ascii=False),
+            data=json.dumps(hot, ensure_ascii=False),
             timeout=REQUEST_TIMEOUT,
         )
         self._raise_for_status(response, "UPDATE")
+        self.upsert_raw(row)
 
 
 def iter_player_detail_rows(staging_row: Dict[str, Any]) -> Iterator[PlayerDetailRow]:

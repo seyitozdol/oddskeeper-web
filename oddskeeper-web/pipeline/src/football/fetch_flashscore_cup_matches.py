@@ -123,7 +123,7 @@ def load_sofascore_gaps(cur):
         select m.source_match_id, m.competition, m.match_datetime::date,
                m.home_team_name, m.away_team_name, m.home_score, m.away_score,
                not exists (
-                 select 1 from football.match_player_stats_details d
+                 select 1 from football.mpsd_with_raw d
                  where d.source='sofascore' and d.source_match_id=m.source_match_id
                    and d.raw_stats ? 'minutesPlayed'
                ) as player_empty,
@@ -136,11 +136,11 @@ def load_sofascore_gaps(cur):
                -- xG-eksik: SofaScore oyuncu-stat VERMIS ama hicbir oyuncuda
                -- expectedGoals yok (26/27 gecikmesi) -> FS xG overlay'i gerekir.
                (exists (
-                 select 1 from football.match_player_stats_details d
+                 select 1 from football.mpsd_with_raw d
                  where d.source='sofascore' and d.source_match_id=m.source_match_id
                    and d.raw_stats ? 'minutesPlayed'
                ) and not exists (
-                 select 1 from football.match_player_stats_details d
+                 select 1 from football.mpsd_with_raw d
                  where d.source='sofascore' and d.source_match_id=m.source_match_id
                    and d.raw_stats ? 'expectedGoals'
                )) as xg_missing

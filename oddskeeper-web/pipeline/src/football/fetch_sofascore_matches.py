@@ -45,6 +45,7 @@ loader = importlib.import_module("load_sofascore_1lig_player_stats")
 teamload = importlib.import_module("load_sofascore_team_stats")  # takim-mac stat (GSheet + MSM feed)
 shotload = importlib.import_module("load_sofascore_shotmap")  # sut kirilimlari (PSM kutu ici/disi)
 scrape_hash = importlib.import_module("scrape_hash")  # H2: mac payload hash (gozlem)
+mpsd_raw = importlib.import_module("mpsd_raw")  # Faz 2: ham jsonb yan tablo ayrimi
 
 MIN_AGE_H = float(os.environ.get("SOFA_MIN_AGE_H", "4"))
 MAX_AGE_H = float(os.environ.get("SOFA_MAX_AGE_H", "60"))
@@ -207,7 +208,10 @@ def process_league(cfg: dict):
         dedup[(r["source_match_id"], r["source_player_id"])] = r
     p_rows = list(dedup.values())
     if p_rows:
-        loader.upsert("match_player_stats_details", p_rows, "source,source_match_id,source_player_id")
+        # Faz 2: ham jsonb yan tabloya (bkz mpsd_raw); once sicak, sonra ham.
+        hot_rows, raw_rows = mpsd_raw.split(p_rows)
+        loader.upsert("match_player_stats_details", hot_rows, "source,source_match_id,source_player_id")
+        loader.upsert(mpsd_raw.TABLE, raw_rows, mpsd_raw.CONFLICT)
     print(f"[{comp}] upsert: {len(m_rows)} mac, {len(p_rows)} oyuncu", flush=True)
     # H2 (FAZ 1 gozlem): degisen/degismeyen mac tespiti. Refresh davranisini
     # DEGISTIRMEZ; yalniz sayar/loglar. FAZ 2'de 'changed=0' ise refresh atlanacak.

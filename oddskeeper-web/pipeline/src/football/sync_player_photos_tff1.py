@@ -24,7 +24,7 @@ def main():
     cur.execute("""
         insert into football.sofascore_player_info (sofascore_player_id, photo_url, updated_at)
         select fmap.sofascore_player_id, max(d.raw_stats->>'_photo'), now()
-        from football.match_player_stats_details d
+        from football.mpsd_with_raw d
         join ref.flashscore_player_map fmap
           on fmap.flashscore_player_id = d.source_player_id
         where d.source = 'flashscore'

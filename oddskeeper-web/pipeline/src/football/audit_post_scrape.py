@@ -84,7 +84,7 @@ def audit_match(cur, eid):
         count(distinct source_team_id),
         count(*) filter (where (raw_stats->>'minutesPlayed') is null),
         count(*) filter (where coalesce((raw_stats->>'minutesPlayed')::int,0)>0)
-        from football.match_player_stats_details where source='sofascore' and source_match_id=%s""",
+        from football.mpsd_with_raw where source='sofascore' and source_match_id=%s""",
                 (str(eid),))
     pc, pnull, pteams, pminnull, pplayed = cur.fetchone()
     if pc == 0:
@@ -96,7 +96,7 @@ def audit_match(cur, eid):
     if pnull:
         issues.append(f"[MED] {pnull} oyuncu adi NULL")
     # mojibake in player names
-    cur.execute("""select player_name from football.match_player_stats_details
+    cur.execute("""select player_name from football.mpsd_with_raw
         where source='sofascore' and source_match_id=%s and player_name is not null""", (str(eid),))
     bad = [n[0] for n in cur.fetchall() if MOJIBAKE.search(n[0] or "")]
     if bad:
@@ -107,7 +107,7 @@ def audit_match(cur, eid):
     #         gorunmeli (yoksa tff1 profil/PSM'den duser).
     if league == "tsl":
         cur.execute("""select count(*) filter (where pm.opta_player_id is null)
-            from football.match_player_stats_details d
+            from football.mpsd_with_raw d
             left join ref.sofascore_opta_player_map pm on pm.sofascore_player_id=d.source_player_id
             where d.source='sofascore' and d.source_match_id=%s
               and coalesce((d.raw_stats->>'minutesPlayed')::int,0)>0""", (str(eid),))
@@ -118,7 +118,7 @@ def audit_match(cur, eid):
             ok.append("tum oynayanlar opta'ya maple")
     elif league == "tff1":
         cur.execute("""select count(*) filter (where l.player_id is null)
-            from football.match_player_stats_details d
+            from football.mpsd_with_raw d
             left join analytics.tff1_player_match_log_v1 l
               on l.match_id=d.source_match_id and l.player_id=d.source_player_id
             where d.source='sofascore' and d.source_match_id=%s

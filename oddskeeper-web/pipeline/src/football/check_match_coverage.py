@@ -44,7 +44,7 @@ with recent as (
            coalesce(sum((d.raw_stats ->> 'goals')::int)
                     filter (where pmap.opta_player_id is not null), 0) as mapped_goals
     from recent r
-    left join football.match_player_stats_details d
+    left join football.mpsd_with_raw d
            on d.source = r.source and d.source_match_id = r.source_match_id
     left join ref.sofascore_opta_player_map pmap
            on pmap.sofascore_player_id = d.source_player_id

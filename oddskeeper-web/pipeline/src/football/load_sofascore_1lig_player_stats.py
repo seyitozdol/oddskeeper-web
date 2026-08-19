@@ -23,6 +23,9 @@ from pathlib import Path
 import requests
 from dotenv import dotenv_values
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import mpsd_raw  # noqa: E402  (Faz 2: ham jsonb yan tablo ayrimi)
+
 ROOT = Path(__file__).resolve().parents[2]
 ENV = dotenv_values(ROOT / ".env")
 SUPABASE_URL = (ENV.get("SUPABASE_URL") or "").strip().strip('"')
@@ -189,8 +192,12 @@ def main():
     for r in p_rows:
         dedup[(r["source_match_id"], r["source_player_id"])] = r
     p_rows = list(dedup.values())
-    upsert("match_player_stats_details", p_rows, "source,source_match_id,source_player_id")
-    print(f"[players] {len(p_rows)} satir upsert edildi", flush=True)
+    # Faz 2: ham jsonb yan tabloya (sicak tablo kucuk kalsin). Sira onemli:
+    # once sicak satir, sonra ham; ham hata verirse loader patlar (sessiz kayip yok).
+    hot_rows, raw_rows = mpsd_raw.split(p_rows)
+    upsert("match_player_stats_details", hot_rows, "source,source_match_id,source_player_id")
+    upsert(mpsd_raw.TABLE, raw_rows, mpsd_raw.CONFLICT)
+    print(f"[players] {len(hot_rows)} satir upsert edildi ({len(raw_rows)} ham)", flush=True)
     refresh_mats()
 
 
