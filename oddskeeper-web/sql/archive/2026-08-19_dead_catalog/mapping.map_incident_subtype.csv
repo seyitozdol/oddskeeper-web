@@ -1,0 +1,9 @@
+source,event_type_code,event_title_norm,canonical_incident_type,canonical_incident_group,observed_row_count,first_seen_match_datetime,last_seen_match_datetime,latest_observed_event_title,is_active,created_at,updated_at
+opta,16,penaltyscored,penalty_scored,PENALTY,54,2025-08-08 18:30:00+00,2026-04-05 17:00:00+00,Penalty scored,t,2026-04-07 00:06:25.976826+00,2026-04-07 00:06:25.976826+00
+opta,16,goal,goal,GOAL,567,2025-08-08 18:30:00+00,2026-04-05 14:00:00+00,Goal,t,2026-04-07 00:06:25.976826+00,2026-04-07 00:06:25.976826+00
+opta,17,secondyellowcard,second_yellow_red,CARD,27,2025-08-16 18:30:00+00,2026-04-05 14:00:00+00,Second yellow card,t,2026-04-07 00:06:25.976826+00,2026-04-07 00:06:25.976826+00
+opta,17,redcard,red_card,CARD,35,2025-08-08 18:30:00+00,2026-04-04 11:30:00+00,Red card,t,2026-04-07 00:06:25.976826+00,2026-04-07 00:06:25.976826+00
+opta,990,substitution,substitution,SUBSTITUTION,2211,2025-08-08 18:30:00+00,2026-04-06 17:00:00+00,Substitution,t,2026-04-07 00:06:25.976826+00,2026-04-07 00:06:25.976826+00
+opta,17,yellowcard,yellow_card,CARD,1218,2025-08-08 18:30:00+00,2026-04-06 17:00:00+00,Yellow card,t,2026-04-07 00:06:25.976826+00,2026-04-07 00:06:25.976826+00
+opta,16,owngoal,own_goal,GOAL,22,2025-08-15 18:30:00+00,2026-03-15 17:00:00+00,Own goal,t,2026-04-07 00:06:25.976826+00,2026-04-07 00:06:25.976826+00
+opta,13,missedpenalty,missed_penalty,PENALTY,15,2025-08-16 18:30:00+00,2026-04-05 11:30:00+00,Missed penalty,t,2026-04-07 00:06:25.976826+00,2026-04-07 00:06:25.976826+00

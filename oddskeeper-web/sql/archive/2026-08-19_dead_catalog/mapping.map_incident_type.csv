@@ -1,0 +1,5 @@
+source,raw_incident_type,canonical_incident_type,canonical_incident_group,latest_observed_event_type_code,latest_observed_event_title,observed_row_count,first_seen_match_datetime,last_seen_match_datetime,is_active,created_at,updated_at
+opta,13,13,OTHER,13,Missed penalty,15,2025-08-16 18:30:00+00,2026-04-05 11:30:00+00,t,2026-04-07 00:04:10.386441+00,2026-04-07 00:04:10.386441+00
+opta,16,16,OTHER,16,Penalty scored,643,2025-08-08 18:30:00+00,2026-04-05 17:00:00+00,t,2026-04-07 00:04:10.386441+00,2026-04-07 00:04:10.386441+00
+opta,17,17,OTHER,17,Yellow card,1280,2025-08-08 18:30:00+00,2026-04-06 17:00:00+00,t,2026-04-07 00:04:10.386441+00,2026-04-07 00:04:10.386441+00
+opta,990,990,OTHER,990,Substitution,2211,2025-08-08 18:30:00+00,2026-04-06 17:00:00+00,t,2026-04-07 00:04:10.386441+00,2026-04-07 00:04:10.386441+00

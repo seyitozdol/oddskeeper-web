@@ -1,0 +1,19 @@
+source,source_team_id,canonical_team_name,latest_observed_team_name,first_seen_match_datetime,last_seen_match_datetime,latest_competition,is_active,created_at,updated_at
+opta,1lbrlj3uu8wi2h9j79snuoae4,Çaykur Rize Spor Kulübü,Çaykur Rize Spor Kulübü,2025-08-10 16:00:00+00,2026-04-05 11:30:00+00,Süper Lig,t,2026-04-06 23:17:26.133448+00,2026-04-06 23:17:26.133448+00
+opta,2agzb2h4ppg7lfz9hn7eg1rqo,Gaziantep Futbol Kulübü,Gaziantep Futbol Kulübü,2025-08-08 18:30:00+00,2026-04-04 14:00:00+00,Süper Lig,t,2026-04-06 23:17:26.133448+00,2026-04-06 23:17:26.133448+00
+opta,2ez9cvam9lp9jyhng3eh3znb4,Beşiktaş Jimnastik Kulübü,Beşiktaş Jimnastik Kulübü,2025-08-17 18:30:00+00,2026-04-05 17:00:00+00,Süper Lig,t,2026-04-06 23:17:26.133448+00,2026-04-06 23:17:26.133448+00
+opta,2yab38jdfl0gk2tei1mq40o06,Trabzonspor Kulübü,Trabzonspor Kulübü,2025-08-11 18:30:00+00,2026-04-04 17:00:00+00,Süper Lig,t,2026-04-06 23:17:26.133448+00,2026-04-06 23:17:26.133448+00
+opta,47njg6cmlx5q3fvdsupd2n6qu,İstanbul Başakşehir Futbol Kulübü,İstanbul Başakşehir Futbol Kulübü,2025-08-17 18:30:00+00,2026-04-06 17:00:00+00,Süper Lig,t,2026-04-06 23:17:26.133448+00,2026-04-06 23:17:26.133448+00
+opta,4idg23egrrvtrbgrg7p5x7bwf,Kasımpaşa Spor Kulübü,Kasımpaşa Spor Kulübü,2025-08-09 18:30:00+00,2026-04-04 11:30:00+00,Süper Lig,t,2026-04-06 23:17:26.133448+00,2026-04-06 23:17:26.133448+00
+opta,84fpe0iynjdghwysyo5tizdkk,Alanyaspor Kulübü,Alanyaspor Kulübü,2025-08-16 18:30:00+00,2026-04-04 14:00:00+00,Süper Lig,t,2026-04-06 23:17:26.133448+00,2026-04-06 23:17:26.133448+00
+opta,8lroq0cbhdxj8124qtxwrhvmm,Fenerbahçe Spor Kulübü,Fenerbahçe Spor Kulübü,2025-08-16 18:30:00+00,2026-04-05 17:00:00+00,Süper Lig,t,2026-04-06 23:17:26.133448+00,2026-04-06 23:17:26.133448+00
+opta,9irsyv431fpuqhqtfq9iwxf2u,Antalyaspor Kulübü,Antalyaspor Kulübü,2025-08-09 18:30:00+00,2026-04-05 14:00:00+00,Süper Lig,t,2026-04-06 23:17:26.133448+00,2026-04-06 23:17:26.133448+00
+opta,b703zecenioz21dnj3p63v3f7,Kocaelispor Kulübü,Kocaelispor Kulübü,2025-08-11 18:30:00+00,2026-04-06 17:00:00+00,Süper Lig,t,2026-04-06 23:17:26.133448+00,2026-04-06 23:17:26.133448+00
+opta,bmgtxgipsznlb1j20zwjti3xh,Eyüp Spor Kulübü,Eyüp Spor Kulübü,2025-08-10 18:30:00+00,2026-04-05 14:00:00+00,Süper Lig,t,2026-04-06 23:17:26.133448+00,2026-04-06 23:17:26.133448+00
+opta,c3txoz57mu7w9y1jprvnv2flr,Fatih Karagümrük Spor Kulübü,Fatih Karagümrük Spor Kulübü,2025-08-15 18:30:00+00,2026-04-05 11:30:00+00,Süper Lig,t,2026-04-06 23:17:26.133448+00,2026-04-06 23:17:26.133448+00
+opta,c8ns6z3u8kxldv1zh1evu10rv,Kayseri Spor Kulübü,Kayseri Spor Kulübü,2025-08-17 18:30:00+00,2026-04-04 11:30:00+00,Süper Lig,t,2026-04-06 23:17:26.133448+00,2026-04-06 23:17:26.133448+00
+opta,cjbaf8s09qoa1n11r33gc560x,Göztepe Spor Kulübü,Göztepe Spor Kulübü,2025-08-10 16:00:00+00,2026-04-04 11:30:00+00,Süper Lig,t,2026-04-06 23:17:26.133448+00,2026-04-06 23:17:26.133448+00
+opta,cw4lbdzlqqdvbkdkz00c9ye49,Konyaspor Kulübü,Konyaspor Kulübü,2025-08-10 18:30:00+00,2026-04-05 11:30:00+00,Süper Lig,t,2026-04-06 23:17:26.133448+00,2026-04-06 23:17:26.133448+00
+opta,dpsnqu7pd2b0shfzjyn5j1znf,Samsunspor Kulübü,Samsunspor Kulübü,2025-08-09 16:00:00+00,2026-04-05 11:30:00+00,Süper Lig,t,2026-04-06 23:17:26.133448+00,2026-04-06 23:17:26.133448+00
+opta,embqktr41hfzczc8uav1scmcn,Gençlerbirliği Spor Kulübü,Gençlerbirliği Spor Kulübü,2025-08-09 16:00:00+00,2026-04-04 11:30:00+00,Süper Lig,t,2026-04-06 23:17:26.133448+00,2026-04-06 23:17:26.133448+00
+opta,esa748l653sss1wurz5ps3228,Galatasaray Spor Kulübü,Galatasaray Spor Kulübü,2025-08-08 18:30:00+00,2026-04-04 17:00:00+00,Süper Lig,t,2026-04-06 23:17:26.133448+00,2026-04-06 23:17:26.133448+00
