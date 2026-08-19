@@ -25,6 +25,7 @@ RAW_TABLE = "match_json_staging"
 TARGET_SCHEMA = "football"
 TARGET_TABLE = "match_incidents"
 REQUEST_TIMEOUT = 60
+PAGE_SIZE = 1000  # PostgREST db-max-rows=1000: tek istekte fazlasi sessizce kirpilir
 
 
 @dataclass
@@ -84,21 +85,31 @@ class SupabaseRestClient:
 
     def fetch_staging_rows(self, source: str) -> List[Dict[str, Any]]:
         url = self._table_url(RAW_SCHEMA, RAW_TABLE)
-        params = {
-            "select": "source,source_match_id,payload",
-            "source": f"eq.{source}",
-            "order": "source_match_id.asc",
-            "limit": "10000",
-        }
-        response = self.session.get(
-            url,
-            params=params,
-            headers=self._headers_with_schema(RAW_SCHEMA),
-            timeout=REQUEST_TIMEOUT,
-        )
-        self._raise_for_status(response, "FETCH STAGING")
-        data = response.json()
-        return data if isinstance(data, list) else []
+        rows: List[Dict[str, Any]] = []
+        offset = 0
+        while True:
+            params = {
+                "select": "source,source_match_id,payload",
+                "source": f"eq.{source}",
+                "order": "source_match_id.asc",
+                "limit": str(PAGE_SIZE),
+                "offset": str(offset),
+            }
+            response = self.session.get(
+                url,
+                params=params,
+                headers=self._headers_with_schema(RAW_SCHEMA),
+                timeout=REQUEST_TIMEOUT,
+            )
+            self._raise_for_status(response, "FETCH STAGING")
+            batch = response.json()
+            if not isinstance(batch, list) or not batch:
+                break
+            rows.extend(batch)
+            if len(batch) < PAGE_SIZE:
+                break
+            offset += PAGE_SIZE
+        return rows
 
     def target_exists(self, source: str, source_match_id: str, incident_key: str) -> bool:
         url = self._table_url(TARGET_SCHEMA, TARGET_TABLE)

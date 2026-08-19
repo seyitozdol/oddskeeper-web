@@ -51,6 +51,18 @@ CHECKS = [
     ("player_mapping_opta_missing_af_link", "HIGH",
      """select count(*) from ref.player_mapping
         where opta_player_id is not null and apifootball_player_id is null"""),
+    # ss->opta terfi drifti (2.6): sofascore_opta_player_map gunluk truncate+rebuild
+    # oldugu icin oyuncu Opta verisi kazaninca ssX kimligi gercek opta id'ye doner;
+    # ref.player_mapping ise do-nothing yazildigindan kendini onarmaz. pm hala ssX
+    # tasirken harita gercek opta veriyorsa kadro linki bayat profile gider ve
+    # kimse fark etmez. >0 gorulunce pm satiri(lari) gercek opta kimligine tasinmali
+    # (kalici cozum A-2: uretimli pm satirlarini is_curated bayragiyla rebuild'e almak).
+    ("player_mapping_ss_promoted_drift", "HIGH",
+     """select count(*) from ref.player_mapping pm
+        join ref.sofascore_opta_player_map som
+          on som.sofascore_player_id = substring(pm.opta_player_id from 3)
+        where pm.opta_player_id like 'ss%'
+          and som.opta_player_id not like 'ss%'"""),
     ("player_current_info_duplicate_slug", "MED",
      """select count(*) from (
           select player_name, current_team_slug from analytics.player_current_info_bridged_v1
