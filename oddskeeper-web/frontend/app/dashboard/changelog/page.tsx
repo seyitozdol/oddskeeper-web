@@ -23,6 +23,20 @@ const ENTRIES: Entry[] = [
   {
     date: { en: "19 August", tr: "19 Ağustos" },
     title: {
+      en: "Player Stats Model: saved player IDs now reach the Input",
+      tr: "Player Stats Model: kayıtlı oyuncu ID'leri artık Input'a gidiyor",
+    },
+    tag: TAG_FIX,
+    items: [
+      {
+        en: "For some players (mostly from promoted teams, e.g. Erzurumspor's Tozlu, Fettahoğlu, Kerk and Rodríguez) the ID saved in the Player List never reached the Input rows, because the Player List and the Model squad resolved the same player to two different identities. Both screens now share one identity chain, all affected saved IDs were moved over (about 40 league-wide), and a fallback matches on the stable part of the identity so future name changes in the source feed can no longer break the link. Model squad names also show full first names more often.",
+        tr: "Bazı oyuncularda (çoğu yükselen takımlardan; örn. Erzurumspor'dan Tozlu, Fettahoğlu, Kerk ve Rodríguez) Player List'te kayıtlı ID Input satırlarına hiç gitmiyordu; çünkü Player List ile Model kadrosu aynı oyuncuyu iki farklı kimliğe çözüyordu. İki ekran artık tek kimlik zincirini kullanıyor, etkilenen tüm kayıtlı ID'ler taşındı (lig genelinde yaklaşık 40) ve kimliğin sabit kısmı üzerinden eşleşen bir yedek mekanizma eklendi; kaynak feed'de isim değişse bile bağ artık kopmuyor. Model kadrosundaki isimler de daha sık tam adla görünüyor.",
+      },
+    ],
+  },
+  {
+    date: { en: "19 August", tr: "19 Ağustos" },
+    title: {
       en: "Light theme readability fixes",
       tr: "Açık tema okunurluk düzeltmeleri",
     },

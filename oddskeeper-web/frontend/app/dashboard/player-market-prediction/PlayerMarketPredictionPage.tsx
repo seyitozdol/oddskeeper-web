@@ -22,6 +22,7 @@ import {
   fetchPlayerSeasonAppearances,
   fetchFixtureInputs,
   fetchPlayerIds,
+  playerIdLookup,
   fetchDistWeights,
   saveDistWeights,
   DEFAULT_DIST_WEIGHTS,
@@ -1035,6 +1036,8 @@ export default function PlayerMarketPredictionPage({
       fetchFixtureInputs(),
       fetchPlayerIds(),
     ]);
+    // Slug birebir bulunamazsa '--' sonrasi kalici anahtarla esler (isim degisimi).
+    const lookupPlayerId = playerIdLookup(playerIds);
     const fixtureKey = selectedFixture.fixture_id;
     const fixtureIdValue = fixtureInputs[fixtureKey] ?? "";
     const stored = storedMarkets.find((m) => m.market_key === selectedMarketKey);
@@ -1052,7 +1055,7 @@ export default function PlayerMarketPredictionPage({
         if (!price || !(parseFloat(price) > 0)) continue;
         selections.push({
           price,
-          participantId: playerIds[p.player_slug] ?? "",
+          participantId: lookupPlayerId(p.player_slug),
           sortOrder,
           playerSlug: p.player_slug,
           playerName: p.player_name,
@@ -1094,7 +1097,7 @@ export default function PlayerMarketPredictionPage({
           if (price === "—" || !price.trim()) continue;
           selections.push({
             price: price.trim(),
-            participantId: playerIds[p.player_slug] ?? "",
+            participantId: lookupPlayerId(p.player_slug),
             sortOrder,
             playerSlug: p.player_slug,
             playerName: p.player_name,

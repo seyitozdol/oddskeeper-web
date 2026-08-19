@@ -669,6 +669,20 @@ export async function fetchPlayerIds(): Promise<Record<string, string>> {
   return result;
 }
 
+// Slug formati "<isim>--<kalici_anahtar>"; isim kismi kaynak feed'de degisebilir
+// (or. "E. Tozlu" -> "Eren Tozlu") ama '--' sonrasi anahtar (opta/ss/af id)
+// sabittir. Kayitli id eski slug'da kalmissa anahtar uzerinden bulunur.
+export function playerIdLookup(
+  ids: Record<string, string>
+): (slug: string) => string {
+  const byKey: Record<string, string> = {};
+  for (const [slug, id] of Object.entries(ids)) {
+    const key = slug.split("--").pop();
+    if (key) byKey[key] = id;
+  }
+  return (slug) => ids[slug] ?? byKey[slug.split("--").pop() ?? ""] ?? "";
+}
+
 export async function savePlayerIds(
   entries: Record<string, string>
 ): Promise<boolean> {

@@ -11,6 +11,7 @@ import {
   fetchBets10FixtureIds,
   saveFixtureInputs,
   fetchPlayerIds,
+  playerIdLookup,
   savePlayerIds,
   upsertStoredMarket,
   deleteStoredMarket,
@@ -57,8 +58,19 @@ export function PlayerListTab({
   useEffect(() => {
     Promise.all([fetchAllCurrentPlayers(), fetchPlayerIds()]).then(
       ([p, storedIds]) => {
+        // Kayitli id eski bir slug'da kalmissa (isim kismi degisen slug)
+        // '--' sonrasi kalici anahtarla guncel slug'a esle; Kaydet boylece
+        // id'yi kanonik slug altinda upsert eder (kendini onarir).
+        const lookup = playerIdLookup(storedIds);
+        const ids: Record<string, string> = { ...storedIds };
+        for (const row of p) {
+          if (!ids[row.player_slug]) {
+            const v = lookup(row.player_slug);
+            if (v) ids[row.player_slug] = v;
+          }
+        }
         setPlayers(p);
-        setIds(storedIds);
+        setIds(ids);
         setLoading(false);
       }
     );
