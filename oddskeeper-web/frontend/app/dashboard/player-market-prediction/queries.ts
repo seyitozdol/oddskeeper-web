@@ -479,11 +479,14 @@ async function fillForeignSeasonAvg(
 // metricKey "log:<kolon>" ise sezon ortalamasi leaderboard yerine
 // player_log_season_avg_v1'den okunur (leaderboard'da olmayan metrikler).
 
-// Opta'nin uretmedigi guncel sezon(lar): Avg + appearances SofaScore koprusunden
-// (analytics.psm_*_bridge_v1) okunur. Opta job'i 2026-07-19'da durdu; 26/27 verisi
-// yalniz tsl_ss zincirinde. Bkz. sql/2026-08-15_psm_season_avg_bridge.sql.
-// YENI SEZON: bir sonraki sezon acilinca hem bu kume hem bridge view'lari genisletilir.
-export const PSM_BRIDGED_SEASONS = new Set(["2026/2027"]);
+// Opta'nin uretmedigi sezonlar: Avg + appearances SofaScore koprusunden
+// (analytics.psm_*_bridge_v1) okunur. Opta job'i 2026-07-19'da durdu; 2026/2027
+// ve SONRASI tum sezonlar koprude (DB view'lari da >= '2026/2027' servis eder,
+// sql/2026-08-19_season_rollover_mechanism.sql). Sezon devrinde elle guncelleme
+// GEREKMEZ; "YYYY/YYYY" formatinda dizgisel karsilastirma kronolojiktir.
+export const PSM_OPTA_ERA_END = "2026/2027";
+export const isBridgedSeason = (seasonLabel: string): boolean =>
+  seasonLabel >= PSM_OPTA_ERA_END;
 
 export async function fetchPlayerMetricStats(
   playerSourceIds: string[],
@@ -495,7 +498,7 @@ export async function fetchPlayerMetricStats(
 
   // Koprulu sezon: tum market tipleri (duz / log: / shots:) tek view'dan, PSM
   // metricKey'i aynen metric_key olarak saklandigi icin uniform sorgu.
-  if (PSM_BRIDGED_SEASONS.has(seasonLabel)) {
+  if (isBridgedSeason(seasonLabel)) {
     const { data, error } = await supabase
       .schema("analytics")
       .from("psm_player_season_avg_bridge_v1")
@@ -619,7 +622,7 @@ export async function fetchPlayerSeasonAppearances(
   const supabase = createClient();
 
   // Koprulu sezon: mac sayisi da SofaScore koprusunden (Opta profil view'i 26/27 bos).
-  const table = PSM_BRIDGED_SEASONS.has(seasonLabel)
+  const table = isBridgedSeason(seasonLabel)
     ? "psm_player_appearances_bridge_v1"
     : "player_profile_v1";
 
