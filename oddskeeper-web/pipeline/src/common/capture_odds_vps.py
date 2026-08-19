@@ -3,7 +3,15 @@
 
 NEDEN AG YAKALAMA (DOM DEGIL): Bets10 oranlari WebSocket ile guncelleniyor,
 arayuz shadow DOM icinde; DOM kazimak kirilgan. Bu harness oranin geldigi ham
-kaynagi (WS frame'leri + /sb/ XHR/fetch JSON'lari) CDP ile kaydeder.
+kaynagi (/sb/ XHR/fetch JSON'lari) kaydeder.
+
+WS KAYDI KAPALI (sahip karari 2026-08-19): spike sorusu cevaplandi, oranlarin
+TAMAMI events-table XHR + genis-pencere tekrar cagrilarindan geliyor;
+parse_bets10_network yalnizca responses[] okur, sockets[] hicbir tuketicide
+kullanilmiyor (WS'siz ayni dump ayni satirlari uretti, dogrulandi). WS frame
+PAYLOAD'i artik kaydedilmez (dump ~%90 kuculur); frame SAYACI tutulmaya devam
+eder cunku ws=0 "SPA yuklenmedi" arizasinin kanarya sinyali (2026-08-19 10:04
+kosusu boyle yakalandi). Ham frame gerekirse --record-ws ile gecici acilir.
 
 NEDEN HEADFUL + XVFB: bet365/Bets10 anti-bot headless Chromium'u yakalar. VPS'te
 wrapper `xvfb-run -a` ile sanal ekranda gercek (headful) tarayici acar; bu script
@@ -170,7 +178,7 @@ def resolve_domain(page, cfg: dict) -> str:
     raise SystemExit("calisan adres bulunamadi")
 
 
-def make_recorder(store: dict):
+def make_recorder(store: dict, record_ws: bool = False):
     total = {"bytes": 0}
 
     def cap(text_or_bytes):
@@ -192,7 +200,14 @@ def make_recorder(store: dict):
 
     def on_ws(ws):
         url = ws.url
+        store["wsConnections"] += 1
         def rec(payload, direction):
+            # Sayac her zaman tutulur (ws=0 = SPA yuklenmedi kanaryasi);
+            # payload yalnizca --record-ws ile yazilir (varsayilan kapali,
+            # hicbir parser sockets[] okumuyor).
+            store["wsFrames"] += 1
+            if not record_ws:
+                return
             entry = cap(payload)
             if entry:
                 entry.update({"url": url, "dir": direction, "kind": "ws"})
@@ -305,7 +320,13 @@ WIDEN_MAX_PAGES = 12
 def capture(site: str, headed: bool, out_dir: Path, only, per_league: int,
             detail_wait_ms: int, list_wait_ms: int,
             use_proxy: bool, chromium_path: str | None, country: str | None,
-            horizon_days: int = HORIZON_DAYS) -> Path:
+            horizon_days: int = HORIZON_DAYS,
+            record_ws: bool = False) -> tuple[Path, int]:
+    """Dump yolunu ve yakalanan events-table yaniti sayisini dondurur.
+
+    events-table sayisi 0 = kosu VERISIZ (SPA sportsbook katmani hic yuklenmedi;
+    2026-08-19 10:04 arizasi). Cagiran taraf bununla tekrar karari verebilir.
+    """
     cfg = SITES[site]
     session_id = secrets.token_hex(6)  # sticky: kosu boyunca sabit
     # Varsayilan DIREKT (VPS IP). --proxy verilirse PROXY_URL uzerinden.
@@ -315,9 +336,10 @@ def capture(site: str, headed: bool, out_dir: Path, only, per_league: int,
     store = {
         "version": 1, "kind": "network-capture", "site": site,
         "sessionId": session_id, "sockets": [], "responses": [], "pages": [],
+        "wsConnections": 0, "wsFrames": 0,
         "startedAt": datetime.now(timezone.utc).isoformat(),
     }
-    on_ws, on_response = make_recorder(store)
+    on_ws, on_response = make_recorder(store, record_ws)
 
     pages = cfg["pages"]
     if only:
@@ -365,7 +387,7 @@ def capture(site: str, headed: bool, out_dir: Path, only, per_league: int,
                 continue
             page.wait_for_timeout(list_wait_ms)
             store["pages"].append({"label": label, "url": page.url})
-            print(f"[{label}] ws={len(store['sockets'])} xhr={len(store['responses'])}", flush=True)
+            print(f"[{label}] ws={store['wsFrames']} xhr={len(store['responses'])}", flush=True)
 
             # GENIS PENCERE TEKRARI: bu sayfanin events-table istegini ileri tarih
             # penceresiyle bir kez daha cagir; boylece sadece sonraki hafta degil
@@ -416,7 +438,7 @@ def capture(site: str, headed: bool, out_dir: Path, only, per_league: int,
                 except Exception:
                     continue
             if hrefs:
-                print(f"  {len(hrefs)} detay gezildi -> ws={len(store['sockets'])} xhr={len(store['responses'])}", flush=True)
+                print(f"  {len(hrefs)} detay gezildi -> ws={store['wsFrames']} xhr={len(store['responses'])}", flush=True)
 
         browser.close()
 
@@ -426,14 +448,13 @@ def capture(site: str, headed: bool, out_dir: Path, only, per_league: int,
     path = out_dir / f"netcap_{site}_{stamp}.json"
     path.write_text(json.dumps(store, ensure_ascii=False), encoding="utf-8")
 
-    ws_json = sum(1 for s in store["sockets"] if "json" in s)
-    ws_bin = sum(1 for s in store["sockets"] if "b64" in s)
     xhr_json = sum(1 for r in store["responses"] if "json" in r)
+    et_count = sum(1 for r in store["responses"] if "events-table" in (r.get("url") or ""))
     print(f"\nyazildi: {path}", flush=True)
-    print(f"ws frame: {len(store['sockets'])} (json {ws_json}, binary {ws_bin}) | "
-          f"xhr: {len(store['responses'])} (json {xhr_json})", flush=True)
-    print("SPIKE: bu dump'i incele - oran XHR json'da mi, WS binary'de mi?", flush=True)
-    return path
+    print(f"ws: {store['wsConnections']} baglanti / {store['wsFrames']} frame "
+          f"(kayitli {len(store['sockets'])}) | xhr: {len(store['responses'])} "
+          f"(json {xhr_json}, events-table {et_count})", flush=True)
+    return path, et_count
 
 
 def main() -> None:
@@ -453,10 +474,29 @@ def main() -> None:
     ap.add_argument("--chromium-path", default=None, help="sistem chromium yolu, ör. /usr/bin/chromium")
     ap.add_argument("--horizon-days", type=int, default=HORIZON_DAYS,
                     help="events-table genis-pencere tekrarinda kac gun ileri (2./3. hafta icin)")
+    ap.add_argument("--record-ws", action="store_true",
+                    help="WS frame payload'larini da dump'a yaz (varsayilan kapali; "
+                         "hicbir parser okumuyor, yalniz gecici inceleme icin)")
     args = ap.parse_args()
-    capture(args.site, args.headed, Path(args.out), args.pages,
-            args.per_league, args.detail_wait_ms, args.list_wait_ms,
-            args.proxy, args.chromium_path, args.cc, args.horizon_days)
+
+    def run() -> tuple[Path, int]:
+        return capture(args.site, args.headed, Path(args.out), args.pages,
+                       args.per_league, args.detail_wait_ms, args.list_wait_ms,
+                       args.proxy, args.chromium_path, args.cc, args.horizon_days,
+                       args.record_ws)
+
+    _, et = run()
+    # VERISIZ KOSU TEKRARI (2026-08-19 10:04 arizasi): sticky oturumun denk
+    # geldigi exit IP kotuyse SPA sportsbook katmani hic yuklenmiyor (ws=0,
+    # events-table=0) ve 6 saatlik pencere bos geciyor. Yeni session id = yeni
+    # exit IP ile BIR kez daha denenir; yine bossa rc=3 (log/wrapper sinyali).
+    # Loader her zaman EN YENI dump'i yukledigi icin tekrar dump'i onceliklidir.
+    if et == 0:
+        print("[TEKRAR] events-table bos; yeni proxy oturumuyla ikinci deneme", flush=True)
+        _, et = run()
+        if et == 0:
+            print("[HATA] ikinci deneme de verisiz; kosu bos bitti", flush=True)
+            raise SystemExit(3)
 
 
 if __name__ == "__main__":

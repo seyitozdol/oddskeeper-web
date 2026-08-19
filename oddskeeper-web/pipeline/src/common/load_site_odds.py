@@ -426,6 +426,16 @@ def main() -> None:
     # Bu sitede taradigimiz ama bulamadigimiz maclar: has_odds = false.
     # Yalnizca snapshot'ta ilgili spor/turnuva gorulduyse anlamli olurdu; bu yuzden
     # simdilik SADECE eslesmeyenleri false yazmiyoruz (yanlis negatif riski).
+
+    # SAKLAMA (sahip karari 2026-08-19): 14 gunden eski ham oran satirlari silinir
+    # (tum siteler). Tablo gecmis tutmaz (upsert son orani yazar); eski satirlar
+    # biten maclarin kalintisiydi. Oran gecmisi (acilis/kapanis analizi) istenirse
+    # bu tablo yetmez, ayri tarihce tasarimi gerekir.
+    cur.execute(
+        "delete from tracker.site_event_odds where captured_at < now() - interval '14 days'"
+    )
+    if cur.rowcount:
+        print(f"saklama: {cur.rowcount} eski satir silindi (>14 gun)")
     conn.commit()
     conn.close()
     print(f"\nyazildi: {len(rows)} ham satir, {len(per_event)} mac isaretlendi")

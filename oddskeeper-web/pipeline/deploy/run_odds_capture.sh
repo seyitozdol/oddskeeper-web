@@ -32,3 +32,9 @@ fi
 # SONRA calisir; proxy gerekmez, DB'den okur. Frontend bu tablodan oneri gosterir.
 "$VENV" "$PIPELINE/src/common/link_fixtures_bets10.py" \
   >> "$LOG/odds_capture.log" 2>&1
+
+# 4) Saklama (sahip karari 2026-08-19): 14 gunden eski netcap dump'lari silinir.
+# En yeni dump yuklendikten sonra eskilerin tek islevi hata ayiklamada geriye
+# bakmak. DB tarafindaki site_event_odds saklamasi load_site_odds.py icinde.
+find "$PIPELINE/data/odds" -name 'netcap_*.json' -mtime +14 -delete \
+  2>> "$LOG/odds_capture.log"
