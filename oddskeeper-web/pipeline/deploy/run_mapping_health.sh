@@ -23,4 +23,10 @@ fi
 { echo "===== $(date -u '+%F %T UTC') (rc=$rc) ====="; cat "$TMP"; } > "$LAST"
 cat "$LAST" >> "$LOG"
 rm -f "$TMP"
+if [ "$rc" -ne 0 ]; then
+  # HIGH bosluk = kimlik eslesme arizasi; artik logda beklemez, aninda push.
+  ozet=$(grep -iE 'FAIL|HIGH' "$LAST" | head -4 | cut -c1-160 | paste -sd' || ' -)
+  /opt/oddskeeper/notify.sh "mapping_health FAIL (rc=$rc)" \
+    "${ozet:-detay: mapping_health_last.log}" high
+fi
 exit "$rc"

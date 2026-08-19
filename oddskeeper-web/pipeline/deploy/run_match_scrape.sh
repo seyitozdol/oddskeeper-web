@@ -5,8 +5,8 @@
 # (finished-status ayrica kapi; uzayan mac biter bitmez sonraki turda yakalanir).
 # Idempotent upsert; ust uste binmez (flock). Kaynak onceligi: SofaScore (ana).
 #
-# Faz 1: yalniz SofaScore (TSL + 1.Lig, LEAGUES). Faz 2'de FlashScore overlay
-# fetcher (xg/xgot/xa/sari-kirmizi kart/detayli pozisyon) buraya eklenecek.
+# NOT (2026-08-19): bu dosya VPS /opt kopyasiyla BIREBIR ayni tutulur (B-3 drift
+# kapatildi); degisiklik once burada yapilip /opt'a kopyalanir.
 set -uo pipefail
 PIPE="/opt/oddskeeper/repo/oddskeeper-web/pipeline"
 VENV="/opt/oddskeeper/venv/bin/python"
@@ -49,6 +49,29 @@ fi
     echo "===== $(date -u '+%F %T UTC') FLASH FAILED rc=$frc ====="
   fi
 
+  # 2b) Avrupa kupalari FlashScore overlay: SofaScore'un bos oldugu kupa maclari
+  #     (ozellikle on eleme -> kadro var stat yok) icin FS takim+oyuncu doldurur.
+  #     SofaScore adimindan (1) SONRA calisir; kendi eksik-tespiti + eslesmesini yapar
+  #     (ref.flashscore_sofa_match_map). Grace penceresi (yeni biten maclar).
+  CUP_OUT=$("$VENV" "$PIPE/src/football/fetch_flashscore_cup_matches.py" 2>&1); crc=$?
+  echo "$CUP_OUT"
+  if [ "$crc" -eq 0 ]; then
+    echo "===== $(date -u '+%F %T UTC') CUP FS OK ====="
+  else
+    echo "===== $(date -u '+%F %T UTC') CUP FS FAILED rc=$crc ====="
+  fi
+
+  # 2c) FS->Sofa kupa oyuncu haritasi: cup FS bu turda mac islediyse tazele
+  #     (yeni FS oyuncularini sofascore idye esle - Players xG/metrik overlayi
+  #     ucl/uel/uecl_player_season_stats_v1 flash_all CTE bu haritayi okur).
+  if echo "$CUP_OUT" | grep -qE 'TOPLAM: [1-9]'; then
+    if "$VENV" "$PIPE/src/football/build_flashscore_sofa_cup_player_map.py" >/dev/null 2>&1; then
+      echo "===== $(date -u '+%F %T UTC') CUP PLAYER MAP OK ====="
+    else
+      echo "===== $(date -u '+%F %T UTC') CUP PLAYER MAP FAILED ====="
+    fi
+  fi
+
   # Bu turda hangi kaynak mac isledi? SofaScore fetcher sonda "TOPLAM: N mac"
   # yazar; FlashScore fetcher "islenecek=N". Gate'ler bu iki bayrakla kurulur.
   sofa_islendi=0;  echo "$SOFA_OUT"  | grep -qE 'TOPLAM: [1-9]'    && sofa_islendi=1
@@ -60,8 +83,12 @@ fi
   #    gecikirdi (Juan Arguello kart bug'i). DB-driven + idempotent + hizli.
   if [ "$flash_islendi" -eq 1 ]; then
     if FS_MAP_SEASON="2026/2027" "$VENV" "$PIPE/src/football/build_flashscore_sofa_player_map.py" >/dev/null; then
-      # yeni oyuncularin fotolarini FS ham verisinden sofascore_player_info'ya
-      "$VENV" "$PIPE/src/football/sync_player_photos_tff1.py"
+      # yeni oyuncularin fotolarini FS ham verisinden sofascore_player_info'ya.
+      # rc kontrolu 2026-08-19'da eklendi: script 2026-08-14..18 arasi her turda
+      # NotNullViolation ile cokuyordu ama banner yine "OK" diyordu (2.3 bulgusu).
+      if "$VENV" "$PIPE/src/football/sync_player_photos_tff1.py"; then :; else
+        echo "===== $(date -u '+%F %T UTC') PHOTO SYNC FAILED ====="
+      fi
       # kart/xG overlay icin player mat ONCE, sonra team mat (team xG oyuncu mat'ini okur)
       "$VENV" -c "import psycopg2; from dotenv import dotenv_values; e=dotenv_values('$PIPE/.env'); c=psycopg2.connect(e['DATABASE_URL'].strip().strip(chr(34))); c.autocommit=True; cur=c.cursor(); cur.execute('refresh materialized view analytics.tff1_player_season_stats_mat'); cur.execute('refresh materialized view analytics.tff1_team_season_stats_mat')"
       echo "===== $(date -u '+%F %T UTC') FS-MAP + PHOTO + MAT OK ====="
@@ -91,12 +118,13 @@ fi
     #     Uyari verirse logda 'UYARI' satiri olur (gol dusuren kimlik arizasi).
     "$VENV" "$PIPE/src/football/check_match_coverage.py" --days 2 || true
   fi
-
-  # 3d) H3: Avrupa kupasi oyuncu-sezon mat'lari (ucl/uel/uecl) — SADECE bu turda
-  #     kupa maci islendiyse. SofaScore cup sinyali: SOFA_OUT 'CUP_M: N'. (VPS kopyasi
-  #     ayrica FlashScore cup adimini CUP_OUT ile gate'ler; repo kopyasinda o adim yok.)
-  #     Mat'lar unique index'li -> CONCURRENTLY (okuyucu bloklanmaz).
-  if echo "$SOFA_OUT" | grep -qE 'CUP_M: [1-9]'; then
+  # 3d) H3: Avrupa kupasi oyuncu-sezon mat'lari (ucl/uel/uecl) - SADECE bu turda
+  #     kupa maci islendiyse. SofaScore cup: SOFA_OUT 'CUP_M: N'; FlashScore cup:
+  #     CUP_OUT 'TOPLAM: N'. Mat'lar unique index'li -> CONCURRENTLY (okuyucu bloklanmaz).
+  cup_islendi=0
+  echo "$SOFA_OUT" | grep -qE 'CUP_M: [1-9]'  && cup_islendi=1
+  echo "$CUP_OUT"  | grep -qE 'TOPLAM: [1-9]' && cup_islendi=1
+  if [ "$cup_islendi" -eq 1 ]; then
     if "$VENV" "$PIPE/src/football/refresh_cup_mats.py"; then
       echo "===== $(date -u '+%F %T UTC') CUP MAT OK ====="
     else

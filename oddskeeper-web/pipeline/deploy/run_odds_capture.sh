@@ -19,12 +19,21 @@ flock -n 8 || { echo "$(date '+%F %T') odds_capture zaten calisiyor, atlandi" >>
 xvfb-run -a "$VENV" "$PIPELINE/src/common/capture_odds_vps.py" bets10 \
   --proxy --cc tr --chromium-path /usr/bin/chromium \
   >> "$LOG/odds_capture.log" 2>&1
+capture_rc=$?
+if [ "$capture_rc" -ne 0 ]; then
+  # rc=3: iki deneme de verisiz (events-table bos); baska rc: script hatasi.
+  /opt/oddskeeper/notify.sh "Bets10 oran yakalama" \
+    "capture rc=$capture_rc (rc=3 ise iki deneme de verisiz gecti); log: odds_capture.log" high
+fi
 
 # 2) En yeni netcap dump'ini yukle (Bets10 -> tracker.site_event_odds)
 DUMP=$(ls -t "$PIPELINE"/data/odds/netcap_bets10_*.json 2>/dev/null | head -1)
 if [ -n "$DUMP" ]; then
-  "$VENV" "$PIPELINE/src/common/load_site_odds.py" "$DUMP" \
-    >> "$LOG/odds_capture.log" 2>&1
+  if ! "$VENV" "$PIPELINE/src/common/load_site_odds.py" "$DUMP" \
+    >> "$LOG/odds_capture.log" 2>&1; then
+    /opt/oddskeeper/notify.sh "Bets10 oran yukleme" \
+      "load_site_odds hata verdi (dump: $(basename "$DUMP")); log: odds_capture.log" high
+  fi
 fi
 
 # 3) Fikstur <-> Bets10 bagini yeniden kur (Match/Player Stats Model Fixture ID

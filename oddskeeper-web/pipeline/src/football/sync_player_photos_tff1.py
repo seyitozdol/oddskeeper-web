@@ -29,6 +29,11 @@ def main():
           on fmap.flashscore_player_id = d.source_player_id
         where d.source = 'flashscore'
           and coalesce(d.raw_stats->>'_photo', '') <> ''
+          -- NULL sofascore_player_id (henuz eslesmemis FS oyuncusu) NOT NULL
+          -- kolonuna dusup TUM statement'i iptal ediyordu; 2026-08-14'ten beri
+          -- her turda NotNullViolation atip hicbir foto yazilmiyordu (sessiz,
+          -- wrapper rc'ye bakmiyordu). Eslesmemis oyuncu foto alamaz, atla.
+          and fmap.sofascore_player_id is not null
         group by fmap.sofascore_player_id
         on conflict (sofascore_player_id) do update
           set photo_url = excluded.photo_url, updated_at = now()
