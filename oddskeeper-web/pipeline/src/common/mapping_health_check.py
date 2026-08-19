@@ -59,6 +59,32 @@ CHECKS = [
           join pr on pr.base = sq.base and pr.player_slug <> sq.player_slug
           where ps.player_slug is null
         ) z"""),
+    # PSM kimlik sozlesmesi: Oyuncu Listesi (player_current_info_v1) ile Model
+    # kadrosu (team_current_squad_profile_v1) ayni oyuncuya AYNI slug'i vermeli.
+    # Ayrisirsa Player List'te kaydedilen participant id'ler Model'in Ekle
+    # akisinda sessizce bos gider (2026-08-19 Erzurum-GS vakasi: 53 oyuncu /
+    # 40 kopuk id; kok neden 18 Agu squad-zincir degisikliginin info view'ina
+    # yansitilmamasiydi). Fix: sql/2026-08-19_player_current_info_profile_slug.sql
+    ("psm_info_squad_slug_divergence", "HIGH",
+     """select count(*) from analytics.player_current_info_v1 i
+        join analytics.team_current_squad_profile_v1 s
+          on s.af_player_id = i.apifootball_player_id
+        where i.apifootball_player_id is not null
+          and i.player_slug is distinct from s.player_slug"""),
+    # Kayitli PSM id'si '--' anahtariyla guncel kadro oyuncusuna denk gelen ama
+    # slug'i birebir tutmayan satir: profil slug'inin isim kismi degismis demek.
+    # Frontend fallback kullaniciyi kurtarir ama veri re-key bekliyordur.
+    ("psm_player_id_stale_slug", "MED",
+     """select count(*) from (
+          select distinct s.player_slug
+          from analytics.team_current_squad_profile_v1 s
+          join analytics.pm_player_ids p
+            on p.league = 'tsl'
+           and split_part(p.player_slug, '--', 2) <> ''
+           and split_part(p.player_slug, '--', 2) = split_part(s.player_slug, '--', 2)
+          where not exists (select 1 from analytics.pm_player_ids q
+                            where q.league = 'tsl' and q.player_slug = s.player_slug)
+        ) z"""),
     # ---- BASKETBOL ----
     ("bsl_highmin_no_sofascore_position", "MED",
      """select count(*) from (
