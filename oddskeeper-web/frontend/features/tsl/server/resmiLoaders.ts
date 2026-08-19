@@ -590,16 +590,36 @@ export async function loadResmiTeamsTable(
     slugForTeam = (teamId) => teamId; // cup: anahtar = sofascore team_id
     leaguePhaseTeamIds = new Set(curBy.keys()); // lig-fazi maci olan takimlar (36)
   } else {
-    const [teamsRes, curLogRes, lyStatRes] = await Promise.all([
+    // PostgREST db-max-rows=1000 -> SAYFALA. msm_team_match_log_v1 sezon basina
+    // 1000'i asiyor (or. TSL 25/26 ~6136, TFF1 24/25 ~7660 satir); tek istekte
+    // kesilince L5/L10/sezon ortalamalari yalniz erken haftalardan hesaplanip
+    // sessizce yanlis cikiyordu. (team_slug, market, team_match_index) tum
+    // lig/sezonlarda benzersiz -> deterministik siralama, sayfa sinirinda satir
+    // atlama/tekrar olmaz. Eurocup dalindaki (satir ~540) ayni desenin karsiligi.
+    const fetchCurLog = async () => {
+      const rows: { team_slug: string; market: string; for_value: number | null; team_match_index: number }[] = [];
+      for (let from = 0; ; from += 1000) {
+        const { data } = await supabase
+          .schema("analytics")
+          .from("msm_team_match_log_v1")
+          .select("team_slug, market, for_value, team_match_index")
+          .eq("league", config.source)
+          .eq("season", curMsm)
+          .in("market", marketKeys)
+          .order("team_slug", { ascending: true })
+          .order("market", { ascending: true })
+          .order("team_match_index", { ascending: true })
+          .range(from, from + 999);
+        if (!data || !data.length) break;
+        rows.push(...(data as typeof rows));
+        if (data.length < 1000) break;
+      }
+      return rows;
+    };
+
+    const [teamsRes, curLog, lyStatRes] = await Promise.all([
       supabase.schema("analytics").from("msm_teams_v1").select("team_slug, display_name").eq("league", config.source),
-      supabase
-        .schema("analytics")
-        .from("msm_team_match_log_v1")
-        .select("team_slug, market, for_value, team_match_index")
-        .eq("league", config.source)
-        .eq("season", curMsm)
-        .in("market", marketKeys)
-        .order("team_match_index", { ascending: true }),
+      fetchCurLog(),
       supabase
         .schema("analytics")
         .from("msm_team_season_stats_v1")
@@ -634,7 +654,7 @@ export async function loadResmiTeamsTable(
       (config.source === "tsl" ? slugForSofascoreTeam(teamId) : null) ?? resolveSlug(name);
 
     const seenMatch = new Set<string>();
-    for (const r of curLogRes.data ?? []) {
+    for (const r of curLog) {
       if (r.for_value == null) continue;
       const slug = String(r.team_slug);
       const mk = String(r.market);

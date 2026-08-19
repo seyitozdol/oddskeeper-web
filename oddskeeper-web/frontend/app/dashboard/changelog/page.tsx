@@ -17,8 +17,23 @@ type Entry = {
 
 const TAG_NEW: L = { en: "New", tr: "Yeni" };
 const TAG_NEW_TOOL: L = { en: "New tool", tr: "Yeni araç" };
+const TAG_FIX: L = { en: "Fix", tr: "Düzeltme" };
 
 const ENTRIES: Entry[] = [
+  {
+    date: { en: "19 August", tr: "19 Ağustos" },
+    title: {
+      en: "Correct season and recent-form averages on the Teams table",
+      tr: "Takımlar tablosunda doğru sezon ve son-form ortalamaları",
+    },
+    tag: TAG_FIX,
+    items: [
+      {
+        en: "The Teams tab averages (Season, Last 5, Last 10) are now computed from every match of the selected season. Previously, for full or past seasons the table loaded only the earliest part of the season, so these averages were based on the first few weeks and could be wrong; they are now correct across all seasons and every market (shots, corners, cards and the rest). Applies to Süper Lig and 1. Lig.",
+        tr: "Takımlar sekmesindeki ortalamalar (Sezon, Son 5, Son 10) artık seçili sezonun tüm maçlarından hesaplanıyor. Önceden, dolu ya da geçmiş sezonlarda tablo sezonun yalnız ilk bölümünü yüklüyordu; bu yüzden ortalamalar ilk birkaç haftaya dayanıp yanlış olabiliyordu. Artık tüm sezonlarda ve tüm marketlerde (şut, korner, kart ve diğerleri) doğru. Süper Lig ve 1. Lig için geçerli.",
+      },
+    ],
+  },
   {
     date: { en: "18 August", tr: "18 Ağustos" },
     title: {
