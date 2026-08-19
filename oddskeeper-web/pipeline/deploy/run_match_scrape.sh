@@ -13,6 +13,15 @@ VENV="/opt/oddskeeper/venv/bin/python"
 LOG="/opt/oddskeeper/logs/match_scrape.log"
 LOCK="/opt/oddskeeper/match_scrape.lock"
 
+# H1 (mukerrer mat refresh): bu turda tsl_ss mat'lari yalniz adim 3b'deki
+# refresh_tsl_mats.py bir kez tazelesin. Bayrak, adim 1 loader'inin (step 26) ve
+# adim 3b builder'inin (step 93) kendi ic tsl_ss refresh'lerini atlamasini saglar;
+# adim 3b gate'i (sofa VEYA flash islendi) loader kosan her turda saglandigi ve
+# refresh_tsl_mats.py orada kosuldugu icin erteleme her zaman kapsanir. Yalnizca
+# bu wrapper'da set edilir; 3 saatlik run_sofascore.sh ve 04:00 run_fs_player_map.sh
+# bayragi set ETMEZ, dolayisiyla o yollarda davranis birebir aynidir.
+export DEFER_TSL_MATS=1
+
 # Onceki kosu hala suruyorsa bu turu atla (10 dk polling ust uste binmesin).
 exec 9>"$LOCK"
 if ! flock -n 9; then

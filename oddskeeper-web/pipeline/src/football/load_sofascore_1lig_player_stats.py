@@ -15,6 +15,7 @@ Calistirma:
   (lig adi varsayilan 'Trendyol 1. Lig'; Super Lig icin 'Süper Lig' verilir)
 """
 import json
+import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -217,15 +218,23 @@ def refresh_mats():
         # bunlari okur; siralama dogru kalsin diye her yuklemede tazelenir).
         # Sira onemli: detailed_metrics_global -> benchmarks/leaderboard/
         # overview ondan tureyen mat'lar.
-        cur.execute("refresh materialized view analytics.tsl_ss_player_detailed_metrics_global_mat")
-        cur.execute("refresh materialized view analytics.tsl_ss_player_metric_benchmarks_mat")
-        cur.execute("refresh materialized view analytics.tsl_ss_player_overview_advanced_mat")
-        cur.execute("refresh materialized view analytics.tsl_ss_player_metric_leaderboard_mat")
-        cur.execute("refresh materialized view analytics.tsl_ss_team_detailed_metrics_mat")
-        cur.execute("refresh materialized view analytics.tsl_ss_team_metric_benchmarks_mat")
-        cur.execute("refresh materialized view analytics.tsl_ss_team_overview_advanced_mat")
-        cur.execute("refresh materialized view analytics.tsl_ss_squad_mat")
-        print("[mat] tsl_ss materialized view'lar tazelendi", flush=True)
+        # H1 (mukerrer refresh): match_scrape turunda bu 8 tsl_ss mat'i, adim 3b'de
+        # (tum kimlik haritalari yazildiktan SONRA) refresh_tsl_mats.py zaten tazeler.
+        # DEFER_TSL_MATS=1 iken burada atla; boylece ayni turda uc kez degil bir kez
+        # tazelenir. Bayrak yoksa (3 saatlik run_sofascore.sh, elle kosu) tek tazeleme
+        # burasi oldugu icin eskisi gibi burada kosar.
+        if os.environ.get("DEFER_TSL_MATS"):
+            print("[mat] tsl_ss refresh adim 3b'ye ertelendi (DEFER_TSL_MATS)", flush=True)
+        else:
+            cur.execute("refresh materialized view analytics.tsl_ss_player_detailed_metrics_global_mat")
+            cur.execute("refresh materialized view analytics.tsl_ss_player_metric_benchmarks_mat")
+            cur.execute("refresh materialized view analytics.tsl_ss_player_overview_advanced_mat")
+            cur.execute("refresh materialized view analytics.tsl_ss_player_metric_leaderboard_mat")
+            cur.execute("refresh materialized view analytics.tsl_ss_team_detailed_metrics_mat")
+            cur.execute("refresh materialized view analytics.tsl_ss_team_metric_benchmarks_mat")
+            cur.execute("refresh materialized view analytics.tsl_ss_team_overview_advanced_mat")
+            cur.execute("refresh materialized view analytics.tsl_ss_squad_mat")
+            print("[mat] tsl_ss materialized view'lar tazelendi", flush=True)
     except Exception as e:  # noqa
         print(f"UYARI: mat refresh basarisiz: {e}", flush=True)
 

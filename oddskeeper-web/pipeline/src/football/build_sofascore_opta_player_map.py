@@ -7,6 +7,7 @@ isimleri 'Ad Soyad' ve aksanli. Sonuc: ref.sofascore_opta_player_map.
 Calistirma (TSL sofascore verisi yuklendikten sonra):
   .venv\\Scripts\\python.exe src\\football\\build_sofascore_opta_player_map.py [--dry-run]
 """
+import os
 import sys
 import unicodedata
 from difflib import SequenceMatcher
@@ -217,14 +218,22 @@ def main():
         # Kimlik haritasi degisince bagimli tsl_ss mat'lari bayatlar; harita
         # sonradan eklenen oyuncu (or. Kerem) rankings/leaderboard'dan kaybolur.
         # Harita yazilir yazilmaz mat'lari bagimlilik sirasiyla tazele.
-        try:
-            import importlib
-            importlib.import_module("refresh_tsl_mats").main()
-            print("[mat] tsl_ss mat'lar harita sonrasi tazelendi")
-        except SystemExit as e:  # bazi mat patlasa da harita yazildi
-            print(f"UYARI: bazi mat tazelenemedi: {e}")
-        except Exception as e:  # noqa
-            print(f"UYARI: mat refresh atlandi: {e}")
+        # H1 (mukerrer refresh): match_scrape turunda bu builder adim 3b'de cagriliyor
+        # ve hemen ardindan (tum kimlik haritalari yazildiktan sonra) refresh_tsl_mats.py
+        # ACIKCA kosuyor; DEFER_TSL_MATS=1 iken buradaki ic refresh'i atla. Bayrak yoksa
+        # (04:00 run_fs_player_map.sh, elle kosu) bu ic refresh tek tazeleme oldugu icin
+        # eskisi gibi kosar.
+        if os.environ.get("DEFER_TSL_MATS"):
+            print("[mat] tsl_ss refresh caller'a (adim 3b) ertelendi (DEFER_TSL_MATS)")
+        else:
+            try:
+                import importlib
+                importlib.import_module("refresh_tsl_mats").main()
+                print("[mat] tsl_ss mat'lar harita sonrasi tazelendi")
+            except SystemExit as e:  # bazi mat patlasa da harita yazildi
+                print(f"UYARI: bazi mat tazelenemedi: {e}")
+            except Exception as e:  # noqa
+                print(f"UYARI: mat refresh atlandi: {e}")
     else:
         conn.rollback()
         print("DRY RUN")
