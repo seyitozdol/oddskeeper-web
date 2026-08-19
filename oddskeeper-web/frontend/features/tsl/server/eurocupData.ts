@@ -120,6 +120,26 @@ export const getFootballSlugMap = cache(
     return out;
   }
 );
+
+// Kupa oyuncu foto/uyruk haritasi (tff1_player_info_v1; competition-bagimsiz, tum
+// kupalarda ayni). Istek-kapsamli cache(): ayni render'da assets() + players() iki
+// kez cagirsa da bir kez kosar (H8; onceden ~11 istek x 10.977 satir iki kez idi).
+const playerInfoMap = cache(
+  async (): Promise<Record<string, { photo: string | null; country: string | null }>> => {
+    const sb = await createClient();
+    const out: Record<string, { photo: string | null; country: string | null }> = {};
+    for (let from = 0; ; from += 1000) {
+      const { data, error } = await sb.schema("analytics").from("tff1_player_info_v1")
+        .select("player_id, photo_url, country").order("player_id", { ascending: true })
+        .range(from, from + 999);
+      if (error || !data || data.length === 0) break;
+      for (const r of data) out[String(r.player_id)] = { photo: r.photo_url ?? null, country: r.country ?? null };
+      if (data.length < 1000) break;
+    }
+    return out;
+  }
+);
+
 function formOf(teamId: string, matches: TslMatch[]): FormResult[] {
   const played = matches.filter((m) => m.homeId === teamId || m.awayId === teamId).slice().reverse().slice(-5);
   return played.map((m) => {
@@ -138,20 +158,6 @@ export function makeCupProvider(COMP: string, prefix: string) {
     const { data } = await sb.schema("analytics").from("tff1_team_logos_v1").select("team_id, team_name, logo_url").limit(2000);
     const out: Record<string, TslTeamMeta> = {};
     for (const r of data ?? []) out[String(r.team_id)] = { teamId: String(r.team_id), name: r.team_name ?? String(r.team_id), logo: r.logo_url ?? null };
-    return out;
-  }
-
-  async function playerInfoMap(): Promise<Record<string, { photo: string | null; country: string | null }>> {
-    const sb = await createClient();
-    const out: Record<string, { photo: string | null; country: string | null }> = {};
-    for (let from = 0; ; from += 1000) {
-      const { data, error } = await sb.schema("analytics").from("tff1_player_info_v1")
-        .select("player_id, photo_url, country").order("player_id", { ascending: true })
-        .range(from, from + 999);
-      if (error || !data || data.length === 0) break;
-      for (const r of data) out[String(r.player_id)] = { photo: r.photo_url ?? null, country: r.country ?? null };
-      if (data.length < 1000) break;
-    }
     return out;
   }
 
