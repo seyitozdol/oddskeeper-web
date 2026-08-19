@@ -1,0 +1,27 @@
+name: anon-guard
+
+# anon SELECT lockdown bekcisi (karar 2026-08-19): yeni SQL'de "TO anon"
+# gorulurse build kirilir. Detay: .github/scripts/check_no_anon_grants.sh
+on:
+  push:
+  pull_request:
+
+jobs:
+  anon-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Yeni SQL'de anon grant taramasi
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            base="origin/${{ github.base_ref }}"
+          elif [ "${{ github.event.before }}" != "0000000000000000000000000000000000000000" ] \
+            && git cat-file -e "${{ github.event.before }}" 2>/dev/null; then
+            base="${{ github.event.before }}"
+          else
+            base="HEAD~1"
+          fi
+          bash .github/scripts/check_no_anon_grants.sh "$base"
