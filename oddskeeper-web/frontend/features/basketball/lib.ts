@@ -120,8 +120,8 @@ export function roleBadgeClass(role: string | null | undefined): string {
     case "limited":  return "bg-veil text-ink-2";
     case "garbage":  return "bg-veil text-ink-3";
     case "departed": return "bg-neg/12 text-neg";
-    case "newcomer": return "bg-amber-500/15 text-amber-300";
-    case "euro_focus": return "bg-indigo-500/15 text-indigo-300";
+    case "newcomer": return "bg-warn/15 text-warn";
+    case "euro_focus": return "bg-accent/15 text-accent-ink";
     default:         return "bg-veil text-ink-3";
   }
 }

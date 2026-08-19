@@ -54,7 +54,7 @@ export default function PlayerMarketAccessDenied({ userEmail }: { userEmail?: st
         </p>
 
         {sent ? (
-          <div className="mt-8 rounded-lg border border-teal-500/20 bg-teal-500/10 px-4 py-4 text-[13px] text-teal-300">
+          <div className="mt-8 rounded-lg border border-accent/20 bg-accent/10 px-4 py-4 text-[13px] text-accent-ink">
             ✓ {t("playerMarket.requestSentMessage")}
           </div>
         ) : (

@@ -21,7 +21,7 @@ export default function SeasonToggle({ seasons, current }: { seasons: readonly s
         <button
           key={s}
           onClick={() => go(s)}
-          className={`rounded-md px-3 py-1 text-[12px] font-semibold transition ${s === current ? "bg-accent text-white" : "text-ink-2 hover:text-ink"}`}
+          className={`rounded-md px-3 py-1 text-[12px] font-semibold transition ${s === current ? "bg-accent text-on-accent" : "text-ink-2 hover:text-ink"}`}
         >
           {s}
         </button>

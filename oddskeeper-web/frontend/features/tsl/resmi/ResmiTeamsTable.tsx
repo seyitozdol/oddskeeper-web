@@ -157,7 +157,7 @@ export default function ResmiTeamsTable({ data }: { data: ResmiTeamsTableBundle 
               onClick={() => setMetric(m.key)}
               className={`rounded-lg px-2.5 py-1 text-[12px] font-semibold transition ${
                 metric === m.key
-                  ? "bg-accent text-white"
+                  ? "bg-accent text-on-accent"
                   : "bg-veil text-ink-2 hover:text-ink"
               }`}
             >

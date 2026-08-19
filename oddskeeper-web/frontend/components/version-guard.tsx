@@ -67,7 +67,7 @@ export function VersionGuard() {
         <button
           type="button"
           onClick={() => window.location.reload()}
-          className="shrink-0 rounded-md bg-accent px-3.5 py-1.5 text-sm font-semibold text-white transition hover:opacity-90"
+          className="shrink-0 rounded-md bg-accent px-3.5 py-1.5 text-sm font-semibold text-on-accent transition hover:opacity-90"
         >
           Yenile
         </button>

@@ -377,7 +377,7 @@ function PlayerStatusBadge({ row }: { row: TeamSquadRow }) {
 
     return (
       <span
-        className="ml-2 rounded-full border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-[0.06em] text-amber-500"
+        className="ml-2 rounded-full border border-warn/30 bg-warn/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-[0.06em] text-warn"
         title={t("teamDetail.nowPlaysForTooltip", { team: currentTeam })}
       >
         {t("common.nowAt", { team: currentTeam })}

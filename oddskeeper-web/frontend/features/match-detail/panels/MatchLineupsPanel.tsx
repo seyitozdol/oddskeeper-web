@@ -40,7 +40,7 @@ function getStatusBadgeClass(lineupStatus?: string | null) {
   }
 
   if (value === "substitute") {
-    return "border-sky-500/25 bg-sky-500/10 text-sky-300";
+    return "border-accent/25 bg-accent/10 text-accent-ink";
   }
 
   return "border-line bg-veil text-ink-2";

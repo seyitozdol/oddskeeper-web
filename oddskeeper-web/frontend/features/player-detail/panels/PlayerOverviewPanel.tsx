@@ -37,7 +37,7 @@ function getToneClasses(tone: Tone) {
   }
 
   if (tone === "warning") {
-    return "border-amber-500/20 bg-card";
+    return "border-warn/20 bg-card";
   }
 
   return "border-line bg-veil";
@@ -51,7 +51,7 @@ function getRoleBadgeClasses(role: string | null | undefined) {
   }
 
   if (normalized === "substitute") {
-    return "border-amber-500/25 bg-amber-400/15 text-amber-500";
+    return "border-warn/25 bg-warn/15 text-warn";
   }
 
   return "border-line bg-veil text-ink-2";

@@ -77,7 +77,7 @@ function formatMarketValue(value: number): string {
 function toneValueClass(tone: SnapshotTone) {
   if (tone === "positive") return "text-pos";
   if (tone === "accent") return "text-accent-ink";
-  if (tone === "warning") return "text-amber-400";
+  if (tone === "warning") return "text-warn";
   return "text-ink";
 }
 
@@ -85,7 +85,7 @@ function getRoleBadgeClasses(role: string | null | undefined) {
   const normalized = (role ?? "").toLowerCase();
   if (normalized === "starter") return "border-pos/25 bg-pos/15 text-pos";
   if (normalized === "substitute")
-    return "border-amber-500/25 bg-amber-400/15 text-amber-400";
+    return "border-warn/25 bg-warn/15 text-warn";
   return "border-line bg-veil text-ink-2";
 }
 

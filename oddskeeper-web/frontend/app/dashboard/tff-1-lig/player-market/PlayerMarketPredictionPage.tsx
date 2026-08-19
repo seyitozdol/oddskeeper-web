@@ -119,9 +119,9 @@ const NO_SPINNER =
 const STATUS_OPTIONS: InferredStatus[] = ["Pos. Starter", "Pos. Sub", "Out"];
 
 const STATUS_COLORS: Record<InferredStatus, string> = {
-  "Pos. Starter": "bg-teal-500/20 text-teal-300 border-teal-500/30",
-  "Pos. Sub": "bg-yellow-500/20 text-yellow-300 border-yellow-500/30",
-  "Out": "bg-red-500/20 text-red-400 border-red-500/30",
+  "Pos. Starter": "bg-accent/20 text-accent-ink border-accent/30",
+  "Pos. Sub": "bg-warn/20 text-warn border-warn/30",
+  "Out": "bg-neg/20 text-neg border-neg/30",
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -252,7 +252,7 @@ function DistributeConfig({
         step="1"
         value={value}
         onChange={(e) => setValue(e.target.value)}
-        className="w-24 rounded-lg border border-line bg-field px-3 py-2 text-[13px] text-ink focus:border-teal-500/50 focus:outline-none"
+        className="w-24 rounded-lg border border-line bg-field px-3 py-2 text-[13px] text-ink focus:border-accent/50 focus:outline-none"
       />
     </div>
   );
@@ -265,12 +265,12 @@ function DistributeConfig({
           type="button"
           onClick={handleSave}
           disabled={saving || over}
-          className="rounded-lg border border-teal-600 bg-teal-600 px-4 py-1.5 text-[13px] font-semibold text-white transition hover:bg-teal-500 disabled:opacity-50"
+          className="rounded-lg border border-accent bg-accent px-4 py-1.5 text-[13px] font-semibold text-on-accent transition hover:opacity-90 disabled:opacity-50"
         >
           {saving ? t("playerMarket.sendingLabel") : t("playerMarket.saveLabel")}
         </button>
         {savedAt !== null && !saving && (
-          <span className="text-[12px] text-teal-400">{t("playerMarket.savedLabel")}</span>
+          <span className="text-[12px] text-accent-ink">{t("playerMarket.savedLabel")}</span>
         )}
         <span className="text-[13px] font-semibold text-ink">{t("playerMarket.distConfigTitle")}</span>
       </div>
@@ -287,12 +287,12 @@ function DistributeConfig({
           <span className="text-[10px] uppercase tracking-[0.12em] text-ink-3">
             {t("playerMarket.distWeightTotal")}
           </span>
-          <span className={`text-[15px] font-semibold tabular-nums ${over ? "text-rose-400" : "text-ink"}`}>
+          <span className={`text-[15px] font-semibold tabular-nums ${over ? "text-neg" : "text-ink"}`}>
             {total}
           </span>
         </div>
         {over && (
-          <span className="pb-1 text-[12px] text-rose-400">{t("playerMarket.distWeightWarn")}</span>
+          <span className="pb-1 text-[12px] text-neg">{t("playerMarket.distWeightWarn")}</span>
         )}
       </div>
     </div>
@@ -340,7 +340,7 @@ function StatusConfigCard({
       step="1"
       value={String(value)}
       onChange={(e) => onChange(e.target.value)}
-      className="w-14 rounded-md border border-line bg-field px-2 py-1 text-right text-[13px] text-ink focus:border-teal-500/50 focus:outline-none"
+      className="w-14 rounded-md border border-line bg-field px-2 py-1 text-right text-[13px] text-ink focus:border-accent/50 focus:outline-none"
     />
   );
 
@@ -379,12 +379,12 @@ function StatusConfigCard({
           type="button"
           onClick={handleSave}
           disabled={saving}
-          className="rounded-lg border border-teal-600 bg-teal-600 px-4 py-1.5 text-[13px] font-semibold text-white transition hover:bg-teal-500 disabled:opacity-50"
+          className="rounded-lg border border-accent bg-accent px-4 py-1.5 text-[13px] font-semibold text-on-accent transition hover:opacity-90 disabled:opacity-50"
         >
           {saving ? t("playerMarket.sendingLabel") : t("playerMarket.saveLabel")}
         </button>
         {savedAt !== null && !saving && (
-          <span className="text-[12px] text-teal-400">{t("playerMarket.savedLabel")}</span>
+          <span className="text-[12px] text-accent-ink">{t("playerMarket.savedLabel")}</span>
         )}
         <span className="text-[13px] font-semibold text-ink">{t("playerMarket.statusConfigTitle")}</span>
       </div>
@@ -396,15 +396,15 @@ function StatusConfigCard({
       {/* Kurallar alt alta (oncelik: Out > Starter > Sub) */}
       <div className="space-y-2.5">
         {ruleRow(
-          roleBadge(t("playerMarket.statusRoleOut"), "bg-rose-500/15 text-rose-300"),
+          roleBadge(t("playerMarket.statusRoleOut"), "bg-neg/15 text-neg"),
           "outN", "outK", t("playerMarket.statusCondOut"), off
         )}
         {ruleRow(
-          roleBadge(t("playerMarket.statusRoleStarter"), "bg-emerald-500/15 text-emerald-300"),
+          roleBadge(t("playerMarket.statusRoleStarter"), "bg-pos/15 text-pos"),
           "starterN", "starterK", t("playerMarket.statusCondStarter"), off
         )}
         {ruleRow(
-          roleBadge(t("playerMarket.statusRoleSub"), "bg-amber-500/15 text-amber-300"),
+          roleBadge(t("playerMarket.statusRoleSub"), "bg-warn/15 text-warn"),
           "subN", "subK", t("playerMarket.statusCondSub"), off
         )}
       </div>
@@ -565,7 +565,7 @@ function TeamPlayerTable({
                     <button
                       type="button"
                       onClick={() => onPlayerClick(p.player_source_id, p.player_name)}
-                      className="block w-full truncate text-left font-medium text-ink underline-offset-2 transition hover:text-teal-300 hover:underline"
+                      className="block w-full truncate text-left font-medium text-ink underline-offset-2 transition hover:text-accent-ink hover:underline"
                     >
                       {p.player_name}
                     </button>
@@ -597,7 +597,7 @@ function TeamPlayerTable({
                     {fmt(p.lyAvg)}
                   </td>
 
-                  <td className="px-1 py-1 text-right tabular-nums text-teal-400/80">
+                  <td className="px-1 py-1 text-right tabular-nums text-accent-ink/80">
                     {distributeEnabled && p.status !== "Out" ? fmt(effExp) : "—"}
                   </td>
 
@@ -609,7 +609,7 @@ function TeamPlayerTable({
                       placeholder="0"
                       value={p.manualValue}
                       onChange={(e) => onManualChange(p.player_source_id, e.target.value)}
-                      className={`w-11 rounded border border-line bg-field px-1 py-0.5 text-right text-[11px] text-ink placeholder-ink-3 focus:border-teal-500/50 focus:outline-none ${NO_SPINNER}`}
+                      className={`w-11 rounded border border-line bg-field px-1 py-0.5 text-right text-[11px] text-ink placeholder-ink-3 focus:border-accent/50 focus:outline-none ${NO_SPINNER}`}
                     />
                   </td>
 
@@ -632,7 +632,7 @@ function TeamPlayerTable({
                             placeholder="0"
                             value={oddsEdit[dynKey] ?? ""}
                             onChange={(e) => onOddsEdit(dynKey, e.target.value)}
-                            className={`w-14 rounded bg-veil px-1 py-0.5 text-right text-[11px] font-semibold text-teal-300 border border-transparent focus:border-teal-500/50 focus:outline-none ${NO_SPINNER}`}
+                            className={`w-14 rounded bg-veil px-1 py-0.5 text-right text-[11px] font-semibold text-accent-ink border border-transparent focus:border-accent/50 focus:outline-none ${NO_SPINNER}`}
                           />
                         </div>
                       ) : (
@@ -667,7 +667,7 @@ function TeamPlayerTable({
                                   step="0.01"
                                   value={oddsEdit[editKey] ?? computed}
                                   onChange={(e) => onOddsEdit(editKey, e.target.value)}
-                                  className={`w-12 rounded bg-veil px-1 py-0.5 text-right text-[11px] font-semibold text-teal-300 border border-transparent focus:border-teal-500/50 focus:outline-none ${NO_SPINNER}`}
+                                  className={`w-12 rounded bg-veil px-1 py-0.5 text-right text-[11px] font-semibold text-accent-ink border border-transparent focus:border-accent/50 focus:outline-none ${NO_SPINNER}`}
                                 />
                               )}
                             </div>
@@ -1344,7 +1344,7 @@ export default function PlayerMarketPredictionPage({
             <select
               value={selectedFixtureId ?? ""}
               onChange={(e) => setSelectedFixtureId(e.target.value ? Number(e.target.value) : null)}
-              className="rounded-lg border border-line bg-field px-3 py-2 text-[13px] text-ink focus:border-teal-500/50 focus:outline-none"
+              className="rounded-lg border border-line bg-field px-3 py-2 text-[13px] text-ink focus:border-accent/50 focus:outline-none"
             >
               <option value="">{t("playerMarket.selectFixturePlaceholder")}</option>
               {/* Biten maclar (kickoff+~2.5s) en alta; her render'da tazelenir. */}
@@ -1368,7 +1368,7 @@ export default function PlayerMarketPredictionPage({
             <select
               value={selectedMarketKey}
               onChange={(e) => setSelectedMarketKey(e.target.value)}
-              className="rounded-lg border border-line bg-field px-3 py-2 text-[13px] text-ink focus:border-teal-500/50 focus:outline-none"
+              className="rounded-lg border border-line bg-field px-3 py-2 text-[13px] text-ink focus:border-accent/50 focus:outline-none"
             >
               {allMarkets.map((m) => (
                 <option key={m.key} value={m.key}>
@@ -1400,7 +1400,7 @@ export default function PlayerMarketPredictionPage({
               step="0.5"
               value={homeDistExp}
               onChange={(e) => setHomeDistExp(e.target.value)}
-              className="w-24 rounded-lg border border-line bg-field px-3 py-2 text-[13px] text-ink focus:border-teal-500/50 focus:outline-none"
+              className="w-24 rounded-lg border border-line bg-field px-3 py-2 text-[13px] text-ink focus:border-accent/50 focus:outline-none"
             />
           </div>
 
@@ -1415,7 +1415,7 @@ export default function PlayerMarketPredictionPage({
               step="0.5"
               value={awayDistExp}
               onChange={(e) => setAwayDistExp(e.target.value)}
-              className="w-24 rounded-lg border border-line bg-field px-3 py-2 text-[13px] text-ink focus:border-teal-500/50 focus:outline-none"
+              className="w-24 rounded-lg border border-line bg-field px-3 py-2 text-[13px] text-ink focus:border-accent/50 focus:outline-none"
             />
           </div>
 
@@ -1431,7 +1431,7 @@ export default function PlayerMarketPredictionPage({
               step="1"
               value={paybackPct}
               onChange={(e) => setPaybackPct(e.target.value)}
-              className="w-24 rounded-lg border border-line bg-field px-3 py-2 text-[13px] text-ink focus:border-teal-500/50 focus:outline-none"
+              className="w-24 rounded-lg border border-line bg-field px-3 py-2 text-[13px] text-ink focus:border-accent/50 focus:outline-none"
             />
           </div>
 
@@ -1453,10 +1453,10 @@ export default function PlayerMarketPredictionPage({
             disabled={adding || !selectedFixture}
             className={`rounded-lg border px-4 py-2 text-[13px] font-semibold transition disabled:opacity-50 ${
               justAdded == null
-                ? "border-teal-500/30 bg-teal-500/10 text-teal-300 hover:bg-teal-500/20"
+                ? "border-accent/30 bg-accent/10 text-accent-ink hover:bg-accent/20"
                 : justAdded > 0
-                ? "border-emerald-600 bg-emerald-600 text-white"
-                : "border-amber-600 bg-amber-600 text-white"
+                ? "border-pos bg-pos text-on-accent"
+                : "border-warn bg-warn text-on-accent"
             }`}
           >
             {justAdded == null
@@ -1466,15 +1466,15 @@ export default function PlayerMarketPredictionPage({
               : "Tick a line first"}
           </button>
           {restoreNotice && (
-            <span className="pb-2.5 text-[12px] text-teal-400">{restoreNotice}</span>
+            <span className="pb-2.5 text-[12px] text-accent-ink">{restoreNotice}</span>
           )}
           {addedCount !== null && !dupWarning && (
-            <span className="pb-2.5 text-[12px] text-teal-400">
+            <span className="pb-2.5 text-[12px] text-accent-ink">
               {t("playerMarket.addedLabel", { count: String(addedCount) })}
             </span>
           )}
           {dupWarning && (
-            <span className="pb-2.5 text-[12px] text-red-400">{dupWarning}</span>
+            <span className="pb-2.5 text-[12px] text-neg">{dupWarning}</span>
           )}
         </div>
       </div>
@@ -1491,7 +1491,7 @@ export default function PlayerMarketPredictionPage({
         <div className="rounded-xl border border-line bg-card px-5 py-4">
           {/* Market info bar */}
           <div className="mb-4 flex items-center gap-3">
-            <span className="rounded-full border border-teal-500/30 bg-teal-500/10 px-3 py-1 text-[12px] font-semibold text-teal-300">
+            <span className="rounded-full border border-accent/30 bg-accent/10 px-3 py-1 text-[12px] font-semibold text-accent-ink">
               {selectedMarket.label}
             </span>
             <span className="text-[12px] text-ink-3">

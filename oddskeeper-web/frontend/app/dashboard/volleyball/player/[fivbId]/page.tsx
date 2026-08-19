@@ -141,7 +141,7 @@ export default async function VolleyballPlayerPage({
                 href={`/dashboard/volleyball/player/${id}?comp=${c.competition_id}`}
                 className={`rounded-full px-3.5 py-1 text-[12px] font-semibold transition ${
                   c.competition_id === selectedId
-                    ? "bg-accent text-white"
+                    ? "bg-accent text-on-accent"
                     : "bg-card-2 text-ink-2 hover:bg-veil hover:text-ink"
                 }`}
               >

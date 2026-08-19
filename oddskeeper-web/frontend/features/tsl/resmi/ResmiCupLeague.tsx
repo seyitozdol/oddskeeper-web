@@ -51,7 +51,7 @@ export default function ResmiCupLeague({ data }: { data: CupLeagueBundle }) {
             type="button"
             onClick={() => setStage(s.key)}
             className={`rounded-lg px-3 py-1.5 text-[13px] font-medium transition ${
-              active === s.key ? "bg-accent text-white" : "bg-card-2 text-ink-2 hover:bg-veil hover:text-ink"
+              active === s.key ? "bg-accent text-on-accent" : "bg-card-2 text-ink-2 hover:bg-veil hover:text-ink"
             }`}
           >
             {s.label}
@@ -96,18 +96,18 @@ function SplitMatches({ children, tr }: { children: React.ReactNode; tr: boolean
 
 // ---- Lig aşaması puan tablosu (36 takım, bölge renkleri) ----
 const ZONE_BAR: Record<string, string> = {
-  r16: "bg-emerald-500",
-  playoff: "bg-amber-500",
-  out: "bg-rose-500/70",
+  r16: "bg-pos",
+  playoff: "bg-warn",
+  out: "bg-neg/70",
 };
 
 function Standings({ rows, tr }: { rows: CupStandingRow[]; tr: boolean }) {
   return (
     <div>
       <div className="mb-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-ink-3">
-        <Legend color="bg-emerald-500" label={tr ? "1-8 · Son 16 (doğrudan)" : "1-8 · Round of 16"} />
-        <Legend color="bg-amber-500" label={tr ? "9-24 · Play-off" : "9-24 · Play-off"} />
-        <Legend color="bg-rose-500/70" label={tr ? "25-36 · Elenen" : "25-36 · Eliminated"} />
+        <Legend color="bg-pos" label={tr ? "1-8 · Son 16 (doğrudan)" : "1-8 · Round of 16"} />
+        <Legend color="bg-warn" label={tr ? "9-24 · Play-off" : "9-24 · Play-off"} />
+        <Legend color="bg-neg/70" label={tr ? "25-36 · Elenen" : "25-36 · Eliminated"} />
       </div>
       <div className="overflow-x-auto rounded-xl border border-line bg-card">
         <table className="w-full min-w-[640px] text-[12px]">
@@ -177,7 +177,7 @@ function Legend({ color, label }: { color: string; label: string }) {
 // ---- Yükselen oku (turu geçen takım) ----
 function AdvanceArrow() {
   return (
-    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 shrink-0 text-emerald-500" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 shrink-0 text-pos" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <path d="M12 19V5M5 12l7-7 7 7" />
     </svg>
   );
@@ -186,7 +186,7 @@ function AdvanceArrow() {
 // ---- Şampiyon kupası (final galibi) ----
 function Trophy({ tr }: { tr: boolean }) {
   return (
-    <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-amber-400" fill="currentColor" aria-hidden="true">
+    <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-warn" fill="currentColor" aria-hidden="true">
       <title>{tr ? "Şampiyon" : "Champion"}</title>
       <path d="M6 3h12v2h3v3a4 4 0 0 1-4 4h-.4A6 6 0 0 1 13 15.9V18h2.5a1 1 0 0 1 1 1v1H7.5v-1a1 1 0 0 1 1-1H11v-2.1A6 6 0 0 1 7.4 12H7a4 4 0 0 1-4-4V5h3V3Zm0 4H5v1a2 2 0 0 0 1 1.7V7Zm12 0v2.7A2 2 0 0 0 19 8V7h-1Z" />
     </svg>

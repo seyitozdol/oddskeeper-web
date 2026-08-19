@@ -71,8 +71,8 @@ export default function BasketballScrapeButton() {
   return (
     <button type="button" onClick={() => void trigger()} disabled={busy} title={t("basketball.scrapeHint")}
       className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[12px] font-medium transition disabled:cursor-not-allowed ${
-        phase === "error" ? "border-red-500/50 text-red-500"
-          : phase === "done" ? "border-emerald-500/50 text-emerald-500"
+        phase === "error" ? "border-neg/50 text-neg"
+          : phase === "done" ? "border-pos/50 text-pos"
             : "border-line bg-veil text-ink-2 hover:border-line-strong hover:text-ink"}`}>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"
         strokeLinejoin="round" className={`h-3.5 w-3.5 ${busy ? "animate-spin" : ""}`} aria-hidden="true">

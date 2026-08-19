@@ -55,7 +55,7 @@ export default function TeamProfileTabs({
             <button
               key={x.key}
               onClick={() => setActive(x.key)}
-              className={`flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[12px] font-semibold transition ${x.key === active ? "bg-accent text-white" : "bg-card-2 text-ink-2 hover:bg-veil hover:text-ink"}`}
+              className={`flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[12px] font-semibold transition ${x.key === active ? "bg-accent text-on-accent" : "bg-card-2 text-ink-2 hover:bg-veil hover:text-ink"}`}
             >
               <Image src={x.logo} alt={x.label} width={16} height={16} className="h-4 w-4 object-contain" />
               {x.label}

@@ -22,7 +22,7 @@ function getStatusClass(status: TeamFixtureRow["fixture_status"]) {
   }
 
   if (status === "postponed") {
-    return "border-amber-500/25 bg-amber-500/10 text-amber-500";
+    return "border-warn/25 bg-warn/10 text-warn";
   }
 
   if (status === "cancelled") {

@@ -149,7 +149,7 @@ export default function TeamNotesModal({
           />
           <div className="flex items-center justify-end gap-2">
             {error ? (
-              <span className="mr-auto text-[12px] text-red-400">{error}</span>
+              <span className="mr-auto text-[12px] text-neg">{error}</span>
             ) : null}
             <button
               type="button"
@@ -227,7 +227,7 @@ export default function TeamNotesModal({
                             <button
                               type="button"
                               onClick={() => handleDelete(note.id)}
-                              className="text-ink-2 transition hover:text-red-400"
+                              className="text-ink-2 transition hover:text-neg"
                             >
                               {t("notes.delete")}
                             </button>

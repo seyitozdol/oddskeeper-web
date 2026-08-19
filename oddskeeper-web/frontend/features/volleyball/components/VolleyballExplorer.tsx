@@ -64,7 +64,7 @@ export default function VolleyballExplorer({
             onClick={() => setTab(tb.key)}
             className={`rounded-full px-4 py-1.5 text-xs font-semibold transition ${
               tab === tb.key
-                ? "bg-accent text-white"
+                ? "bg-accent text-on-accent"
                 : "bg-card-2 text-ink-2 hover:bg-veil hover:text-ink"
             }`}
           >
@@ -190,7 +190,7 @@ function PlayersTab({
           <button
             onClick={() => setTurkeyOnly(true)}
             className={`rounded-md px-3 py-1 text-[11px] font-semibold transition ${
-              turkeyOnly ? "bg-accent text-white" : "text-ink-2 hover:text-ink"
+              turkeyOnly ? "bg-accent text-on-accent" : "text-ink-2 hover:text-ink"
             }`}
           >
             {t("volleyball.turkeyOnly")}
@@ -198,7 +198,7 @@ function PlayersTab({
           <button
             onClick={() => setTurkeyOnly(false)}
             className={`rounded-md px-3 py-1 text-[11px] font-semibold transition ${
-              !turkeyOnly ? "bg-accent text-white" : "text-ink-2 hover:text-ink"
+              !turkeyOnly ? "bg-accent text-on-accent" : "text-ink-2 hover:text-ink"
             }`}
           >
             {t("volleyball.allTeams")}
@@ -342,7 +342,7 @@ function ResultsTab({ matches }: { matches: VbMatch[] }) {
           <button
             onClick={() => setTurkeyOnly(false)}
             className={`rounded-md px-3 py-1 text-[11px] font-semibold transition ${
-              !turkeyOnly ? "bg-accent text-white" : "text-ink-2 hover:text-ink"
+              !turkeyOnly ? "bg-accent text-on-accent" : "text-ink-2 hover:text-ink"
             }`}
           >
             {t("volleyball.allTeams")}
@@ -350,7 +350,7 @@ function ResultsTab({ matches }: { matches: VbMatch[] }) {
           <button
             onClick={() => setTurkeyOnly(true)}
             className={`rounded-md px-3 py-1 text-[11px] font-semibold transition ${
-              turkeyOnly ? "bg-accent text-white" : "text-ink-2 hover:text-ink"
+              turkeyOnly ? "bg-accent text-on-accent" : "text-ink-2 hover:text-ink"
             }`}
           >
             {t("volleyball.turkeyOnly")}

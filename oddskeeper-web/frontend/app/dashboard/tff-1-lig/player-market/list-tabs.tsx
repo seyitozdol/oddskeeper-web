@@ -87,7 +87,7 @@ export function PlayerListTab({
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder={t("playerMarket.searchPlaceholder")}
-          className="w-72 rounded-lg border border-line bg-field px-3 py-2 text-[13px] text-ink placeholder-ink-3 focus:border-teal-500/50 focus:outline-none"
+          className="w-72 rounded-lg border border-line bg-field px-3 py-2 text-[13px] text-ink placeholder-ink-3 focus:border-accent/50 focus:outline-none"
         />
         <span className="text-[12px] text-ink-3">
           {filtered.length} / {players.length}
@@ -96,12 +96,12 @@ export function PlayerListTab({
           type="button"
           onClick={handleSave}
           disabled={saving || loading}
-          className="ml-auto rounded-lg border border-teal-600 bg-teal-600 px-4 py-1.5 text-[13px] font-semibold text-white transition hover:bg-teal-500 disabled:opacity-50"
+          className="ml-auto rounded-lg border border-accent bg-accent px-4 py-1.5 text-[13px] font-semibold text-on-accent transition hover:opacity-90 disabled:opacity-50"
         >
           {saving ? t("playerMarket.sendingLabel") : t("playerMarket.saveLabel")}
         </button>
         {savedAt !== null && !saving && (
-          <span className="text-[12px] text-teal-400">{t("playerMarket.savedLabel")}</span>
+          <span className="text-[12px] text-accent-ink">{t("playerMarket.savedLabel")}</span>
         )}
       </div>
 
@@ -143,7 +143,7 @@ export function PlayerListTab({
                         onChange={(e) =>
                           setIds((prev) => ({ ...prev, [p.player_id]: e.target.value }))
                         }
-                        className="w-24 rounded border border-line bg-field px-1.5 py-0.5 text-[11px] text-ink focus:border-teal-500/50 focus:outline-none"
+                        className="w-24 rounded border border-line bg-field px-1.5 py-0.5 text-[11px] text-ink focus:border-accent/50 focus:outline-none"
                       />
                     </td>
                   </tr>
@@ -328,7 +328,7 @@ export function MarketListTab({
         <button
           type="button"
           onClick={() => setDraftName("")}
-          className="rounded-lg border border-teal-600 bg-teal-600 px-4 py-1.5 text-[13px] font-semibold text-white transition hover:bg-teal-500"
+          className="rounded-lg border border-accent bg-accent px-4 py-1.5 text-[13px] font-semibold text-on-accent transition hover:opacity-90"
         >
           {t("playerMarket.newLabel")}
         </button>
@@ -336,12 +336,12 @@ export function MarketListTab({
           type="button"
           onClick={handleSaveAll}
           disabled={saving}
-          className="rounded-lg border border-teal-600 bg-teal-600 px-4 py-1.5 text-[13px] font-semibold text-white transition hover:bg-teal-500 disabled:opacity-50"
+          className="rounded-lg border border-accent bg-accent px-4 py-1.5 text-[13px] font-semibold text-on-accent transition hover:opacity-90 disabled:opacity-50"
         >
           {saving ? t("playerMarket.sendingLabel") : t("playerMarket.saveLabel")}
         </button>
         {savedAt !== null && !saving && (
-          <span className="text-[12px] text-teal-400">{t("playerMarket.savedLabel")}</span>
+          <span className="text-[12px] text-accent-ink">{t("playerMarket.savedLabel")}</span>
         )}
       </div>
 
@@ -378,7 +378,7 @@ export function MarketListTab({
                     onChange={(e) =>
                       setTemplateIds((prev) => ({ ...prev, [m.key]: e.target.value }))
                     }
-                    className="w-36 rounded border border-line bg-field px-1.5 py-0.5 text-[11px] text-ink focus:border-teal-500/50 focus:outline-none"
+                    className="w-36 rounded border border-line bg-field px-1.5 py-0.5 text-[11px] text-ink focus:border-accent/50 focus:outline-none"
                   />
                 </td>
                 <td className="px-2 py-1.5">
@@ -387,7 +387,7 @@ export function MarketListTab({
                     onChange={(e) =>
                       setTypes((prev) => ({ ...prev, [m.key]: e.target.value as MarketType }))
                     }
-                    className="rounded border border-line bg-field px-1.5 py-0.5 text-[11px] text-ink focus:border-teal-500/50 focus:outline-none"
+                    className="rounded border border-line bg-field px-1.5 py-0.5 text-[11px] text-ink focus:border-accent/50 focus:outline-none"
                   >
                     <option value="static">{t("playerMarket.staticLabel")}</option>
                     <option value="dynamic">{t("playerMarket.dynamicLabel")}</option>
@@ -399,7 +399,7 @@ export function MarketListTab({
                       type="button"
                       onClick={() => handleDelete(m.key)}
                       title={t("playerMarket.deleteLabel")}
-                      className="rounded px-1.5 py-0.5 text-[13px] font-semibold text-red-400/70 transition hover:bg-red-500/10 hover:text-red-400"
+                      className="rounded px-1.5 py-0.5 text-[13px] font-semibold text-neg/70 transition hover:bg-neg/10 hover:text-neg"
                     >
                       ×
                     </button>
@@ -423,7 +423,7 @@ export function MarketListTab({
                       if (e.key === "Enter") saveDraftMarket();
                       if (e.key === "Escape") setDraftName(null);
                     }}
-                    className="w-40 rounded border border-teal-500/40 bg-field px-1.5 py-0.5 text-[12px] text-ink placeholder-ink-3 focus:border-teal-500/70 focus:outline-none"
+                    className="w-40 rounded border border-accent/40 bg-field px-1.5 py-0.5 text-[12px] text-ink placeholder-ink-3 focus:border-accent/70 focus:outline-none"
                   />
                 </td>
                 <td className="px-2 py-1.5">
@@ -436,14 +436,14 @@ export function MarketListTab({
                       if (e.key === "Enter") saveDraftMarket();
                       if (e.key === "Escape") setDraftName(null);
                     }}
-                    className="w-36 rounded border border-teal-500/40 bg-field px-1.5 py-0.5 text-[11px] text-ink placeholder-ink-3 focus:border-teal-500/70 focus:outline-none"
+                    className="w-36 rounded border border-accent/40 bg-field px-1.5 py-0.5 text-[11px] text-ink placeholder-ink-3 focus:border-accent/70 focus:outline-none"
                   />
                 </td>
                 <td className="px-2 py-1.5">
                   <select
                     value={draftType}
                     onChange={(e) => setDraftType(e.target.value as MarketType)}
-                    className="rounded border border-line bg-field px-1.5 py-0.5 text-[11px] text-ink focus:border-teal-500/50 focus:outline-none"
+                    className="rounded border border-line bg-field px-1.5 py-0.5 text-[11px] text-ink focus:border-accent/50 focus:outline-none"
                   >
                     <option value="static">{t("playerMarket.staticLabel")}</option>
                     <option value="dynamic">{t("playerMarket.dynamicLabel")}</option>
@@ -454,7 +454,7 @@ export function MarketListTab({
                     type="button"
                     onClick={saveDraftMarket}
                     title={t("playerMarket.saveLabel")}
-                    className="rounded px-1.5 py-0.5 text-[13px] font-semibold text-teal-300 transition hover:bg-teal-500/10"
+                    className="rounded px-1.5 py-0.5 text-[13px] font-semibold text-accent-ink transition hover:opacity-90/10"
                   >
                     ✓
                   </button>
@@ -590,7 +590,7 @@ export function InputTab({
   const thClass = "px-2 py-2 whitespace-nowrap";
   const tdClass = "px-2 py-1.5 text-ink-2 whitespace-nowrap tabular-nums";
   const deleteBtnClass =
-    "rounded px-1.5 py-0.5 text-[13px] font-semibold text-red-400/70 transition hover:bg-red-500/10 hover:text-red-400";
+    "rounded px-1.5 py-0.5 text-[13px] font-semibold text-neg/70 transition hover:bg-neg/10 hover:text-neg";
 
   return (
     <div className="rounded-xl border border-line bg-card px-5 py-4">
@@ -615,7 +615,7 @@ export function InputTab({
             type="button"
             onClick={handleExport}
             disabled={rowCount === 0}
-            className="rounded-lg border border-teal-600 bg-teal-600 px-4 py-1.5 text-[13px] font-semibold text-white transition hover:bg-teal-500 disabled:opacity-50"
+            className="rounded-lg border border-accent bg-accent px-4 py-1.5 text-[13px] font-semibold text-on-accent transition hover:opacity-90 disabled:opacity-50"
           >
             {t("playerMarket.printLabel")}
           </button>
@@ -623,7 +623,7 @@ export function InputTab({
             type="button"
             onClick={() => onClear(segment)}
             disabled={rowCount === 0}
-            className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-1.5 text-[13px] font-semibold text-red-400 transition hover:bg-red-500/20 disabled:opacity-50"
+            className="rounded-lg border border-neg/30 bg-neg/10 px-4 py-1.5 text-[13px] font-semibold text-neg transition hover:bg-neg/20 disabled:opacity-50"
           >
             {t("playerMarket.clearLabel")}
           </button>
@@ -780,12 +780,12 @@ export function FixtureIdTab({ fixtures }: { fixtures: UpcomingFixture[] }) {
           type="button"
           onClick={handleSave}
           disabled={saving || loading}
-          className="rounded-lg border border-teal-600 bg-teal-600 px-4 py-1.5 text-[13px] font-semibold text-white transition hover:bg-teal-500 disabled:opacity-50"
+          className="rounded-lg border border-accent bg-accent px-4 py-1.5 text-[13px] font-semibold text-on-accent transition hover:opacity-90 disabled:opacity-50"
         >
           {saving ? t("playerMarket.sendingLabel") : t("playerMarket.saveLabel")}
         </button>
         {savedAt !== null && !saving && (
-          <span className="text-[12px] text-teal-400">{t("playerMarket.savedLabel")}</span>
+          <span className="text-[12px] text-accent-ink">{t("playerMarket.savedLabel")}</span>
         )}
         <button
           type="button"
@@ -823,7 +823,7 @@ export function FixtureIdTab({ fixtures }: { fixtures: UpcomingFixture[] }) {
                         onChange={(e) =>
                           setValues((prev) => ({ ...prev, [f.fixture_id]: e.target.value }))
                         }
-                        className="w-36 rounded border border-line bg-field px-1.5 py-0.5 text-[11px] text-ink focus:border-teal-500/50 focus:outline-none"
+                        className="w-36 rounded border border-line bg-field px-1.5 py-0.5 text-[11px] text-ink focus:border-accent/50 focus:outline-none"
                       />
                       {suggestion && (
                         <button
@@ -832,7 +832,7 @@ export function FixtureIdTab({ fixtures }: { fixtures: UpcomingFixture[] }) {
                             setValues((prev) => ({ ...prev, [f.fixture_id]: suggestion }))
                           }
                           title={`${t("playerMarket.betsHint")}: ${suggestion}`}
-                          className="shrink-0 rounded border border-teal-500/40 bg-teal-500/10 px-1.5 py-0.5 text-[10px] font-medium text-teal-300 hover:bg-teal-500/20"
+                          className="shrink-0 rounded border border-accent/40 bg-accent/10 px-1.5 py-0.5 text-[10px] font-medium text-accent-ink hover:bg-accent/20"
                         >
                           {t("playerMarket.betsApply")}
                         </button>

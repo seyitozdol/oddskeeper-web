@@ -88,7 +88,7 @@ export default async function TeamPlayerStatsPanel({
           {availableComps.map((c) => {
             const current = c.key === comp;
             const cls = current
-              ? "inline-flex items-center gap-1.5 rounded-lg bg-accent px-2.5 py-1.5 text-[12px] font-semibold text-white"
+              ? "inline-flex items-center gap-1.5 rounded-lg bg-accent px-2.5 py-1.5 text-[12px] font-semibold text-on-accent"
               : "inline-flex items-center gap-1.5 rounded-lg border border-line bg-card-2 px-2.5 py-1.5 text-[12px] font-medium text-ink-2 transition hover:text-ink";
             const inner = (
               <>

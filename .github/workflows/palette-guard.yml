@@ -1,0 +1,16 @@
+name: palette-guard
+
+# Tema token bekcisi (D-1, karar 2026-08-19): frontend'de hardcoded Tailwind
+# palet sinifi gorulurse build kirilir. Detay: .github/scripts/check_palette_tokens.sh
+on:
+  push:
+  pull_request:
+
+jobs:
+  palette-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Frontend'de palet sinifi taramasi
+        run: bash .github/scripts/check_palette_tokens.sh

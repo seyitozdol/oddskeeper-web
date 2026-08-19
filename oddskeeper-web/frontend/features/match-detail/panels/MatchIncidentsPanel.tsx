@@ -7,11 +7,11 @@ type MatchIncidentsPanelProps = {
 
 function getSideBadgeClass(side: string | null) {
   if (side === "home") {
-    return "border-sky-500/25 bg-sky-500/10 text-sky-300";
+    return "border-accent/25 bg-accent/10 text-accent-ink";
   }
 
   if (side === "away") {
-    return "border-violet-500/25 bg-violet-500/10 text-violet-300";
+    return "border-warn/25 bg-warn/10 text-warn";
   }
 
   return "border-line bg-veil text-ink-2";

@@ -8,7 +8,7 @@ function getBadgeClass(resultCode: PlayerResultBadgeProps["resultCode"]) {
   }
 
   if (resultCode === "D") {
-    return "border-amber-500/25 bg-amber-400/15 text-amber-500";
+    return "border-warn/25 bg-warn/15 text-warn";
   }
 
   if (resultCode === "L") {

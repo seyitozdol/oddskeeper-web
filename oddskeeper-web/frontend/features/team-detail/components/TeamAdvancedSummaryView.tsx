@@ -41,7 +41,7 @@ function getToneClasses(
   }
 
   if (tone === "warning") {
-    return "border-amber-500/20 bg-card";
+    return "border-warn/20 bg-card";
   }
 
   return "border-line bg-veil";

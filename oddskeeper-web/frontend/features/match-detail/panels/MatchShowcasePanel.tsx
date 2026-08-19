@@ -170,7 +170,7 @@ function ContributorTable({
                     {(p.cards_red ?? 0) > 0 ? (
                       <span className="h-3 w-2 shrink-0 rounded-[2px] bg-neg" />
                     ) : (p.cards_yellow ?? 0) > 0 ? (
-                      <span className="h-3 w-2 shrink-0 rounded-[2px] bg-amber-400" />
+                      <span className="h-3 w-2 shrink-0 rounded-[2px] bg-warn" />
                     ) : null}
                   </span>
                 </td>

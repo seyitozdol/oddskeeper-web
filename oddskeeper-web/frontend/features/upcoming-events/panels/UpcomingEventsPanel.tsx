@@ -164,9 +164,9 @@ export default function UpcomingEventsPanel({
 
   const badgeClass = (tone: "live" | "soon" | "normal") =>
     tone === "live"
-      ? "bg-red-500/15 text-red-500"
+      ? "bg-neg/15 text-neg"
       : tone === "soon"
-        ? "bg-amber-500/15 text-amber-500"
+        ? "bg-warn/15 text-warn"
         : "bg-veil text-ink-2";
 
   // Uyari: rakip kaynakta (OddsPortal, bet365 veya BMBets) oran VAR ama
@@ -192,7 +192,7 @@ export default function UpcomingEventsPanel({
             key={i}
             viewBox="0 0 24 24"
             fill="currentColor"
-            className="h-2.5 w-2.5 shrink-0 text-amber-400"
+            className="h-2.5 w-2.5 shrink-0 text-warn"
             aria-hidden="true"
           >
             <path d="M12 2.5l2.9 6.06 6.6.79-4.86 4.53 1.28 6.52L12 17.9l-5.92 3.5 1.28-6.52L2.5 9.35l6.6-.79L12 2.5z" />
@@ -212,7 +212,7 @@ export default function UpcomingEventsPanel({
           strokeWidth="2"
           strokeLinecap="round"
           strokeLinejoin="round"
-          className="h-3.5 w-3.5 text-red-500"
+          className="h-3.5 w-3.5 text-neg"
           aria-hidden="true"
         >
           <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z" />
@@ -356,14 +356,14 @@ export default function UpcomingEventsPanel({
           title={t("upcomingEvents.hideLowProfileHint")}
           className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[13px] font-medium transition ${
             hideLowProfile
-              ? "border-amber-500/50 bg-amber-500/15 text-amber-500"
+              ? "border-warn/50 bg-warn/15 text-warn"
               : "border-line bg-veil text-ink-2 hover:text-ink"
           }`}
         >
           <span
             className={`flex h-3.5 w-3.5 items-center justify-center rounded-[3px] border ${
               hideLowProfile
-                ? "border-amber-500 bg-amber-500 text-white"
+                ? "border-warn bg-warn text-on-accent"
                 : "border-line-strong bg-transparent"
             }`}
             aria-hidden="true"
@@ -447,7 +447,7 @@ export default function UpcomingEventsPanel({
                         key={e.event_id}
                         className={`text-ink ${
                           alert
-                            ? "bg-red-500/[0.06] [&>td]:border-y [&>td]:border-red-500/70 [&>td:first-child]:border-l [&>td:last-child]:border-r"
+                            ? "bg-neg/[0.06] [&>td]:border-y [&>td]:border-neg/70 [&>td:first-child]:border-l [&>td:last-child]:border-r"
                             : "border-t border-line first:border-t-0"
                         }`}
                       >
@@ -493,7 +493,7 @@ export default function UpcomingEventsPanel({
                               />
                             </span>
                             {e.gender === "F" ? (
-                              <span className="shrink-0 rounded bg-fuchsia-500/15 px-1 py-0.5 text-[9px] font-semibold text-fuchsia-400">
+                              <span className="shrink-0 rounded bg-fuchsia-500/15 px-1 py-0.5 text-[9px] font-semibold text-fuchsia-700 dark:text-fuchsia-400">
                                 {t("upcomingEvents.women")}
                               </span>
                             ) : null}

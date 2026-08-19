@@ -276,7 +276,7 @@ export default function FixtureIdTab({
         <button
           onClick={save}
           disabled={status === "saving"}
-          className="rounded-md bg-accent px-3.5 py-1.5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
+          className="rounded-md bg-accent px-3.5 py-1.5 text-sm font-semibold text-on-accent hover:opacity-90 disabled:opacity-50"
         >
           {t("msm.save")}
         </button>
@@ -293,7 +293,7 @@ export default function FixtureIdTab({
         <button
           onClick={addManual}
           disabled={adding || !nh.name.trim() || !na.name.trim()}
-          className="rounded-md bg-accent px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-50"
+          className="rounded-md bg-accent px-3 py-1.5 text-xs font-semibold text-on-accent hover:opacity-90 disabled:opacity-50"
         >
           {t("msm.addFixture")}
         </button>
@@ -396,7 +396,7 @@ export default function FixtureIdTab({
                         {oddsStale(v, lk) && (
                           <span
                             title={t("msm.oddsStaleHint")}
-                            className="rounded border border-amber-500/40 bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-amber-600 dark:text-amber-300"
+                            className="rounded border border-warn/40 bg-warn/15 px-1.5 py-0.5 text-[10px] font-semibold text-warn"
                           >
                             ⟳ {t("msm.oddsStale")}
                           </span>

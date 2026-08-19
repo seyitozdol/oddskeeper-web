@@ -29,7 +29,7 @@ export default function CompetitionToggle({
           onClick={() => go(c.competition_id)}
           className={`rounded-md px-3 py-1 text-[12px] font-semibold transition ${
             c.competition_id === current
-              ? "bg-accent text-white"
+              ? "bg-accent text-on-accent"
               : "text-ink-2 hover:text-ink"
           }`}
         >

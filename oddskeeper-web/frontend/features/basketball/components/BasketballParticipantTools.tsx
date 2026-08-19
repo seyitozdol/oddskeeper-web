@@ -35,7 +35,7 @@ type Props = {
 type Tab = "model" | "players" | "fixtures" | "config" | "input";
 type InputType = "player" | "team";
 
-const btnSave = "rounded-md border border-teal-600 bg-teal-600 px-3 py-1.5 text-[12px] font-semibold text-white hover:bg-teal-500";
+const btnSave = "rounded-md border border-accent bg-accent px-3 py-1.5 text-[12px] font-semibold text-on-accent hover:opacity-90";
 const btnGhost = "rounded-md border border-line px-3 py-1.5 text-[12px] font-semibold text-ink-2 hover:text-ink";
 
 export default function BasketballParticipantTools({ splits, forms, windows, teamLogs, players, roles = [], league = "basketball" }: Props) {
@@ -190,8 +190,8 @@ function PlayerListTab({ players, playerIds, onSaved, league, t }: { players: Bk
         <span className="text-[11px] text-ink-3">{players.length}</span>
       </div>
       {dupGroups.length > 0 && (
-        <div className="mb-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2.5">
-          <div className="text-[12px] font-semibold text-amber-300">⚠ {t("basketball.dupTitle")} ({dupGroups.length})</div>
+        <div className="mb-3 rounded-lg border border-warn/30 bg-warn/10 px-3 py-2.5">
+          <div className="text-[12px] font-semibold text-warn">⚠ {t("basketball.dupTitle")} ({dupGroups.length})</div>
           <div className="mt-0.5 text-[11px] text-ink-3">{t("basketball.dupHint")}</div>
           <ul className="mt-2 space-y-1.5">
             {dupGroups.map((g) => {
@@ -208,7 +208,7 @@ function PlayerListTab({ players, playerIds, onSaved, league, t }: { players: Bk
                     </label>
                   ))}
                   <button onClick={() => mergeGroup(g)} disabled={merging === key}
-                    className="rounded-md border border-amber-500/40 bg-amber-500/15 px-2.5 py-0.5 text-[11px] font-semibold text-amber-200 hover:bg-amber-500/25 disabled:opacity-50">
+                    className="rounded-md border border-warn/40 bg-warn/15 px-2.5 py-0.5 text-[11px] font-semibold text-warn hover:bg-warn/25 disabled:opacity-50">
                     {merging === key ? t("basketball.merging") : t("basketball.merge")}
                   </button>
                 </li>
@@ -225,8 +225,8 @@ function PlayerListTab({ players, playerIds, onSaved, league, t }: { players: Bk
           </tr></thead>
           <tbody>
             {players.map((p) => (
-              <tr key={p.player_slug} className={`border-t border-line hover:bg-veil ${dupSlugs.has(p.player_slug) ? "bg-amber-500/5" : ""}`}>
-                <td className="px-2 py-1 text-ink whitespace-nowrap">{dupSlugs.has(p.player_slug) && <span className="mr-1 text-amber-400" title={t("basketball.dupTitle")}>⚠</span>}{p.player_name}</td>
+              <tr key={p.player_slug} className={`border-t border-line hover:bg-veil ${dupSlugs.has(p.player_slug) ? "bg-warn/5" : ""}`}>
+                <td className="px-2 py-1 text-ink whitespace-nowrap">{dupSlugs.has(p.player_slug) && <span className="mr-1 text-warn" title={t("basketball.dupTitle")}>⚠</span>}{p.player_name}</td>
                 <td className="px-2 py-1 text-ink-2 whitespace-nowrap">{p.team_name}</td>
                 <td className="px-2 py-1 text-right tabular-nums text-ink-3">{p.games}</td>
                 <td className="px-2 py-1"><input value={val(p.player_slug)} onChange={(e) => setEdits((s) => ({ ...s, [p.player_slug]: e.target.value }))}
@@ -687,7 +687,7 @@ function InputTab({ allRows, setRows, initialType, onExported, t }: {
       <div className="mb-3 flex flex-wrap items-center gap-1.5">
         {(["player", "team"] as const).map((k) => (
           <button key={k} onClick={() => setType(k)}
-            className={`rounded-full px-4 py-1.5 text-xs font-semibold transition ${type === k ? "bg-accent text-white" : "bg-card-2 text-ink-2 hover:text-ink"}`}>
+            className={`rounded-full px-4 py-1.5 text-xs font-semibold transition ${type === k ? "bg-accent text-on-accent" : "bg-card-2 text-ink-2 hover:text-ink"}`}>
             {k === "team" ? "Team" : "Player"}{cnt(k) ? ` (${cnt(k)})` : ""}
           </button>
         ))}

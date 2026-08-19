@@ -170,7 +170,7 @@ export default function ConfigTab({
           <button
             onClick={saveAll}
             disabled={status === "saving"}
-            className="ml-auto rounded-md bg-accent px-3.5 py-1.5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
+            className="ml-auto rounded-md bg-accent px-3.5 py-1.5 text-sm font-semibold text-on-accent hover:opacity-90 disabled:opacity-50"
           >
             {t("msm.save")}
           </button>

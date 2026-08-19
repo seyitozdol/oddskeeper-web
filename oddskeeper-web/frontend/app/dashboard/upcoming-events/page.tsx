@@ -30,7 +30,7 @@ export default async function UpcomingEventsPage() {
           <div className="flex items-center gap-2">
             {lastUpdated ? (
               <span className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-veil px-2.5 py-1 text-[12px] text-ink-2">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                <span className="h-1.5 w-1.5 rounded-full bg-pos" />
                 <span className="text-ink-3">
                   {t("upcomingEvents.lastUpdated")}:
                 </span>

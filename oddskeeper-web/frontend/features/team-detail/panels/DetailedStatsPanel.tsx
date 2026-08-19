@@ -188,7 +188,7 @@ function getRankTone(rank: number | null | undefined) {
   }
 
   if (rank >= 11) {
-    return "text-amber-500";
+    return "text-warn";
   }
 
   return "text-ink";
@@ -279,7 +279,7 @@ function getSummaryToneClasses(tone: SummaryTone) {
   }
 
   if (tone === "warning") {
-    return "border-amber-500/20 bg-card";
+    return "border-warn/20 bg-card";
   }
 
   return "border-line bg-veil";

@@ -96,9 +96,9 @@ export default function RefreshNowButton({
       title={t("upcomingEvents.refreshHint")}
       className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[12px] font-medium transition disabled:cursor-not-allowed ${
         phase === "error"
-          ? "border-red-500/50 text-red-500"
+          ? "border-neg/50 text-neg"
           : phase === "done"
-            ? "border-emerald-500/50 text-emerald-500"
+            ? "border-pos/50 text-pos"
             : "border-line bg-veil text-ink-2 hover:border-line-strong hover:text-ink"
       }`}
     >

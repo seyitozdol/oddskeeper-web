@@ -102,7 +102,7 @@ function NumInput({ value, onChange, step = 0.1, w = "w-16", warn = false }: { v
     <input type="number" value={buf ?? String(value)} step={step}
       onChange={(e) => { const s = e.target.value; setBuf(s); const v = parseFloat(s); if (!Number.isNaN(v)) onChange(v); }}
       onBlur={() => setBuf(null)}
-      className={`${w} rounded-md border bg-field px-2 py-1 text-right text-[13px] tabular-nums text-ink outline-none focus:border-line-strong ${warn ? "border-amber-500/70" : "border-line"}`} />
+      className={`${w} rounded-md border bg-field px-2 py-1 text-right text-[13px] tabular-nums text-ink outline-none focus:border-line-strong ${warn ? "border-warn/70" : "border-line"}`} />
   );
 }
 
@@ -524,7 +524,7 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
           {/* tab bar */}
           <div className="flex gap-1.5">
             {([["team", t("basketball.tabTeamMetrics")], ["player", t("basketball.tabPlayerDist")]] as const).map(([k, lbl]) => (
-              <button key={k} onClick={() => setTab(k)} className={`rounded-full px-4 py-1.5 text-xs font-semibold ${tab === k ? "bg-accent text-white" : "bg-card-2 text-ink-2 hover:text-ink"}`}>{lbl}</button>
+              <button key={k} onClick={() => setTab(k)} className={`rounded-full px-4 py-1.5 text-xs font-semibold ${tab === k ? "bg-accent text-on-accent" : "bg-card-2 text-ink-2 hover:text-ink"}`}>{lbl}</button>
             ))}
           </div>
 
@@ -536,7 +536,7 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
                 {historyNotice ? <span className="rounded-md bg-veil px-2 py-1 text-[11px] font-semibold text-accent-ink">{historyNotice}</span> : null}
                 <div className="ml-auto">{historyDropdown}</div>
                 <button onClick={resetTeam} className="rounded-md border border-line px-3 py-2 text-[12px] font-semibold text-ink-2 hover:text-ink">{t("basketball.reset")}</button>
-                <button onClick={addTeams} className={`rounded-lg px-5 py-2.5 text-[14px] font-semibold text-white shadow-sm hover:opacity-90 ${teamJustAdded != null ? "bg-emerald-600" : "bg-accent"}`}>{teamJustAdded != null ? `Added ${teamJustAdded}!` : t("basketball.addToInput")}</button>
+                <button onClick={addTeams} className={`rounded-lg px-5 py-2.5 text-[14px] font-semibold text-on-accent shadow-sm hover:opacity-90 ${teamJustAdded != null ? "bg-pos" : "bg-accent"}`}>{teamJustAdded != null ? `Added ${teamJustAdded}!` : t("basketball.addToInput")}</button>
               </div>
               {/* Home | Away | Total yan yana (compact) */}
               <div className="grid gap-4 lg:grid-cols-3">
@@ -623,7 +623,7 @@ function TeamMetricTable({ slug, side, name, crestUrl, eff, markets, seasonAvg, 
                 <td className="px-1 py-0.5 text-center">{isPts ? null : <input type="checkbox" checked={on} onChange={(e) => setTeamTick(key, e.target.checked)} className="accent-[var(--accent)]" />}</td>
                 <td className="px-1 py-0.5 text-ink whitespace-nowrap">
                   <span title={metricInfo(met.key, locale)} className="cursor-help border-b border-dotted border-ink-3/40">{metricLabel(met.key, locale, met.label)}</span>
-                  {inInput(side, met.key) ? <span title={t("basketball.alreadyAdded")} className="ml-1 text-[10px] font-bold text-amber-400">⚠</span> : null}
+                  {inInput(side, met.key) ? <span title={t("basketball.alreadyAdded")} className="ml-1 text-[10px] font-bold text-warn">⚠</span> : null}
                 </td>
                 <td className="px-1 py-0.5 text-right tabular-nums text-ink-3">{fmt(seasonAvg(slug, met.key))}</td>
                 <td className="px-1 py-0.5 text-right tabular-nums text-ink-3">{l10w == null ? "-" : fmt(l10w)}</td>
@@ -826,11 +826,11 @@ function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effA
             <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-3">{t("basketball.pickTeam")}</span>
             <div className="flex gap-1.5">
               {(["home", "away"] as const).map((sd) => (
-                <button key={sd} onClick={() => { setSide(sd); setSelPlayer(null); }} className={`rounded-md px-3.5 py-1 text-[12px] font-semibold transition-colors ${side === sd ? "bg-accent text-white shadow-sm" : "bg-card-2 text-ink-3 hover:text-ink"}`}>{sd === "home" ? homeName : awayName}</button>
+                <button key={sd} onClick={() => { setSide(sd); setSelPlayer(null); }} className={`rounded-md px-3.5 py-1 text-[12px] font-semibold transition-colors ${side === sd ? "bg-accent text-on-accent shadow-sm" : "bg-card-2 text-ink-3 hover:text-ink"}`}>{sd === "home" ? homeName : awayName}</button>
               ))}
             </div>
             {euroTeamSlugs.has(slug) ? (
-              <span title={t("basketball.euroTeamNote")} className="inline-flex cursor-help items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-semibold text-amber-300">
+              <span title={t("basketball.euroTeamNote")} className="inline-flex cursor-help items-center gap-1 rounded-full bg-warn/15 px-2 py-0.5 text-[11px] font-semibold text-warn">
                 ⚠ {t("basketball.euroTeamBadge")}
               </span>
             ) : null}
@@ -856,7 +856,7 @@ function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effA
           {historyNotice ? <span className="rounded-md bg-veil px-2 py-1 text-[11px] font-semibold text-accent-ink">{historyNotice}</span> : null}
           {historySlot}
           <button onClick={onReset} className="rounded-md border border-line px-3 py-2 text-[12px] font-semibold text-ink-2 hover:text-ink">{t("basketball.reset")}</button>
-          <button onClick={addCurrent} className={`rounded-lg px-5 py-2.5 text-[14px] font-semibold text-white shadow-sm hover:opacity-90 ${playerJustAdded != null ? "bg-emerald-600" : "bg-accent"}`}>
+          <button onClick={addCurrent} className={`rounded-lg px-5 py-2.5 text-[14px] font-semibold text-on-accent shadow-sm hover:opacity-90 ${playerJustAdded != null ? "bg-pos" : "bg-accent"}`}>
             {playerJustAdded != null ? `Added ${playerJustAdded}!` : t("basketball.addToInput")}
           </button>
         </div>
@@ -901,9 +901,9 @@ function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effA
                       <PlayerAvatar src={playerPhotoUrl(roleOf(w))} name={w.player_name} size={28} />
                       <button onClick={() => setSelPlayer(w.player_slug === selPlayer ? null : w.player_slug)} className="text-ink hover:text-accent-ink">{w.player_name}</button>
                     </span>
-                    {alreadyIn(w) ? <span title={t("basketball.alreadyAdded")} className="ml-1.5 text-[11px] font-bold text-amber-400">⚠</span> : null}
+                    {alreadyIn(w) ? <span title={t("basketball.alreadyAdded")} className="ml-1.5 text-[11px] font-bold text-warn">⚠</span> : null}
                     {(leaderBy.get(`${slug}:${w.player_slug}`) ?? []).map((lk) => (
-                      <span key={lk} title={`${t("basketball.leaderTitle")}: ${t(lk)}`} className="ml-1 inline-block rounded bg-amber-500/15 px-1 py-0.5 text-[9px] font-bold text-amber-300">★{t(lk)}</span>
+                      <span key={lk} title={`${t("basketball.leaderTitle")}: ${t(lk)}`} className="ml-1 inline-block rounded bg-warn/15 px-1 py-0.5 text-[9px] font-bold text-warn">★{t(lk)}</span>
                     ))}
                   </td>
                   <td className="px-2 py-1 text-center">

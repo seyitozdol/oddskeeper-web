@@ -121,7 +121,7 @@ function MetricRow({
       <div className="flex items-center gap-2">
         <div className="flex-1 h-1.5 bg-veil rounded-full overflow-hidden">
           <div
-            className="h-full rounded-full bg-blue-500"
+            className="h-full rounded-full bg-accent"
             style={{ width: `${wA}%` }}
           />
         </div>
@@ -148,7 +148,7 @@ function MetricRow({
       <div className="flex items-center gap-2 flex-row-reverse">
         <div className="flex-1 h-1.5 bg-veil rounded-full overflow-hidden">
           <div
-            className="h-full rounded-full bg-orange-500 ml-auto"
+            className="h-full rounded-full bg-warn ml-auto"
             style={{ width: `${wB}%`, marginLeft: "auto" }}
           />
         </div>

@@ -24,6 +24,7 @@
   --on-accent: #06121f;
   --pos: #6ee7b7;
   --neg: #fda4af;
+  --warn: #fcd34d;
 }
 
 [data-theme="calimla-light"] {
@@ -43,6 +44,7 @@
   --on-accent: #faf6ee;
   --pos: #5a7a3a;
   --neg: #a83d24;
+  --warn: #92610b;
 }
 
 [data-theme="calimla-dark"] {
@@ -62,7 +64,11 @@
   --on-accent: #f4ead5;
   --pos: #7a9e5a;
   --neg: #b8523f;
+  --warn: #d9a842;
 }
+
+/* dark: varyanti OS ayarina degil site temasina baksin (iki koyu temamiz var). */
+@custom-variant dark (&:where([data-theme="night"], [data-theme="night"] *, [data-theme="calimla-dark"], [data-theme="calimla-dark"] *));
 
 @theme inline {
   --color-canvas: var(--canvas);
@@ -81,6 +87,7 @@
   --color-on-accent: var(--on-accent);
   --color-pos: var(--pos);
   --color-neg: var(--neg);
+  --color-warn: var(--warn);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }

@@ -59,7 +59,7 @@ export function ConfirmDialogHost() {
           <button
             type="button"
             onClick={() => close(true)}
-            className="rounded-md bg-accent px-3.5 py-1.5 text-sm font-semibold text-white transition hover:opacity-90"
+            className="rounded-md bg-accent px-3.5 py-1.5 text-sm font-semibold text-on-accent transition hover:opacity-90"
           >
             OK
           </button>

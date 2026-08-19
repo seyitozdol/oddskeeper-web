@@ -449,7 +449,7 @@ export default function PlayerProfileDrawer({
               <Link
                 href={detailHref}
                 target="_blank"
-                className="mt-4 flex items-center justify-center rounded-lg border border-teal-500/30 bg-teal-500/10 px-4 py-2 text-[13px] font-semibold text-teal-300 transition hover:bg-teal-500/20"
+                className="mt-4 flex items-center justify-center rounded-lg border border-accent/30 bg-accent/10 px-4 py-2 text-[13px] font-semibold text-accent-ink transition hover:bg-accent/20"
               >
                 {t("playerMarket.openFullProfile")}
               </Link>

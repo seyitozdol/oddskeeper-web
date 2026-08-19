@@ -23,6 +23,20 @@ const ENTRIES: Entry[] = [
   {
     date: { en: "19 August", tr: "19 Ağustos" },
     title: {
+      en: "Light theme readability fixes",
+      tr: "Açık tema okunurluk düzeltmeleri",
+    },
+    tag: TAG_FIX,
+    items: [
+      {
+        en: "On the Calimla Light theme some controls were unreadable or invisible: the Apply button in the Match Stats Model suggestion box, W/D/L form badges on team pages, and various warning and status labels. All colors now come from the theme palette, so badges, buttons and highlights stay readable on Night, Calimla Light and Calimla Dark alike. Player Market screens also switched from their fixed teal to the theme accent color.",
+        tr: "Calimla Light temasında bazı öğeler okunmuyor ya da hiç görünmüyordu: Match Stats Model öneri kutusundaki Apply butonu, takım sayfalarındaki G/B/M form rozetleri ve çeşitli uyarı/durum etiketleri. Artık tüm renkler tema paletinden geliyor; rozetler, butonlar ve vurgular Night, Calimla Light ve Calimla Dark'ta aynı şekilde okunur kalıyor. Player Market ekranları da sabit turkuaz yerine temanın vurgu rengine geçti.",
+      },
+    ],
+  },
+  {
+    date: { en: "19 August", tr: "19 Ağustos" },
+    title: {
       en: "Match Stats Model: cleaner fixture list",
       tr: "Match Stats Model: daha sade fikstür listesi",
     },

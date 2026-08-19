@@ -961,8 +961,8 @@ export default function ResmiMatchStatsModel({
               disabled={currentRows.length === 0}
               className={`rounded-lg border px-4 py-1.5 text-[13px] font-semibold transition disabled:opacity-40 ${
                 justAdded != null
-                  ? "border-emerald-600 bg-emerald-600 text-white"
-                  : "border-blue-500/50 bg-blue-500/15 text-blue-600 hover:bg-blue-500/25 dark:text-blue-300"
+                  ? "border-pos bg-pos text-on-accent"
+                  : "border-accent/50 bg-accent/15 text-accent-ink hover:bg-accent/25"
               }`}
             >
               {justAdded != null ? `Added ${justAdded}!` : `${t("msm.addToInput")} (${currentRows.length})`}
@@ -1000,7 +1000,7 @@ export default function ResmiMatchStatsModel({
             </span>
             <div className="ml-auto flex items-center gap-2">
               <button onClick={exportXlsx} disabled={importList.length === 0}
-                className="rounded-md bg-accent px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-50">
+                className="rounded-md bg-accent px-3 py-1.5 text-xs font-semibold text-on-accent hover:opacity-90 disabled:opacity-50">
                 {t("msm.exportXlsx")}
               </button>
               <button onClick={() => setImportList([])} disabled={importList.length === 0}
@@ -1130,7 +1130,7 @@ export default function ResmiMatchStatsModel({
                   });
                   if (sides.length === 0) return null;
                   return (
-                    <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-2.5 space-y-2">
+                    <div className="rounded-md border border-warn/40 bg-warn/10 p-2.5 space-y-2">
                       <div className="text-[10px] font-medium uppercase tracking-wide text-ink-3">
                         {t("msm.proxyTitle")}
                       </div>
@@ -1161,7 +1161,7 @@ export default function ResmiMatchStatsModel({
                                 key={sg.slug}
                                 onClick={() => applyProxy(s, sg.slug)}
                                 title={t("msm.proxySuggested")}
-                                className="rounded border border-amber-500/50 bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-medium text-amber-500 hover:bg-amber-500/25"
+                                className="rounded border border-warn/50 bg-warn/15 px-1.5 py-0.5 text-[10px] font-medium text-warn hover:bg-warn/25"
                               >
                                 {sg.name}?
                               </button>
@@ -1186,8 +1186,8 @@ export default function ResmiMatchStatsModel({
                     ))}
                   </select>
                   {estimatedSlugs.size > 0 && (
-                    <p className="mt-1 flex items-start gap-1 text-[10px] leading-snug text-amber-600 dark:text-amber-400">
-                      <span className="mt-px shrink-0 rounded bg-amber-500/15 px-1 font-semibold">≈ {t("msm.estimated")}</span>
+                    <p className="mt-1 flex items-start gap-1 text-[10px] leading-snug text-warn">
+                      <span className="mt-px shrink-0 rounded bg-warn/15 px-1 font-semibold">≈ {t("msm.estimated")}</span>
                       <span>
                         {[...estimatedSlugs]
                           .map((s) => (s === homeSlug ? homeName : s === awaySlug ? awayName : s))
@@ -1280,7 +1280,7 @@ export default function ResmiMatchStatsModel({
                       setManHome(shotSuggestion.newH.toFixed(2));
                       setManAway(shotSuggestion.newA.toFixed(2));
                     }}
-                    className="ml-auto rounded-md bg-accent px-2 py-0.5 text-[10px] font-semibold text-accent-ink hover:opacity-90"
+                    className="ml-auto rounded-md bg-accent px-2 py-0.5 text-[10px] font-semibold text-on-accent hover:opacity-90"
                   >
                     {t("msm.apply")}
                   </button>
@@ -1311,7 +1311,7 @@ export default function ResmiMatchStatsModel({
                         <span className="ml-auto flex items-center gap-1.5">
                           <span className="text-ink-2">{t("msm.refereeSuggestion")}: <b className="tabular-nums text-ink">{exp.refereeSuggestedTotal.toFixed(2)}</b></span>
                           <button onClick={() => setManTotal(exp.refereeSuggestedTotal!.toFixed(3))}
-                            className="rounded-md bg-accent px-2 py-0.5 text-[10px] font-semibold text-accent-ink hover:opacity-90">{t("msm.apply")}</button>
+                            className="rounded-md bg-accent px-2 py-0.5 text-[10px] font-semibold text-on-accent hover:opacity-90">{t("msm.apply")}</button>
                         </span>
                       )}
                     </div>

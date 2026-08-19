@@ -50,7 +50,7 @@ function marketList(config: PmMarketConfig[], grp: "team" | "player"): VbMkt[] {
   }));
 }
 
-const btnSave = "rounded-md border border-teal-600 bg-teal-600 px-3 py-1.5 text-[12px] font-semibold text-white hover:bg-teal-500";
+const btnSave = "rounded-md border border-accent bg-accent px-3 py-1.5 text-[12px] font-semibold text-on-accent hover:opacity-90";
 const btnGhost = "rounded-md border border-line px-3 py-1.5 text-[12px] font-semibold text-ink-2 hover:text-ink";
 
 function fmt(v: number | null | undefined, d = 1) { if (v == null || Number.isNaN(v)) return "-"; return Number(v).toFixed(d); }
@@ -287,7 +287,7 @@ function ModelTab({ teamMatches, playerMatches, players, teams, fixtures, config
         <>
           <div className="flex gap-1.5">
             {([["team", t("volleyball.tabTeamMetrics")], ["player", t("volleyball.tabPlayerDist")]] as const).map(([k, lbl]) => (
-              <button key={k} onClick={() => setSub(k)} className={`rounded-full px-4 py-1.5 text-xs font-semibold ${sub === k ? "bg-accent text-white" : "bg-card-2 text-ink-2 hover:text-ink"}`}>{lbl}</button>
+              <button key={k} onClick={() => setSub(k)} className={`rounded-full px-4 py-1.5 text-xs font-semibold ${sub === k ? "bg-accent text-on-accent" : "bg-card-2 text-ink-2 hover:text-ink"}`}>{lbl}</button>
             ))}
           </div>
 
@@ -299,7 +299,7 @@ function ModelTab({ teamMatches, playerMatches, players, teams, fixtures, config
                 {historyNotice ? <span className="rounded-md bg-veil px-2 py-1 text-[11px] font-semibold text-accent-ink">{historyNotice}</span> : null}
                 <div className="ml-auto">{historyDropdown}</div>
                 <button onClick={resetTeam} className="rounded-md border border-line px-3 py-2 text-[12px] font-semibold text-ink-2 hover:text-ink">{t("volleyball.reset")}</button>
-                <button onClick={addTeam} className={`rounded-lg px-5 py-2.5 text-[14px] font-semibold text-white shadow-sm hover:opacity-90 ${teamJustAdded != null ? "bg-emerald-600" : "bg-accent"}`}>{teamJustAdded != null ? `Added ${teamJustAdded}!` : t("volleyball.addToInput")}</button>
+                <button onClick={addTeam} className={`rounded-lg px-5 py-2.5 text-[14px] font-semibold text-on-accent shadow-sm hover:opacity-90 ${teamJustAdded != null ? "bg-pos" : "bg-accent"}`}>{teamJustAdded != null ? `Added ${teamJustAdded}!` : t("volleyball.addToInput")}</button>
               </div>
               <div className="grid gap-4 lg:grid-cols-3">
                 <TeamMetricTable title={homeName} markets={teamMkts} aggOf={(m) => teamAgg(homeCode, m.base)} traderOf={(m) => traderOf(homeCode, m)}
@@ -538,14 +538,14 @@ function PlayerDist({ playerMatches, players, markets, playerCfg, playerIds, fix
         <div className="flex items-center gap-1.5">
           <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-3">{t("volleyball.pickTeam")}</span>
           {(["home", "away"] as const).map((s) => (
-            <button key={s} onClick={() => setSide(s)} className={`rounded-md px-3 py-1 text-[12px] font-semibold ${side === s ? "bg-accent text-white" : "bg-card-2 text-ink-3 hover:text-ink"}`}>{s === "home" ? homeName : awayName}</button>
+            <button key={s} onClick={() => setSide(s)} className={`rounded-md px-3 py-1 text-[12px] font-semibold ${side === s ? "bg-accent text-on-accent" : "bg-card-2 text-ink-3 hover:text-ink"}`}>{s === "home" ? homeName : awayName}</button>
           ))}
         </div>
         {status ? <span className="rounded-md bg-veil px-2 py-1 text-[11px] font-semibold text-ink-2">{status}</span> : null}
         {historyNotice ? <span className="rounded-md bg-veil px-2 py-1 text-[11px] font-semibold text-accent-ink">{historyNotice}</span> : null}
         <div className="ml-auto">{historySlot}</div>
         <button onClick={() => setVals({})} className="rounded-md border border-line px-3 py-2 text-[12px] font-semibold text-ink-2 hover:text-ink">{t("volleyball.reset")}</button>
-        <button onClick={add} className={`rounded-lg px-5 py-2.5 text-[14px] font-semibold text-white shadow-sm hover:opacity-90 ${justAdded != null ? "bg-emerald-600" : "bg-accent"}`}>{justAdded != null ? `Added ${justAdded}!` : t("volleyball.addToInput")}</button>
+        <button onClick={add} className={`rounded-lg px-5 py-2.5 text-[14px] font-semibold text-on-accent shadow-sm hover:opacity-90 ${justAdded != null ? "bg-pos" : "bg-accent"}`}>{justAdded != null ? `Added ${justAdded}!` : t("volleyball.addToInput")}</button>
       </div>
       <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-line bg-card-2/40 px-2.5 py-2">
         <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-3">{t("volleyball.pickMarket")}</span>
@@ -633,9 +633,9 @@ function roleKeyOf(ratio: number): "starter" | "rotation" | "limited" | "none" {
   return "none";
 }
 function roleBadgeClass(key: string): string {
-  return key === "starter" ? "bg-emerald-500/15 text-emerald-300"
-    : key === "rotation" ? "bg-sky-500/15 text-sky-300"
-    : key === "limited" ? "bg-amber-500/15 text-amber-300"
+  return key === "starter" ? "bg-pos/15 text-pos"
+    : key === "rotation" ? "bg-accent/15 text-accent-ink"
+    : key === "limited" ? "bg-warn/15 text-warn"
     : "bg-veil text-ink-3";
 }
 
@@ -840,7 +840,7 @@ function InputTab({ rows, setRows, onExported, t }: { rows: VbInputRow[]; setRow
     <div>
       <div className="mb-3 flex flex-wrap items-center gap-1.5">
         {(["team", "player"] as const).map((k) => (
-          <button key={k} onClick={() => setType(k)} className={`rounded-full px-4 py-1.5 text-xs font-semibold ${type === k ? "bg-accent text-white" : "bg-card-2 text-ink-2 hover:text-ink"}`}>{k === "team" ? "Team" : "Player"}{cnt(k) ? ` (${cnt(k)})` : ""}</button>
+          <button key={k} onClick={() => setType(k)} className={`rounded-full px-4 py-1.5 text-xs font-semibold ${type === k ? "bg-accent text-on-accent" : "bg-card-2 text-ink-2 hover:text-ink"}`}>{k === "team" ? "Team" : "Player"}{cnt(k) ? ` (${cnt(k)})` : ""}</button>
         ))}
         <button onClick={exportXlsx} disabled={shown.length === 0} className={`ml-3 ${btnSave} disabled:opacity-50`}>{t("volleyball.printXlsx")}</button>
         <button onClick={() => setRows(rows.filter((r) => r.kind !== type))} disabled={shown.length === 0} className={`${btnGhost} disabled:opacity-50`}>{t("volleyball.clear")}</button>
