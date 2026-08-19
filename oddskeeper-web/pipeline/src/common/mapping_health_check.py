@@ -18,19 +18,27 @@ from dotenv import load_dotenv
 
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 
+# Avrupa kupasi YABANCI rakipleri bilincli kapsam disi (karar 2026-08-19):
+# eurocup view'lari team_mapping'e bagli degil (source_team_id + competition ile
+# calisir), bu yuzden yabanci rakibe mapping satiri acilmaz. Yeni bir yabanci
+# turnuva/kaynak eklenirse bu listede olmadigi icin check yine alarm verir.
+EUROCUP_COMPS = "('UEFA Şampiyonlar Ligi','UEFA Avrupa Ligi','UEFA Konferans Ligi')"
+
 # (ad, severity, sql) — sql tek sayi (gap_count) dondurur; 0 = saglikli.
 CHECKS = [
     # ---- FUTBOL TAKIM ----
     ("team_unmapped_source_id", "HIGH",
-     """select count(*) from (
+     f"""select count(*) from (
           select distinct t.source_team_id from football.match_team_stats t
-          where not exists (select 1 from ref.team_mapping tm where tm.source_team_id=t.source_team_id)
+          where coalesce(t.competition,'') not in {EUROCUP_COMPS}
+            and not exists (select 1 from ref.team_mapping tm where tm.source_team_id=t.source_team_id)
         ) z"""),
     ("team_unmapped_CURRENT_season", "HIGH",
-     """select count(*) from (
+     f"""select count(*) from (
           select distinct t.source, t.source_team_id from football.match_team_stats t
           join football.matches m on m.source=t.source and m.source_match_id=t.source_match_id
           where m.season_label in ('2025/2026','2026/2027')
+            and coalesce(t.competition,'') not in {EUROCUP_COMPS}
             and not exists (select 1 from ref.team_mapping tm where tm.source_team_id=t.source_team_id)
         ) z"""),
     ("cup_mackolik_current_team_null_slug", "MED",
