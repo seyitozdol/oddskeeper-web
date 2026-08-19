@@ -64,8 +64,9 @@ export function computeExpectancy(
   const h = 1 / inputs.homeOdds;
   const a = 1 / inputs.awayOdds;
   const avg = (h + a) / 2;
-  const cxHome = (h - avg) / cfg.supremacyDivisor + 1; // ev favori faktörü
-  const cxAway = (a - avg) / cfg.supremacyDivisor + 1; // dep favori faktörü
+  const supDivisor = mc.supremacyDivisor ?? cfg.supremacyDivisor; // market bazlı, yoksa global
+  const cxHome = (h - avg) / supDivisor + 1; // ev favori faktörü
+  const cxAway = (a - avg) / supDivisor + 1; // dep favori faktörü
   let supHome = 1;
   let supAway = 1;
   if (mc.supremacyApplies && mc.supremacySign !== 'none') {

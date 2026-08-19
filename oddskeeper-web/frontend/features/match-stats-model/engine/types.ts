@@ -34,6 +34,8 @@ export interface MarketConfig {
   payback2h?: number;
   under1h?: boolean; // false → 1H'de Under açılmaz (SU kontrolü de yalnız Over'a bakar)
   under2h?: boolean;
+  // Market bazlı supremacy böleni (LVL). Boşsa modelCfg.supremacyDivisor kullanılır.
+  supremacyDivisor?: number;
 }
 
 // Model global sabitleri (msm.model_config).

@@ -366,6 +366,8 @@ export async function fetchMarketConfigs(league: string): Promise<Record<string,
       payback2h: r.payback_2h != null ? Number(r.payback_2h) : undefined,
       under1h: r.under_1h != null ? !!r.under_1h : undefined,
       under2h: r.under_2h != null ? !!r.under_2h : undefined,
+      // Market bazlı supremacy böleni (LVL); kolon yoksa global model değeri kullanılır.
+      supremacyDivisor: r.supremacy_divisor != null ? Number(r.supremacy_divisor) : undefined,
     };
   }
   return out;
@@ -493,6 +495,7 @@ export interface RawMarketConfig {
   line_count_1h: number; line_count_2h: number;
   under_1h: boolean; under_2h: boolean;
   payback_1h: number; payback_2h: number;
+  supremacy_divisor: number;
 }
 export interface TemplateRow {
   market: string; template_code: string; details: string | null; sort_order: number;
@@ -532,6 +535,7 @@ export async function fetchRawMarketConfigs(league: string): Promise<RawMarketCo
     under_2h: r.under_2h != null ? !!r.under_2h : true,
     payback_1h: r.payback_1h != null ? n(r.payback_1h) : 0.93,
     payback_2h: r.payback_2h != null ? n(r.payback_2h) : 0.93,
+    supremacy_divisor: r.supremacy_divisor != null ? n(r.supremacy_divisor) : 5.5,
   })).sort((a, b) => MARKETS.indexOf(a.market as Market) - MARKETS.indexOf(b.market as Market));
 }
 

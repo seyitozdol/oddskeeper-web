@@ -23,6 +23,20 @@ const ENTRIES: Entry[] = [
   {
     date: { en: "19 August", tr: "19 Ağustos" },
     title: {
+      en: "Match Stats Model: per-market supremacy (LVL)",
+      tr: "Match Stats Model: market başına supremacy (LVL)",
+    },
+    tag: TAG_NEW,
+    items: [
+      {
+        en: "The supremacy divisor (LVL) is no longer one global value. Each market now has its own divisor in the last column of Config > Markets, so Shot and SOT can react to the 1X2 odds with different strength. Existing behaviour is preserved: every market starts from the previous global value. A demo below the table lets you try a divisor (for example 2.5 vs 5.5) and see how a 10/10 expectation shifts; the old example and the global field were removed from the Model card. Applies to Süper Lig and 1. Lig.",
+        tr: "Supremacy böleni (LVL) artık tek bir global değer değil. Config > Markets tablosunun son kolonunda her marketin kendi böleni var; böylece Shot ve SOT 1X2 oranlarına farklı güçte tepki verebiliyor. Mevcut davranış korundu: her market önceki global değerle başlıyor. Tablonun altındaki demo alanında bir bölen deneyip (örneğin 2.5 ile 5.5) 10/10 beklentinin nasıl kaydığını görebilirsiniz; Model kartındaki eski örnek ve global alan kaldırıldı. Süper Lig ve 1. Lig için geçerli.",
+      },
+    ],
+  },
+  {
+    date: { en: "19 August", tr: "19 Ağustos" },
+    title: {
       en: "Duplicate player rows in squad lists fixed",
       tr: "Kadro listelerinde mükerrer oyuncu satırı düzeltildi",
     },

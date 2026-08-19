@@ -33,7 +33,7 @@ const EQUATION_ROWS: Array<[string, XKey, XKey]> = [
   ["AF", "xmatrix_w_own_alt", "xmatrix_w_own_for"],
 ];
 
-// LVL örnek şablonu: sabit oranlar + 10/10 beklenti üzerinden supremacy etkisi.
+// Supremacy demo şablonu: sabit oranlar + 10/10 beklenti üzerinden bölen etkisi.
 const EX_ODDS = { h: 1.25, d: 5.85, a: 9.58 };
 const EX_BASE = 10;
 
@@ -57,6 +57,8 @@ export default function ConfigTab({
   const [templates, setTemplates] = useState<TemplateRow[]>([]);
   const [status, setStatus] = useState<"" | "saving" | "ok" | "err">("");
   const [section, setSection] = useState<Section>("model");
+  // Markets altındaki supremacy demosunun böleni (kaydedilmez, sadece deneme).
+  const [demoDiv, setDemoDiv] = useState(5.5);
 
   useEffect(() => {
     fetchRawModelConfig(league).then(setModel);
@@ -205,38 +207,6 @@ export default function ConfigTab({
             </div>
           </Card>
 
-          <Card id="cfg-lvl" title={t("msm.cfgLvl")} hint={t("msm.lvlNote")}>
-            <div className="grid grid-cols-2 gap-3">
-              <div><label className={lbl}>{t("msm.supremacyDivisor")}</label>{numField(model.supremacy_divisor, (v) => setM("supremacy_divisor", v), "0.1")}</div>
-            </div>
-            {(() => {
-              const h = 1 / EX_ODDS.h, a = 1 / EX_ODDS.a, avg = (h + a) / 2;
-              const div = model.supremacy_divisor || 5.5;
-              const homeAdj = EX_BASE * ((h - avg) / div + 1);
-              const awayAdj = EX_BASE * ((a - avg) / div + 1);
-              const chip = (v: number) => {
-                const d = v - EX_BASE;
-                return (
-                  <span className={d >= 0 ? "text-pos" : "text-neg"}>
-                    ({d >= 0 ? "+" : ""}{d.toFixed(2)})
-                  </span>
-                );
-              };
-              return (
-                <div className="mt-3 rounded-md border border-line bg-card-2 p-2 text-[12px]">
-                  <div className="mb-1 text-[10px] uppercase tracking-wide text-ink-3">{t("msm.lvlExample")}</div>
-                  <div className="text-ink-3">
-                    Home {EX_ODDS.h} · X {EX_ODDS.d} · 2 {EX_ODDS.a} · {t("msm.homeExp")}/{t("msm.awayExp")} {EX_BASE} / {EX_BASE}
-                  </div>
-                  <div className="mt-1 flex gap-5 tabular-nums">
-                    <span>{t("msm.home")}: <b className="text-ink">{homeAdj.toFixed(2)}</b> {chip(homeAdj)}</span>
-                    <span>{t("msm.away")}: <b className="text-ink">{awayAdj.toFixed(2)}</b> {chip(awayAdj)}</span>
-                  </div>
-                </div>
-              );
-            })()}
-          </Card>
-
           <Card title={t("msm.equation")} hint={t("msm.equationHint")} className="lg:col-span-2">
             <table className="text-[12px]">
               <thead>
@@ -265,7 +235,7 @@ export default function ConfigTab({
         <div className="space-y-4">
           <Card id="cfg-markets" title={t("msm.cfgMarkets")} hint={t("msm.marketsNote")}>
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[880px] text-left text-[11px] tabular-nums">
+              <table className="w-full min-w-[940px] text-left text-[11px] tabular-nums">
                 <thead>
                   <tr className="text-ink-3">
                     <th rowSpan={2} className="px-1 py-1 align-bottom font-medium">{t("msm.market")}</th>
@@ -277,6 +247,7 @@ export default function ConfigTab({
                     <th colSpan={1} className="border-l border-line/60 px-1 py-1 text-center font-medium">FT</th>
                     <th colSpan={3} className="border-l border-line/60 px-1 py-1 text-center font-medium">{t("msm.firstHalf")}</th>
                     <th colSpan={3} className="border-l border-line/60 px-1 py-1 text-center font-medium">{t("msm.secondHalf")}</th>
+                    <th rowSpan={2} className="border-l border-line/60 px-1 py-1 text-center align-bottom font-medium">{t("msm.lvlCol")}</th>
                   </tr>
                   <tr className="text-ink-3">
                     <th className="border-l border-line/60 px-1 py-0.5 text-center font-normal">{t("msm.firstHalf")}</th>
@@ -328,12 +299,50 @@ export default function ConfigTab({
                         {lines(m.line_count_2h, (x) => setMk(i, { line_count_2h: x }), true)}
                         {chk(m.under_2h, (x) => setMk(i, { under_2h: x }))}
                         {cell(m.payback_2h, (x) => setMk(i, { payback_2h: x }))}
+                        {cell(m.supremacy_divisor, (x) => setMk(i, { supremacy_divisor: x }), true)}
                       </tr>
                     );
                   })}
                 </tbody>
               </table>
             </div>
+
+            {/* Supremacy demo: bölen değerini dene, kaydedilen ayarı ETKİLEMEZ. */}
+            {(() => {
+              const h = 1 / EX_ODDS.h, a = 1 / EX_ODDS.a, avg = (h + a) / 2;
+              const div = Number.isFinite(demoDiv) && demoDiv > 0 ? demoDiv : 5.5;
+              const homeAdj = EX_BASE * ((h - avg) / div + 1);
+              const awayAdj = EX_BASE * ((a - avg) / div + 1);
+              const chip = (v: number) => {
+                const d = v - EX_BASE;
+                return (
+                  <span className={d >= 0 ? "text-pos" : "text-neg"}>
+                    ({d >= 0 ? "+" : ""}{d.toFixed(2)})
+                  </span>
+                );
+              };
+              return (
+                <div className="mt-3 max-w-md rounded-md border border-line bg-card-2 p-2 text-[12px]">
+                  <div className="mb-1 text-[10px] uppercase tracking-wide text-ink-3">{t("msm.lvlExample")}</div>
+                  <div className="mb-2 flex items-center gap-2">
+                    <label className="text-[11px] text-ink-3">{t("msm.supremacyDivisor")}</label>
+                    <input
+                      type="number" step="0.1" className={`${inp} w-20`}
+                      value={Number.isFinite(demoDiv) ? demoDiv : ""}
+                      onChange={(e) => setDemoDiv(parseFloat(e.target.value))}
+                    />
+                    <span className="text-[10px] text-ink-3">{t("msm.lvlNote")}</span>
+                  </div>
+                  <div className="text-ink-3">
+                    Home {EX_ODDS.h} · X {EX_ODDS.d} · 2 {EX_ODDS.a} · {t("msm.homeExp")}/{t("msm.awayExp")} {EX_BASE} / {EX_BASE}
+                  </div>
+                  <div className="mt-1 flex gap-5 tabular-nums">
+                    <span>{t("msm.home")}: <b className="text-ink">{homeAdj.toFixed(2)}</b> {chip(homeAdj)}</span>
+                    <span>{t("msm.away")}: <b className="text-ink">{awayAdj.toFixed(2)}</b> {chip(awayAdj)}</span>
+                  </div>
+                </div>
+              );
+            })()}
           </Card>
 
           <Card id="cfg-templates" title={t("msm.cfgTemplates")} hint={t("msm.templatesHint")}>
