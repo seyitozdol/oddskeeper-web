@@ -51,20 +51,6 @@ const ENTRIES: Entry[] = [
   {
     date: { en: "19 August", tr: "19 Ağustos" },
     title: {
-      en: "Match Stats Model: cleaner fixture list",
-      tr: "Match Stats Model: daha sade fikstür listesi",
-    },
-    tag: TAG_FIX,
-    items: [
-      {
-        en: "The fixture dropdown no longer shows the round prefix (R1 / M) in front of each match; the list already sorts by kickoff time, so only the match itself is shown.",
-        tr: "Fikstür dropdown'unda maçların önündeki tur öneki (R1 / M) kaldırıldı; liste zaten başlama saatine göre sıralandığı için artık sadece maçın kendisi görünüyor.",
-      },
-    ],
-  },
-  {
-    date: { en: "19 August", tr: "19 Ağustos" },
-    title: {
       en: "Match Stats Model: market visibility and three new STS markets",
       tr: "Match Stats Model: market görünürlüğü ve üç yeni STS marketi",
     },
