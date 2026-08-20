@@ -96,9 +96,10 @@ export async function getTff1PlayerInfo(): Promise<Tff1PlayerInfo[]> {
 export async function getTff1PlayerInfoByIds(
   playerIds: string[]
 ): Promise<Tff1PlayerInfo[]> {
-  const ids = Array.from(new Set(playerIds.filter(Boolean)));
+  const ids = [...new Set(playerIds.filter(Boolean))];
   if (!ids.length) return [];
   const supabase = await createClient();
+  // 1000-cap: id-listesi kadro boyutunda (~30-60), her zaman 1000'in altinda.
   const { data, error } = await supabase
     .schema("analytics")
     .from("tff1_player_info_v1")

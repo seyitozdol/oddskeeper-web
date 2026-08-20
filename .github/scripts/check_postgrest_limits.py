@@ -28,7 +28,8 @@ def scan_file(path):
     lines = io.open(path, encoding="utf-8").read().split("\n")
     unbounded, big = [], []
     for i, ln in enumerate(lines):
-        if ".from(" not in ln:
+        # Array.from(...) PostgREST zinciri degildir (2026-08-20 yanlis pozitifi).
+        if not re.search(r"(?<!Array)\.from\(", ln):
             continue
         # zincir penceresi: .from satirindan ';' ile biten satira kadar (maks 40)
         j = i
