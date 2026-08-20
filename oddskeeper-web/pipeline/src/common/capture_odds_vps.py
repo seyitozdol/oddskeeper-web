@@ -492,7 +492,18 @@ def main() -> None:
                        args.proxy, args.chromium_path, args.cc, args.horizon_days,
                        args.record_ws)
 
-    _, et = run()
+    # ADRES COZME TEKRARI (2026-08-20 sabah arizasi): kotu exit IP / geçici TR
+    # havuzu arizasi resolve_domain'i de dusurur ("calisan adres bulunamadi");
+    # asagidaki verisiz-kosu tekrari oraya ulasamadan process ilk denemede
+    # bitiyordu. Ayni ilke: yeni proxy oturumuyla BIR kez daha dene, yine
+    # olmazsa SystemExit yayilir (wrapper rc!=0 -> ntfy).
+    try:
+        _, et = run()
+    except SystemExit as e:
+        if "calisan adres" not in str(e):
+            raise
+        print("[TEKRAR] adres cozulemedi; yeni proxy oturumuyla ikinci deneme", flush=True)
+        _, et = run()
     # VERISIZ KOSU TEKRARI (2026-08-19 10:04 arizasi): sticky oturumun denk
     # geldigi exit IP kotuyse SPA sportsbook katmani hic yuklenmiyor (ws=0,
     # events-table=0) ve 6 saatlik pencere bos geciyor. Yeni session id = yeni
