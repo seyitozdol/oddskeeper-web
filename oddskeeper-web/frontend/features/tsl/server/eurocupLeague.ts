@@ -195,9 +195,15 @@ export async function loadEurocupLeague(
         if (l.homeId === homeId) { aggHome += l.homeScore; aggAway += l.awayScore; }
         else { aggHome += l.awayScore; aggAway += l.homeScore; }
       }
-      // yukselen: once toplam skor; berabere ise SON ayagin galibi (uzatma/penalti).
+      // yukselen: YALNIZ TUR BITTIYSE. UEFA eleme/playoff turlari cift ayaklidir;
+      // tek final tek mactir. Ilk ayak oynanip ikincisi beklerken (fikstur satiri
+      // ister olsun ister olmasin) advanced NULL kalir -- 2026-08-20 hatasi:
+      // CL playoff ilk ayagi sonrasi kazanan yanina yesil ok basiliyordu.
+      const playedLegs = legs.filter((l) => l.homeScore != null && l.awayScore != null).length;
+      const singleLegRound = (legRowsSorted[0]?.round_name ?? "") === "Final";
+      const tieDecided = singleLegRound ? playedLegs >= 1 : playedLegs >= 2;
       let advanced: "home" | "away" | null = null;
-      if (hasScore) {
+      if (hasScore && tieDecided) {
         if (aggHome > aggAway) advanced = "home";
         else if (aggAway > aggHome) advanced = "away";
         else {

@@ -21,6 +21,20 @@ const TAG_FIX: L = { en: "Fix", tr: "Düzeltme" };
 
 const ENTRIES: Entry[] = [
   {
+    date: { en: "20 August", tr: "20 Ağustos" },
+    title: {
+      en: "European cups: advance arrow no longer shown after the first leg",
+      tr: "Avrupa kupaları: tur geçme oku artık ilk ayaktan sonra görünmüyor",
+    },
+    tag: TAG_FIX,
+    items: [
+      {
+        en: "Qualifying and play-off ties are two-legged, but the green advance arrow was shown next to the first-leg winner as if the tie were already decided. The arrow (and the drop-to-lower-cup icon) now appears only once both legs are played; one-off finals still resolve after a single match.",
+        tr: "Eleme ve play-off eşleşmeleri çift ayaklı olduğu halde yeşil tur geçme oku, ilk ayağın galibinin yanına tur bitmiş gibi konuyordu. Ok (ve alt kupaya düşüş ikonu) artık yalnız iki ayak da oynandığında görünüyor; tek maçlık finaller tek maçla sonuçlanmaya devam ediyor.",
+      },
+    ],
+  },
+  {
     date: { en: "19 August", tr: "19 Ağustos" },
     title: {
       en: "Upcoming Events: league badge next to each match",
