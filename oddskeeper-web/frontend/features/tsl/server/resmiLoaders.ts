@@ -547,7 +547,8 @@ export async function loadResmiTeamsTable(
     const fetchLog = async (seasonLabel: string) => {
       const rows: { team_id: string; market: string; for_value: number | null }[] = [];
       for (let from = 0; ; from += 1000) {
-        const { data } = await supabase
+        // K-3: hata = kismi satirla ortalama hesaplamak yerine yuksek sesle patla.
+        const { data, error } = await supabase
           .schema("analytics")
           .from("eurocup_team_match_log_v1")
           .select("team_id, market, for_value, team_match_index")
@@ -559,6 +560,7 @@ export async function loadResmiTeamsTable(
           .order("market", { ascending: true })
           .order("team_match_index", { ascending: true })
           .range(from, from + 999);
+        if (error) throw new Error(`eurocup_team_match_log_v1 (from=${from}): ${error.message}`);
         if (!data || !data.length) break;
         rows.push(...(data as typeof rows));
         if (data.length < 1000) break;
@@ -606,7 +608,8 @@ export async function loadResmiTeamsTable(
     const fetchCurLog = async () => {
       const rows: { team_slug: string; market: string; for_value: number | null; team_match_index: number }[] = [];
       for (let from = 0; ; from += 1000) {
-        const { data } = await supabase
+        // K-3: hata = kismi satirla ortalama hesaplamak yerine yuksek sesle patla.
+        const { data, error } = await supabase
           .schema("analytics")
           .from("msm_team_match_log_v1")
           .select("team_slug, market, for_value, team_match_index")
@@ -617,6 +620,7 @@ export async function loadResmiTeamsTable(
           .order("market", { ascending: true })
           .order("team_match_index", { ascending: true })
           .range(from, from + 999);
+        if (error) throw new Error(`msm_team_match_log_v1 (from=${from}): ${error.message}`);
         if (!data || !data.length) break;
         rows.push(...(data as typeof rows));
         if (data.length < 1000) break;

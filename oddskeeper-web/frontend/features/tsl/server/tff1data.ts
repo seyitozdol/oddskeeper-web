@@ -93,7 +93,9 @@ const TEAM_CAT: Record<string, string> = {
 
 export async function tff1TeamMeta(): Promise<Record<string, TslTeamMeta>> {
   const sb = await createClient();
-  const { data } = await sb.schema("analytics").from("tff1_team_logos_v1").select("team_id, team_name, logo_url").limit(200);
+  // K-3: hata kismi/bos veriyle sessizce render etmek yerine yuksek sesle patlar.
+  const { data, error } = await sb.schema("analytics").from("tff1_team_logos_v1").select("team_id, team_name, logo_url").limit(200);
+  if (error) throw new Error(`tff1_team_logos_v1: ${error.message}`);
   const out: Record<string, TslTeamMeta> = {};
   for (const r of data ?? []) out[String(r.team_id)] = { teamId: String(r.team_id), name: r.team_name ?? String(r.team_id), logo: r.logo_url ?? null };
   return out;
@@ -113,10 +115,11 @@ export async function tff1Assets(season: string): Promise<Record<string, PlayerA
 
 export async function tff1Matches(season: string, meta: Record<string, TslTeamMeta>): Promise<TslMatch[]> {
   const sb = await createClient();
-  const { data } = await sb.schema("analytics").from("tff1_matches_v1")
+  const { data, error } = await sb.schema("analytics").from("tff1_matches_v1")
     .select("match_id, match_datetime, home_team_id, home_team_name, away_team_id, away_team_name, home_score, away_score")
     .eq("season_label", season).eq("competition", COMP).not("home_score", "is", null)
     .order("match_datetime", { ascending: false }).limit(700);
+  if (error) throw new Error(`tff1_matches_v1: ${error.message}`);
   return (data ?? []).map((r) => {
     const h = String(r.home_team_id), a = String(r.away_team_id);
     return {
@@ -133,9 +136,10 @@ export async function tff1Upcoming(season: string, meta: Record<string, TslTeamM
   // fixture_status bayat kalabiliyor (oynanmis mac hala "scheduled"); 3+ saat
   // once baslamis maclari sorguda ele (bkz. getResmiUpcoming'deki ayni filtre).
   const cutoff = new Date(Date.now() - 3 * 3600_000).toISOString();
-  const { data } = await sb.schema("analytics").from("tff1_fixtures_v1")
+  const { data, error } = await sb.schema("analytics").from("tff1_fixtures_v1")
     .select("fixture_id, fixture_datetime, home_team_id, home_team_name, away_team_id, away_team_name, fixture_status")
     .eq("season_label", season).gte("fixture_datetime", cutoff).order("fixture_datetime", { ascending: true }).limit(80);
+  if (error) throw new Error(`tff1_fixtures_v1: ${error.message}`);
   return (data ?? []).filter((r) => (r.fixture_status ?? "").toLowerCase() !== "finished").map((r) => {
     const h = String(r.home_team_id), a = String(r.away_team_id);
     return {
@@ -157,7 +161,8 @@ function formOf(teamId: string, matches: TslMatch[]): FormResult[] {
 
 async function teamStatRows(season: string) {
   const sb = await createClient();
-  const { data } = await sb.schema("analytics").from("tff1_team_season_stats_mat").select("*").eq("season_label", season).limit(200);
+  const { data, error } = await sb.schema("analytics").from("tff1_team_season_stats_mat").select("*").eq("season_label", season).limit(200);
+  if (error) throw new Error(`tff1_team_season_stats_mat: ${error.message}`);
   return data ?? [];
 }
 
@@ -194,7 +199,8 @@ const playerRows = cache(async (season: string) => {
   const sb = await createClient();
   const out: Record<string, unknown>[] = [];
   for (let i = 0; i < 10; i++) {
-    const { data } = await sb.schema("analytics").from("tff1_player_table_v1").select(PLAYER_COLS).eq("season_label", season).order("minutes", { ascending: false, nullsFirst: false }).order("player_id").range(i * 1000, i * 1000 + 999).returns<Record<string, unknown>[]>();
+    const { data, error } = await sb.schema("analytics").from("tff1_player_table_v1").select(PLAYER_COLS).eq("season_label", season).order("minutes", { ascending: false, nullsFirst: false }).order("player_id").range(i * 1000, i * 1000 + 999).returns<Record<string, unknown>[]>();
+    if (error) throw new Error(`tff1_player_table_v1 (sayfa ${i}): ${error.message}`);
     if (!data || !data.length) break;
     out.push(...data);
     if (data.length < 1000) break;

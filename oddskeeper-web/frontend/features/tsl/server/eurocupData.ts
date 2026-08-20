@@ -113,7 +113,8 @@ export function makeCupProvider(COMP: string, prefix: string) {
   async function teamMeta(): Promise<Record<string, TslTeamMeta>> {
     const sb = await createClient();
     // 1000-cap: view ~330 satir (2026-08-20 olcumu), tek sayfa yeter.
-    const { data } = await sb.schema("analytics").from("tff1_team_logos_v1").select("team_id, team_name, logo_url").limit(1000);
+    const { data, error } = await sb.schema("analytics").from("tff1_team_logos_v1").select("team_id, team_name, logo_url").limit(1000);
+    if (error) throw new Error(`tff1_team_logos_v1: ${error.message}`);
     const out: Record<string, TslTeamMeta> = {};
     for (const r of data ?? []) out[String(r.team_id)] = { teamId: String(r.team_id), name: r.team_name ?? String(r.team_id), logo: r.logo_url ?? null };
     return out;
@@ -133,11 +134,13 @@ export function makeCupProvider(COMP: string, prefix: string) {
 
   async function matches(season: string, meta: Record<string, TslTeamMeta>): Promise<TslMatch[]> {
     const sb = await createClient();
-    const { data } = await sb.schema("analytics").from(V("matches_v1"))
+    // K-3: hata kismi/bos veriyle sessizce render etmek yerine yuksek sesle patlar.
+    const { data, error } = await sb.schema("analytics").from(V("matches_v1"))
       .select("match_id, match_datetime, home_team_id, home_team_name, away_team_id, away_team_name, home_score, away_score")
       .eq("season_label", season).eq("competition", COMP).not("home_score", "is", null)
       // 1000-cap: comp+sezon skorlu mac max ~281 (2026-08-20 olcumu); 1000 ustu zaten kirpilirdi.
       .order("match_datetime", { ascending: false }).limit(1000);
+    if (error) throw new Error(`${V("matches_v1")}: ${error.message}`);
     return (data ?? []).map((r) => {
       const h = String(r.home_team_id), a = String(r.away_team_id);
       return {
@@ -152,9 +155,10 @@ export function makeCupProvider(COMP: string, prefix: string) {
   async function upcoming(season: string, meta: Record<string, TslTeamMeta>): Promise<TslMatch[]> {
     const sb = await createClient();
     const cutoff = new Date(Date.now() - 3 * 3600_000).toISOString();
-    const { data } = await sb.schema("analytics").from(V("fixtures_v1"))
+    const { data, error } = await sb.schema("analytics").from(V("fixtures_v1"))
       .select("fixture_id, fixture_datetime, home_team_id, home_team_name, away_team_id, away_team_name, fixture_status")
       .eq("season_label", season).gte("fixture_datetime", cutoff).order("fixture_datetime", { ascending: true }).limit(80);
+    if (error) throw new Error(`${V("fixtures_v1")}: ${error.message}`);
     return (data ?? []).filter((r) => (r.fixture_status ?? "").toLowerCase() !== "finished").map((r) => {
       const h = String(r.home_team_id), a = String(r.away_team_id);
       return {
@@ -167,7 +171,8 @@ export function makeCupProvider(COMP: string, prefix: string) {
 
   async function teamStatRows(season: string) {
     const sb = await createClient();
-    const { data } = await sb.schema("analytics").from(V("team_season_stats_v1")).select("*").eq("season_label", season).limit(400);
+    const { data, error } = await sb.schema("analytics").from(V("team_season_stats_v1")).select("*").eq("season_label", season).limit(400);
+    if (error) throw new Error(`${V("team_season_stats_v1")}: ${error.message}`);
     return data ?? [];
   }
 
@@ -206,7 +211,8 @@ export function makeCupProvider(COMP: string, prefix: string) {
     const sb = await createClient();
     const out: Record<string, unknown>[] = [];
     for (let i = 0; i < 10; i++) {
-      const { data } = await sb.schema("analytics").from(V("player_season_stats_v1")).select(PLAYER_COLS).eq("season_label", season).order("minutes", { ascending: false, nullsFirst: false }).order("player_id").range(i * 1000, i * 1000 + 999).returns<Record<string, unknown>[]>();
+      const { data, error } = await sb.schema("analytics").from(V("player_season_stats_v1")).select(PLAYER_COLS).eq("season_label", season).order("minutes", { ascending: false, nullsFirst: false }).order("player_id").range(i * 1000, i * 1000 + 999).returns<Record<string, unknown>[]>();
+      if (error) throw new Error(`${V("player_season_stats_v1")} (sayfa ${i}): ${error.message}`);
       if (!data || !data.length) break;
       out.push(...data);
       if (data.length < 1000) break;
