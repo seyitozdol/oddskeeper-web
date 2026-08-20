@@ -34,6 +34,7 @@ export const getFootballTeamSlugMap = cache(
       .schema("analytics")
       .from("sofascore_football_team_link_v1")
       .select("sofascore_team_id, team_slug")
+      // 1000-cap: view ~105 satir (2026-08-20 olcumu), tek sayfa yeter.
       .limit(1000);
     if (error) {
       console.error("football team slug map fetch error:", error.message);

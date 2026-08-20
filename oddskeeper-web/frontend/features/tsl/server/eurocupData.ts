@@ -155,7 +155,8 @@ export function makeCupProvider(COMP: string, prefix: string) {
 
   async function teamMeta(): Promise<Record<string, TslTeamMeta>> {
     const sb = await createClient();
-    const { data } = await sb.schema("analytics").from("tff1_team_logos_v1").select("team_id, team_name, logo_url").limit(2000);
+    // 1000-cap: view ~330 satir (2026-08-20 olcumu), tek sayfa yeter.
+    const { data } = await sb.schema("analytics").from("tff1_team_logos_v1").select("team_id, team_name, logo_url").limit(1000);
     const out: Record<string, TslTeamMeta> = {};
     for (const r of data ?? []) out[String(r.team_id)] = { teamId: String(r.team_id), name: r.team_name ?? String(r.team_id), logo: r.logo_url ?? null };
     return out;
@@ -174,7 +175,8 @@ export function makeCupProvider(COMP: string, prefix: string) {
     const { data } = await sb.schema("analytics").from(V("matches_v1"))
       .select("match_id, match_datetime, home_team_id, home_team_name, away_team_id, away_team_name, home_score, away_score")
       .eq("season_label", season).eq("competition", COMP).not("home_score", "is", null)
-      .order("match_datetime", { ascending: false }).limit(1500);
+      // 1000-cap: comp+sezon skorlu mac max ~281 (2026-08-20 olcumu); 1000 ustu zaten kirpilirdi.
+      .order("match_datetime", { ascending: false }).limit(1000);
     return (data ?? []).map((r) => {
       const h = String(r.home_team_id), a = String(r.away_team_id);
       return {

@@ -105,7 +105,8 @@ async function teamLogos(): Promise<Record<string, string>> {
     .schema("analytics")
     .from("tff1_team_logos_v1")
     .select("team_id, logo_url")
-    .limit(2000);
+    // 1000-cap: view ~330 satir (2026-08-20 olcumu), tek sayfa yeter.
+    .limit(1000);
   const out: Record<string, string> = {};
   for (const r of data ?? []) if (r.logo_url) out[String(r.team_id)] = r.logo_url as string;
   return out;
@@ -126,7 +127,8 @@ export async function loadEurocupLeague(
       )
       .eq("competition", competition)
       .eq("season_label", season)
-      .limit(2000),
+      // 1000-cap: comp+sezon max ~409 mac (2026-08-20 olcumu), tek sayfa yeter.
+      .limit(1000),
     teamLogos(),
   ]);
   const rows = (data ?? []) as Row[];
@@ -151,7 +153,8 @@ export async function loadEurocupLeague(
       .select("home_team_id, away_team_id")
       .eq("competition", comp)
       .eq("season_label", season)
-      .limit(2000);
+      // 1000-cap: comp+sezon max ~409 mac (2026-08-20 olcumu), tek sayfa yeter.
+      .limit(1000);
     const ids = new Set<string>();
     for (const r of lower ?? []) {
       ids.add(String(r.home_team_id));

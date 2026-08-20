@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { fetchAllPaged } from "@/lib/supabase/paginate";
 import { getLocale, getT } from "@/lib/i18n/server";
 
 // Kadro denetimi: sabah TM cronunun yazdigi 3 liste (herkese acik, izin
@@ -42,12 +43,19 @@ export default async function SquadAuditPage({
   const locale = await getLocale();
   const supabase = await createClient();
 
-  const { data } = await supabase
-    .schema("analytics")
-    .from("squad_audit_v1")
-    .select("section, league, team_name, player_name, detail, run_at")
-    .returns<AuditRow[]>();
-  const rows = data ?? [];
+  // 566 satir (2026-08-20) ve transfer penceresinde dalgalaniyor (once 900+
+  // gorulmustu); sinirsiz select 1000'de kirpilir. SAYFALA (C-2).
+  const rows = await fetchAllPaged<AuditRow>((from, to) =>
+    supabase
+      .schema("analytics")
+      .from("squad_audit_v1")
+      .select("section, league, team_name, player_name, detail, run_at")
+      .order("section")
+      .order("team_name")
+      .order("player_name")
+      .range(from, to)
+      .returns<AuditRow[]>()
+  );
 
   const counts: Record<string, number> = {};
   for (const r of rows) counts[r.section] = (counts[r.section] ?? 0) + 1;

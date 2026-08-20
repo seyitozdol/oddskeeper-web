@@ -3,6 +3,7 @@
 // eşleşen takımlar football profillerine slug ile bağlanır. Oyuncu tarafı
 // (players/catalog/leaderboard/assets) Faz 5'e kadar boş döner.
 import { createClient } from "../../../lib/supabase/server";
+import { fetchAllPaged } from "../../../lib/supabase/paginate";
 import { getAllFootballTeamLogos } from "../../../lib/football-teams";
 import { toNum } from "../lib";
 import type {
@@ -135,14 +136,20 @@ export async function cupStandings(
 // Takım metrikleri: cup_team_leaderboard_rows_v1 (rank/avg/pct hazır) + curated set.
 async function leaderboardRows(season: string) {
   const sb = await createClient();
-  const { data } = await sb
-    .schema("analytics")
-    .from("cup_team_leaderboard_rows_v1")
-    .select("team_id, team_name, metric_key, total_value, per_match_value, league_avg, league_rank, vs_league_avg_pct")
-    .eq("season_label", season)
-    .in("metric_key", METRIC_KEYS)
-    .not("team_slug", "is", null)
-    .limit(2000);
+  // Sezon basina 1.667 satir: .limit(2000) sessizce 1000'e kirpiliyordu, kupa
+  // Teams leaderboard'u eksik veriden geliyordu (C-2, 2026-08-20). row_id unique
+  // oldugu icin sayfalar kaymaz.
+  const data = await fetchAllPaged((from, to) =>
+    sb
+      .schema("analytics")
+      .from("cup_team_leaderboard_rows_v1")
+      .select("team_id, team_name, metric_key, total_value, per_match_value, league_avg, league_rank, vs_league_avg_pct")
+      .eq("season_label", season)
+      .in("metric_key", METRIC_KEYS)
+      .not("team_slug", "is", null)
+      .order("row_id")
+      .range(from, to)
+  );
   return data ?? [];
 }
 
@@ -190,7 +197,8 @@ export async function cupAggression(season: string): Promise<Record<string, Team
     .eq("season_label", season)
     .in("stat_type", ["yellow_card", "red_card", "second_yellow_card", "direct_red_card"])
     .not("team_slug", "is", null)
-    .limit(2000);
+    // 1000-cap: sezon basi kart-satiri max ~226 (2026-08-20 olcumu), tek sayfa yeter.
+    .limit(1000);
   const out: Record<string, TeamAggression> = {};
   for (const r of data ?? []) {
     const id = String(r.team_id);

@@ -219,14 +219,21 @@ export async function getTeamAggression(
   season: string
 ): Promise<Record<string, TeamAggression>> {
   const supabase = await createClient();
-  const { data } = await supabase
-    .schema("analytics")
-    .from("tsl_ss_player_detailed_metrics_global_mat")
-    .select("source_team_id, metric_key, total_value")
-    .eq("competition", TSL_COMPETITION)
-    .eq("season_label", season)
-    .in("metric_key", ["cards_yellow_total", "cards_red_total"])
-    .limit(2000);
+  // 25/26 icin 1.382 satir: .limit(2000) PostgREST'te sessizce 1000'e kirpiliyordu,
+  // takim kart toplamlari eksik veriden hesaplaniyordu (C-2, 2026-08-20). SAYFALA;
+  // siralama sayfa kaymasin diye unique (player_source_id, metric_key) ikilisi.
+  const data = await fetchAllPaged((from, to) =>
+    supabase
+      .schema("analytics")
+      .from("tsl_ss_player_detailed_metrics_global_mat")
+      .select("source_team_id, metric_key, total_value")
+      .eq("competition", TSL_COMPETITION)
+      .eq("season_label", season)
+      .in("metric_key", ["cards_yellow_total", "cards_red_total"])
+      .order("player_source_id")
+      .order("metric_key")
+      .range(from, to)
+  );
   const out: Record<string, TeamAggression> = {};
   for (const r of data ?? []) {
     const id = String(r.source_team_id);
@@ -292,21 +299,28 @@ async function getPlayerNameAssetMap(): Promise<
 export async function getResmiTransfers(season: string): Promise<ResmiTransfer[]> {
   const supabase = await createClient();
   const [{ data, error }, nameAssets, { data: mvData }] = await Promise.all([
-    supabase
-      .schema("analytics")
-      .from("tsl_transfers_v1")
-      .select(
-        "player_name, player_slug, player_photo_url, from_team_name, from_team_logo, to_team_name, to_team_logo, fee_text, fee_eur, is_tsl_arrival"
-      )
-      .eq("season_label", season)
-      .order("fee_eur", { ascending: false, nullsFirst: false })
-      .limit(1200),
+    // Sezon basi 913 satir (2026-08-20) ve transfer penceresi acik: .limit(1200)
+    // zaten 1000'e kirpiliyordu, sinir asilinca kuyruk (bedelsizler) sessizce
+    // duserdi. SAYFALA; player_slug ikincil sira sayfa kaymasini onler.
+    fetchAllPaged((from, to) =>
+      supabase
+        .schema("analytics")
+        .from("tsl_transfers_v1")
+        .select(
+          "player_name, player_slug, player_photo_url, from_team_name, from_team_logo, to_team_name, to_team_logo, fee_text, fee_eur, is_tsl_arrival"
+        )
+        .eq("season_label", season)
+        .order("fee_eur", { ascending: false, nullsFirst: false })
+        .order("player_slug")
+        .range(from, to)
+    ).then((rows) => ({ data: rows, error: null as { message: string } | null })),
     getPlayerNameAssetMap(),
     supabase
       .schema("analytics")
       .from("player_market_value_v1")
       .select("player_slug, tm_player_name, market_value_eur")
-      .limit(2000),
+      // 1000-cap: view ~508 satir (2026-08-20 olcumu), tek sayfa yeter.
+      .limit(1000),
   ]);
   if (error || !data) return [];
   const { normalizeSearch } = await import("../lib");
