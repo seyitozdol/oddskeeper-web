@@ -218,13 +218,13 @@ def main():
         # Kimlik haritasi degisince bagimli tsl_ss mat'lari bayatlar; harita
         # sonradan eklenen oyuncu (or. Kerem) rankings/leaderboard'dan kaybolur.
         # Harita yazilir yazilmaz mat'lari bagimlilik sirasiyla tazele.
-        # H1 (mukerrer refresh): match_scrape turunda bu builder adim 3b'de cagriliyor
-        # ve hemen ardindan (tum kimlik haritalari yazildiktan sonra) refresh_tsl_mats.py
-        # ACIKCA kosuyor; DEFER_TSL_MATS=1 iken buradaki ic refresh'i atla. Bayrak yoksa
-        # (04:00 run_fs_player_map.sh, elle kosu) bu ic refresh tek tazeleme oldugu icin
-        # eskisi gibi kosar.
-        if os.environ.get("DEFER_TSL_MATS"):
-            print("[mat] tsl_ss refresh caller'a (adim 3b) ertelendi (DEFER_TSL_MATS)")
+        # H1 (mukerrer refresh): match_scrape turunda bu builder adim 3b'de cagriliyor;
+        # mat'lari orada wrapper adim 4'un orkestratoru (refresh_orchestrator.py,
+        # DEFER_MATS=1) tazeler, buradaki ic refresh atlanir. DEFER_TSL_MATS eski
+        # bayrak, gecis uyumu icin korunur. Bayrak yoksa (04:00 run_fs_player_map.sh,
+        # elle kosu) bu ic refresh tek tazeleme oldugu icin eskisi gibi kosar.
+        if os.environ.get("DEFER_MATS") or os.environ.get("DEFER_TSL_MATS"):
+            print("[mat] tsl_ss refresh caller'a (orkestrator) ertelendi (DEFER_MATS/DEFER_TSL_MATS)")
         else:
             try:
                 import importlib

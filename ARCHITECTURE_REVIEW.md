@@ -14,7 +14,7 @@ Rapor 2026-08-19 sabahı salt-okunur bir incelemeyle yazıldı; aynı gün madde
 |---|---|---|---|
 | Ciddi hatalar (2.x) | **2.1 (tam)**, 2.3, 2.4 yama, 2.5 görünür, 2.6 alarm, 2.7 | 2.8 (anon riski gitti, dedup yok) | — |
 | Hızlandırma (H) | H1, H2, H3, H4, H6, H7, H10, H12 | H8 (cache var, `.in()` yok) | H5, H9, H11 |
-| Veri katmanı (A) | **A-4 (tam)**, A-5, A-1 Faz 1-2 | A-2 (şema+alarm var, is_curated yok) | A-3, A-1 tek modül |
+| Veri katmanı (A) | **A-4 (tam)**, A-5, **A-1 (tam)** | A-2 (şema+alarm var, is_curated yok) | A-3 |
 | Pipeline (B) | B-1, B-3, B-4 | — | B-2 |
 | Servis (C) | **C-1 (tam)**, C-2 Faz 1-2, C-3 cache, C-4 route | — | C-2 Faz 3 (select-yıldız), C-3 TSL ids, C-4/H11 cache |
 | UX (D) | D-1, D-2 renk ayağı | — | D-2 tarih/sayı, D-3 header |
@@ -176,7 +176,7 @@ Not: "Ölçülen" işaretsiz kazançlar tahmindir; dev server ilk derlemede yava
 
 **A-1. Tek refresh orkestratörü.** *Mevcut:* refresh mantığı 4 yerde kopyalı (sofa loader 17, FS loader 5, wrapper inline 2, refresh_tsl_mats 14); aynı mat aynı turda 2-3 kez tazeleniyor; sıra bilgisi iki dosyada kopya. *Hedef:* mat→bağımlılık sırası→tetikleyen kaynak eşlemesini tek modülde tutan, döngü başına her mat'ı en çok 1 kez tazeleyen, "kirli" bayrağına bakan, global flock'lu tek script; loader'lar refresh çağırmaz. *Geçiş:* Faz 1 mükerrerliği kaldır, Faz 2 loader'lar "değişen tablo" işareti bırakır, Faz 3 CONCURRENTLY. Mat adları/tanımları değişmez, frontend etkilenmez. *Etki:* DB yükünün %79'unu oluşturan refresh'in %70-85 azalması. *Emek:* Faz 1 S, toplam M.
 
-*DURUM: Faz 1-2 KAPANDI (H1 + H2), tek-modül hedefi AÇIK.* Mükerrerlik gitti (45 -> 1 refresh/tur) ve refresh artık değişiklik-bazlı; ama refresh mantığı hâlâ 3 dosyaya dağılmış (loader, builder, wrapper), "kirli bayrağı" okuyan tek orkestratör modülü yazılmadı. Faz 3 (CONCURRENTLY) SLA kararıyla ertelendi.
+*DURUM: KAPANDI (2026-08-20).* `pipeline/src/football/refresh_orchestrator.py` tek modül: mat adı -> bağımlılık sırası -> tetikleyen kaynak (sofa/flash/cup) tek tabloda (26 mat). Wrapper `DEFER_MATS=1` export eder, loader/builder'lar hiç refresh çağırmaz (yalnız kirli sinyalleri loglar: CHANGED_M / islenecek / CUP_CHANGED_M); wrapper adım 4'te orkestratörü kirli kaynak argümanlarıyla bir kez çağırır, her mat en çok 1 kez tazelenir. Kalan mükerrerler de gitti: sofa turunda squad_profile 2->1, flash turunda tff1 player/team 2->1 (sofa+flash turunda 3->1). Log kontratı korundu ("TSL MAP + MAT OK" / "CUP MAT OK" banner'ları + "ertelendi" satırı aynen); yan yollar (3 saatlik run_sofascore.sh, 04:00 run_fs_player_map.sh, elle koşu) bayraksız eski listeleri aynı modüldeki legacy profillerden koşar (davranış birebir; tek normalize: tsl_ss kardeş-mat permutasyonu kanonik sıraya, squad_profile her yerde CONCURRENTLY). Doğrulama: dry-run senaryo listeleri (sofa=23, flash=20, cup=3, hepsi=26) eski birleşimlerle birebir; sessiz-tur smoke VPS'te temiz; ilk gerçek maç-sonrası tur canlı teyidi bekleniyor (memory: a1-refresh-orchestrator).
 
 **A-2. Eşleme katmanını tek desene topla.** *Mevcut:* üç yazma deseni karışık (truncate+rebuild, additive-update, additive-do-nothing); `player_mapping`/`team_mapping` do-nothing olduğu için bir kez yanlış yazılan satır sonsuza kalır; `map`/`etl`/`mapping` legacy şemaları fiilen ölü ama duruyor. *Hedef:* iki sınıf: (a) kaynaktan türetilebilen her harita deterministik truncate+rebuild, tek cron zincirinde; (b) insan-kuratif tablolar `is_curated` ile korunur. *Geçiş:* `player_mapping`'e `is_curated` bayrağı + üretimli satırları rebuild (dry-run kıyasıyla), `mapping_health_check`'e drift kontrolleri, `apply_synthetic_squad`'a opta-bazlı emeklilik. Legacy şemalar 1 ay pg_stat gözlemi sonrası drop. *Etki:* sessiz kopukluk sınıflarının kalıcı kapanması. *Emek:* M.
 
@@ -263,7 +263,7 @@ Bakım: mapping_health FAIL'i (squad_profile_broken_link 9 -> 0) kimlik zinciri 
 ### KALAN — büyük kalemler (sırayla)
 
 1. **C-2 PostgREST sözleşme katmanı.** Limitsiz `.select` için lint/CI kuralı (bugün 274 çağrı, `fetchAllPaged` 6 dosyada) + sınıra yakın kalan sorgular (aggression 1.382, all_rows 600, squad_audit). D-1'in palette-guard'ı hazır şablon. Bu, 2.4 sınıfının tekrarını önleyen tek kalıcı çözüm.
-2. **A-1 tek orkestratör modülü.** Refresh mantığı hâlâ 3 dosyada; "kirli bayrağı" okuyan tek modül. H1+H2 kazancı alındığı için önceliği düştü.
+2. ~~**A-1 tek orkestratör modülü.**~~ KAPANDI (2026-08-20): `refresh_orchestrator.py` tek tablo + wrapper adım 4 tek çağrı; detay A-1 DURUM notunda.
 
 ### KALAN — küçük/orta işler
 

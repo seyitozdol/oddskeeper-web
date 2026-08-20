@@ -13,13 +13,14 @@ VENV="/opt/oddskeeper/venv/bin/python"
 LOG="/opt/oddskeeper/logs/match_scrape.log"
 LOCK="/opt/oddskeeper/match_scrape.lock"
 
-# H1 (mukerrer mat refresh): bu turda tsl_ss mat'lari yalniz adim 3b'deki
-# refresh_tsl_mats.py bir kez tazelesin. Bayrak, adim 1 loader'inin (step 26) ve
-# adim 3b builder'inin (step 93) kendi ic tsl_ss refresh'lerini atlamasini saglar;
-# adim 3b gate'i (sofa VEYA flash islendi) loader kosan her turda saglandigi ve
-# refresh_tsl_mats.py orada kosuldugu icin erteleme her zaman kapsanir. Yalnizca
-# bu wrapper'da set edilir; 3 saatlik run_sofascore.sh ve 04:00 run_fs_player_map.sh
-# bayragi set ETMEZ, dolayisiyla o yollarda davranis birebir aynidir.
+# A-1 (tek orkestrator): bu turda TUM mat refresh'leri adim 4'teki
+# refresh_orchestrator.py'de kosar (kirli kaynaklara gore, her mat en cok 1 kez,
+# bagimlilik sirasiyla). DEFER_MATS=1 loader/builder'larin ic refresh'lerini
+# tamamen atlatir; DEFER_TSL_MATS eski H1 bayragi, gecis uyumu icin birlikte
+# export edilir (eski python koduna denk gelirse en azindan tsl_ss ertelenir).
+# Yalnizca bu wrapper'da set edilir; 3 saatlik run_sofascore.sh ve 04:00
+# run_fs_player_map.sh bayraklari set ETMEZ, o yollarda davranis birebir aynidir.
+export DEFER_MATS=1
 export DEFER_TSL_MATS=1
 
 # Onceki kosu hala suruyorsa bu turu atla (10 dk polling ust uste binmesin).
@@ -99,19 +100,21 @@ fi
       if "$VENV" "$PIPE/src/football/sync_player_photos_tff1.py"; then :; else
         echo "===== $(date -u '+%F %T UTC') PHOTO SYNC FAILED ====="
       fi
-      # kart/xG overlay icin player mat ONCE, sonra team mat (team xG oyuncu mat'ini okur)
-      "$VENV" -c "import psycopg2; from dotenv import dotenv_values; e=dotenv_values('$PIPE/.env'); c=psycopg2.connect(e['DATABASE_URL'].strip().strip(chr(34))); c.autocommit=True; cur=c.cursor(); cur.execute('refresh materialized view analytics.tff1_player_season_stats_mat'); cur.execute('refresh materialized view analytics.tff1_team_season_stats_mat')"
-      echo "===== $(date -u '+%F %T UTC') FS-MAP + PHOTO + MAT OK ====="
+      # A-1: tff1 player/team mat refresh'i buradan adim 4 orkestratorune tasindi
+      # (flash kaynagi ayni siralamayla: player ONCE, team SONRA).
+      echo "===== $(date -u '+%F %T UTC') FS-MAP + PHOTO OK ====="
     fi
   fi
 
-  # 3b) TSL kimlik haritalari + tsl_ss mat'lari: SofaScore VEYA FlashScore bu
-  #     turda mac islediyse. ONEMLI: TSL istatistiklerinin ANA kaynagi SofaScore;
-  #     bu adim eskiden yalniz FlashScore gate'ine bagliydi, dolayisiyla SofaScore
-  #     bir maci yukleyip FlashScore ayni turda yakalamayinca (FS gec yayinliyor)
-  #     harita+mat tazelenmiyor, yeni yuklenen takim ~1 saat analytics'e girmiyordu
+  # 3b) TSL kimlik haritalari: SofaScore VEYA FlashScore bu turda mac islediyse.
+  #     ONEMLI: TSL istatistiklerinin ANA kaynagi SofaScore; bu adim eskiden
+  #     yalniz FlashScore gate'ine bagliydi, dolayisiyla SofaScore bir maci
+  #     yukleyip FlashScore ayni turda yakalamayinca (FS gec yayinliyor)
+  #     harita tazelenmiyor, yeni yuklenen takim ~1 saat analytics'e girmiyordu
   #     (Kasimpasa-Trabzonspor 2026-08-15). Artik SofaScore de tetikliyor.
-  #     Sira: sofa->opta ONCE (fs->opta onu kopru olarak okur), sonra mat'lar.
+  #     Sira: sofa->opta ONCE (fs->opta onu kopru olarak okur). Mat'lar bu
+  #     adimdan adim 4'teki orkestratore tasindi (A-1); haritalar her zaman
+  #     mat'lardan once yazilmis olur.
   #     H2 FAZ 2: sofa tarafinda tetik sofa_degisti (payload degisen mac);
   #     FlashScore yolu ayri kaynak, hash onu kapsamaz -> flash_islendi aynen kalir.
   if [ "$sofa_islendi" -eq 1 ] && [ "$sofa_degisti" -eq 0 ] && [ "$flash_islendi" -eq 0 ]; then
@@ -123,20 +126,14 @@ fi
     # apifootball<->sofascore kimlik haritasi: PSM (Player Market) guncel sezon
     # Avg koprusu bunu okur (af-<id> yeni transfer -> sofascore -> tsl_ss).
     "$VENV" "$PIPE/src/football/build_apifootball_sofascore_player_map.py" >/dev/null
-    if "$VENV" "$PIPE/src/football/refresh_tsl_mats.py"; then
-      echo "===== $(date -u '+%F %T UTC') TSL MAP + MAT OK ====="
-    else
-      echo "===== $(date -u '+%F %T UTC') TSL MAP + MAT FAILED ====="
-    fi
 
     # 3c) Tutarlilik denetimi: skor <-> ham oyuncu golu <-> haritali gol.
     #     Uyari verirse logda 'UYARI' satiri olur (gol dusuren kimlik arizasi).
     "$VENV" "$PIPE/src/football/check_match_coverage.py" --days 2 || true
   fi
-  # 3d) H3: Avrupa kupasi oyuncu-sezon mat'lari (ucl/uel/uecl) - SADECE bu turda
-  #     kupa maci islendiyse. SofaScore cup: SOFA_OUT 'CUP_M: N'; FlashScore cup:
-  #     CUP_OUT 'TOPLAM: N'. Mat'lar unique index'li -> CONCURRENTLY (okuyucu bloklanmaz).
-  #     H2 FAZ 2: sofa kupa tetigi de degisiklik-bazli (CUP_CHANGED_M); satir hic
+  # 3d) H3 kupa gate'i: bu turda kupa maci islendi mi? SofaScore cup: SOFA_OUT
+  #     'CUP_M: N'; FlashScore cup: CUP_OUT 'TOPLAM: N'.
+  #     H2 FAZ 2: sofa kupa tetigi degisiklik-bazli (CUP_CHANGED_M); satir hic
   #     yoksa fail-open olarak CUP_M'e duser. FS kupa yolu (CUP_OUT) aynen kalir.
   cup_islendi=0
   if echo "$SOFA_OUT" | grep -q 'CUP_CHANGED_M:'; then
@@ -145,11 +142,32 @@ fi
     echo "$SOFA_OUT" | grep -qE 'CUP_M: [1-9]' && cup_islendi=1
   fi
   echo "$CUP_OUT"  | grep -qE 'TOPLAM: [1-9]' && cup_islendi=1
-  if [ "$cup_islendi" -eq 1 ]; then
-    if "$VENV" "$PIPE/src/football/refresh_cup_mats.py"; then
-      echo "===== $(date -u '+%F %T UTC') CUP MAT OK ====="
+
+  # 4) A-1 TEK ORKESTRATOR: turun TUM mat refresh'leri tek cagri. Kirli kaynaklar
+  #    (sofa degisti / flash isledi / kupa islendi) arguman olarak gecer;
+  #    refresh_orchestrator.py tablosundaki mat'lari bagimlilik sirasiyla ve her
+  #    birini EN COK 1 KEZ tazeler (kupa mat'lari CONCURRENTLY). Banner'lar eski
+  #    satirlarla ayni tutulur (log kontrati: 'TSL MAP + MAT OK' / 'CUP MAT OK');
+  #    izleme/teyit grep'leri degismeden calisir.
+  orch_src=""
+  [ "$sofa_degisti" -eq 1 ]  && orch_src="$orch_src sofa"
+  [ "$flash_islendi" -eq 1 ] && orch_src="$orch_src flash"
+  [ "$cup_islendi" -eq 1 ]   && orch_src="$orch_src cup"
+  if [ -n "$orch_src" ]; then
+    if "$VENV" "$PIPE/src/football/refresh_orchestrator.py" $orch_src; then
+      if [ "$sofa_degisti" -eq 1 ] || [ "$flash_islendi" -eq 1 ]; then
+        echo "===== $(date -u '+%F %T UTC') TSL MAP + MAT OK ====="
+      fi
+      if [ "$cup_islendi" -eq 1 ]; then
+        echo "===== $(date -u '+%F %T UTC') CUP MAT OK ====="
+      fi
     else
-      echo "===== $(date -u '+%F %T UTC') CUP MAT FAILED ====="
+      if [ "$sofa_degisti" -eq 1 ] || [ "$flash_islendi" -eq 1 ]; then
+        echo "===== $(date -u '+%F %T UTC') TSL MAP + MAT FAILED ====="
+      fi
+      if [ "$cup_islendi" -eq 1 ]; then
+        echo "===== $(date -u '+%F %T UTC') CUP MAT FAILED ====="
+      fi
     fi
   fi
 } >> "$LOG" 2>&1

@@ -202,48 +202,29 @@ def main():
 
 
 def refresh_mats():
-    """tff1 + tsl_ss mat'larini tazele (frontend mat okur)."""
+    """tff1 + tsl_ss mat'larini tazele (frontend mat okur).
+
+    A-1: mat listeleri + sira + CONCURRENTLY bilgisi refresh_orchestrator.py'de.
+    - DEFER_MATS=1 (mac-sonrasi wrapper): burada HICBIR sey tazelenmez;
+      wrapper adim 4'te orkestrator kirli kaynaklara gore tek seferde tazeler.
+    - Bayraksiz yan yollar (3 saatlik run_sofascore.sh, elle kosu): eski liste
+      ayni davranisla burada kosar (SOFA_LOADER_CORE + tsl_ss kuyrugu).
+    - DEFER_TSL_MATS=1 (eski H1 bayragi, gecis uyumu): yalniz tsl_ss atlanir.
+    """
+    if os.environ.get("DEFER_MATS"):
+        print("[mat] tum mat refresh'leri orkestratore ertelendi (DEFER_MATS)", flush=True)
+        return
     try:
-        import psycopg2
-        conn = psycopg2.connect((ENV.get("DATABASE_URL") or "").strip().strip('"'))
-        conn.autocommit = True
-        cur = conn.cursor()
-        cur.execute("refresh materialized view analytics.tff1_player_season_stats_mat")
-        cur.execute("refresh materialized view analytics.tff1_team_season_stats_mat")
-        cur.execute("refresh materialized view analytics.tff1_player_match_log_mat")
-        cur.execute("refresh materialized view analytics.tff1_pm_player_season_mat")
-        cur.execute("refresh materialized view analytics.tff1_squad_mat")
-        # Shot-zone katmani (PSM SOT In/Out Box): shotmap upsert'lerinden sonra.
-        cur.execute("refresh materialized view concurrently analytics.player_shot_zones_match_mat")
-        # Kadro profil mat'i (PSM oyuncu listesi; agir tanim view'inden beslenir).
-        cur.execute("refresh materialized view concurrently analytics.team_current_squad_profile_mat")
-        # PSM sicak view mat'lari (leaderboard + profil; unique key yok -> plain).
-        cur.execute("refresh materialized view analytics.player_metric_leaderboard_current_mat")
-        cur.execute("refresh materialized view analytics.player_profile_mat")
+        import refresh_orchestrator as orch
+        failed = orch.refresh_list(orch.SOFA_LOADER_CORE)
         print("[mat] tff1 materialized view'lar tazelendi", flush=True)
-        # TSL SofaScore analytics zinciri (frontend 2026-08-09'dan beri
-        # bunlari okur; siralama dogru kalsin diye her yuklemede tazelenir).
-        # Sira onemli: detailed_metrics_global -> benchmarks/leaderboard/
-        # overview ondan tureyen mat'lar.
-        # H1 (mukerrer refresh): match_scrape turunda bu 8 tsl_ss mat'i, adim 3b'de
-        # (tum kimlik haritalari yazildiktan SONRA) refresh_tsl_mats.py zaten tazeler.
-        # DEFER_TSL_MATS=1 iken burada atla; boylece ayni turda uc kez degil bir kez
-        # tazelenir. Bayrak yoksa (3 saatlik run_sofascore.sh, elle kosu) tek tazeleme
-        # burasi oldugu icin eskisi gibi burada kosar.
         if os.environ.get("DEFER_TSL_MATS"):
             print("[mat] tsl_ss refresh adim 3b'ye ertelendi (DEFER_TSL_MATS)", flush=True)
         else:
-            cur.execute("refresh materialized view analytics.tsl_ss_player_detailed_metrics_global_mat")
-            # H4: Players pivot mat'i, detailed_global'den HEMEN SONRA.
-            cur.execute("refresh materialized view analytics.tsl_ss_player_table_mat")
-            cur.execute("refresh materialized view analytics.tsl_ss_player_metric_benchmarks_mat")
-            cur.execute("refresh materialized view analytics.tsl_ss_player_overview_advanced_mat")
-            cur.execute("refresh materialized view analytics.tsl_ss_player_metric_leaderboard_mat")
-            cur.execute("refresh materialized view analytics.tsl_ss_team_detailed_metrics_mat")
-            cur.execute("refresh materialized view analytics.tsl_ss_team_metric_benchmarks_mat")
-            cur.execute("refresh materialized view analytics.tsl_ss_team_overview_advanced_mat")
-            cur.execute("refresh materialized view analytics.tsl_ss_squad_mat")
+            failed += orch.refresh_list(orch.TSL_SS_MATS)
             print("[mat] tsl_ss materialized view'lar tazelendi", flush=True)
+        if failed:
+            print(f"UYARI: mat refresh basarisiz: {failed}", flush=True)
     except Exception as e:  # noqa
         print(f"UYARI: mat refresh basarisiz: {e}", flush=True)
 

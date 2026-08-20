@@ -1,60 +1,23 @@
 # -*- coding: utf-8 -*-
 """Super Lig (tsl_ss*) materialized view'larini bagimlilik sirasiyla tazeler.
 
-Mac-sonrasi job (run_match_scrape.sh) TSL maci isledigi turda cagirir; oyuncu/takim
-metrikleri, sirlamalar ve benchmark'lar yeni macla birlikte guncellensin diye.
-Sira onemli: benchmark ve overview mat'lari detay mat'ini okur.
+A-1: mat listesi + sira + CONCURRENTLY bilgisi artik refresh_orchestrator.py'de
+(TSL_CHAIN_MATS). Bu dosya yan yollarin (04:00 run_fs_player_map.sh zinciri,
+elle kosu) giris noktasi olarak duruyor; mac-sonrasi wrapper (run_match_scrape.sh)
+artik bunu degil, kirli-kaynak bazli refresh_orchestrator.py'yi cagirir.
 
 Calistirma:
   .venv\\Scripts\\python.exe src\\football\\refresh_tsl_mats.py
 """
+import sys
 from pathlib import Path
 
-import psycopg2
-from dotenv import dotenv_values
-
-ROOT = Path(__file__).resolve().parents[2]
-ENV = dotenv_values(ROOT / ".env")
-
-# Bagimlilik sirasi: once temel detay mat'lari, sonra onlari okuyanlar.
-MATS = [
-    "tsl_ss_player_detailed_metrics_global_mat",
-    # H4: Players sekmesi pivot mat'i (oyuncu-basina jsonb); detailed_global'den
-    # turedigi icin ondan HEMEN SONRA tazelenir.
-    "tsl_ss_player_table_mat",
-    "tsl_ss_player_metric_leaderboard_mat",
-    "tsl_ss_player_metric_benchmarks_mat",
-    "tsl_ss_player_overview_advanced_mat",
-    "tsl_ss_team_detailed_metrics_mat",
-    "tsl_ss_team_metric_benchmarks_mat",
-    "tsl_ss_team_overview_advanced_mat",
-    "tsl_ss_squad_mat",
-    "tsl_player_advanced_season_mat",
-    "tsl_player_flashscore_season_mat",
-    # SofaScore profil koprusu (sql/2026-08-15_player_*_sofascore_bridge.sql):
-    # profil ONCE (digerleri slug'i ondan okur), sonra mac logu + kimlik/bio.
-    "player_profile_bridged_mat",
-    "player_match_log_sofascore_mat",
-    "player_current_info_bridged_mat",
-    # Kadro profili artik bridged'e dayaniyor (sql/2026-08-16_squad_profile_use_bridged.sql)
-    # -> bridged mat'lardan SONRA tazelensin ki sentetik-opta oyuncular kadroda gorunsun.
-    "team_current_squad_profile_mat",
-]
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import refresh_orchestrator as orch  # noqa: E402
 
 
 def main():
-    conn = psycopg2.connect(ENV["DATABASE_URL"].strip().strip('"'))
-    conn.autocommit = True
-    cur = conn.cursor()
-    failed = []
-    for mat in MATS:
-        try:
-            cur.execute(f"refresh materialized view analytics.{mat}")
-            print(f"  refreshed analytics.{mat}")
-        except Exception as exc:  # bir mat patlarsa digerleri yine tazelensin
-            failed.append(mat)
-            print(f"  HATA analytics.{mat}: {exc}")
-    conn.close()
+    failed = orch.refresh_list(orch.TSL_CHAIN_MATS)
     if failed:
         raise SystemExit(f"tazelenemeyen mat: {failed}")
 

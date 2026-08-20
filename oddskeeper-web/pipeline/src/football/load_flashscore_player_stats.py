@@ -15,6 +15,7 @@ Calistirma:
   or. ... data\\flashscore\\1lig_2024-25 "2024/2025" "Trendyol 1. Lig"
 """
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -218,18 +219,21 @@ def main():
 
 
 def refresh_mats():
-    """tff1 mat'larini tazele (frontend mat okur)."""
+    """tff1 mat'larini tazele (frontend mat okur).
+
+    A-1: liste refresh_orchestrator.py'de (FLASH_LOADER_MATS). DEFER_MATS=1
+    (mac-sonrasi wrapper) iken atlanir; orkestrator adim 4'te tek seferde tazeler.
+    Bayraksiz yan yollar (elle kosu) eski davranisla burada kosar.
+    """
+    if os.environ.get("DEFER_MATS"):
+        print("[mat] tff1 mat refresh orkestratore ertelendi (DEFER_MATS)", flush=True)
+        return
     try:
-        import psycopg2
-        conn = psycopg2.connect((ENV.get("DATABASE_URL") or "").strip().strip('"'))
-        conn.autocommit = True
-        cur = conn.cursor()
-        cur.execute("refresh materialized view analytics.tff1_player_season_stats_mat")
-        cur.execute("refresh materialized view analytics.tff1_team_season_stats_mat")
-        cur.execute("refresh materialized view analytics.tff1_player_match_log_mat")
-        cur.execute("refresh materialized view analytics.tff1_pm_player_season_mat")
-        cur.execute("refresh materialized view analytics.tff1_squad_mat")
+        import refresh_orchestrator as orch
+        failed = orch.refresh_list(orch.FLASH_LOADER_MATS)
         print("[mat] tff1 materialized view'lar tazelendi", flush=True)
+        if failed:
+            print(f"UYARI: mat refresh basarisiz: {failed}", flush=True)
     except Exception as e:  # noqa
         print(f"UYARI: mat refresh basarisiz: {e}", flush=True)
 
