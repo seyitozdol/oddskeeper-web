@@ -153,7 +153,7 @@ Durum kolonu 2026-08-19 akşamı eklendi (o günkü uygulamalardan sonra).
 |---|---|---|---|---|---|---|
 | H1 | Döngü içi mükerrer refresh'i teke indir | 45 refresh/döngü; `tsl_ss_..._global_mat` (ort 36 sn) 3 kez | ~134 sn/döngü DB CPU (ölçülen ort. ile) | S | Düşük | **KAPANDI** (df75fb6, DEFER_TSL_MATS) |
 | H2 | Değişiklik yoksa refresh atla (payload hash) | event 16707704 ~21 döngü yeniden işlendi; refresh %79 pay | maç akşamı refresh yükü ~%80 (tahmin) | M | Orta | **KAPANDI** (48a9733; ilk maç teyidi 21 Ağu) |
-| H3 | `ucl/uel/uecl_player_season_stats_v1` → mat | EXPLAIN 4.35 sn (external merge 11.6 MB, work_mem 8 MB) | sorgu 4.35 sn -> <100 ms (tahmin) | S | Düşük | **KAPANDI** (30c16ed) |
+| H3 | `ucl/uel/uecl_player_season_stats_v1` → mat | EXPLAIN 4.35 sn (external merge 11.6 MB, work_mem 8 MB) | sorgu 4.35 sn -> <100 ms (tahmin) | S | Düşük | **KAPANDI** (30c16ed); 2026-08-20'de takım eşi de mat'landı: `*_team_season_stats_v1` canlı aggregate PostgREST'te timeout'a düşüp kupa takım profilini 8-10 sn + aralıklı 404 yapıyordu (2a25a9d, ölçüm: view 1.5-3.2 sn -> mat 0.1 sn, sayfa ~1 sn; sayfa-şekilli okuma da eklendi) |
 | H4 | TSL Players pivot mat (oyuncu başına 1 satır) | 1 count + 20 range = 19.348 satır; sıcak 1.7s | sıcak ~0.5s, 25→5 istek, ~2.5MB→150KB (tahmin) | M | Orta | **KAPANDI** (`tsl_ss_player_table_mat` canlı) |
 | H5 | `bb_player_metric_window_v1` → mat (el_ deseni) | EXPLAIN 1.058 ms, 96.592 satır WindowAgg + 12.7 MB disk | ~600 ms -> ~20 ms; 1.315 çağrı | S | Düşük | AÇIK (hâlâ view) |
 | H6 | Teams sekmesi `fetchAllPaged` (doğruluk + hız) | 6.136 satır > 1000 cap | yanlış L5/L10 düzelir; +5 istek | S | Yok | **KAPANDI** |
