@@ -12,6 +12,9 @@ PIPE="/opt/oddskeeper/repo/oddskeeper-web/pipeline"
 VENV="/opt/oddskeeper/venv/bin/python"
 LOG="/opt/oddskeeper/logs/match_scrape.log"
 LOCK="/opt/oddskeeper/match_scrape.lock"
+# K-2 (2026-08-20): fetch adimi tamamen cokerse (rc!=0) anlik ntfy; yoksa
+# gorunurluk gunluk digest'e kalir. notify.sh yoksa sessiz gecer.
+NOTIFY="/opt/oddskeeper/notify.sh"
 
 # A-1 (tek orkestrator): bu turda TUM mat refresh'leri adim 4'teki
 # refresh_orchestrator.py'de kosar (kirli kaynaklara gore, her mat en cok 1 kez,
@@ -39,6 +42,7 @@ fi
     echo "===== $(date -u '+%F %T UTC') SOFA OK ====="
   else
     echo "===== $(date -u '+%F %T UTC') SOFA FAILED rc=$src ====="
+    [ -x "$NOTIFY" ] && "$NOTIFY" "match_scrape: SOFA FAILED" "rc=$src $(echo "$SOFA_OUT" | tail -1 | cut -c1-160)" high
   fi
   # 2) FlashScore (OVERLAY): xg/xgot/xa/sari-kirmizi kart/detayli pozisyon.
   #    Proxysiz duz HTTP; ayni 2.5-6s penceresi (fetcher kendi FS_* envleriyle).
@@ -48,6 +52,7 @@ fi
     echo "===== $(date -u '+%F %T UTC') FLASH OK ====="
   else
     echo "===== $(date -u '+%F %T UTC') FLASH FAILED rc=$frc ====="
+    [ -x "$NOTIFY" ] && "$NOTIFY" "match_scrape: FLASH FAILED" "rc=$frc $(echo "$FLASH_OUT" | tail -1 | cut -c1-160)" high
   fi
 
   # 2b) Avrupa kupalari FlashScore overlay: SofaScore'un bos oldugu kupa maclari
@@ -60,6 +65,7 @@ fi
     echo "===== $(date -u '+%F %T UTC') CUP FS OK ====="
   else
     echo "===== $(date -u '+%F %T UTC') CUP FS FAILED rc=$crc ====="
+    [ -x "$NOTIFY" ] && "$NOTIFY" "match_scrape: CUP FS FAILED" "rc=$crc $(echo "$CUP_OUT" | tail -1 | cut -c1-160)" high
   fi
 
   # 2c) FS->Sofa kupa oyuncu haritasi: cup FS bu turda mac islediyse tazele
@@ -168,6 +174,7 @@ fi
       if [ "$cup_islendi" -eq 1 ]; then
         echo "===== $(date -u '+%F %T UTC') CUP MAT FAILED ====="
       fi
+      [ -x "$NOTIFY" ] && "$NOTIFY" "match_scrape: MAT REFRESH FAILED" "orkestrator rc!=0 (kaynak:$orch_src)" high
     fi
   fi
 } >> "$LOG" 2>&1

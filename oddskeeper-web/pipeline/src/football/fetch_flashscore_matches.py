@@ -144,17 +144,25 @@ def process_league(cfg):
 def main():
     total_m = total_p = 0
     wrote = False
+    ok_ligler = 0   # K-2: hatasiz biten lig sayisi (tam-cokus tespiti icin)
+    hata_ligler = 0
     for cfg in LEAGUES:
         try:
             mr, pr = process_league(cfg)
             total_m += mr
             total_p += pr
             wrote = wrote or mr > 0
+            ok_ligler += 1
         except Exception as e:  # noqa
+            hata_ligler += 1
             print(f"[{cfg['key']}] HATA: {repr(e)[:160]}", flush=True)
     if wrote and not DRY_RUN:
         fsload.refresh_mats()
     print(f"TOPLAM: {total_m} mac, {total_p} oyuncu (dry_run={DRY_RUN})", flush=True)
+    # K-2 (2026-08-20): tum ligler hata = tam cokus -> rc!=0 (wrapper FLASH
+    # FAILED banner'i + ntfy). Kismi hatada '[key] HATA:' satirlari digest'e girer.
+    if hata_ligler and not ok_ligler:
+        raise SystemExit(f"FETCH FAILED: {hata_ligler} lig hata, 0 lig islendi")
 
 
 if __name__ == "__main__":

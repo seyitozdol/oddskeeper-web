@@ -10,7 +10,11 @@ set -uo pipefail
 LOGDIR=/opt/oddskeeper/logs
 STATE=/opt/oddskeeper/digest_state
 NOTIFY=/opt/oddskeeper/notify.sh
-PATTERN='FAILED|Traceback|FAIL:|\[HATA\]|NotNullViolation|SystemExit'
+# K-2 (2026-08-20): fetcher lig hatalari "[Super Lig] HATA: ..." bicimindedir;
+# eski '\[HATA\]' deseni bunu YAKALAMIYORDU (proxy tam cokse bile digest sessiz
+# kaliyordu). ' HATA:' o sinifi, 'UYARI' da mat-refresh/kimlik/coverage
+# uyarilarini kapsar.
+PATTERN='FAILED|Traceback|FAIL:|\[HATA\]| HATA:|UYARI|NotNullViolation|SystemExit'
 mkdir -p "$STATE"
 
 summary=""

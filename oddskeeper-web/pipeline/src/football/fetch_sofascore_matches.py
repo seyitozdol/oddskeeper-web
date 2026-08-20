@@ -231,6 +231,8 @@ def main():
     changed_m = 0  # H2: bu turda payload'i gercekten degisen mac sayisi
     cup_changed = 0  # H2 FAZ 2: degisen KUPA maci (wrapper 3d kupa mat gate'i)
     CUP_COMPS = {"UEFA Şampiyonlar Ligi", "UEFA Avrupa Ligi", "UEFA Konferans Ligi"}
+    ok_ligler = 0   # K-2: hatasiz biten lig sayisi (tam-cokus tespiti icin)
+    hata_ligler = 0
     for cfg in LEAGUES:
         try:
             m, p, ch = process_league(cfg)
@@ -240,7 +242,9 @@ def main():
             if cfg["competition"] in CUP_COMPS:
                 cup_m += m
                 cup_changed += ch
+            ok_ligler += 1
         except Exception as e:  # noqa
+            hata_ligler += 1
             print(f"[{cfg['competition']}] HATA: {e}", flush=True)
     # H2 FAZ 2: refresh yalniz payload'i degisen mac varsa kosar (yeni mac da
     # degisen sayilir; hash hatasi da muhafazakar olarak degisen sayilir, bkz
@@ -260,6 +264,12 @@ def main():
     # H2 FAZ 2: wrapper gate'leri bu iki satiri okur (yoksa fail-open eski davranis).
     print(f"CHANGED_M: {changed_m}", flush=True)
     print(f"CUP_CHANGED_M: {cup_changed}", flush=True)
+    # K-2 (2026-08-20): TUM ligler hata verip hicbiri islenemediyse (proxy /
+    # SofaScore tam cokusu) rc!=0 don -> wrapper 'SOFA FAILED' banner'i basar,
+    # anlik ntfy + gunluk digest gorur. Kismi hata (bazi ligler OK) rc=0 kalir;
+    # '[lig] HATA:' satirlari digest desenine (' HATA:') girer.
+    if hata_ligler and not ok_ligler:
+        raise SystemExit(f"FETCH FAILED: {hata_ligler} lig hata, 0 lig islendi")
 
 
 if __name__ == "__main__":
