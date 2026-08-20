@@ -97,49 +97,6 @@ function catLabel(key: string | null): string {
   return key ? m[key] ?? key : "";
 }
 
-// SofaScore oyuncu id -> football profil slug'i (tek-profil birlestirme).
-// Kupa yuzeylerindeki her oyuncu linki bu haritayla slug-keyed football
-// player-detail'e gider (ayri kupa profili YOK). Istek basina cache'li;
-// view Faz 2b sonrasi tum kupa oyuncularini kapsar (~10k satir, 2 kolon).
-export const getFootballSlugMap = cache(
-  async (): Promise<Record<string, string>> => {
-    const sb = await createClient();
-    const out: Record<string, string> = {};
-    for (let from = 0; ; from += 1000) {
-      const { data, error } = await sb
-        .schema("analytics")
-        .from("sofascore_football_player_link_v1")
-        .select("sofascore_player_id, player_slug")
-        .order("sofascore_player_id", { ascending: true })
-        .range(from, from + 999);
-      if (error || !data || data.length === 0) break;
-      for (const r of data)
-        if (r.player_slug) out[String(r.sofascore_player_id)] = String(r.player_slug);
-      if (data.length < 1000) break;
-    }
-    return out;
-  }
-);
-
-// Kupa oyuncu foto/uyruk haritasi (tff1_player_info_v1; competition-bagimsiz, tum
-// kupalarda ayni). Istek-kapsamli cache(): ayni render'da assets() + players() iki
-// kez cagirsa da bir kez kosar (H8; onceden ~11 istek x 10.977 satir iki kez idi).
-const playerInfoMap = cache(
-  async (): Promise<Record<string, { photo: string | null; country: string | null }>> => {
-    const sb = await createClient();
-    const out: Record<string, { photo: string | null; country: string | null }> = {};
-    for (let from = 0; ; from += 1000) {
-      const { data, error } = await sb.schema("analytics").from("tff1_player_info_v1")
-        .select("player_id, photo_url, country").order("player_id", { ascending: true })
-        .range(from, from + 999);
-      if (error || !data || data.length === 0) break;
-      for (const r of data) out[String(r.player_id)] = { photo: r.photo_url ?? null, country: r.country ?? null };
-      if (data.length < 1000) break;
-    }
-    return out;
-  }
-);
-
 function formOf(teamId: string, matches: TslMatch[]): FormResult[] {
   const played = matches.filter((m) => m.homeId === teamId || m.awayId === teamId).slice().reverse().slice(-5);
   return played.map((m) => {
@@ -162,11 +119,15 @@ export function makeCupProvider(COMP: string, prefix: string) {
     return out;
   }
 
-  async function assets(): Promise<Record<string, PlayerAsset>> {
-    const [info, slugs] = await Promise.all([playerInfoMap(), getFootballSlugMap()]);
+  // C-1 Faz 2: dekorasyon haritasi artik sezonun kendi satirlarindan gelir
+  // (playerRows cache'li; ekstra istek SIFIR). Onceden 21 istek / ~21k satirdi.
+  async function assets(season: string): Promise<Record<string, PlayerAsset>> {
+    const rows = await playerRows(season);
     const out: Record<string, PlayerAsset> = {};
-    for (const [id, v] of Object.entries(info))
-      out[id] = { slug: slugs[id] ?? null, photo: v.photo, nationality: v.country };
+    for (const r of rows) {
+      const id = String(r.player_id);
+      if (!out[id]) out[id] = { slug: (r.player_slug as string) ?? null, photo: (r.photo_url as string) ?? null, nationality: (r.country as string) ?? null };
+    }
     return out;
   }
 
@@ -229,24 +190,32 @@ export function makeCupProvider(COMP: string, prefix: string) {
     return rows.map((r, i) => ({ rank: i + 1, ...r }));
   }
 
-  async function playerRows(season: string) {
+  // C-1 Faz 2: view artik foto/ulke/slug'i DB'de join'liyor (sql/2026-08-20_
+  // player_table_views.sql); playerInfoMap (10.979 satir, 11 istek) ve slug
+  // haritasi (9.983 satir, 10 istek) tam-taramalarina gerek kalmadi. cache():
+  // ayni render'da players+leaderboard+aggression+assets TEK fetch paylasir.
+  // player_id ikincil sirasi sayfa kaymasini onler (minutes unique degil).
+  // Dar kolon listesi MAP anahtarlarindan turetilir (61 kolonluk select('*')
+  // 1.38MB idi, dar liste 824KB; yeni metrik CUP_PLAYER_MAP'e eklenince
+  // otomatik gelir).
+  const PLAYER_COLS = [
+    "player_id", "player_name", "position_code", "team_id", "team_name",
+    ...Object.keys(CUP_PLAYER_MAP), "photo_url", "country", "player_slug",
+  ].join(",");
+  const playerRows = cache(async (season: string) => {
     const sb = await createClient();
     const out: Record<string, unknown>[] = [];
     for (let i = 0; i < 10; i++) {
-      const { data } = await sb.schema("analytics").from(V("player_season_stats_v1")).select("*").eq("season_label", season).order("minutes", { ascending: false, nullsFirst: false }).range(i * 1000, i * 1000 + 999);
+      const { data } = await sb.schema("analytics").from(V("player_season_stats_v1")).select(PLAYER_COLS).eq("season_label", season).order("minutes", { ascending: false, nullsFirst: false }).order("player_id").range(i * 1000, i * 1000 + 999).returns<Record<string, unknown>[]>();
       if (!data || !data.length) break;
       out.push(...data);
       if (data.length < 1000) break;
     }
     return out;
-  }
+  });
 
   async function players(season: string, meta: Record<string, TslTeamMeta>): Promise<ResmiPlayerRow[]> {
-    const [rows, info, slugs] = await Promise.all([
-      playerRows(season),
-      playerInfoMap(),
-      getFootballSlugMap(),
-    ]);
+    const rows = await playerRows(season);
     return rows.map((r) => {
       const id = String(r.player_id);
       const teamId = String(r.team_id ?? "");
@@ -265,8 +234,8 @@ export function makeCupProvider(COMP: string, prefix: string) {
       return {
         playerId: id, name: (r.player_name as string) ?? "—", positionCode: (r.position_code as string) ?? null,
         teamId, teamName: meta[teamId]?.name ?? (r.team_name as string) ?? null, teamLogo: meta[teamId]?.logo ?? null,
-        slug: slugs[id] ?? null, playerHref: null, teamHref: null,
-        photo: info[id]?.photo ?? null, nationality: info[id]?.country ?? null, inCurrentSquad: true,
+        slug: (r.player_slug as string) ?? null, playerHref: null, teamHref: null,
+        photo: (r.photo_url as string) ?? null, nationality: (r.country as string) ?? null, inCurrentSquad: true,
         metrics,
       };
     });
@@ -345,7 +314,7 @@ export function makeCupProvider(COMP: string, prefix: string) {
     upcoming: (s: string, meta: Record<string, TslTeamMeta>) => upcoming(s, meta),
     standings: (s: string, meta: Record<string, TslTeamMeta>, m: TslMatch[]) => standings(s, meta, m),
     players: (s: string, meta: Record<string, TslTeamMeta>) => players(s, meta),
-    assets: () => assets(),
+    assets: (s: string) => assets(s),
     catalog: () => Promise.resolve(CUP_PLAYER_CATALOG),
     leaderboard: (s: string, mk: string, meta: Record<string, TslTeamMeta>) => leaderboard(s, mk, meta),
     teamMetrics: (s: string, meta: Record<string, TslTeamMeta>) => teamMetrics(s, meta),

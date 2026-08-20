@@ -99,31 +99,15 @@ export async function tff1TeamMeta(): Promise<Record<string, TslTeamMeta>> {
   return out;
 }
 
-// H8: istek-kapsamli cache() — ayni render'da tff1Assets() + players() iki kez
-// cagirsa da bir kez kosar (onceden ~11 istek x ~10.977 satir iki kez idi).
-const playerInfoMap = cache(
-  async (): Promise<Record<string, { photo: string | null; country: string | null }>> => {
-    const sb = await createClient();
-    const out: Record<string, { photo: string | null; country: string | null }> = {};
-    // PostgREST 1000 satir/istek ust siniri (db-max-rows). .limit(3000) capleniyordu ->
-    // 2050 oyuncudan yalniz ~1000'i geliyordu, yeni oyuncularin fotosu haritada olmuyordu.
-    // Sayfalayarak tumunu cek.
-    for (let from = 0; ; from += 1000) {
-      const { data, error } = await sb.schema("analytics").from("tff1_player_info_v1")
-        .select("player_id, photo_url, country").order("player_id", { ascending: true })
-        .range(from, from + 999);
-      if (error || !data || data.length === 0) break;
-      for (const r of data) out[String(r.player_id)] = { photo: r.photo_url ?? null, country: r.country ?? null };
-      if (data.length < 1000) break;
-    }
-    return out;
-  }
-);
-
-export async function tff1Assets(): Promise<Record<string, PlayerAsset>> {
-  const info = await playerInfoMap();
+// C-1 Faz 3: dekorasyon haritasi sezonun kendi satirlarindan (playerRows
+// cache'li, ekstra istek SIFIR). Onceden 11 istek / 10.979 satir tam-taramaydi.
+export async function tff1Assets(season: string): Promise<Record<string, PlayerAsset>> {
+  const rows = await playerRows(season);
   const out: Record<string, PlayerAsset> = {};
-  for (const [id, v] of Object.entries(info)) out[id] = { slug: null, photo: v.photo, nationality: v.country };
+  for (const r of rows) {
+    const id = String(r.player_id);
+    if (!out[id]) out[id] = { slug: null, photo: (r.photo_url as string) ?? null, nationality: (r.country as string) ?? null };
+  }
   return out;
 }
 
@@ -196,22 +180,32 @@ export async function tff1Standings(season: string, meta: Record<string, TslTeam
   return rows.map((r, i) => ({ rank: i + 1, ...r }));
 }
 
-async function playerRows(season: string) {
+// C-1 Faz 3: view foto/ulkeyi DB'de join'liyor (tff1_player_table_v1, sql/
+// 2026-08-20_player_table_views.sql); playerInfoMap tam-taramasi (10.979 satir,
+// 11 istek) gereksizlesti. cache(): players+leaderboard+aggression+assets ayni
+// render'da tek fetch paylasir. player_id ikincil sira sayfa kaymasini onler.
+// Dar kolon listesi PLAYER_MAP anahtarlarindan turetilir (select('*') yerine;
+// yeni metrik MAP'e eklenince otomatik gelir).
+const PLAYER_COLS = [
+  "player_id", "player_name", "position_code", "team_id", "team_name",
+  ...Object.keys(PLAYER_MAP), "photo_url", "country",
+].join(",");
+const playerRows = cache(async (season: string) => {
   const sb = await createClient();
   const out: Record<string, unknown>[] = [];
-  for (let i = 0; i < 3; i++) {
-    const { data } = await sb.schema("analytics").from("tff1_player_season_stats_mat").select("*").eq("season_label", season).order("minutes", { ascending: false, nullsFirst: false }).range(i * 1000, i * 1000 + 999);
+  for (let i = 0; i < 10; i++) {
+    const { data } = await sb.schema("analytics").from("tff1_player_table_v1").select(PLAYER_COLS).eq("season_label", season).order("minutes", { ascending: false, nullsFirst: false }).order("player_id").range(i * 1000, i * 1000 + 999).returns<Record<string, unknown>[]>();
     if (!data || !data.length) break;
     out.push(...data);
     if (data.length < 1000) break;
   }
   return out;
-}
+});
 
 export async function tff1Players(
   season: string, meta: Record<string, TslTeamMeta>
 ): Promise<ResmiPlayerRow[]> {
-  const [rows, info] = await Promise.all([playerRows(season), playerInfoMap()]);
+  const rows = await playerRows(season);
   return rows.map((r) => {
     const id = String(r.player_id);
     const teamId = String(r.team_id ?? "");
@@ -231,7 +225,7 @@ export async function tff1Players(
       playerId: id, name: (r.player_name as string) ?? "—", positionCode: (r.position_code as string) ?? null,
       teamId, teamName: meta[teamId]?.name ?? (r.team_name as string) ?? null, teamLogo: meta[teamId]?.logo ?? null,
       slug: null, playerHref: null, teamHref: null,
-      photo: info[id]?.photo ?? null, nationality: info[id]?.country ?? null, inCurrentSquad: true,
+      photo: (r.photo_url as string) ?? null, nationality: (r.country as string) ?? null, inCurrentSquad: true,
       metrics,
     };
   });

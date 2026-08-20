@@ -16,7 +16,7 @@ Rapor 2026-08-19 sabahı salt-okunur bir incelemeyle yazıldı; aynı gün madde
 | Hızlandırma (H) | H1, H2, H3, H4, H6, H7, H10, H12 | H8 (cache var, `.in()` yok) | H5, H9, H11 |
 | Veri katmanı (A) | **A-4 (tam)**, A-5, A-1 Faz 1-2 | A-2 (şema+alarm var, is_curated yok) | A-3, A-1 tek modül |
 | Pipeline (B) | B-1, B-3, B-4 | — | B-2 |
-| Servis (C) | C-1 Faz 1, C-3 cache ayağı | C-4 (route silme sürüyor) | C-2, C-1 Faz 2-3, C-3 ids, C-4 cache |
+| Servis (C) | **C-1 (tam)**, C-2 Faz 1-2, C-3 cache, C-4 route | — | C-2 Faz 3 (select-yıldız), C-3 TSL ids, C-4/H11 cache |
 | UX (D) | D-1, D-2 renk ayağı | — | D-2 tarih/sayı, D-3 header |
 
 Sahip kararıyla iptal edilenler ve kalan işlerin sıralı listesi bölüm 5'te.
@@ -158,7 +158,7 @@ Durum kolonu 2026-08-19 akşamı eklendi (o günkü uygulamalardan sonra).
 | H5 | `bb_player_metric_window_v1` → mat (el_ deseni) | EXPLAIN 1.058 ms, 96.592 satır WindowAgg + 12.7 MB disk | ~600 ms -> ~20 ms; 1.315 çağrı | S | Düşük | AÇIK (hâlâ view) |
 | H6 | Teams sekmesi `fetchAllPaged` (doğruluk + hız) | 6.136 satır > 1000 cap | yanlış L5/L10 düzelir; +5 istek | S | Yok | **KAPANDI** |
 | H7 | `getNavAccess` + `getPlayerProfile` react cache() | layout+sayfa 2x auth.getUser + 2x izin sorgusu | sayfa başına 1-3 istek + ~200-600ms RTT | S | Çok düşük | **KAPANDI** |
-| H8 | `playerInfoMap` cache() + `.in()` (CL/1.Lig/kupa) | aynı render'da 2x tam tarama (10.977 satır x 2) | CL players 36→~7 istek, 4.1s→~1.5s (tahmin) | S-M | Düşük | YARIM: cache() kapandı, `.in()` daraltması AÇIK |
+| H8 | `playerInfoMap` cache() + `.in()` (CL/1.Lig/kupa) | aynı render'da 2x tam tarama (10.977 satır x 2) | CL players 36→~7 istek, 4.1s→~1.5s (tahmin) | S-M | Düşük | **KAPANDI** (C-1 Faz 2-3: tam-tarama haritalar kalktı, DB join) |
 | H9 | Leaderboard'ları DB'de order+limit / SQL GROUP BY | 600 satır→10; 1.382 satır→18 (aggression) | cap bug'ı da çözülür; satır hacmi çöker | S | Düşük | AÇIK |
 | H10 | idx_scan=0 non-unique indeksleri düşür (9 adet) | pg_stat_user_indexes, 3+ ay, ~2.2 MB | ~2.2 MB + yazma bakımı azalır | S | Düşük | **KAPANDI** (418837d, 11 indeks/~2.1 MB) |
 | H11 | Kullanıcı-bağımsız loader'lara kısa-TTL cache | grep: revalidate/unstable_cache hiç yok | eşzamanlı trafikte Supabase istek hacmi büyük düşer (tahmin) | M | Bayatlık | AÇIK (bugün de 0 kullanım) |
@@ -210,16 +210,17 @@ Not: "Ölçülen" işaretsiz kazançlar tahmindir; dev server ilk derlemede yava
 
 **B-4. Opta staging pagination (latent veri kaybı).** *Mevcut:* [load_staging_to_football_matches.py:197](oddskeeper-web/pipeline/src/football/load_staging_to_football_matches.py) ve incidents loader sayfalamasız GET; `raw.match_json_staging` 1000'i geçince (bugün 279) yeni maçlar sessizce yüklenmez. Details/opta_points/team_stats loader'larında offset döngüsü VAR. *Hedef:* mevcut sayfalı loader'daki offset döngüsünü kopyala. *Emek:* S. *Not:* Opta zinciri lokal Windows makinesinde koşuyor (VPS cron'unda yok); tek makineye bağımlılık + merkezi olmayan loglar ayrı bir konu.
 **DURUM (2026-08-19 akşam):** UYGULANDI: matches + incidents loader'larına details loader'daki offset döngüsü kopyalandı (incidents'taki limit=10000 da yanılsamaydı, PostgREST 1000'e kırpıyordu). Test: PAGE_SIZE=100'e zorlanıp çok sayfalı fetch SQL count ile birebir doğrulandı (306/306). Zamanlanmış görev bu repo klonundan koştuğu için yarınki 07:00 koşusunda devrede.
+**EK (2026-08-20):** Raporun 'tek makineye bağımlılık ayrı konu' notu büyüdü: lokal Opta görevi aslında EMEKLİ bir kaynağın kalıntısıymış (ana pipeline SS+FS/VPS; sahip teyit etti). Üstelik staging yazıcısı 19 Temmuz'dan beri eski klon yolunu okuyordu (f172af6'da fark edilip düzeltildi); düzeltme 20 Ağu 07:00'de 9 adet 26/27 opta maçını DB'ye soktu. Görev kapatma + veri silme kararı sahipte; detay memory opta-pipeline-status.
 
 ### Boyut C: Gösterim / Servis Katmanı
 
 **C-1. Sayfa-şekilli okuma katmanı.** *Mevcut:* uzun-format view'lar SSR'da 15-35k satır taşınıp JS'te pivot ediliyor (TSL Players 19.3k, CL players ~35k, 1.Lig takım ~15k); istek sayısı 20-36'ya çıkıyor, süreyi RTT domine ediyor. *Hedef:* her liste yüzeyi için oyuncu/takım başına 1 satırlık pivot view/mat; SSR loader 1-3 istek, <1000 satır. *Geçiş:* Faz 1 TSL Players, Faz 2 eurocup, Faz 3 tff1. Eski view'lar silinmez. *Etki:* en yavaş 4 sayfada sıcak süre ~%60-70 azalma (tahmin). *Emek:* M-L.
 
-*DURUM: Faz 1 KAPANDI (H4), Faz 2-3 AÇIK.* TSL Players pivot mat'ı (`tsl_ss_player_table_mat`) canlı. Eurocup ve tff1 yüzeyleri hâlâ uzun-format view okuyup JS'te pivotluyor.
+*DURUM: TAMAMEN KAPANDI (2026-08-20).* Faz 1 TSL pivot mat (H4). Faz 2-3 farklı çıktı: eurocup/tff1 istatistiği H3'ten beri zaten oyuncu-başına-tek-satır; asıl yük her SSR'da foto/ülke haritasının TAMAMININ (10.979 satır, 11 istek) ve eurocup'ta slug haritasının (9.983 satır, 10 istek) çekilmesiydi. Çözüm: foto/ülke/slug istatistik view'ına DB'de join'lendi (ölçüldü: 31 ms, mat GEREKMEDİ; sql/2026-08-20_player_table_views.sql, ucl/uel/uecl view'larına kolon APPEND + tff1_player_table_v1). Provider'lar tek kaynaktan okur, playerRows cache()'li (players+leaderboard+aggression+assets tek fetch), assets(season) sezon-kapsamlı, dar kolon listesi MAP'ten türetilir (payload 1.38MB -> 824KB). Kazanç: CL Players ~23 istek/~22k satır -> 2 istek/1.251 satır; tff1 ~12 istek -> 1 istek/459 satır. Doğrulama: CL players foto+slug-link 30/30, tff1 players foto 30/30, tff1 rankings dekorasyon 52 görsel, tsc 0.
 
 **C-2. PostgREST sözleşme katmanı (1000-cap + select("*")).** *Mevcut:* 260 sorgunun 136'sı limitsiz (regresyon aldı: 909ef1a→fa74978), 71'i `select("*") + TS cast` (kolon değişince sessiz undefined). *Hedef:* (a) limitsiz `.select` lint/CI ile yasak, (b) 1000+ potansiyelli her çekim `fetchAllPaged`, (c) satır tipleri view başına açık kolon listesiyle. *Geçiş:* Faz 1 lint + istisna listesi, Faz 2 sınıra yakın 4 sorgu (Teams log, aggression, all_rows 600, squad_audit). *Etki:* sessiz-yanlış-veri sınıfı kapanır. *Emek:* M.
 
-*DURUM: AÇIK (tek nokta yamaları hariç).* 2.4 Teams sorgusu sayfalandı ama kalıcı kural yok: bugün ölçüldü, 274 `.select(` çağrısı var, `fetchAllPaged` yalnız 6 dosyada, lint/CI kuralı yazılmadı. D-1'de kurulan palette-guard deseni (script + workflow) bu kural için hazır şablon.
+*DURUM: Faz 1-2 KAPANDI (2026-08-20), Faz 3 (açık kolon listesi) AÇIK.* CI bekçisi kuruldu (.github/scripts/check_postgrest_limits.py + postgrest-guard.yml): `.limit(N>1000)` sıfır tolerans (sessizce kırpılır, hiçbir zaman çalışmaz), sınırlayıcısız `.from()` zinciri ratchet baseline'ı (191 zincir/69 dosya, donduruldu) aşamaz; bilinçli küçük-tablo okuması `// 1000-cap: <gerekçe>` markeri ile geçer. Sınıra yakın/kırpılan sorgular: aggression (1.382, CANLI KIRPIKTI, sayfalandı+1382/1382 doğrulandı), kupa Teams leaderboard (1.667/sezon, CANLI KIRPIKTI, sayfalandı), tsl_transfers (913+pencere açık, sayfalandı), squad_audit (566, sayfalandı); 7 yanıltıcı `.limit(1200-3000)` ölçülüp 1000+marker'a indirildi. Faz 3 (`select("*")` 71 kullanımın açık kolon listesine geçişi) BİLİNÇLİ ertelendi: kolon atlama riski sessiz-undefined üretir, ayrı dikkatli oturum işi. ESKİ NOT: 2.4 Teams sorgusu sayfalandı ama kalıcı kural yok: bugün ölçüldü, 274 `.select(` çağrısı var, `fetchAllPaged` yalnız 6 dosyada, lint/CI kuralı yazılmadı. D-1'de kurulan palette-guard deseni (script + workflow) bu kural için hazır şablon.
 
 **C-3. Asset harita deseni + cache() konvansiyonu.** *Mevcut:* `getPlayerAssets` `playerIds` destekliyor ama provider'lar parametresiz çağırıyor; tff1/eurocup varyantları filtre desteklemiyor; aynı harita aynı render'da 2x; 13 loader cache'li, sık çağrılanlar (getNavAccess, getPlayerProfile, playerInfoMap) cache'siz. *Hedef:* asset servis fonksiyonu ids-zorunlu + react cache(); `features/*/server` altındaki her parametrik loader varsayılan cache()'li. *Etki:* euro/kupa yüzeylerinde 10-22 istek/sayfa azalma. *Emek:* S-M.
 
@@ -262,8 +263,7 @@ Bakım: mapping_health FAIL'i (squad_profile_broken_link 9 -> 0) kimlik zinciri 
 ### KALAN — büyük kalemler (sırayla)
 
 1. **C-2 PostgREST sözleşme katmanı.** Limitsiz `.select` için lint/CI kuralı (bugün 274 çağrı, `fetchAllPaged` 6 dosyada) + sınıra yakın kalan sorgular (aggression 1.382, all_rows 600, squad_audit). D-1'in palette-guard'ı hazır şablon. Bu, 2.4 sınıfının tekrarını önleyen tek kalıcı çözüm.
-2. **C-1 Faz 2-3.** Eurocup ve tff1 yüzeyleri için sayfa-şekilli pivot mat'lar (TSL deseni kanıtlandı).
-3. **A-1 tek orkestratör modülü.** Refresh mantığı hâlâ 3 dosyada; "kirli bayrağı" okuyan tek modül. H1+H2 kazancı alındığı için önceliği düştü.
+2. **A-1 tek orkestratör modülü.** Refresh mantığı hâlâ 3 dosyada; "kirli bayrağı" okuyan tek modül. H1+H2 kazancı alındığı için önceliği düştü.
 
 ### KALAN — küçük/orta işler
 

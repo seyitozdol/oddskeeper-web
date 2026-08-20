@@ -81,7 +81,9 @@ type Provider = {
   upcoming(season: string, meta: Record<string, TslTeamMeta>): Promise<TslMatch[]>;
   standings(season: string, meta: Record<string, TslTeamMeta>, matches: TslMatch[]): Promise<TslStandingRow[]>;
   players(season: string, meta: Record<string, TslTeamMeta>, assets: Record<string, PlayerAsset>): Promise<ResmiPlayerRow[]>;
-  assets(): Promise<Record<string, PlayerAsset>>;
+  // C-1 Faz 2-3: dekorasyon haritasi sezon-kapsamli (cup/tff1 sezonun kendi
+  // satirlarindan kurar, tam-tarama yok); TSL sezon parametresini yok sayar.
+  assets(season: string): Promise<Record<string, PlayerAsset>>;
   catalog(season: string): Promise<TslMetricOption[]>;
   leaderboard(season: string, metricKey: string, meta: Record<string, TslTeamMeta>, includeUnqualified?: boolean): Promise<TslLeaderRow[]>;
   teamMetrics(season: string, meta: Record<string, TslTeamMeta>): Promise<TslTeamMetric[]>;
@@ -98,7 +100,7 @@ function providerFor(config: LeagueConfig): Provider {
       upcoming: () => cupUpcoming(),
       standings: (s, meta, m) => cupStandings(s, meta, m),
       players: (s, meta) => cupPlayers(s, meta),
-      assets: () => cupAssets(),
+      assets: () => cupAssets(),  // kupa Faz 5'e kadar bos; sezon parametresi gerekmiyor
       catalog: () => Promise.resolve(cupPlayerCatalog()),
       leaderboard: (s, mk, meta) => cupLeaderboard(s, mk, meta),
       teamMetrics: (s, meta) => cupTeamMetrics(s, meta),
@@ -114,7 +116,7 @@ function providerFor(config: LeagueConfig): Provider {
       upcoming: (s, meta) => tff1Upcoming(s, meta),
       standings: (s, meta, m) => tff1Standings(s, meta, m),
       players: (s, meta) => tff1Players(s, meta),
-      assets: () => tff1Assets(),
+      assets: (s) => tff1Assets(s),
       catalog: () => Promise.resolve(tff1PlayerCatalog()),
       leaderboard: (s, mk, meta) => tff1Leaderboard(s, mk, meta),
       teamMetrics: (s, meta) => tff1TeamMetrics(s, meta),
@@ -133,7 +135,7 @@ function providerFor(config: LeagueConfig): Provider {
     upcoming: (s, meta) => getResmiUpcoming(s, meta),
     standings: (s, meta, m) => getTslStandings(s, meta, m),
     players: (s, meta, assets) => getResmiPlayers(s, meta, assets),
-    assets: () => getPlayerAssets(),
+    assets: () => getPlayerAssets(),  // TSL: sezon-bagimsiz (H8/C-3 ayri is)
     catalog: (s) => getTslPlayerCatalog(s),
     leaderboard: (s, mk, _meta, inc) => getTslLeaderboard(s, mk, { includeUnqualified: inc }),
     teamMetrics: (s, meta) => getTslTeamMetrics(s, meta),
@@ -288,7 +290,7 @@ export async function loadResmiLig(
   const matches = await p.matches(season, meta);
   const [standingsReal, assets, upcoming, leaderRows] = await Promise.all([
     p.standings(season, meta, matches),
-    p.assets(),
+    p.assets(season),
     p.upcoming(season, meta),
     p.leaderboard(season, leaderMetric, meta),
   ]);
@@ -769,7 +771,7 @@ export type ResmiPlayersBundle = {
 export async function loadResmiPlayers(config: LeagueConfig, season: string): Promise<ResmiPlayersBundle> {
   const p = providerFor(config);
   const meta = await p.teamMeta(season);
-  const assets = await p.assets();
+  const assets = await p.assets(season);
   const rows = await p.players(season, meta, assets);
   const teamHrefById = await buildTeamHrefs(
     config,
@@ -818,7 +820,7 @@ export async function loadResmiPlayerRankings(
   const metricKey = metric?.metricKey ?? "goals_total";
   // Player Rankings: esik-disi (kisa dakikali) oyuncular da gorunsun/aranabilsin
   // ( or. sezon basi 25 dk oynayan Kerem). Liderler yine toplama gore ustte kalir.
-  const [rows, assets] = await Promise.all([p.leaderboard(season, metricKey, meta, true), p.assets()]);
+  const [rows, assets] = await Promise.all([p.leaderboard(season, metricKey, meta, true), p.assets(season)]);
   const teamHrefById = await buildTeamHrefs(
     config,
     collectEntries(meta, { leaders: rows }),
