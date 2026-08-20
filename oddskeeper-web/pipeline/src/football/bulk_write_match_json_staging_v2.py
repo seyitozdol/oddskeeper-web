@@ -12,7 +12,14 @@ from dotenv import find_dotenv, load_dotenv
 # ============================================================
 # AYARLAR
 # ============================================================
-INPUT_JSON_PATH = r"C:\Users\zygom\PycharmProjects\oddskeeper\data\raw\opta_unified_matches\all_matches.json"
+# Girdi: BU repo klonundaki birlesik parser ciktisi.
+# 2026-08-20 ARIZA: burada ESKI klonun mutlak yolu yaziliydi. auto_opta_pipeline
+# yeni maclari GitRepos klonuna yaziyor, bu yazici ise eski klondaki 19 Temmuz
+# tarihli 27 maclik dosyayi okuyordu -> her kosu 'Inserted: 0, Updated: 27' verip
+# 26/27 sezonunun yeni maclarini staging'e HIC yazmiyordu (DB'de opta 26/27 = 0).
+INPUT_JSON_PATH = str(
+    Path(__file__).resolve().parents[2] / 'data' / 'raw' / 'opta_unified_matches' / 'all_matches.json'
+)
 
 SUPABASE_SCHEMA = "raw"
 SUPABASE_TABLE = "match_json_staging"
