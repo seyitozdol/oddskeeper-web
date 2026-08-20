@@ -1023,8 +1023,9 @@ export default function PlayerMarketPredictionPage({
   // Static: secim basina bir satir. Dynamic: TEK satir, secimler sagda
   // Selection_1..N seklinde uzar. Oyuncu tikli ama hicbir line'i tikli
   // degilse yazilmaz; line'lar kucukten buyuge, ev (1) once deplasman (2).
-  // Ayni mac + oyuncu + line hedef tabloda zaten varsa uyari verilir ve
-  // hicbir sey eklenmez; once tablodaki satir silinmeli.
+  // Ayni mac + market + oyuncu + line hedef tabloda zaten varsa uyari verilir
+  // ve hicbir sey eklenmez; once tablodaki satir silinmeli. Farkli market ayni
+  // oyuncu+line'i engellemez.
   async function handleAdd() {
     if (!selectedFixture || adding) return;
     setAdding(true);
@@ -1112,16 +1113,19 @@ export default function PlayerMarketPredictionPage({
       build(visibleAway, awayDistExpNum, 2);
     }
 
-    // Mukerrer kontrolu: ayni mac + oyuncu + line hedef tabloda var mi?
+    // Mukerrer kontrolu: ayni mac + MARKET + oyuncu + line hedef tabloda var mi?
+    // 2026-08-20: market anahtara eklendi (sahip istegi): kontrol yalniz AYNI
+    // market icinde calisir; Shots eklendikten sonra SOT'ta ayni oyuncu+line
+    // artik engellenmez (Excel'deki fixture+MARKET+oyuncu+line kuraliyla ayni).
     const existingKeys = new Set(
       marketType === "dynamic"
         ? dynamicRows.flatMap((r) =>
-            r.selections.map((s) => `${r.fixtureKey}:${s.playerSlug}:${s.line}`)
+            r.selections.map((s) => `${r.fixtureKey}:${r.marketLabel}:${s.playerSlug}:${s.line}`)
           )
-        : staticRows.map((r) => `${r.fixtureKey}:${r.playerSlug}:${r.line}`)
+        : staticRows.map((r) => `${r.fixtureKey}:${r.marketLabel}:${r.playerSlug}:${r.line}`)
     );
     const dups = selections.filter((s) =>
-      existingKeys.has(`${fixtureKey}:${s.playerSlug}:${s.line}`)
+      existingKeys.has(`${fixtureKey}:${selectedMarket.label}:${s.playerSlug}:${s.line}`)
     );
     if (dups.length > 0) {
       const info = dups

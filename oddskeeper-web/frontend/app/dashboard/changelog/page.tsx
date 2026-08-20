@@ -23,6 +23,20 @@ const ENTRIES: Entry[] = [
   {
     date: { en: "20 August", tr: "20 Ağustos" },
     title: {
+      en: "Player model: duplicate check is now per market",
+      tr: "Oyuncu modeli: mükerrer kontrolü artık market bazında",
+    },
+    tag: TAG_FIX,
+    items: [
+      {
+        en: "In the football player model (TSL and 1. Lig), the Add button blocked a player+line as \"already added\" even when it was sent under a different market: after adding Shots, sending Shots on Target with the same player and line was refused. The duplicate check now includes the market, matching the Excel rule (fixture + market + player + line), so the same combination is only blocked when re-sent within the same market.",
+        tr: "Futbol oyuncu modelinde (TSL ve 1. Lig) Ekle butonu, aynı oyuncu+line farklı bir market altında gönderilse bile \"zaten ekli\" diye engelliyordu: Shots ekledikten sonra aynı oyuncu ve line ile SOT gönderilemiyordu. Mükerrer kontrolü artık marketi de anahtara katıyor (Excel'deki fixture + market + oyuncu + line kuralıyla aynı); aynı kombinasyon yalnız AYNI markette tekrar gönderilince engelleniyor.",
+      },
+    ],
+  },
+  {
+    date: { en: "20 August", tr: "20 Ağustos" },
+    title: {
       en: "Volleyball tools: per-market Under toggle in Config",
       tr: "Voleybol araçları: Config'te market bazında Under kapatma",
     },
