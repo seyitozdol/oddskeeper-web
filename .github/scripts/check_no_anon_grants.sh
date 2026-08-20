@@ -19,10 +19,11 @@ fi
 
 # Yalniz EKLENEN satirlara bak; yorum satirlari, revoke'lar ve ANON-IZINLI
 # isaretli satirlar muaf. "to anon" hem grant hem alter default privileges
-# desenlerini yakalar.
-viol=$(git diff "$base"...HEAD -- '*.sql' 2>/dev/null \
+# desenlerini yakalar. *.py de taranir (K-1 vakasi 2026-08-20: pipeline DDL
+# string'i her kosuda anon'a grant veriyordu, .sql-only tarama gormedi).
+viol=$(git diff "$base"...HEAD -- '*.sql' '*.py' 2>/dev/null \
   | grep -E '^\+[^+]' \
-  | grep -vE '^\+[[:space:]]*--' \
+  | grep -vE '^\+[[:space:]]*--|^\+[[:space:]]*#' \
   | grep -viE 'revoke|ANON-IZINLI' \
   | grep -iE '\bto[[:space:]]+anon\b|\bto[[:space:]]+[a-z_, ]*\banon\b' || true)
 

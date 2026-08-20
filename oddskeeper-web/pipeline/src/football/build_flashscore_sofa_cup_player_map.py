@@ -37,7 +37,7 @@ create table if not exists ref.flashscore_sofa_cup_player_map (
   created_at           timestamptz not null default now(),
   updated_at           timestamptz not null default now()
 );
-grant select on ref.flashscore_sofa_cup_player_map to anon, authenticated, service_role;
+grant select on ref.flashscore_sofa_cup_player_map to authenticated, service_role;
 """
 
 

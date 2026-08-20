@@ -124,6 +124,23 @@ CHECKS = [
     ("odds_orphan_availability", "LOW",
      """select count(*) from tracker.event_odds_availability a
         where not exists (select 1 from tracker.upcoming_events u where u.event_id=a.event_id)"""),
+    # ---- GUVENLIK ----
+    # Anon lockdown bekcisi (K-1, 2026-08-20): karar 2026-08-19 "anon'a sifir veri
+    # yuzeyi". CI anon-guard yalniz sql diff'ini gorur; pipeline'in create/grant
+    # DDL'i gibi RUNTIME yollardan acilan anon yetkisini bu sayac yakalar
+    # (yasanan vaka: build_flashscore_sofa_cup_player_map.py her kosuda anon'a
+    # SELECT grant ediyordu). Sistem semalari (storage/realtime/graphql/auth)
+    # Supabase yonetiminde, kapsam disi.
+    ("anon_grants_project_schemas", "HIGH",
+     """select count(*) from (
+          select table_schema s from information_schema.role_table_grants
+          where grantee='anon'
+          union all
+          select routine_schema from information_schema.role_routine_grants
+          where grantee='anon'
+        ) x where x.s not in ('storage','realtime','graphql','graphql_public',
+          'auth','vault','extensions','pgsodium','pgsodium_masks','net',
+          'supabase_functions','pg_catalog','information_schema','cron','pgbouncer')"""),
 ]
 
 
