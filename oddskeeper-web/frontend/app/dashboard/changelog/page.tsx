@@ -23,6 +23,20 @@ const ENTRIES: Entry[] = [
   {
     date: { en: "20 August", tr: "20 Ağustos" },
     title: {
+      en: "Volleyball tools: per-market Under toggle in Config",
+      tr: "Voleybol araçları: Config'te market bazında Under kapatma",
+    },
+    tag: TAG_NEW,
+    items: [
+      {
+        en: "The volleyball Match-Player Tools Config tab has a new \"U on\" tick per market. Untick it to close the Under side entirely for that market: every generated line becomes Over-only, and Under stays blank in the Input tab and the Excel export.",
+        tr: "Voleybol Match-Player Tools Config sekmesine market başına \"U açık\" tiki eklendi. Tiki kaldırınca o markette Under tarafı tamamen kapanır: üretilen tüm line'lar sadece Over olur, Input sekmesinde ve Excel çıktısında Under boş kalır.",
+      },
+    ],
+  },
+  {
+    date: { en: "20 August", tr: "20 Ağustos" },
+    title: {
       en: "European cup team profiles open in about a second",
       tr: "Avrupa kupası takım profilleri artık yaklaşık bir saniyede açılıyor",
     },

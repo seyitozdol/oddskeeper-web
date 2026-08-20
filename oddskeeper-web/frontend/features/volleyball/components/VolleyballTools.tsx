@@ -41,6 +41,13 @@ type VbHistoryEntry = { key: string; matchLabel: string; market: string; fixture
 
 // Model market'i: config'ten (varsa) yoksa VB_MARKETS default. base = veri anahtari (points/ace/...).
 type VbMkt = { key: string; base: string; label: string; std: number; tpl: string };
+// Under kapali markette line motoruna under_lines=0 gecer -> tum satirlarda
+// underPrice=null (Input'ta Under bos, tabloda "—"). Config satiri yoksa DEFAULT_CFG.
+function effCfg(c: PmMarketConfig | undefined): LineConfig {
+  if (!c) return DEFAULT_CFG;
+  return c.under_enabled === false ? { ...c, under_lines: 0 } : c;
+}
+
 function marketList(config: PmMarketConfig[], grp: "team" | "player"): VbMkt[] {
   const rows = config.filter((c) => c.market_group === grp && c.in_model !== false);
   if (rows.length === 0) return VB_MARKETS.map((m) => ({ key: m.key, base: m.key, label: m.label, std: m.std, tpl: m.tpl }));
@@ -249,7 +256,7 @@ function ModelTab({ teamMatches, playerMatches, players, teams, fixtures, config
         if (existing.has(sideTpl)) { dup++; continue; }
         const val = c.value(m);
         if (!(val > 0)) { zero++; continue; }
-        for (const r of buildConfiguredLines(val, m.std, teamCfg.get(m.key) ?? DEFAULT_CFG, TEAM_PAYBACK)) {
+        for (const r of buildConfiguredLines(val, m.std, effCfg(teamCfg.get(m.key)), TEAM_PAYBACK)) {
           rows.push({ kind: "team", fixtureExtId: fixExtId, template: sideTpl, participant: "", side: c.sideNum, line: r.line, over: r.overPrice, under: r.underPrice, label: `${c.label} ${m.label}`, name: c.col === "total" ? "Total" : (teamNameOf.get(c.col) ?? c.col) });
         }
         sent++;
@@ -508,7 +515,7 @@ function PlayerDist({ playerMatches, players, markets, playerCfg, playerIds, fix
   const valueOf = (fivb_id: number, def: number) => vals[`${fivb_id}`] ?? Math.round(def * 10) / 10;
   const isTicked = (fivb_id: number, avg: number) => (ticks[`${fivb_id}`] != null ? ticks[`${fivb_id}`] : avg > 0);
   const participantOf = (fivb_id: number) => playerIds[String(fivb_id)] || String(fivb_id);
-  const cfg = playerCfg.get(mk) ?? DEFAULT_CFG;
+  const cfg = effCfg(playerCfg.get(mk));
   const std = market?.std ?? vbMarketStd(base);
   const ladder = (v: number) => buildConfiguredLines(v, std, cfg, PROP_PAYBACK);
 
@@ -594,7 +601,7 @@ function PlayerDist({ playerMatches, players, markets, playerCfg, playerIds, fix
                   <td className="px-2 py-1 text-right">{on ? <NumInput value={v} onChange={(nv) => setVals((p) => ({ ...p, [`${r.fivb_id}`]: nv }))} /> : <span className="text-ink-3">-</span>}</td>
                   <td className="px-2 py-1 text-right">
                     <div className="flex items-center justify-end gap-1.5">
-                      <span className="tabular-nums text-accent-ink">{mid ? `${mid.line.toFixed(1)} ${mid.overPrice.toFixed(2)}/${mid.underPrice.toFixed(2)}` : "-"}</span>
+                      <span className="tabular-nums text-accent-ink">{mid ? `${mid.line.toFixed(1)} ${mid.overPrice.toFixed(2)}/${mid.underPrice == null ? "—" : mid.underPrice.toFixed(2)}` : "-"}</span>
                       {on ? <button onClick={() => setPreview(preview === String(r.fivb_id) ? null : String(r.fivb_id))} className="text-ink-3 hover:text-accent-ink"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg></button> : null}
                     </div>
                   </td>
@@ -734,7 +741,7 @@ function ConfigTab({ config, reload, t }: { config: PmMarketConfig[]; reload: ()
   const v = <K extends keyof PmMarketConfig>(c: PmMarketConfig, k: K) => (edits[rk(c)]?.[k] ?? c[k]) as PmMarketConfig[K];
   const patch = (c: PmMarketConfig, p: Partial<PmMarketConfig>) => setEdits((s) => ({ ...s, [rk(c)]: { ...s[rk(c)], ...p } }));
   const seed = async () => {
-    const payload = missing.map((m, i) => ({ market_group: grp, market_key: m.key, label: m.label, base_metric: m.key, template_id: m.tpl, std: m.std, in_model: true, sort_order: i, lines: 5, under_lines: 5, max_lines: 15, odds_cap: 999, skip_after: 5, skip_step: 2, round_odds: false }));
+    const payload = missing.map((m, i) => ({ market_group: grp, market_key: m.key, label: m.label, base_metric: m.key, template_id: m.tpl, std: m.std, in_model: true, sort_order: i, lines: 5, under_lines: 5, max_lines: 15, odds_cap: 999, skip_after: 5, skip_step: 2, round_odds: false, under_enabled: true }));
     if (payload.length && await upsertMarketConfig(payload, LEAGUE)) reload();
   };
   // Yeni market ekle: base = veri metrigi (points/ace/...) ya da "manual" (veri yok, elle trader).
@@ -747,7 +754,7 @@ function ConfigTab({ config, reload, t }: { config: PmMarketConfig[]; reload: ()
     const ok = await upsertMarketConfig([{
       market_group: grp, market_key: key, label, base_metric: manual ? null : nm.base,
       template_id: nm.tpl.trim() || null, std: nm.std ? parseFloat(nm.std) : (bm?.std ?? 3),
-      in_model: true, sort_order: 999, lines: 5, under_lines: 5, max_lines: 15, odds_cap: 999, skip_after: 5, skip_step: 2, round_odds: false,
+      in_model: true, sort_order: 999, lines: 5, under_lines: 5, max_lines: 15, odds_cap: 999, skip_after: 5, skip_step: 2, round_odds: false, under_enabled: true,
     }], LEAGUE);
     if (ok) { setNm({ name: "", base: "manual", tpl: "", std: "" }); reload(); }
   };
@@ -788,7 +795,9 @@ function ConfigTab({ config, reload, t }: { config: PmMarketConfig[]; reload: ()
           <thead><tr className="border-b border-line">
             <th className={`${th} text-center`}>{t("volleyball.colModelFlag")}</th><th className={`${th} text-left`}>{t("volleyball.colMarket")}</th>
             <th className={`${th} text-left`}>{t("volleyball.marketTemplate")}</th><th className={`${th} text-right`}>{t("volleyball.colStd")}</th>
-            <th className={`${th} text-right`}>{t("volleyball.cfgLines")}</th><th className={`${th} text-right`}>{t("volleyball.cfgUnder")}</th>
+            <th className={`${th} text-right`}>{t("volleyball.cfgLines")}</th>
+            <th className={`${th} text-center`}>{t("volleyball.cfgUnderOn")}</th>
+            <th className={`${th} text-right`}>{t("volleyball.cfgUnder")}</th>
             <th className={`${th} text-right`}>{t("volleyball.cfgSkipAfter")}</th><th className={`${th} text-right`}>{t("volleyball.cfgSkipStep")}</th>
             <th className={`${th} text-center`}></th>
           </tr></thead>
@@ -802,13 +811,14 @@ function ConfigTab({ config, reload, t }: { config: PmMarketConfig[]; reload: ()
                 <td className="px-1.5 py-0.5"><input value={(v(c, "template_id") ?? "").toString()} onChange={(e) => patch(c, { template_id: e.target.value || null })} className="w-24 rounded border border-line bg-field px-1 py-0 text-[11px] text-ink outline-none focus:border-line-strong" placeholder="—" /></td>
                 <td className="px-1.5 py-0.5 text-right">{numCell(c, "std")}</td>
                 <td className="px-1.5 py-0.5 text-right">{numCell(c, "lines", "w-10")}</td>
+                <td className="px-1.5 py-0.5 text-center"><input type="checkbox" checked={v(c, "under_enabled") !== false} onChange={(e) => patch(c, { under_enabled: e.target.checked })} className="accent-[var(--accent)]" title={t("volleyball.cfgUnderOnHint")} /></td>
                 <td className="px-1.5 py-0.5 text-right">{numCell(c, "under_lines", "w-10")}</td>
                 <td className="px-1.5 py-0.5 text-right">{numCell(c, "skip_after", "w-10")}</td>
                 <td className="px-1.5 py-0.5 text-right">{numCell(c, "skip_step", "w-10")}</td>
                 <td className="px-1.5 py-0.5 text-center"><button onClick={async () => { if (window.confirm(t("volleyball.confirmDelete")) && await deleteMarketConfig(c.market_group, c.market_key, LEAGUE)) reload(); }} className="text-[13px] text-neg hover:opacity-70">×</button></td>
               </tr>
             ))}
-            {rows.length === 0 ? <tr><td colSpan={9} className="px-2 py-3 text-[12px] text-ink-3">{t("volleyball.cfgEmpty")}</td></tr> : null}
+            {rows.length === 0 ? <tr><td colSpan={10} className="px-2 py-3 text-[12px] text-ink-3">{t("volleyball.cfgEmpty")}</td></tr> : null}
           </tbody>
         </table>
       </div>

@@ -68,9 +68,12 @@ export type PmMarketConfig = {
   skip_step: number;
   in_model: boolean;
   sort_order: number | null;
+  // Market bazinda Under tarafini tamamen kapatir (voleybol Config'te kullaniliyor;
+  // basketbolda kolon UI'da yok, degeri hep true kalir).
+  under_enabled: boolean;
 };
 
-const CFG_COLS = "market_group,market_key,label,base_metric,side,template_id,std,lines,under_lines,payback,round_odds,max_lines,odds_cap,skip_after,skip_step,in_model,sort_order";
+const CFG_COLS = "market_group,market_key,label,base_metric,side,template_id,std,lines,under_lines,payback,round_odds,max_lines,odds_cap,skip_after,skip_step,in_model,sort_order,under_enabled";
 
 export async function fetchMarketConfig(league = "basketball"): Promise<PmMarketConfig[]> {
   const supabase = createClient();
