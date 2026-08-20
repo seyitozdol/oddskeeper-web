@@ -27,6 +27,8 @@ Sayfa ölçüm tablosu (dev server, sıcak medyan): Dashboard 0.07s (redirect), 
 
 Üç gerçek kritik bulgu var; üçü de bağımsız doğrulandı. Doğruluk/güvenlik sınıfında bunların dışında kritik bulgu YOK.
 
+**GÜNCELLEME (2026-08-20 öğleden sonra): üçü de aynı gün KAPANDI.** K-1: commit 6d83d04 (py DDL'inden anon çıktı, canlı REVOKE uygulandı ve proje şemalarında anon grant 0 doğrulandı, mapping_health'e anon_grants_project_schemas HIGH sayacı + anon-guard artık *.py de tarıyor). K-2: commit d5b0429 (fetcher'lar tam çöküşte rc!=0, digest desenine ' HATA:' + 'UYARI' eklendi, wrapper'a SOFA/FLASH/CUP FS/orkestratör FAILED anlık ntfy kancaları; VPS'e deploy edildi, /opt kopyaları birebir). K-3: commit 17a8e64 (fetchAllPaged hata anında throw, resmiLoaders elle sayfalama döngüleri + eurocup/tff1 çekirdek sorguları error kontrolü; smoke test 4 sayfa 200). Aşağıdaki metin inceleme anındaki durumu korur.
+
 ### K-1. Anon lockdown kaçağı: bir tablo anon'a açık kalmış
 
 **Kanıt (canlı doğrulandı):** `ref.flashscore_sofa_cup_player_map` tablosunda anon rolüne SELECT grant'i var (has_table_privilege=True; grant listesi: postgres tam + authenticated + service_role + anon SELECT). Proje şemalarındaki TEK anon grant bu; kalan 29 grant Supabase sistem şemalarında (storage/realtime, normal).
