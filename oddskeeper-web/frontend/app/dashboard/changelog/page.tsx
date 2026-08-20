@@ -23,6 +23,20 @@ const ENTRIES: Entry[] = [
   {
     date: { en: "20 August", tr: "20 Ağustos" },
     title: {
+      en: "Faster basketball tools and league lists",
+      tr: "Basketbol araçları ve lig listeleri hızlandı",
+    },
+    tag: TAG_FIX,
+    items: [
+      {
+        en: "The BSL Match-Player Tools player windows (last 5 / last 10 / season averages) were recomputed from scratch on every page load; that data is now precomputed, so the tools open noticeably faster. Champions League, Europa League, Conference League and 1. Lig player lists and the TSL/1. Lig Teams tab also reuse recently fetched data for a couple of minutes instead of re-querying on every visit, which makes repeat visits faster and reduces database load when several people browse at once.",
+        tr: "BSL Match-Player Tools oyuncu pencereleri (son 5 / son 10 / sezon ortalamaları) her sayfa açılışında sıfırdan hesaplanıyordu; bu veri artık önceden hesaplanıyor ve araçlar belirgin şekilde daha hızlı açılıyor. Şampiyonlar Ligi, Avrupa Ligi, Konferans Ligi ve 1. Lig oyuncu listeleri ile TSL/1. Lig Teams sekmesi de her ziyarette veritabanına yeniden sormak yerine az önce çekilen veriyi birkaç dakika yeniden kullanıyor; tekrar ziyaretler hızlandı, aynı anda gezen kullanıcılarda veritabanı yükü düştü.",
+      },
+    ],
+  },
+  {
+    date: { en: "20 August", tr: "20 Ağustos" },
+    title: {
       en: "European cups: qualifying-round team profiles no longer 404",
       tr: "Avrupa kupaları: eleme turu takım profilleri artık 404 vermiyor",
     },

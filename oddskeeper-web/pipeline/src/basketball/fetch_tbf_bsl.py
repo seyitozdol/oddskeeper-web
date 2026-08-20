@@ -393,6 +393,20 @@ def run(args):
                 print(f"[tbf]  maç {mid} yüklendi ({len(player_rows)} oyuncu)", flush=True)
             time.sleep(0.5)
 
+    # Oyuncu box-score yazildiysa tools window MATVIEW'i bayat kalir -> tazele.
+    # (analytics.bb_player_metric_window_v1 2026-08-20'de matview'a cevrildi, P-2:
+    #  eskiden PostgREST sayfalamasinda her sayfa ~640-1000 ms yeniden hesapliyordu.
+    #  Refresh EDILMEZSE BSL Match-Player Tools eski/eksik veriyle calisir.
+    #  el_player_metric_window_v1'deki kalibin aynisi, bkz fetch_euroleague.py.)
+    if conn and n_players > 0:
+        try:
+            with conn.cursor() as cur:
+                cur.execute("refresh materialized view analytics.bb_player_metric_window_v1")
+            conn.commit()
+            print("[tbf] tools window matview tazelendi (bb_player_metric_window_v1)", flush=True)
+        except Exception as e:
+            print(f"[tbf] UYARI: window matview refresh hatasi {e!r} — ELLE tazele: "
+                  f"refresh materialized view analytics.bb_player_metric_window_v1", flush=True)
     if conn:
         conn.close()
     print(f"\n[tbf] BİTTİ: {n_matches} maç, {n_players} oyuncu-satırı "

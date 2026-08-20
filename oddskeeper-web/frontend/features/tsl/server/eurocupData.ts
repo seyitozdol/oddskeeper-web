@@ -4,6 +4,7 @@
 // kupaya ozel; team_logos/player_info generic tff1_* (id-bazli) paylasilir.
 import { cache } from "react";
 import { createClient } from "../../../lib/supabase/server";
+import { cachedQuery } from "../../../lib/supabase/cached";
 import { toNum } from "../lib";
 import type {
   FormResult,
@@ -207,18 +208,26 @@ export function makeCupProvider(COMP: string, prefix: string) {
     "player_id", "player_name", "position_code", "team_id", "team_name",
     ...Object.keys(CUP_PLAYER_MAP), "photo_url", "country", "player_slug",
   ].join(",");
-  const playerRows = cache(async (season: string) => {
-    const sb = await createClient();
-    const out: Record<string, unknown>[] = [];
-    for (let i = 0; i < 10; i++) {
-      const { data, error } = await sb.schema("analytics").from(V("player_season_stats_v1")).select(PLAYER_COLS).eq("season_label", season).order("minutes", { ascending: false, nullsFirst: false }).order("player_id").range(i * 1000, i * 1000 + 999).returns<Record<string, unknown>[]>();
-      if (error) throw new Error(`${V("player_season_stats_v1")} (sayfa ${i}): ${error.message}`);
-      if (!data || !data.length) break;
-      out.push(...data);
-      if (data.length < 1000) break;
+  // P-3 (2026-08-20): sezon satirlari kullanici-bagimsiz -> 120 sn istek-arasi
+  // cache (unstable_cache, cookie'siz client; anahtar prefix+sezon). cache()
+  // ayni render'daki players+leaderboard+aggression+assets cagrilarini tek
+  // fetch'e dusurmeye devam eder; unstable_cache es zamanli kullanicilarda
+  // ayni sorgunun tekrarini keser.
+  const fetchPlayerRows = cachedQuery(
+    `cup-player-rows-${prefix}`,
+    async (sb, season: string) => {
+      const out: Record<string, unknown>[] = [];
+      for (let i = 0; i < 10; i++) {
+        const { data, error } = await sb.schema("analytics").from(V("player_season_stats_v1")).select(PLAYER_COLS).eq("season_label", season).order("minutes", { ascending: false, nullsFirst: false }).order("player_id").range(i * 1000, i * 1000 + 999).returns<Record<string, unknown>[]>();
+        if (error) throw new Error(`${V("player_season_stats_v1")} (sayfa ${i}): ${error.message}`);
+        if (!data || !data.length) break;
+        out.push(...data);
+        if (data.length < 1000) break;
+      }
+      return out;
     }
-    return out;
-  });
+  );
+  const playerRows = cache((season: string) => fetchPlayerRows(season));
 
   async function players(season: string, meta: Record<string, TslTeamMeta>): Promise<ResmiPlayerRow[]> {
     const rows = await playerRows(season);

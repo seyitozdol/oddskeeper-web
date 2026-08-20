@@ -1,4 +1,5 @@
 import { createClient } from "../../../lib/supabase/server";
+import { cachedQuery } from "../../../lib/supabase/cached";
 import { fetchAllPaged } from "../../../lib/supabase/paginate";
 import { TSL_COMPETITION } from "../constants";
 import { toNum } from "../lib";
@@ -266,35 +267,37 @@ export type ResmiTransfer = {
 
 // TM oyuncu adini bizim oyuncu detayina (opta slug) ve fotografina (api-sports)
 // isimden eslesme ile bagla; eslesmezse bas harf/link yok.
-async function getPlayerNameAssetMap(): Promise<
-  Record<string, { slug: string | null; photo: string | null }>
-> {
-  const supabase = await createClient();
-  const data = await fetchAllPaged<{
-    player_slug: string | null;
-    player_name: string | null;
-    full_name: string | null;
-    photo_url: string | null;
-  }>((from, to) =>
-    supabase
-      .schema("analytics")
-      .from("player_current_info_v1")
-      .select("player_slug, player_name, full_name, photo_url")
-      .order("player_slug", { ascending: true })
-      .range(from, to)
-  );
-  const out: Record<string, { slug: string | null; photo: string | null }> = {};
-  const { normalizeSearch } = await import("../lib");
-  for (const r of data) {
-    const asset = { slug: r.player_slug ?? null, photo: r.photo_url ?? null };
-    for (const nm of [r.full_name, r.player_name]) {
-      if (!nm) continue;
-      const key = normalizeSearch(nm);
-      if (key && !out[key]) out[key] = asset;
+// P-3 (2026-08-20): TAM tablo taramasi (10k+ satir) her SSR'da tekrar
+// kosuyordu; kullanici-bagimsiz oldugu icin 120 sn istek-arasi cache'e alindi.
+const getPlayerNameAssetMap = cachedQuery(
+  "tsl-player-name-asset-map",
+  async (sb): Promise<Record<string, { slug: string | null; photo: string | null }>> => {
+    const data = await fetchAllPaged<{
+      player_slug: string | null;
+      player_name: string | null;
+      full_name: string | null;
+      photo_url: string | null;
+    }>((from, to) =>
+      sb
+        .schema("analytics")
+        .from("player_current_info_v1")
+        .select("player_slug, player_name, full_name, photo_url")
+        .order("player_slug", { ascending: true })
+        .range(from, to)
+    );
+    const out: Record<string, { slug: string | null; photo: string | null }> = {};
+    const { normalizeSearch } = await import("../lib");
+    for (const r of data) {
+      const asset = { slug: r.player_slug ?? null, photo: r.photo_url ?? null };
+      for (const nm of [r.full_name, r.player_name]) {
+        if (!nm) continue;
+        const key = normalizeSearch(nm);
+        if (key && !out[key]) out[key] = asset;
+      }
     }
+    return out;
   }
-  return out;
-}
+);
 
 export async function getResmiTransfers(season: string): Promise<ResmiTransfer[]> {
   const supabase = await createClient();

@@ -1,5 +1,6 @@
 import { cache } from "react";
 import { createClient } from "../../../lib/supabase/server";
+import { cachedQuery } from "../../../lib/supabase/cached";
 import { toNum } from "../lib";
 import type {
   FormResult,
@@ -195,8 +196,9 @@ const PLAYER_COLS = [
   "player_id", "player_name", "position_code", "team_id", "team_name",
   ...Object.keys(PLAYER_MAP), "photo_url", "country",
 ].join(",");
-const playerRows = cache(async (season: string) => {
-  const sb = await createClient();
+// P-3 (2026-08-20): sezon satirlari kullanici-bagimsiz -> 120 sn istek-arasi
+// cache (unstable_cache, cookie'siz client). cache() ayni render dedup'unu korur.
+const fetchPlayerRows = cachedQuery("tff1-player-rows", async (sb, season: string) => {
   const out: Record<string, unknown>[] = [];
   for (let i = 0; i < 10; i++) {
     const { data, error } = await sb.schema("analytics").from("tff1_player_table_v1").select(PLAYER_COLS).eq("season_label", season).order("minutes", { ascending: false, nullsFirst: false }).order("player_id").range(i * 1000, i * 1000 + 999).returns<Record<string, unknown>[]>();
@@ -207,6 +209,7 @@ const playerRows = cache(async (season: string) => {
   }
   return out;
 });
+const playerRows = cache((season: string) => fetchPlayerRows(season));
 
 export async function tff1Players(
   season: string, meta: Record<string, TslTeamMeta>

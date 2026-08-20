@@ -1,4 +1,5 @@
 import { createClient } from "../../../lib/supabase/server";
+import { cachedQuery } from "../../../lib/supabase/cached";
 import { getAllFootballTeamLogos } from "../../../lib/football-teams";
 import { getTeamDetailHref } from "../../../lib/routes";
 import {
@@ -491,6 +492,37 @@ export type TeamOtherCell = {
   lyPerMatch: number | null;
 };
 export type TeamTableRow = { id: string; name: string; logo: string | null; href: string | null };
+// P-3 (2026-08-20): MSM takim mac logu (sezon basina 6-7k satir, sayfalanmis)
+// kullanici-bagimsiz -> 120 sn istek-arasi cache (unstable_cache, cookie'siz
+// client). Anahtar: league + season + market listesi (csv; market key'lerinde
+// virgul yok). (team_slug, market, team_match_index) benzersiz -> deterministik
+// siralama, sayfa sinirinda satir atlama/tekrar olmaz. K-3: sayfa hatasi kismi
+// veriyle ortalama hesaplamak yerine throw eder.
+const fetchMsmTeamLog = cachedQuery(
+  "msm-team-match-log",
+  async (sb, league: string, season: string, marketsCsv: string) => {
+    const rows: { team_slug: string; market: string; for_value: number | null; team_match_index: number }[] = [];
+    for (let from = 0; ; from += 1000) {
+      const { data, error } = await sb
+        .schema("analytics")
+        .from("msm_team_match_log_v1")
+        .select("team_slug, market, for_value, team_match_index")
+        .eq("league", league)
+        .eq("season", season)
+        .in("market", marketsCsv.split(","))
+        .order("team_slug", { ascending: true })
+        .order("market", { ascending: true })
+        .order("team_match_index", { ascending: true })
+        .range(from, from + 999);
+      if (error) throw new Error(`msm_team_match_log_v1 (from=${from}): ${error.message}`);
+      if (!data || !data.length) break;
+      rows.push(...(data as typeof rows));
+      if (data.length < 1000) break;
+    }
+    return rows;
+  }
+);
+
 export type ResmiTeamsTableBundle = {
   season: string;
   teams: TeamTableRow[];
@@ -599,34 +631,12 @@ export async function loadResmiTeamsTable(
     slugForTeam = (teamId) => teamId; // cup: anahtar = sofascore team_id
     leaguePhaseTeamIds = new Set(curBy.keys()); // lig-fazi maci olan takimlar (36)
   } else {
-    // PostgREST db-max-rows=1000 -> SAYFALA. msm_team_match_log_v1 sezon basina
-    // 1000'i asiyor (or. TSL 25/26 ~6136, TFF1 24/25 ~7660 satir); tek istekte
-    // kesilince L5/L10/sezon ortalamalari yalniz erken haftalardan hesaplanip
-    // sessizce yanlis cikiyordu. (team_slug, market, team_match_index) tum
-    // lig/sezonlarda benzersiz -> deterministik siralama, sayfa sinirinda satir
-    // atlama/tekrar olmaz. Eurocup dalindaki (satir ~540) ayni desenin karsiligi.
-    const fetchCurLog = async () => {
-      const rows: { team_slug: string; market: string; for_value: number | null; team_match_index: number }[] = [];
-      for (let from = 0; ; from += 1000) {
-        // K-3: hata = kismi satirla ortalama hesaplamak yerine yuksek sesle patla.
-        const { data, error } = await supabase
-          .schema("analytics")
-          .from("msm_team_match_log_v1")
-          .select("team_slug, market, for_value, team_match_index")
-          .eq("league", config.source)
-          .eq("season", curMsm)
-          .in("market", marketKeys)
-          .order("team_slug", { ascending: true })
-          .order("market", { ascending: true })
-          .order("team_match_index", { ascending: true })
-          .range(from, from + 999);
-        if (error) throw new Error(`msm_team_match_log_v1 (from=${from}): ${error.message}`);
-        if (!data || !data.length) break;
-        rows.push(...(data as typeof rows));
-        if (data.length < 1000) break;
-      }
-      return rows;
-    };
+    // PostgREST db-max-rows=1000 -> SAYFALA (fetchMsmTeamLog, modul seviyesinde;
+    // P-3 ile 120 sn istek-arasi cache'e alindi). msm_team_match_log_v1 sezon
+    // basina 1000'i asiyor (or. TSL 25/26 ~6136, TFF1 24/25 ~7660 satir); tek
+    // istekte kesilince L5/L10/sezon ortalamalari yalniz erken haftalardan
+    // hesaplanip sessizce yanlis cikiyordu.
+    const fetchCurLog = () => fetchMsmTeamLog(config.source, curMsm, marketKeys.join(","));
 
     const [teamsRes, curLog, lyStatRes] = await Promise.all([
       supabase.schema("analytics").from("msm_teams_v1").select("team_slug, display_name").eq("league", config.source),
