@@ -9,8 +9,8 @@
 #   - Ayni satirda dark: varyantiyla iki-tonlu yazilmis bilincli ciftler
 #     (or. text-fuchsia-700 dark:text-fuchsia-400); dark: varyanti
 #     globals.css'te data-theme'e baglidir, iki tema da okunur kalir.
-#   - ALLOW listesindeki dosyalar: legacy route adasi (C-4'te silinecek) ve
-#     kendi sabit koyu zeminini boyayan giris sayfalari.
+#   - ALLOW listesindeki dosyalar: kendi sabit koyu zeminini boyayan
+#     giris sayfalari.
 #   - Marka renkleri zaten keyfi hex ile yazilir (bg-[#0aa84f]), tarama disi.
 set -euo pipefail
 
@@ -19,14 +19,9 @@ cd "$(git rev-parse --show-toplevel)"
 FRONTEND="oddskeeper-web/frontend"
 
 ALLOW=(
-  "$FRONTEND/app/matches/"
-  "$FRONTEND/app/basketball/"
   "$FRONTEND/app/sign-in/"
   "$FRONTEND/app/sign-up/"
   "$FRONTEND/app/page.tsx"
-  "$FRONTEND/components/MatchCard.tsx"
-  "$FRONTEND/components/AppHeader.tsx"
-  "$FRONTEND/components/StateMessage.tsx"
 )
 
 PALETTE='(text|bg|border|ring|from|to|via|divide|outline|decoration|shadow)-(red|green|blue|emerald|amber|rose|slate|zinc|gray|neutral|stone|yellow|orange|lime|teal|cyan|sky|indigo|violet|purple|fuchsia|pink)-[0-9]{2,3}'
