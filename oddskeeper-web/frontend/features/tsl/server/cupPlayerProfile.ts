@@ -41,22 +41,31 @@ export async function getCupPlayerSeasonStats(
   }
 }
 
-// {prefix}_team_season_stats_v1 — squadRole icin takimin oynadigi mac sayisi (played).
+// {prefix}_team_season_stats_v1 — takim profili baglamlari + sezon sirasi/radar
+// kiyasi icin TUM takim-sezon satirlari. Sayfali cekilir: eleme turlu kupalarda
+// (ozellikle uecl) satir sayisi sabit limitleri asar (2026-08-20: uecl 299 satir,
+// eski limit(200) FC Sion'u kirpip takim sayfasini 404'a dusuruyordu).
 export async function getCupTeamSeasonStats(
   prefix: string
 ): Promise<Tff1TeamRow[]> {
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .schema("analytics")
-    .from(`${prefix}_team_season_stats_v1`)
-    .select("*")
-    .limit(200)
-    .returns<Tff1TeamRow[]>();
-  if (error) {
-    console.error("getCupTeamSeasonStats error:", error.message);
-    return [];
+  const rows: Tff1TeamRow[] = [];
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await supabase
+      .schema("analytics")
+      .from(`${prefix}_team_season_stats_v1`)
+      .select("*")
+      .order("season_label", { ascending: false })
+      .order("team_id", { ascending: true })
+      .range(from, from + PAGE_SIZE - 1)
+      .returns<Tff1TeamRow[]>();
+    if (error) {
+      console.error("getCupTeamSeasonStats error:", error.message);
+      return rows;
+    }
+    rows.push(...(data ?? []));
+    if (!data || data.length < PAGE_SIZE) return rows;
   }
-  return data ?? [];
 }
 
 // Tek-profil birlestirme (Faz 3): oyuncu capraz-lig toggle'i ve ayri kupa oyuncu

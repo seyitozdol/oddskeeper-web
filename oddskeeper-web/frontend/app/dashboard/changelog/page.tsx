@@ -23,6 +23,20 @@ const ENTRIES: Entry[] = [
   {
     date: { en: "20 August", tr: "20 Ağustos" },
     title: {
+      en: "European cups: qualifying-round team profiles no longer 404",
+      tr: "Avrupa kupaları: eleme turu takım profilleri artık 404 vermiyor",
+    },
+    tag: TAG_FIX,
+    items: [
+      {
+        en: "Some clubs that entered through the qualifying rounds (e.g. FC Sion in the Conference League) showed a not-found error when their team profile was opened. The team summary list was read with a fixed 200-row cap, and with qualifiers included the Conference League exceeds it, so teams beyond the cap were silently dropped. The list is now read in full pages, so every cup team's profile opens.",
+        tr: "Eleme turlarından gelen bazı kulüplerin (ör. Konferans Ligi'nde FC Sion) takım profili açılınca bulunamadı hatası veriyordu. Takım özet listesi sabit 200 satır sınırıyla okunuyordu; elemeler dahil olunca Konferans Ligi bu sınırı aşıyor ve sınırın dışında kalan takımlar sessizce düşüyordu. Liste artık tam sayfalı okunuyor; her kupa takımının profili açılıyor.",
+      },
+    ],
+  },
+  {
+    date: { en: "20 August", tr: "20 Ağustos" },
+    title: {
       en: "Player model: duplicate check is now per market",
       tr: "Oyuncu modeli: mükerrer kontrolü artık market bazında",
     },
