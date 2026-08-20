@@ -23,6 +23,7 @@ Env: FS_MIN_AGE_H(2.5)/FS_MAX_AGE_H(6) grace; FS_CUP_BACKFILL(1=tum eksikler);
      FS_TEST_MID (tek FS mid); FS_SLEEP(0.4); FS_DRY_RUN(1=yazma).
 Calistirma: python src/football/fetch_flashscore_cup_matches.py
 """
+import hashlib
 import importlib
 import json
 import os
@@ -40,6 +41,7 @@ from dotenv import dotenv_values
 fsfetch = importlib.import_module("fetch_flashscore_matches")
 fsplayer = importlib.import_module("load_flashscore_player_stats")
 fsteam = importlib.import_module("load_flashscore_team_stats")
+scrape_hash = importlib.import_module("scrape_hash")  # P-1: FS kupa payload hash
 
 ROOT = Path(__file__).resolve().parents[2]
 ENV = dotenv_values(ROOT / ".env")
@@ -238,15 +240,25 @@ def write_match_row(mid, competition, home, away, ts, hs, as_):
 
 
 def process_fs_match(g, fs_block, competition, cur, confidence=1.0):
-    """Cozulmus bir FS macini cek + yaz. Doner (team_written, player_written)."""
+    """Cozulmus bir FS macini cek + yaz. Doner (team_written, player_written,
+    payload_hash|None). P-1: hash, bu macta yazmayi belirleyen HER girdiyi kapsar
+    (FS kadro/stat payload'lari + takim-stat metni + SofaScore eksik bayraklari +
+    skor); herhangi biri degisirse hash degisir. Hash uretilemezse None doner ve
+    caller maci 'degisti' sayar (muhafazakar)."""
     mid = fs_block["mid"]
     ts = fs_block["ts"]
     hs = int(fs_block["hs"]) if (fs_block["hs"] or "").isdigit() else None
     as_ = int(fs_block["as"]) if (fs_block["as"] or "").isdigit() else None
+    hash_parts = {
+        "flags": {"pe": bool(g["player_empty"]), "te": bool(g["team_empty"]),
+                  "xg": bool(g.get("xg_missing"))},
+        "sc": [hs, as_], "sofa_id": g["id"],
+    }
 
     # epmsse (kadro/takim id) -> varsa gercek FS takim id/adlari
     se = _get(f"{GQL}?_hash=epmsse&eventId={mid}&projectId=2", want_json=True) or {}
     se_data = (se.get("data") or {})
+    hash_parts["se"] = se_data
     ev = (se_data.get("findEventPMSById") or {})
     teams = {t.get("side"): t for t in (ev.get("teams") or [])}
     players = ev.get("players") or []
@@ -262,6 +274,8 @@ def process_fs_match(g, fs_block, competition, cur, confidence=1.0):
     # --- takim istatistigi (df_st) ---
     if g["team_empty"]:
         text = fsteam.fetch_df_st(mid)
+        hash_parts["team_text_md5"] = (
+            hashlib.md5(text.encode("utf-8")).hexdigest() if text else None)
         if text:
             parsed = fsteam.parse_match_period(text)
             dt = datetime.fromtimestamp(ts, tz=timezone.utc)
@@ -278,6 +292,7 @@ def process_fs_match(g, fs_block, competition, cur, confidence=1.0):
     # oyuncu haritasi + view coalesce ile sezon Players listesine akar).
     if (g["player_empty"] or g.get("xg_missing")) and players:
         d = _get(f"{GQL}?_hash=epmsd&eventId={mid}&providerId=7", want_json=True) or {}
+        hash_parts["d"] = d.get("data") or {}
         dt = datetime.fromtimestamp(ts, tz=timezone.utc).strftime("%d.%m.%Y %H:%M")
         obj = {"ix": {"mid": mid, "h": home["name"], "a": away["name"],
                       "dt": dt, "sc": [hs, as_], "hdr": ""},
@@ -299,7 +314,14 @@ def process_fs_match(g, fs_block, competition, cur, confidence=1.0):
 
     if not DRY_RUN:
         upsert_match_map(cur, g["id"], mid, competition, confidence)
-    return team_written, player_written
+    try:
+        payload_hash = hashlib.md5(json.dumps(
+            hash_parts, sort_keys=True, default=str, ensure_ascii=False
+        ).encode("utf-8")).hexdigest()
+    except Exception as e:  # noqa
+        payload_hash = None
+        print(f"  H2 hash hata {mid} (degisti sayilacak): {repr(e)[:80]}", flush=True)
+    return team_written, player_written, payload_hash
 
 
 def main():
@@ -353,10 +375,15 @@ def main():
 
     # 3) Tahsis edilen maclari isle.
     total_t = total_p = total_m = 0
+    event_hashes, forced_changed = [], 0  # P-1: hash yalniz BASARILI macta saklanir
     for comp, b, g, reason, conf in picks:
         try:
-            tw, pw = process_fs_match(g, b, comp, cur, conf)
+            tw, pw, phash = process_fs_match(g, b, comp, cur, conf)
             total_t += tw; total_p += pw; total_m += 1
+            if phash:
+                event_hashes.append((str(b["mid"]), phash))
+            else:
+                forced_changed += 1
             print(f"  + {b['mid']} -> sofa {g['id']} ({reason} {conf:.2f}) "
                   f"team={tw} player={pw}  {b['h']} {b['hs']}-{b['as']} {b['a']}", flush=True)
             time.sleep(SLEEP)
@@ -364,6 +391,20 @@ def main():
             print(f"  ATLANDI {b['mid']} (sofa {g['id']}): {repr(e)[:160]}", flush=True)
     print(f"TOPLAM: {total_m} mac, {total_t} takim-satiri, {total_p} oyuncu "
           f"(backfill={BACKFILL}, dry_run={DRY_RUN})", flush=True)
+    # P-1 (2026-08-20): FS kupa yolu H2 kapisi. Grace penceresinde ayni bitmis
+    # kupa maclarinin her turda yeniden islenmesi (19-20 Agu: 4 mac x 22 tur CUP
+    # MAT refresh) artik degisiklik yoksa wrapper'daki kupa mat tetigini cekmez.
+    # Wrapper fail-open: bu satir yoksa eski 'TOPLAM' gate'i gecerli kalir.
+    if DRY_RUN:
+        changed = total_m  # dry-run: hash store'a dokunma, hepsi degisti say
+    else:
+        changed = forced_changed
+        if event_hashes:
+            h2 = scrape_hash.check_and_store("flashscore_cup", event_hashes)
+            changed += h2["changed"]
+            print(f"H2 gozlem (FS kupa): {len(event_hashes)} mac, degisen={h2['changed']} "
+                  f"(yeni={h2['new']}), degismeyen={h2['unchanged']}", flush=True)
+    print(f"CUP_FS_CHANGED_M: {changed}", flush=True)
 
 
 if __name__ == "__main__":

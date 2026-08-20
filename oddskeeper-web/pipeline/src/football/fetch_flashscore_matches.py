@@ -32,6 +32,7 @@ from pathlib import Path
 from curl_cffi import requests as cr
 
 fsload = importlib.import_module("load_flashscore_player_stats")
+scrape_hash = importlib.import_module("scrape_hash")  # P-1: FS payload hash (H2'nin FS ayagi)
 
 MIN_AGE_H = float(os.environ.get("FS_MIN_AGE_H", "2.5"))
 MAX_AGE_H = float(os.environ.get("FS_MAX_AGE_H", "6"))
@@ -121,7 +122,13 @@ def process_league(cfg):
         picks = [x for x in matches if is_eligible(x)]
     print(f"[{cfg['key']}] toplam blok={len(matches)}, islenecek={len(picks)}", flush=True)
     if not picks:
-        return 0, 0
+        return 0, 0, 0
+    # P-1 (2026-08-20): FS payload hash — sofascore'daki H2 kapisiyla ayni desen.
+    # obj JSON'u load_folder satirlarinin TEK girdisi oldugu icin "obj degismedi"
+    # => "upsert satirlari degismedi" garantisi var (ters yon yalnizca gereksiz
+    # 'degisti' uretir, asla atlama kacirmaz). Hash hatasi = degisti say
+    # (muhafazakar; sofa'daki bilinen kenar burada kapali).
+    event_hashes, forced_changed = [], 0
     tmp = Path(tempfile.mkdtemp(prefix=f"fs_{cfg['key']}_"))
     try:
         for m in picks:
@@ -129,12 +136,25 @@ def process_league(cfg):
                 obj = fetch_match_obj(m)
                 (tmp / f"fs_{cfg['key']}_m_{m['mid']}.json").write_text(
                     json.dumps(obj, ensure_ascii=False), encoding="utf-8")
+                try:
+                    event_hashes.append((str(m["mid"]), scrape_hash.event_payload_hash(obj, [], [], [], [])))
+                except Exception as e:  # noqa
+                    forced_changed += 1
+                    print(f"  H2 hash hata {m['mid']} (degisti sayildi): {repr(e)[:80]}", flush=True)
                 print(f"  + {m['mid']} {m.get('h')} {m.get('hs')}-{m.get('as')} {m.get('a')}", flush=True)
                 time.sleep(SLEEP)
             except Exception as e:  # noqa
                 print(f"  ATLANDI {m['mid']}: {repr(e)[:120]}", flush=True)
-        return fsload.load_folder(tmp, cfg["season_label"], cfg["competition"],
-                                  do_refresh=False, dry_run=DRY_RUN)
+        mr, pr = fsload.load_folder(tmp, cfg["season_label"], cfg["competition"],
+                                    do_refresh=False, dry_run=DRY_RUN)
+        # Hash yalniz upsert BASARILI olunca saklanir (load_folder raise ederse
+        # buraya gelinmez -> sonraki tur ayni mac 'degisti' kalir, veri kaybi yok).
+        if DRY_RUN:
+            return mr, pr, mr  # dry-run: hash store'a dokunma, hepsi degisti say
+        h2 = scrape_hash.check_and_store("flashscore", event_hashes)
+        print(f"[{cfg['key']}] H2 gozlem (FS): {len(event_hashes)} mac, degisen={h2['changed']} "
+              f"(yeni={h2['new']}), degismeyen={h2['unchanged']}", flush=True)
+        return mr, pr, h2["changed"] + forced_changed
     finally:
         for f in tmp.glob("*"):
             f.unlink()
@@ -143,22 +163,33 @@ def process_league(cfg):
 
 def main():
     total_m = total_p = 0
+    changed_m = 0  # P-1: bu turda payload'i gercekten degisen mac sayisi
     wrote = False
     ok_ligler = 0   # K-2: hatasiz biten lig sayisi (tam-cokus tespiti icin)
     hata_ligler = 0
     for cfg in LEAGUES:
         try:
-            mr, pr = process_league(cfg)
+            mr, pr, ch = process_league(cfg)
             total_m += mr
             total_p += pr
+            changed_m += ch
             wrote = wrote or mr > 0
             ok_ligler += 1
         except Exception as e:  # noqa
             hata_ligler += 1
             print(f"[{cfg['key']}] HATA: {repr(e)[:160]}", flush=True)
+    # P-1: ic refresh yalniz payload'i degisen mac varsa (sofa loader'daki H2
+    # Faz 2 ile ayni). Grace penceresinde ayni bitmis macin tekrar cekilmesi
+    # artik her turda refresh tetiklemez. DEFER_MATS altinda refresh_mats zaten
+    # orkestratore ertelenir; bu kapi 3-saatlik/elle yollari da rahatlatir.
     if wrote and not DRY_RUN:
-        fsload.refresh_mats()
+        if changed_m:
+            fsload.refresh_mats()
+        else:
+            print("H2 FAZ 2 (FS): islenen mac var ama payload degismedi, mat refresh atlandi", flush=True)
     print(f"TOPLAM: {total_m} mac, {total_p} oyuncu (dry_run={DRY_RUN})", flush=True)
+    # P-1: wrapper gate'leri bu satiri okur; satir yoksa fail-open eski davranis.
+    print(f"FS_CHANGED_M: {changed_m}", flush=True)
     # K-2 (2026-08-20): tum ligler hata = tam cokus -> rc!=0 (wrapper FLASH
     # FAILED banner'i + ntfy). Kismi hatada '[key] HATA:' satirlari digest'e girer.
     if hata_ligler and not ok_ligler:

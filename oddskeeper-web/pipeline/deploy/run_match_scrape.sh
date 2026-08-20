@@ -71,7 +71,15 @@ fi
   # 2c) FS->Sofa kupa oyuncu haritasi: cup FS bu turda mac islediyse tazele
   #     (yeni FS oyuncularini sofascore idye esle - Players xG/metrik overlayi
   #     ucl/uel/uecl_player_season_stats_v1 flash_all CTE bu haritayi okur).
-  if echo "$CUP_OUT" | grep -qE 'TOPLAM: [1-9]'; then
+  # P-1: kupa FS tetigi degisiklik-bazli (CUP_FS_CHANGED_M); satir yoksa
+  # fail-open eski TOPLAM gate'i. Degismeyen macta yeni oyuncu olamaz.
+  cup_fs_degisti=0
+  if echo "$CUP_OUT" | grep -q 'CUP_FS_CHANGED_M:'; then
+    echo "$CUP_OUT" | grep -qE 'CUP_FS_CHANGED_M: [1-9]' && cup_fs_degisti=1
+  else
+    echo "$CUP_OUT" | grep -qE 'TOPLAM: [1-9]' && cup_fs_degisti=1
+  fi
+  if [ "$cup_fs_degisti" -eq 1 ]; then
     if "$VENV" "$PIPE/src/football/build_flashscore_sofa_cup_player_map.py" >/dev/null 2>&1; then
       echo "===== $(date -u '+%F %T UTC') CUP PLAYER MAP OK ====="
     else
@@ -93,12 +101,21 @@ fi
   if echo "$SOFA_OUT" | grep -q 'CHANGED_M:'; then
     echo "$SOFA_OUT" | grep -qE 'CHANGED_M: [1-9]' || sofa_degisti=0
   fi
+  # P-1 (2026-08-20): FlashScore yolu da artik degisiklik-bazli (H2'nin FS ayagi).
+  # Fetcher 'FS_CHANGED_M: N' satirini basar; satir yoksa fail-open olarak
+  # flash_islendi'ye duser (eski davranis). Grace penceresinde ayni bitmis FS
+  # macinin her turda yeniden cekilmesi artik harita rebuild + mat tetiklemez.
+  flash_degisti=$flash_islendi
+  if echo "$FLASH_OUT" | grep -q 'FS_CHANGED_M:'; then
+    echo "$FLASH_OUT" | grep -qE 'FS_CHANGED_M: [1-9]' || flash_degisti=0
+  fi
 
   # 3) FlashScore overlay: SADECE FlashScore bu turda mac islediyse. Yeni
   #    oyunculari FS->Sofa esle + fotolar + tff1 player/team mat tazele.
   #    Yoksa yeni 26/27 oyuncularinin kart/xG overlay'i 04:00 gunluk job'a kadar
   #    gecikirdi (Juan Arguello kart bug'i). DB-driven + idempotent + hizli.
-  if [ "$flash_islendi" -eq 1 ]; then
+  # P-1: gate flash_islendi -> flash_degisti (degismeyen macta yeni oyuncu/foto olamaz).
+  if [ "$flash_degisti" -eq 1 ]; then
     if FS_MAP_SEASON="2026/2027" "$VENV" "$PIPE/src/football/build_flashscore_sofa_player_map.py" >/dev/null; then
       # yeni oyuncularin fotolarini FS ham verisinden sofascore_player_info'ya.
       # rc kontrolu 2026-08-19'da eklendi: script 2026-08-14..18 arasi her turda
@@ -122,11 +139,13 @@ fi
   #     adimdan adim 4'teki orkestratore tasindi (A-1); haritalar her zaman
   #     mat'lardan once yazilmis olur.
   #     H2 FAZ 2: sofa tarafinda tetik sofa_degisti (payload degisen mac);
-  #     FlashScore yolu ayri kaynak, hash onu kapsamaz -> flash_islendi aynen kalir.
-  if [ "$sofa_islendi" -eq 1 ] && [ "$sofa_degisti" -eq 0 ] && [ "$flash_islendi" -eq 0 ]; then
+  #     P-1 (2026-08-20): FlashScore yolu da artik hash'li -> tetik flash_degisti
+  #     (FS_CHANGED_M satiri yoksa fail-open flash_islendi'ye duser).
+  if { [ "$sofa_islendi" -eq 1 ] || [ "$flash_islendi" -eq 1 ]; } \
+     && [ "$sofa_degisti" -eq 0 ] && [ "$flash_degisti" -eq 0 ]; then
     echo "===== $(date -u '+%F %T UTC') H2 SKIP (islenen mac var, degisen yok) ====="
   fi
-  if [ "$sofa_degisti" -eq 1 ] || [ "$flash_islendi" -eq 1 ]; then
+  if [ "$sofa_degisti" -eq 1 ] || [ "$flash_degisti" -eq 1 ]; then
     "$VENV" "$PIPE/src/football/build_sofascore_opta_player_map.py"
     "$VENV" "$PIPE/src/football/build_flashscore_opta_player_map.py" >/dev/null
     # apifootball<->sofascore kimlik haritasi: PSM (Player Market) guncel sezon
@@ -147,7 +166,11 @@ fi
   else
     echo "$SOFA_OUT" | grep -qE 'CUP_M: [1-9]' && cup_islendi=1
   fi
-  echo "$CUP_OUT"  | grep -qE 'TOPLAM: [1-9]' && cup_islendi=1
+  # P-1: FS kupa tetigi de degisiklik-bazli (2c'de hesaplanan cup_fs_degisti;
+  # CUP_FS_CHANGED_M satiri yoksa fail-open TOPLAM gate'i). 19-20 Agu gecesi
+  # ayni 4 CL maci grace penceresi boyunca 22 ARDISIK turda kupa mat'larini
+  # tazeletmisti; artik degismeyen tur tetik cekmez.
+  [ "$cup_fs_degisti" -eq 1 ] && cup_islendi=1
 
   # 4) A-1 TEK ORKESTRATOR: turun TUM mat refresh'leri tek cagri. Kirli kaynaklar
   #    (sofa degisti / flash isledi / kupa islendi) arguman olarak gecer;
@@ -157,18 +180,18 @@ fi
   #    izleme/teyit grep'leri degismeden calisir.
   orch_src=""
   [ "$sofa_degisti" -eq 1 ]  && orch_src="$orch_src sofa"
-  [ "$flash_islendi" -eq 1 ] && orch_src="$orch_src flash"
+  [ "$flash_degisti" -eq 1 ] && orch_src="$orch_src flash"
   [ "$cup_islendi" -eq 1 ]   && orch_src="$orch_src cup"
   if [ -n "$orch_src" ]; then
     if "$VENV" "$PIPE/src/football/refresh_orchestrator.py" $orch_src; then
-      if [ "$sofa_degisti" -eq 1 ] || [ "$flash_islendi" -eq 1 ]; then
+      if [ "$sofa_degisti" -eq 1 ] || [ "$flash_degisti" -eq 1 ]; then
         echo "===== $(date -u '+%F %T UTC') TSL MAP + MAT OK ====="
       fi
       if [ "$cup_islendi" -eq 1 ]; then
         echo "===== $(date -u '+%F %T UTC') CUP MAT OK ====="
       fi
     else
-      if [ "$sofa_degisti" -eq 1 ] || [ "$flash_islendi" -eq 1 ]; then
+      if [ "$sofa_degisti" -eq 1 ] || [ "$flash_degisti" -eq 1 ]; then
         echo "===== $(date -u '+%F %T UTC') TSL MAP + MAT FAILED ====="
       fi
       if [ "$cup_islendi" -eq 1 ]; then
