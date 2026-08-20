@@ -188,7 +188,7 @@ def main() -> None:
     if started:
         print(f"baslamis mac (donduruldu, guncellenmeyecek): {started}")
 
-    print(f"Bets10 futbol maçı (oranlı): {len(bets10)}")
+    print(f"B10 futbol maçı (oranlı): {len(bets10)}")
     print(f"eşleşen fikstür: {len(rows)} "
           f"(tsl {sum(1 for r in rows if r['league']=='tsl')}, "
           f"tff1 {sum(1 for r in rows if r['league']=='tff1')})\n")

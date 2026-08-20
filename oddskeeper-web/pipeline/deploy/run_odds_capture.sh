@@ -22,8 +22,11 @@ xvfb-run -a "$VENV" "$PIPELINE/src/common/capture_odds_vps.py" bets10 \
 capture_rc=$?
 if [ "$capture_rc" -ne 0 ]; then
   # rc=3: iki deneme de verisiz (events-table bos); baska rc: script hatasi.
-  /opt/oddskeeper/notify.sh "Bets10 oran yakalama" \
-    "capture rc=$capture_rc (rc=3 ise iki deneme de verisiz gecti); log: odds_capture.log" high
+  # Log'un son satirini da gonder: "calisan adres bulunamadi" (=proxy TR exit
+  # alamadi / geo blok) ile gercek script hatasini bildirimden ayirt etmek icin.
+  LAST_LINE=$(tail -n 3 "$LOG/odds_capture.log" | grep -v '^[[:space:]]*$' | tail -n 1 | cut -c1-120)
+  /opt/oddskeeper/notify.sh "B10 oran yakalama" \
+    "capture rc=$capture_rc (rc=3: iki deneme de verisiz) | son: ${LAST_LINE:-yok}; log: odds_capture.log" high
 fi
 
 # 2) En yeni netcap dump'ini yukle (Bets10 -> tracker.site_event_odds)
@@ -31,7 +34,7 @@ DUMP=$(ls -t "$PIPELINE"/data/odds/netcap_bets10_*.json 2>/dev/null | head -1)
 if [ -n "$DUMP" ]; then
   if ! "$VENV" "$PIPELINE/src/common/load_site_odds.py" "$DUMP" \
     >> "$LOG/odds_capture.log" 2>&1; then
-    /opt/oddskeeper/notify.sh "Bets10 oran yukleme" \
+    /opt/oddskeeper/notify.sh "B10 oran yukleme" \
       "load_site_odds hata verdi (dump: $(basename "$DUMP")); log: odds_capture.log" high
   fi
 fi

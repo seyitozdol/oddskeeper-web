@@ -171,6 +171,13 @@ def resolve_domain(page, cfg: dict) -> str:
                 continue
         page.wait_for_timeout(6000)
         landed = page.url
+        # Geo blok: site erisilebilir ama ulke engeli sayfasina yonlendiriyor
+        # (proxy TR disi bir exit'e dustu). URL'de yine "bets10" gectigi icin
+        # asagidaki kontrol bunu AKTIF adres sanardi -> bos/yanlis veri toplanirdi.
+        # 2026-08-20'de olculdu: TR disi exit'te 302 -> /maintenance-pages/.../country-blocked.html
+        if "country-blocked" in landed or "maintenance-pages" in landed:
+            print(f"[domain] {cand} -> geo blok (proxy TR degil), atlandi", flush=True)
+            continue
         if "bets10" in landed and page.title():
             base = "https://" + landed.split("//", 1)[-1].split("/", 1)[0]
             print(f"[domain] {cand} -> aktif: {base}", flush=True)
