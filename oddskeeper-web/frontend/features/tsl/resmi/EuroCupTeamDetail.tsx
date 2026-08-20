@@ -11,7 +11,7 @@ import {
 import type { Tff1MatchRow, Tff1TeamRow } from "@/features/tff1/types";
 import { getPlayerDetailHref } from "@/lib/routes";
 import {
-  getTff1PlayerInfo,
+  getTff1PlayerInfoByIds,
   getTff1TeamLogos,
 } from "@/features/tff1/server/getTff1Stats";
 import {
@@ -88,14 +88,18 @@ export default async function EuroCupTeamDetail({
   season?: string;
 }) {
   const activeTab: TeamTab = isValidTab(tab) ? tab : "overview";
-  const [cupTeamRows, allCupMatches, logos, infos, t, locale] = await Promise.all([
-    Promise.all(CUPS.map((c) => getCupTeamSeasonStats(c.prefix))),
-    getCupMatches(),
-    getTff1TeamLogos(),
-    getTff1PlayerInfo(),
-    getT(),
-    getLocale(),
-  ]);
+  // Faz 1: birbirinden bagimsiz her sey tek Promise.all'da; oyuncu/mac/foto
+  // sorgulari lig-geneli havuz degil, DB'de bu takima suzulmus kucuk kumeler
+  // (C-1 sayfa-sekilli okuma; eskiden ~19 seri istek / ~16k satir tasiniyordu).
+  const [cupTeamRows, teamPlayersByCup, teamCupMatches, logos, t, locale] =
+    await Promise.all([
+      Promise.all(CUPS.map((c) => getCupTeamSeasonStats(c.prefix))),
+      Promise.all(CUPS.map((c) => getCupPlayerSeasonStats(c.prefix, teamId))),
+      getCupMatches(undefined, teamId),
+      getTff1TeamLogos(),
+      getT(),
+      getLocale(),
+    ]);
 
   // Takimin bulundugu (kupa, sezon) baglamlari.
   type Ctx = { cup: CupDef; cupIdx: number; row: Tff1TeamRow };
@@ -107,9 +111,10 @@ export default async function EuroCupTeamDetail({
   if (contexts.length === 0) notFound();
 
   const compByName = new Map<string, CupDef>(CUPS.map((c) => [c.competition, c]));
-  const teamMatchesAll = allCupMatches
-    .filter((m) => m.home_team_id === teamId || m.away_team_id === teamId)
-    .sort((a, b) => (b.match_datetime ?? "").localeCompare(a.match_datetime ?? ""));
+  // getCupMatches DB'de takima suzulmus dondurur; siralama garantisi icin yine sirala.
+  const teamMatchesAll = [...teamCupMatches].sort((a, b) =>
+    (b.match_datetime ?? "").localeCompare(a.match_datetime ?? "")
+  );
 
   // Birincil baglam: ?comp/?season gecerliyse o; degilse en son oynanan macin
   // kupasi+sezonu; o da yoksa en guncel sezonlu baglam.
@@ -144,7 +149,7 @@ export default async function EuroCupTeamDetail({
 
   const season = primary.row.season_label;
   const team = primary.row;
-  const primaryPlayers = await getCupPlayerSeasonStats(primary.cup.prefix);
+  const primaryPlayers = teamPlayersByCup[primary.cupIdx];
 
   const teamSeasons = contexts
     .filter((x) => x.cup.key === primary!.cup.key)
@@ -165,7 +170,12 @@ export default async function EuroCupTeamDetail({
   const squad = primaryPlayers
     .filter((p) => p.season_label === season && p.team_id === teamId)
     .sort((a, b) => num(b.minutes) - num(a.minutes));
-  const squadSlugs = await getFootballSlugsByIds(squad.map((p) => p.player_id));
+  // Faz 2: kadro belli olunca slug + foto id-listesiyle, iki kucuk istek yan yana.
+  const squadIds = squad.map((p) => p.player_id);
+  const [squadSlugs, infos] = await Promise.all([
+    getFootballSlugsByIds(squadIds),
+    getTff1PlayerInfoByIds(squadIds),
+  ]);
 
   const infoById: Record<string, { photo: string | null }> = {};
   for (const pi of infos) infoById[pi.player_id] = { photo: pi.photo_url ?? null };

@@ -23,6 +23,20 @@ const ENTRIES: Entry[] = [
   {
     date: { en: "20 August", tr: "20 Ağustos" },
     title: {
+      en: "European cup team profiles open in about a second",
+      tr: "Avrupa kupası takım profilleri artık yaklaşık bir saniyede açılıyor",
+    },
+    tag: TAG_FIX,
+    items: [
+      {
+        en: "Opening a club from the Champions League, Europa League or Conference League pages took 8-10 seconds and occasionally showed a not-found error. The page was loading league-wide data pools to render a single team, and the team summary tables were computed live on every visit. Team data is now precomputed and the page fetches only the clicked team's rows, so profiles open in about a second and the intermittent not-found error is gone.",
+        tr: "Şampiyonlar Ligi, Avrupa Ligi veya Konferans Ligi sayfalarından bir kulübe tıklayınca sayfa 8-10 saniyede açılıyor, ara sıra da bulunamadı hatası veriyordu. Sayfa tek bir takımı göstermek için lig genelindeki veri havuzlarını taşıyor, takım özet tabloları da her ziyarette canlı hesaplanıyordu. Takım verileri artık önceden hesaplanıyor ve sayfa yalnız tıklanan takımın satırlarını çekiyor; profiller yaklaşık bir saniyede açılıyor, aradaki bulunamadı hatası da ortadan kalktı.",
+      },
+    ],
+  },
+  {
+    date: { en: "20 August", tr: "20 Ağustos" },
+    title: {
       en: "European cups: advance arrow no longer shown after the first leg",
       tr: "Avrupa kupaları: tur geçme oku artık ilk ayaktan sonra görünmüyor",
     },

@@ -90,6 +90,28 @@ export async function getTff1PlayerInfo(): Promise<Tff1PlayerInfo[]> {
   }
 }
 
+// Yalniz verilen oyuncularin foto/ulke bilgisi (.in ile tek istek). Takim
+// profili gibi ~30-60 oyunculuk yuzeyler 11k satirlik tum havuzu (yukaridaki
+// getTff1PlayerInfo) tasimasin diye (C-1 sayfa-sekilli okuma deseni).
+export async function getTff1PlayerInfoByIds(
+  playerIds: string[]
+): Promise<Tff1PlayerInfo[]> {
+  const ids = Array.from(new Set(playerIds.filter(Boolean)));
+  if (!ids.length) return [];
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .schema("analytics")
+    .from("tff1_player_info_v1")
+    .select("player_id, birth_date, height_cm, country, photo_url")
+    .in("player_id", ids)
+    .returns<Tff1PlayerInfo[]>();
+  if (error) {
+    console.error("getTff1PlayerInfoByIds error:", error.message);
+    return [];
+  }
+  return data ?? [];
+}
+
 export async function getTff1MarketValues(): Promise<Tff1MarketValue[]> {
   const supabase = await createClient();
   const rows: Tff1MarketValue[] = [];

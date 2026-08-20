@@ -85,6 +85,11 @@ MATS = [
     ("ucl_player_season_stats_mat", True, {CUP}),
     ("uel_player_season_stats_mat", True, {CUP}),
     ("uecl_player_season_stats_mat", True, {CUP}),
+    # Avrupa kupasi takim-sezon (2026-08-20, eurocup_team_season_mats): team_xg
+    # CTE'si oyuncu mat'ini (ince view uzerinden) okur -> oyunculardan SONRA.
+    ("ucl_team_season_stats_mat", True, {CUP}),
+    ("uel_team_season_stats_mat", True, {CUP}),
+    ("uecl_team_season_stats_mat", True, {CUP}),
 ]
 
 _CONC = {name: conc for name, conc, _ in MATS}
@@ -139,11 +144,14 @@ TSL_CHAIN_MATS = TSL_SS_MATS + _names(
     "player_current_info_bridged_mat",
     "team_current_squad_profile_mat",
 )
-# refresh_cup_mats.py zinciri:
+# refresh_cup_mats.py zinciri (oyuncu mat'lari ONCE, takim mat'lari SONRA):
 CUP_CHAIN_MATS = _names(
     "ucl_player_season_stats_mat",
     "uel_player_season_stats_mat",
     "uecl_player_season_stats_mat",
+    "ucl_team_season_stats_mat",
+    "uel_team_season_stats_mat",
+    "uecl_team_season_stats_mat",
 )
 
 

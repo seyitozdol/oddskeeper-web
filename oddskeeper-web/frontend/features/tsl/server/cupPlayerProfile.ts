@@ -12,22 +12,26 @@ import type {
 
 const PAGE_SIZE = 1000; // PostgREST tek istekte en fazla 1000 satir
 
-// {prefix}_player_season_stats_v1 (ucl/uel/uecl) tum satirlari (radar lig havuzu
-// icin tum oyuncular gerekir; sayfa tek oyuncuyu client-side suzer).
+// {prefix}_player_season_stats_v1 (ucl/uel/uecl) satirlari. teamId verilirse
+// suzme DB'de yapilir (takim profili ~30-100 satir ceker; 3.5k satirlik kupa
+// havuzunu tasima anti-deseni C-1 kapsaminda kaldirildi). teamId'siz cagri
+// eski davranis (tum kupa, sayfali).
 export async function getCupPlayerSeasonStats(
-  prefix: string
+  prefix: string,
+  teamId?: string
 ): Promise<Tff1PlayerRow[]> {
   const supabase = await createClient();
   const rows: Tff1PlayerRow[] = [];
   for (let from = 0; ; from += PAGE_SIZE) {
-    const { data, error } = await supabase
+    let query = supabase
       .schema("analytics")
       .from(`${prefix}_player_season_stats_v1`)
       .select("*")
       .order("minutes", { ascending: false })
       .order("player_id", { ascending: true })
-      .range(from, from + PAGE_SIZE - 1)
-      .returns<Tff1PlayerRow[]>();
+      .range(from, from + PAGE_SIZE - 1);
+    if (teamId) query = query.eq("team_id", teamId);
+    const { data, error } = await query.returns<Tff1PlayerRow[]>();
     if (error) {
       console.error("getCupPlayerSeasonStats error:", error.message);
       return rows;
@@ -82,9 +86,14 @@ export async function getFootballSlugsByIds(
 // Kupa maclari (birlesik takim profili Results/form icin). eurocup_stage_
 // matches_v1 uc kupayi kapsar; competition verilirse suzulur, verilmezse
 // TUM kupalar doner (satirlar competition kolonuyla etiketli). Tff1MatchRow uyumlu.
+// teamId verilirse yalniz o takimin (ev VEYA deplasman) maclari DB'de suzulur.
 export async function getCupMatches(
-  competition?: string
+  competition?: string,
+  teamId?: string
 ): Promise<Tff1MatchRow[]> {
+  // .or() filtre dizisine ham gomuldugu icin id'yi beyaz-listeyle dogrula
+  // (SofaScore takim id'leri sayisal; route paramindan gelir).
+  if (teamId && !/^[\w-]+$/.test(teamId)) return [];
   const supabase = await createClient();
   const rows: Tff1MatchRow[] = [];
   for (let from = 0; ; from += PAGE_SIZE) {
@@ -95,6 +104,8 @@ export async function getCupMatches(
       .order("match_datetime", { ascending: false })
       .range(from, from + PAGE_SIZE - 1);
     if (competition) query = query.eq("competition", competition);
+    if (teamId)
+      query = query.or(`home_team_id.eq.${teamId},away_team_id.eq.${teamId}`);
     const { data, error } = await query.returns<Tff1MatchRow[]>();
     if (error) {
       console.error("getCupMatches error:", error.message);
