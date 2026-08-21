@@ -39,12 +39,14 @@ export type LeagueBundle = {
 export async function loadLeague(season: string): Promise<LeagueBundle> {
   const meta = await getTslTeamMeta(season);
   const matches = await getTslMatches(season, meta);
+  // P-4: UI en fazla ilk 6-10 lideri gosteriyor; 4x600 satir yerine DB'den
+  // toplam-sirali ilk 12 satir cekilir.
   const [standings, goals, assists, rating, xg, teamMetrics] = await Promise.all([
     getTslStandings(season, meta, matches),
-    getTslLeaderboard(season, "goals_total"),
-    getTslLeaderboard(season, "assists_total"),
-    getTslLeaderboard(season, "rating_avg"),
-    getTslLeaderboard(season, "expected_goals_total"),
+    getTslLeaderboard(season, "goals_total", { topByTotal: 12 }),
+    getTslLeaderboard(season, "assists_total", { topByTotal: 12 }),
+    getTslLeaderboard(season, "rating_avg", { topByTotal: 12 }),
+    getTslLeaderboard(season, "expected_goals_total", { topByTotal: 12 }),
     getTslTeamMetrics(season, meta),
   ]);
 

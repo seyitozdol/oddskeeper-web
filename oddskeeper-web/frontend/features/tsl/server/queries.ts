@@ -244,12 +244,17 @@ export async function getTslPlayerCatalog(
 // dakikanin %30'u) BYPASS eder. Lig genelindeki Player Rankings icin esik dogru,
 // ama takim sayfasinda kadroyu eksik gosteriyordu: sezonun ilk haftasinda esik
 // 27 dakika olduğu icin kisa sure oynayan yedekler listede cikmiyordu.
+// topByTotal (P-4/H9, 2026-08-20): hub/lig ozetleri yalniz ilk 6-10 lideri
+// gosteriyor ama sorgu metrik basina 600 satir tasiyordu. topByTotal=N verilirse
+// DB toplam degere gore sirali ilk N satiri dondurur (JS'te yeniden siralama/
+// kirpma gerekmez). Verilmezse eski davranis (rank sirali, 600 cap) aynen korunur.
 export async function getTslLeaderboard(
   season: string,
   metricKey: string,
-  options?: { includeUnqualified?: boolean }
+  options?: { includeUnqualified?: boolean; topByTotal?: number }
 ): Promise<TslLeaderRow[]> {
   const includeUnqualified = options?.includeUnqualified ?? false;
+  const topByTotal = options?.topByTotal;
   const supabase = await createClient();
   let query = supabase
     .schema("analytics")
@@ -271,12 +276,16 @@ export async function getTslLeaderboard(
   // onlar gurultu (tam kadro ayri "Squad" sekmesinde).
   if (includeUnqualified) query = query.gt("sample_matches", 0);
 
-  const { data, error } = await query
-    .order(includeUnqualified ? "sort_rank" : "league_rank", {
-      ascending: true,
-      nullsFirst: false,
-    })
-    .limit(600);
+  const { data, error } = await (topByTotal
+    ? query
+        .order("total_value", { ascending: false, nullsFirst: false })
+        .limit(topByTotal)
+    : query
+        .order(includeUnqualified ? "sort_rank" : "league_rank", {
+          ascending: true,
+          nullsFirst: false,
+        })
+        .limit(600));
 
   if (error) {
     console.error("tsl leaderboard error", metricKey, error.message);
