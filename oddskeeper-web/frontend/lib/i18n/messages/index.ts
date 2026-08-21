@@ -1,4 +1,5 @@
 import type { Locale } from "../config";
+import { adminShortcuts } from "./adminShortcuts";
 import { adminUsers } from "./adminUsers";
 import { auth } from "./auth";
 import { basketball } from "./basketball";
@@ -25,6 +26,7 @@ const MESSAGES: Record<
   string,
   { en: Record<string, string>; tr: Record<string, string> }
 > = {
+  adminShortcuts,
   adminUsers,
   auth,
   basketball,

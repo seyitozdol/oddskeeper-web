@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState, type ReactElement } from "react";
+import { useRef, useState, type ReactElement } from "react";
 import { createClient } from "../lib/supabase/client";
 import { useI18n } from "../lib/i18n/LanguageProvider";
 import { LOCALES, type Locale } from "../lib/i18n/config";
@@ -154,6 +154,126 @@ function WhatsNewMark({ className }: { className?: string }) {
   );
 }
 
+// Shortcuts markasi: iPhone Shortcuts uygulamasindaki iki bindirmeli
+// yuvarlak-kose romb. currentColor kullanir; tetikleyicideki text-ink ile
+// koyu temalarda beyaz, acik temada koyu gorunur (ayri logo dosyasi yok).
+function ShortcutsMark({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className} aria-hidden="true">
+      <rect
+        x="9.4"
+        y="4.4"
+        width="9.6"
+        height="9.6"
+        rx="2.8"
+        transform="rotate(45 14.2 9.2)"
+        stroke="currentColor"
+        strokeWidth="1.7"
+      />
+      <rect
+        x="5"
+        y="10"
+        width="9.6"
+        height="9.6"
+        rx="2.8"
+        transform="rotate(45 9.8 14.8)"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
+type ShortcutItem = {
+  id: string;
+  name: string;
+  url: string;
+  logoUrl: string | null;
+};
+
+// Header Shortcuts menusu: hover'da (mobilde tiklamayla) acilan dis-site
+// kisayol listesi. Liste ilk hover/tiklamada bir kez /api/shortcuts'tan
+// cekilir; icerik admin panelindeki ShortCuts sekmesinden yonetilir.
+function ShortcutsMenu() {
+  const { t } = useI18n();
+  const [isOpen, setIsOpen] = useState(false);
+  const [items, setItems] = useState<ShortcutItem[]>([]);
+  const fetchedRef = useRef(false);
+
+  const ensureLoaded = () => {
+    if (fetchedRef.current) return;
+    fetchedRef.current = true;
+    fetch("/api/shortcuts")
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json() as Promise<{ shortcuts: ShortcutItem[] }>;
+      })
+      .then((data) => setItems(data.shortcuts))
+      .catch((error) => {
+        console.error("Shortcuts load error:", error);
+        fetchedRef.current = false;
+      });
+  };
+
+  return (
+    <div className="group/sc relative" onMouseEnter={ensureLoaded}>
+      <button
+        type="button"
+        onClick={() => {
+          ensureLoaded();
+          setIsOpen((prev) => !prev);
+        }}
+        aria-label={t("nav.shortcuts")}
+        title={t("nav.shortcuts")}
+        className="flex items-center rounded-lg px-3 py-1.5 text-ink transition hover:bg-veil"
+      >
+        <ShortcutsMark className="h-5 w-5 shrink-0" />
+      </button>
+
+      <div
+        className={`absolute left-0 top-full z-50 pt-2 transition duration-200 ${
+          isOpen
+            ? "pointer-events-auto opacity-100"
+            : "pointer-events-none opacity-0 group-hover/sc:pointer-events-auto group-hover/sc:opacity-100"
+        }`}
+      >
+        <div className="w-[200px] rounded-xl border border-line bg-card p-1.5 shadow-lg">
+          {items.length === 0 ? (
+            <p className="px-3 py-2 text-[12px] text-ink-3">
+              {t("nav.shortcutsEmpty")}
+            </p>
+          ) : (
+            items.map((item) => (
+              <a
+                key={item.id}
+                href={item.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] text-ink-2 transition hover:bg-veil hover:text-ink"
+              >
+                {item.logoUrl ? (
+                  // Dis logo adresleri admin'den serbestce girilir; next/image
+                  // remotePatterns beyaz listesine takilmamak icin duz img.
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={item.logoUrl}
+                    alt=""
+                    width={16}
+                    height={16}
+                    className="h-4 w-4 shrink-0 rounded-sm object-contain"
+                  />
+                ) : (
+                  <span className="h-4 w-4 shrink-0 rounded-sm bg-veil" />
+                )}
+                <span className="truncate">{item.name}</span>
+              </a>
+            ))
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const LOCALE_LABEL_KEYS: Record<Locale, string> = {
   en: "nav.english",
   tr: "nav.turkish",
@@ -280,6 +400,8 @@ export default function AppHeader({
                 </div>
               );
             })}
+
+            {can("shortcuts") ? <ShortcutsMenu /> : null}
 
             {can("changelog") ? (
               <Link
@@ -410,6 +532,8 @@ export default function AppHeader({
               <span>{item.label}</span>
             </Link>
           ))}
+
+          {can("shortcuts") ? <ShortcutsMenu /> : null}
 
           {can("changelog") ? (
             <Link

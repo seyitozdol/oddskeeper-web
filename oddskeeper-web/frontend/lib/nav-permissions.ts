@@ -31,6 +31,10 @@ export const NAV_KEYS = [
   // Yenilikler (changelog) sayfasi: gercek bir route (/dashboard/changelog);
   // gorunurlugu admin access'ten yonetilir.
   "changelog",
+  // Header'daki Shortcuts (dis-site kisayollari) menusu. Route DEGIL, salt
+  // gorunurluk bayragi: varsayilanda herkes gorur (NULL tam-erisim kapsar),
+  // admin access listesinden kullanici bazinda kapatilabilir.
+  "shortcuts",
 ] as const;
 
 export type NavKey = (typeof NAV_KEYS)[number];
@@ -136,6 +140,16 @@ export const NAV_PERMISSION_ITEMS: NavPermissionItem[] = [
     labelKey: "nav.changelog",
     href: "/dashboard/changelog",
     pathPrefixes: ["/dashboard/changelog"],
+  },
+  {
+    key: "shortcuts",
+    labelKey: "nav.shortcuts",
+    // Gercek bir sayfa degil (header'da dis-site linkleri acan menu). href,
+    // "sadece bu izni olan" nadir kullanicinin dusecegi bir yer olarak
+    // /dashboard'a gider. pathPrefixes inert: proxy bu anahtarla asla
+    // kilit/acis yapmaz (msm-gsheet deseni).
+    href: "/dashboard",
+    pathPrefixes: ["/__shortcuts__"],
   },
 ];
 
