@@ -2,12 +2,13 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getNavAccess } from "@/lib/nav-access-server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
-// Player Market (TSL + TFF1) kalici tablolarina yazma. Tablolar yalnizca
-// service-role erisimine acik; her istek once oturumu dogrular. Ayni endpoint
-// iki ligi de karsilar (league='tsl' | 'tff1'); shaping tek yerde yapilir ki
-// iki client dosyasi ayni kurallari paylassin.
+// Player Market (TSL + TFF1 + Avrupa kupalari) kalici tablolarina yazma.
+// Tablolar yalnizca service-role erisimine acik; her istek once oturumu
+// dogrular. Ayni endpoint tum ligleri karsilar (league='tsl' | 'tff1' |
+// 'eurocl' | 'euel' | 'euecl'); shaping tek yerde yapilir ki client dosyalari
+// ayni kurallari paylassin.
 
-const LEAGUES = new Set(["tsl", "tff1"]);
+const LEAGUES = new Set(["tsl", "tff1", "eurocl", "euel", "euecl"]);
 
 type Body = { league?: unknown; action?: unknown; payload?: unknown };
 

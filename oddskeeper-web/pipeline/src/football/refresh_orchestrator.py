@@ -90,6 +90,11 @@ MATS = [
     ("ucl_team_season_stats_mat", True, {CUP}),
     ("uel_team_season_stats_mat", True, {CUP}),
     ("uecl_team_season_stats_mat", True, {CUP}),
+    # Avrupa kupasi PSM zinciri (2026-08-21): log -> season -> squad
+    # (season view'i log MAT'ini, squad season view'ini okur; sira sart).
+    ("eurocup_pm_player_match_log_mat", True, {CUP}),
+    ("eurocup_pm_player_season_mat", True, {CUP}),
+    ("eurocup_pm_squad_mat", True, {CUP}),
 ]
 
 _CONC = {name: conc for name, conc, _ in MATS}
@@ -152,6 +157,10 @@ CUP_CHAIN_MATS = _names(
     "ucl_team_season_stats_mat",
     "uel_team_season_stats_mat",
     "uecl_team_season_stats_mat",
+    # PSM zinciri (2026-08-21): legacy kupa yolu da ayni tam listeyi kossun.
+    "eurocup_pm_player_match_log_mat",
+    "eurocup_pm_player_season_mat",
+    "eurocup_pm_squad_mat",
 )
 
 

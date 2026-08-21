@@ -1,5 +1,12 @@
 "use client";
 
+// Avrupa kupalari (CL/EL/Konf) kopyasi: app/dashboard/tff-1-lig/player-market/
+// PlayerMarketPredictionPage.tsx ile ayni UI/akis (5 sekme). Tek fark
+// parametrikleştirme: bilesen `league` prop'u ("eurocl" | "euel" | "euecl")
+// alir; veri katmani ./queries (eurocup_* kaynaklari, competition suzgeci) ve
+// pm_* kalici tablolari/model history bu league degeriyle calisir. Hesaplar
+// TSL modulundeki compute'tan aynen import edilir (saf/lig-bagimsiz).
+
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useI18n } from "@/lib/i18n/LanguageProvider";
 import HistoryDropdown from "@/features/model-history/HistoryDropdown";
@@ -22,7 +29,6 @@ import {
   fetchPlayerSeasonAppearances,
   fetchFixtureInputs,
   fetchPlayerIds,
-  playerIdLookup,
   fetchDistWeights,
   saveDistWeights,
   DEFAULT_DIST_WEIGHTS,
@@ -31,6 +37,7 @@ import {
   fetchStatusOverrides,
   saveStatusOverride,
   MARKET_OPTIONS,
+  type EuroCupLeague,
   type UpcomingFixture,
   type PlayerRow,
   type PlayerMetricStat,
@@ -40,7 +47,6 @@ import {
   type DistWeights,
   type StatusConfig,
 } from "./queries";
-import { DEFAULT_STATUS_CONFIG } from "./compute";
 import { previousSeasonLabel, currentSeasonLabel, latestSeasonLabel } from "@/lib/season";
 import {
   PlayerListTab,
@@ -55,8 +61,9 @@ import {
   inferPlayerStatusV2,
   distributeExpectation,
   calcOddsLines,
+  DEFAULT_STATUS_CONFIG,
   type InferredStatus,
-} from "./compute";
+} from "../../player-market-prediction/compute";
 import PlayerProfileDrawer from "./player-profile-drawer";
 import type { Translator } from "@/lib/i18n/messages";
 
@@ -75,7 +82,7 @@ function statusLabel(t: Translator, status: InferredStatus): string {
 type PlayerState = {
   player_source_id: string;
   player_name: string;
-  player_slug: string;
+  player_slug: string; // = sofascore player_id
   primary_position_code: string;
   appearances: number;
   lyAppearances: number | null;
@@ -88,8 +95,8 @@ type PlayerState = {
   manualValue: string;
 };
 
-// Export gecmisi: bu kopya Super Lig (tsl). 1. Lig kopyasi "tff1" kullanir.
-const HISTORY_LEAGUE = "tsl";
+// Export gecmisi: bu kopyada league prop'u kullanilir ("eurocl"/"euel"/"euecl");
+// tff1 kopyasindaki HISTORY_LEAGUE sabitinin parametrik hali.
 
 // Restore snapshot'i: bir maci Excel'e export ettigimizde o anki tum kullanici
 // girdileri. player_source_id -> {tik, durum, elle deger}; ayrica line tikleri,
@@ -195,9 +202,11 @@ function SortTh({
 
 // ─── Config > Model: dagitim agirliklari (LY Avg / Last 5 / Avg yuzde) ────────
 function DistributeConfig({
+  league,
   weights,
   onSaved,
 }: {
+  league: EuroCupLeague;
   weights: DistWeights;
   onSaved: (w: DistWeights) => void;
 }) {
@@ -227,7 +236,7 @@ function DistributeConfig({
     if (!(await confirmPermanentSave())) return;
     setSaving(true);
     const w: DistWeights = { ly: num(ly), last5: num(last5), avg: num(avg) };
-    const ok = await saveDistWeights(w);
+    const ok = await saveDistWeights(league, w);
     setSaving(false);
     if (ok) {
       setSavedAt(Date.now());
@@ -298,9 +307,11 @@ function DistributeConfig({
 
 // ─── Config > Model: Status kurallari (son N mac + en az K kez) ───────────────
 function StatusConfigCard({
+  league,
   config,
   onSaved,
 }: {
+  league: EuroCupLeague;
   config: StatusConfig;
   onSaved: (c: StatusConfig) => void;
 }) {
@@ -322,7 +333,7 @@ function StatusConfigCard({
   async function handleSave() {
     if (!(await confirmPermanentSave())) return;
     setSaving(true);
-    const ok = await saveStatusConfig(draft);
+    const ok = await saveStatusConfig(league, draft);
     setSaving(false);
     if (ok) {
       setSavedAt(Date.now());
@@ -455,7 +466,7 @@ function TeamPlayerTable({
   onStatusChange: (id: string, s: InferredStatus) => void;
   onManualChange: (id: string, v: string) => void;
   onCheckedChange: (id: string, v: boolean) => void;
-  onPlayerClick: (slug: string, name: string, sourceId: string) => void;
+  onPlayerClick: (id: string, name: string) => void;
 }) {
   const { t } = useI18n();
   const [sortCol, setSortCol] = useState<SortCol>("status");
@@ -561,9 +572,7 @@ function TeamPlayerTable({
                   >
                     <button
                       type="button"
-                      onClick={() =>
-                        onPlayerClick(p.player_slug, p.player_name, p.player_source_id)
-                      }
+                      onClick={() => onPlayerClick(p.player_source_id, p.player_name)}
                       className="block w-full truncate text-left font-medium text-ink underline-offset-2 transition hover:text-accent-ink hover:underline"
                     >
                       {p.player_name}
@@ -690,8 +699,13 @@ function TeamPlayerTable({
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function PlayerMarketPredictionPage({
+  league,
   teamLogos = {},
 }: {
+  // Hangi kupa: eurocl = CL, euel = EL, euecl = Konferans Ligi.
+  league: EuroCupLeague;
+  // team_id -> logo_url (tff1_team_logos_v1 sofascore logolari; kupa takimlarini
+  // da kapsar); logosu olmayan takim adsiz kalir.
   teamLogos?: Record<string, string>;
 }) {
   const { t } = useI18n();
@@ -720,7 +734,7 @@ export default function PlayerMarketPredictionPage({
   const [configSub, setConfigSub] = useState<"market" | "model">("market");
   // Avg bu sezondan, LY Avg bir onceki sezondan okunur.
   const [currentSeason, setCurrentSeason] = useState<string | null>(null);
-  // pm_markets kayitlari: ozel marketler + template id'ler + turler.
+  // pm_markets kayitlari (league=prop): ozel marketler + template id'ler + turler.
   const [storedMarkets, setStoredMarkets] = useState<StoredMarket[]>([]);
   // Line tikleri ve elle duzenlenen oranlar; anahtar "<player_key>:<line>".
   const [lineTicks, setLineTicks] = useState<Record<string, boolean>>({});
@@ -747,26 +761,24 @@ export default function PlayerMarketPredictionPage({
   const skipMarketRef = useRef(false);
   // Oyuncu adina tiklaninca sagda acilan profil paneli.
   const [selectedPlayer, setSelectedPlayer] = useState<{
-    slug: string;
+    id: string;
     name: string;
-    sourceId: string;
   } | null>(null);
 
   // ── On mount: load fixtures + current season + stored markets ──
-  // Guncel sezon takvimden turetilir (Temmuz'da yeni sezona doner); veri henuz
-  // gelmemis yeni sezonda bile dogru anah­tar kullanilir. Yine de takvim veri
-  // sezonunun gerisinde kalmasin diye en yeni veri sezonuyla max alinir.
+  // Guncel sezon takvimden turetilir (Temmuz'da yeni sezona doner); en yeni veri
+  // sezonuyla max alinarak takvimin veriden geride kalmasi engellenir.
   useEffect(() => {
-    fetchUpcomingFixtures().then(setFixtures);
-    fetchLatestMetricSeason().then((dataSeason) =>
+    fetchUpcomingFixtures(league).then(setFixtures);
+    fetchLatestMetricSeason(league).then((dataSeason) =>
       setCurrentSeason(latestSeasonLabel(currentSeasonLabel(), dataSeason))
     );
-    fetchStoredMarkets().then(setStoredMarkets);
-    fetchDistWeights().then(setDistWeights);
-    fetchStatusConfig().then(setStatusConfig);
-  }, []);
+    fetchStoredMarkets(league).then(setStoredMarkets);
+    fetchDistWeights(league).then(setDistWeights);
+    fetchStatusConfig(league).then(setStatusConfig);
+  }, [league]);
 
-  const refreshStoredMarkets = () => fetchStoredMarkets().then(setStoredMarkets);
+  const refreshStoredMarkets = () => fetchStoredMarkets(league).then(setStoredMarkets);
 
   // Market Listesi'nde Model tiki kaldirilan marketler dropdown'da gizlenir.
   const excludedMarketKeys = useMemo(
@@ -826,24 +838,24 @@ export default function PlayerMarketPredictionPage({
 
     async function load() {
       const [homeRaw, awayRaw] = await Promise.all([
-        fetchTeamPlayers(selectedFixture!.home_source_team_id),
-        fetchTeamPlayers(selectedFixture!.away_source_team_id),
+        fetchTeamPlayers(league, selectedFixture!.home_source_team_id),
+        fetchTeamPlayers(league, selectedFixture!.away_source_team_id),
       ]);
 
       const allIds = [...homeRaw, ...awayRaw].map((p) => p.player_source_id);
 
       const [recentMatches, metricStats, last5AvgMap, lyStats, curApps, lyApps, statusOverrides] = await Promise.all([
-        fetchPlayerRecentMatches(allIds, season),
-        fetchPlayerMetricStats(allIds, selectedMarket.metricKey, season),
-        fetchPlayerLast5Avg(allIds, selectedMarket.logField, season),
+        fetchPlayerRecentMatches(league, allIds, season),
+        fetchPlayerMetricStats(league, allIds, selectedMarket.metricKey, season),
+        fetchPlayerLast5Avg(league, allIds, selectedMarket.logField, season),
         prevSeason
-          ? fetchPlayerMetricStats(allIds, selectedMarket.metricKey, prevSeason)
+          ? fetchPlayerMetricStats(league, allIds, selectedMarket.metricKey, prevSeason)
           : Promise.resolve({} as Record<string, PlayerMetricStat>),
-        fetchPlayerSeasonAppearances(allIds, season),
+        fetchPlayerSeasonAppearances(league, allIds, season),
         prevSeason
-          ? fetchPlayerSeasonAppearances(allIds, prevSeason)
+          ? fetchPlayerSeasonAppearances(league, allIds, prevSeason)
           : Promise.resolve({} as Record<string, number>),
-        fetchStatusOverrides(),
+        fetchStatusOverrides(league),
       ]);
 
       function buildStates(rawPlayers: PlayerRow[]): PlayerState[] {
@@ -862,7 +874,7 @@ export default function PlayerMarketPredictionPage({
           const stat: PlayerMetricStat | undefined = metricStats[p.player_source_id];
           // Durum cikarimi Config > Model'deki Status kurallariyla; takimin son N
           // fikstur? uzerinden. Sezon basinda (fikstur yok) profil gorunme sayisina
-          // duser. Goruntulenen "mac sayisi" secili (guncel) sezona aittir.
+          // duser. Goruntulenen "mac sayisi" secili (guncel) sezona ait.
           const status = inferPlayerStatusV2(
             matches,
             teamFixtures,
@@ -888,8 +900,7 @@ export default function PlayerMarketPredictionPage({
         });
 
         // GK dedup: only the GK with most appearances can be Pos. Starter.
-        // Guncel sezon (appearances) sezon basinda 0 oldugundan gecen sezona
-        // (lyAppearances) gore siralanir; ikisi de yoksa 0 sayilir.
+        // Guncel sezon (appearances) sezon basinda 0; gecen sezona gore siralanir.
         const gkStarters = states
           .filter((p) => p.primary_position_code === "GK" && p.status === "Pos. Starter")
           .sort(
@@ -946,7 +957,7 @@ export default function PlayerMarketPredictionPage({
 
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedFixtureId, currentSeason, statusConfig, restoreNonce]);
+  }, [selectedFixtureId, currentSeason, statusConfig, restoreNonce, league]);
 
   // ── Refresh metric stats when market changes (keep players) ──
   useEffect(() => {
@@ -964,10 +975,10 @@ export default function PlayerMarketPredictionPage({
     const prevSeason = previousSeasonLabel(currentSeason);
 
     Promise.all([
-      fetchPlayerMetricStats(allIds, selectedMarket.metricKey, currentSeason),
-      fetchPlayerLast5Avg(allIds, selectedMarket.logField, currentSeason),
+      fetchPlayerMetricStats(league, allIds, selectedMarket.metricKey, currentSeason),
+      fetchPlayerLast5Avg(league, allIds, selectedMarket.logField, currentSeason),
       prevSeason
-        ? fetchPlayerMetricStats(allIds, selectedMarket.metricKey, prevSeason)
+        ? fetchPlayerMetricStats(league, allIds, selectedMarket.metricKey, prevSeason)
         : Promise.resolve({} as Record<string, PlayerMetricStat>),
     ]).then(([metricStats, last5AvgMap, lyStats]) => {
       // Market degisince oyuncu tikleri de otomatik kalkar.
@@ -994,7 +1005,7 @@ export default function PlayerMarketPredictionPage({
     return (id: string, s: InferredStatus) => {
       setter((prev) => prev.map((p) => (p.player_source_id === id ? { ...p, status: s } : p)));
       // Manuel durum secimi kalicidir (pm_player_status_overrides).
-      saveStatusOverride(id, s);
+      saveStatusOverride(league, id, s);
     };
   }
 
@@ -1034,11 +1045,9 @@ export default function PlayerMarketPredictionPage({
     setAddedCount(null);
 
     const [fixtureInputs, playerIds] = await Promise.all([
-      fetchFixtureInputs(),
-      fetchPlayerIds(),
+      fetchFixtureInputs(league),
+      fetchPlayerIds(league),
     ]);
-    // Slug birebir bulunamazsa '--' sonrasi kalici anahtarla esler (isim degisimi).
-    const lookupPlayerId = playerIdLookup(playerIds);
     const fixtureKey = selectedFixture.fixture_id;
     const fixtureIdValue = fixtureInputs[fixtureKey] ?? "";
     const stored = storedMarkets.find((m) => m.market_key === selectedMarketKey);
@@ -1056,7 +1065,7 @@ export default function PlayerMarketPredictionPage({
         if (!price || !(parseFloat(price) > 0)) continue;
         selections.push({
           price,
-          participantId: lookupPlayerId(p.player_slug),
+          participantId: playerIds[p.player_slug] ?? "",
           sortOrder,
           playerSlug: p.player_slug,
           playerName: p.player_name,
@@ -1098,7 +1107,7 @@ export default function PlayerMarketPredictionPage({
           if (price === "—" || !price.trim()) continue;
           selections.push({
             price: price.trim(),
-            participantId: lookupPlayerId(p.player_slug),
+            participantId: playerIds[p.player_slug] ?? "",
             sortOrder,
             playerSlug: p.player_slug,
             playerName: p.player_name,
@@ -1227,7 +1236,7 @@ export default function PlayerMarketPredictionPage({
       });
     }
     if (entries.length > 0) {
-      await postModelHistory("football_psm", HISTORY_LEAGUE, entries);
+      await postModelHistory("football_psm", league, entries);
       setHistoryReloadKey((k) => k + 1);
     }
   }
@@ -1273,7 +1282,7 @@ export default function PlayerMarketPredictionPage({
 
   return (
     <div className="w-full space-y-4 px-1">
-      {/* Tabs (en sagda: dinamik makrolu Excel indir) */}
+      {/* Tabs */}
       <div className="flex items-center gap-1 rounded-xl border border-line bg-card px-2 py-1.5">
         {TABS.map((tab) => (
           <button
@@ -1288,11 +1297,9 @@ export default function PlayerMarketPredictionPage({
             {tab.label}
           </button>
         ))}
-        {/* Open in Excel butonu sahip istegiyle kaldirildi (2026-08-21);
-            xlsm dosyasi public/downloads altinda durmaya devam ediyor. */}
       </div>
 
-      {activeTab === "players" && <PlayerListTab teamLogos={teamLogos} />}
+      {activeTab === "players" && <PlayerListTab league={league} teamLogos={teamLogos} />}
       {activeTab === "config" && (
         <div className="space-y-4">
           {/* Config alt sekmeleri: Market (template'ler) / Model (dagitim ayari) */}
@@ -1315,17 +1322,17 @@ export default function PlayerMarketPredictionPage({
             ))}
           </div>
           {configSub === "market" ? (
-            <MarketListTab storedMarkets={storedMarkets} onChanged={refreshStoredMarkets} />
+            <MarketListTab league={league} storedMarkets={storedMarkets} onChanged={refreshStoredMarkets} />
           ) : (
             <div className="space-y-4">
-              <DistributeConfig weights={distWeights} onSaved={setDistWeights} />
-              <StatusConfigCard config={statusConfig} onSaved={setStatusConfig} />
-              <RetentionConfig sport="football_psm" league={HISTORY_LEAGUE} />
+              <DistributeConfig league={league} weights={distWeights} onSaved={setDistWeights} />
+              <StatusConfigCard league={league} config={statusConfig} onSaved={setStatusConfig} />
+              <RetentionConfig sport="football_psm" league={league} />
             </div>
           )}
         </div>
       )}
-      {activeTab === "fixtures" && <FixtureIdTab fixtures={fixtures} />}
+      {activeTab === "fixtures" && <FixtureIdTab league={league} fixtures={fixtures} />}
       {activeTab === "input" && (
         <InputTab
           staticRows={staticRows}
@@ -1356,8 +1363,7 @@ export default function PlayerMarketPredictionPage({
               className="rounded-lg border border-line bg-field px-3 py-2 text-[13px] text-ink focus:border-accent/50 focus:outline-none"
             >
               <option value="">{t("playerMarket.selectFixturePlaceholder")}</option>
-              {/* Biten maclar (kickoff+~2.5s) listenin en altina; siralamayi
-                  her render'da tazele (mac bitince beklemeden asagi kaysin). */}
+              {/* Biten maclar (kickoff+~2.5s) en alta; her render'da tazelenir. */}
               {[...fixtures]
                 .sort(
                   (a, b) =>
@@ -1449,7 +1455,7 @@ export default function PlayerMarketPredictionPage({
           <div className="pb-0.5">
             <HistoryDropdown
               sport="football_psm"
-              league={HISTORY_LEAGUE}
+              league={league}
               matchLabel={selectedFixture?.label}
               reloadKey={historyReloadKey}
               onRestore={restoreFromHistory}
@@ -1533,7 +1539,7 @@ export default function PlayerMarketPredictionPage({
               onStatusChange={makeStatusHandler(setHomePlayers)}
               onManualChange={makeManualHandler(setHomePlayers)}
               onCheckedChange={makeCheckedHandler(setHomePlayers)}
-              onPlayerClick={(slug, name, sourceId) => setSelectedPlayer({ slug, name, sourceId })}
+              onPlayerClick={(id, name) => setSelectedPlayer({ id, name })}
             />
             <TeamPlayerTable
               key={`${selectedFixtureId}:${selectedMarketKey}:away`}
@@ -1551,7 +1557,7 @@ export default function PlayerMarketPredictionPage({
               onStatusChange={makeStatusHandler(setAwayPlayers)}
               onManualChange={makeManualHandler(setAwayPlayers)}
               onCheckedChange={makeCheckedHandler(setAwayPlayers)}
-              onPlayerClick={(slug, name, sourceId) => setSelectedPlayer({ slug, name, sourceId })}
+              onPlayerClick={(id, name) => setSelectedPlayer({ id, name })}
             />
           </div>
         </div>
@@ -1568,10 +1574,10 @@ export default function PlayerMarketPredictionPage({
 
       {selectedPlayer && (
         <PlayerProfileDrawer
-          key={selectedPlayer.slug}
-          playerSlug={selectedPlayer.slug}
+          key={selectedPlayer.id}
+          league={league}
+          playerId={selectedPlayer.id}
           playerName={selectedPlayer.name}
-          playerSourceId={selectedPlayer.sourceId}
           seasonLabel={currentSeason}
           marketLabel={selectedMarket.label}
           metricKey={selectedMarket.metricKey}

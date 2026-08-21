@@ -21,6 +21,38 @@ const TAG_FIX: L = { en: "Fix", tr: "Düzeltme" };
 
 const ENTRIES: Entry[] = [
   {
+    date: { en: "21 August", tr: "21 Ağustos" },
+    title: {
+      en: "Match and player models for the European cups",
+      tr: "Avrupa kupaları için maç ve oyuncu modelleri",
+    },
+    tag: TAG_NEW,
+    items: [
+      {
+        en: "The Champions League, Europa League and Conference League pages now have the Match Stats Model and Player Stats Model tabs, working like their Süper Lig counterparts, including the Fixture ID and Input flows with real cup fixtures. Cup models feed only from last season and the current season, and the Config weighting covers just those two; the recent-matches side panel and the last-x-weeks window do not apply to cups. Teams whose only data comes from this season's qualifiers are marked as estimated.",
+        tr: "Şampiyonlar Ligi, Avrupa Ligi ve Konferans Ligi sayfalarına Süper Lig'dekiyle aynı çalışan Match Stats Model ve Player Stats Model sekmeleri eklendi; Fixture ID ve Input akışları gerçek kupa fikstürleriyle çalışıyor. Kupa modelleri yalnız geçen sezon ve bu sezon verisinden beslenir, Config'teki ağırlıklandırma da sadece bu iki dönemi kapsar; son maçlar yan paneli ve son-x-hafta penceresi kupalarda yoktur. Tek verisi bu sezonki elemeler olan takımlar tahmini olarak işaretlenir.",
+      },
+      {
+        en: "The \"Open in Excel\" button was removed from the player model (including the Süper Lig page).",
+        tr: "Oyuncu modelindeki \"Excel'de Aç\" butonu kaldırıldı (Süper Lig sayfası dahil).",
+      },
+    ],
+  },
+  {
+    date: { en: "21 August", tr: "21 Ağustos" },
+    title: {
+      en: "Shortcuts menu in the header",
+      tr: "Header'a Shortcuts menüsü",
+    },
+    tag: TAG_NEW,
+    items: [
+      {
+        en: "A new Shortcuts icon sits next to What's New in the header. Hovering it opens a menu of frequently used external sites (TransferMarkt, WhoScored, SofaScore, FlashScore, BmBets, TFF, TBF); each entry opens in a new tab. Admins can add, edit and remove the entries from the new ShortCuts tab in the admin panel.",
+        tr: "Header'da What's New yanına yeni bir Shortcuts ikonu eklendi. Üzerine gelince sık kullanılan dış sitelerin menüsü açılır (TransferMarkt, WhoScored, SofaScore, FlashScore, BmBets, TFF, TBF); her satır yeni sekmede açılır. Adminler admin panelindeki yeni ShortCuts sekmesinden kayıt ekleyip düzenleyebilir ve silebilir.",
+      },
+    ],
+  },
+  {
     date: { en: "20 August", tr: "20 Ağustos" },
     title: {
       en: "Faster basketball tools and league lists",

@@ -33,6 +33,7 @@ import ResmiMatchStatsModel from "./ResmiMatchStatsModel";
 // gömülür. TSL futbol logolarını, 1. Lig tff1 logolarını kullanır.
 import TslPlayerMarket from "@/app/dashboard/player-market-prediction/PlayerMarketPredictionPage";
 import Tff1PlayerMarket from "@/app/dashboard/tff-1-lig/player-market/PlayerMarketPredictionPage";
+import EuroPlayerMarket from "@/app/dashboard/euro-cups/player-market/PlayerMarketPredictionPage";
 import { getAllFootballTeamLogos } from "@/lib/football-teams";
 import { getTff1TeamLogos } from "@/features/tff1/server/getTff1Stats";
 import { getNavAccess } from "@/lib/nav-access-server";
@@ -63,10 +64,21 @@ async function renderPlayerStatsModel(config: LeagueConfig): Promise<React.React
     const teamLogos = await getAllFootballTeamLogos();
     return <TslPlayerMarket teamLogos={teamLogos} />;
   }
-  // Avrupa kupasi PSM'i ayri geliyor (kupa oyuncu verisiyle); tff1 kopyasina
-  // DUSMEMELI (yanlis lig verisi gosterirdi).
+  // Avrupa kupasi PSM'i: tff1 kopyasinin league-parametrik esi (eurocup_*
+  // view'lari). Logolar tff1_team_logos_v1'den (sofascore logolari; kupa
+  // takimlarini da kapsar).
   if (isEuroCupSource(config.source)) {
-    return <CupComingSoon />;
+    const logoRows = await getTff1TeamLogos();
+    const teamLogos: Record<string, string> = {};
+    for (const row of logoRows) {
+      if (row.logo_url) teamLogos[row.team_id] = row.logo_url;
+    }
+    return (
+      <EuroPlayerMarket
+        league={config.source as "eurocl" | "euel" | "euecl"}
+        teamLogos={teamLogos}
+      />
+    );
   }
   const logoRows = await getTff1TeamLogos();
   const teamLogos: Record<string, string> = {};
