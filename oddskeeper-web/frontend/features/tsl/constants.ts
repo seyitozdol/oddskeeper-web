@@ -79,6 +79,9 @@ export const EUROCUP_SECTIONS = [
   "results",
   "playerRankings",
   "teamRankings",
+  // Kupa MSM/PSM (sahip istegi 2026-08-21): TSL modelinin kupa varyanti.
+  "matchStatsModel",
+  "playerStatsModel",
 ] as const;
 
 const ALL_SECTIONS = [...RESMI_SECTIONS, "cupStages"] as const;

@@ -6,6 +6,7 @@ import { confirmPermanentSave } from "@/lib/confirm-save";
 import {
   HIST_SEASONS,
   CURRENT_SEASON,
+  isEuroMsmLeague,
   fetchRawModelConfig,
   fetchRawMarketConfigs,
   fetchTemplates,
@@ -52,6 +53,7 @@ export default function ConfigTab({
   exportExtras?: ReactNode;
 }) {
   const { t } = useI18n();
+  const isEuro = isEuroMsmLeague(league);
   const [model, setModel] = useState<RawModelConfig | null>(null);
   const [markets, setMarkets] = useState<RawMarketConfig[]>([]);
   const [templates, setTemplates] = useState<TemplateRow[]>([]);
@@ -198,12 +200,14 @@ export default function ConfigTab({
           </Card>
 
           <Card id="cfg-weighting" title={t("msm.cfgWeighting")} hint={t("msm.weightSumNote")}>
+            {/* Kupa MSM (sahip karari 2026-08-21): weighting yalniz gecen sezon
+                (s1) + bu sezon (s4); s2/s3 ve Etki alanlari gizli (etki=0). */}
             <div className="grid grid-cols-3 gap-3">
               <div><label className={lbl}>{HIST_SEASONS[0]}</label>{numField(model.weight_s1, (v) => setM("weight_s1", v))}</div>
-              <div><label className={lbl}>{HIST_SEASONS[1]}</label>{numField(model.weight_s2, (v) => setM("weight_s2", v))}</div>
-              <div><label className={lbl}>{HIST_SEASONS[2]}</label>{numField(model.weight_s3, (v) => setM("weight_s3", v))}</div>
+              {!isEuro && <div><label className={lbl}>{HIST_SEASONS[1]}</label>{numField(model.weight_s2, (v) => setM("weight_s2", v))}</div>}
+              {!isEuro && <div><label className={lbl}>{HIST_SEASONS[2]}</label>{numField(model.weight_s3, (v) => setM("weight_s3", v))}</div>}
               <div><label className={lbl}>{CURRENT_SEASON}</label>{numField(model.weight_s4, (v) => setM("weight_s4", v))}</div>
-              <div><label className={lbl}>{t("msm.defaultEtki")}</label>{numField(model.default_etki, (v) => setM("default_etki", v))}</div>
+              {!isEuro && <div><label className={lbl}>{t("msm.defaultEtki")}</label>{numField(model.default_etki, (v) => setM("default_etki", v))}</div>}
             </div>
           </Card>
 

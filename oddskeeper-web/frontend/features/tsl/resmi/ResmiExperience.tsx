@@ -63,6 +63,11 @@ async function renderPlayerStatsModel(config: LeagueConfig): Promise<React.React
     const teamLogos = await getAllFootballTeamLogos();
     return <TslPlayerMarket teamLogos={teamLogos} />;
   }
+  // Avrupa kupasi PSM'i ayri geliyor (kupa oyuncu verisiyle); tff1 kopyasina
+  // DUSMEMELI (yanlis lig verisi gosterirdi).
+  if (isEuroCupSource(config.source)) {
+    return <CupComingSoon />;
+  }
   const logoRows = await getTff1TeamLogos();
   const teamLogos: Record<string, string> = {};
   for (const row of logoRows) {

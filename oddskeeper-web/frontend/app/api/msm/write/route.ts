@@ -14,7 +14,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 // RPC GOVDELERI DEGISMEDI: is kurallari (upsert/patch/silme) SQL tarafinda
 // kaliyor, burasi yalniz kapi. Boylece davranis riski sifir.
 
-const LEAGUES = new Set(["tsl", "tff1"]);
+const LEAGUES = new Set(["tsl", "tff1", "eurocl", "euel", "euecl"]);
 
 type Body = { action?: unknown; payload?: unknown };
 

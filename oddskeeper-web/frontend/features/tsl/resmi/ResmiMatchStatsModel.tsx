@@ -57,6 +57,7 @@ import {
   type FixtureRow,
   type FixtureInput,
   type MatchLogRow,
+  isEuroMsmLeague,
 } from "./matchStatsModel/queries";
 import type { MarketConfig, ModelConfig } from "@/features/match-stats-model/engine";
 import TeamCrest from "@/features/tsl/shared/TeamCrest";
@@ -313,8 +314,12 @@ export default function ResmiMatchStatsModel({
 }) {
   const { t } = useI18n();
   const [tab, setTab] = useState<Tab>("model");
+  // Avrupa kupası MSM'i (sahip kararı 2026-08-21): sağ maç-logu paneli ve
+  // son-x-hafta/Etki penceresi yok; veri yalnız geçen sezon + bu sezon
+  // (weighting s1+s4); gsheet sekmesi kupada yok (view kupaları dışlar).
+  const isEuro = isEuroMsmLeague(LEAGUE);
   // İzni olmayan kullanıcıya GSheet sekmesi hiç gösterilmez.
-  const visibleTabs = canGSheet ? TABS : TABS.filter((tb) => tb !== "gsheet");
+  const visibleTabs = TABS.filter((tb) => tb !== "gsheet" || (canGSheet && !isEuro));
   const [configFocus, setConfigFocus] = useState<string | null>(null);
   // Model'deki dişli → Config sekmesine geç + ilgili bölüme kaydır.
   const goConfig = (section: string) => {
@@ -432,7 +437,8 @@ export default function ResmiMatchStatsModel({
     fetchRawModelConfig(LEAGUE).then((r) => {
       if (r) {
         setWeights([r.weight_s1, r.weight_s2, r.weight_s3, r.weight_s4]);
-        setEtki(r.default_etki);
+        // Kupa MSM: son-x penceresi yok -> etki hep 0 (calculated = weighted).
+        setEtki(isEuro ? 0 : r.default_etki);
       }
     });
     // Export için ham market config + template'ler (blok sırasında).
@@ -1092,7 +1098,7 @@ export default function ResmiMatchStatsModel({
               )}
             </div>
           )}
-          <div className="grid gap-4 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.2fr)_minmax(0,0.85fr)]">
+          <div className={`grid gap-4 ${isEuro ? "lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.2fr)]" : "lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.2fr)_minmax(0,0.85fr)]"}`}>
             {/* ═══ 1. KOLON: seçimler + expectancy + hesaplama + 26/27 penceresi + donut ═══ */}
             <div className="min-w-0 space-y-4">
           {/* Kontroller */}
@@ -1387,10 +1393,10 @@ export default function ResmiMatchStatsModel({
               </div>
             )}
 
-            {/* 26/27 penceresi + yıl dağılımı */}
+            {/* 26/27 penceresi + yıl dağılımı (pencere+Etki kupa MSM'inde yok) */}
             <div className="space-y-3 rounded-xl border border-line bg-card p-3">
               {/* 26/27 penceresi (kompakt) + etki % */}
-              <div>
+              {!isEuro && <div>
                 <div className="mb-1.5 flex items-center justify-between">
                   <span className="text-[10px] font-medium uppercase tracking-wide text-ink-3">{t("msm.currentWindow")}</span>
                   <span className="text-[10px] tabular-nums text-ink-3">{maxWeek > 0 ? maxWeek : "—"}</span>
@@ -1417,16 +1423,16 @@ export default function ResmiMatchStatsModel({
                     <span className="text-[10px] text-ink-3">%</span>
                   </span>
                 </div>
-              </div>
-              {/* Yıl dağılımı (dikey barlar) */}
-              <div className="border-t border-line/60 pt-3">
+              </div>}
+              {/* Yıl dağılımı (dikey barlar); kupa MSM: yalnız geçen + bu sezon */}
+              <div className={isEuro ? "" : "border-t border-line/60 pt-3"}>
                 <div className="mb-1 flex items-center gap-1 text-[10px] font-medium uppercase tracking-wide text-ink-3">
                   {t("msm.cfgWeighting")}
                   <ConfigGear onClick={() => goConfig("weighting")} title={t("msm.cfgWeighting")} />
                 </div>
                 <WeightBars
-                  labels={[...HIST_SEASONS, CURRENT_SEASON].map((s) => s.replace(/^20(\d\d)-20(\d\d)$/, "$1/$2"))}
-                  weights={weights}
+                  labels={(isEuro ? [HIST_SEASONS[0], CURRENT_SEASON] : [...HIST_SEASONS, CURRENT_SEASON]).map((s) => s.replace(/^20(\d\d)-20(\d\d)$/, "$1/$2"))}
+                  weights={isEuro ? [weights[0], weights[3]] : weights}
                 />
               </div>
             </div>
@@ -1440,8 +1446,8 @@ export default function ResmiMatchStatsModel({
               <p className="text-[11px] text-ink-3">{t("msm.engineNote")}</p>
             </div>
 
-            {/* ═══ 3. KOLON: güncel sezon maç logu (Excel AM-BC) ═══ */}
-            <div className="min-w-0 space-y-3">
+            {/* ═══ 3. KOLON: güncel sezon maç logu (Excel AM-BC); kupa MSM'inde yok ═══ */}
+            {!isEuro && <div className="min-w-0 space-y-3">
             {[
               { id: "home", name: homeName || t("msm.home"), slug: homeSlug, b4: big4H, setB4: setBig4H, rc: redcH, setRc: setRedcH },
               { id: "away", name: awayName || t("msm.away"), slug: awaySlug, b4: big4A, setB4: setBig4A, rc: redcA, setRc: setRedcA },
@@ -1496,7 +1502,7 @@ export default function ResmiMatchStatsModel({
                 </div>
               );
             })}
-            </div>
+            </div>}
           </div>
           </div>
         </div>
