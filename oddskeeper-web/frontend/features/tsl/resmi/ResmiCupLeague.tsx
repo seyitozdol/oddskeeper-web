@@ -9,12 +9,13 @@ import type {
   CupBracketRound,
   CupLeagueBundle,
   CupMatchLite,
+  CupStageKey,
   CupStandingRow,
   CupTie,
   CupTieRound,
 } from "../server/eurocupLeague";
 
-type StageKey = "qualifying" | "playoff" | "league" | "bracket";
+type StageKey = CupStageKey;
 
 export default function ResmiCupLeague({ data }: { data: CupLeagueBundle }) {
   const { locale } = useI18n();
@@ -29,10 +30,14 @@ export default function ResmiCupLeague({ data }: { data: CupLeagueBundle }) {
     return out;
   }, [data, tr]);
 
-  const [stage, setStage] = useState<StageKey>(
-    () => (data.hasLeaguePhase ? "league" : (stages[0]?.key ?? "league"))
-  );
-  const active = stages.some((s) => s.key === stage) ? stage : stages[0]?.key ?? "league";
+  // Ilk giriste sezonun en son ulastigi asama acilir (loader hesaplar). Veri
+  // gelmezse son sekmeye duseriz; ilk sekme (on elemeler) artik varsayilan degil.
+  const initialStage: StageKey =
+    (data.defaultStage && stages.some((s) => s.key === data.defaultStage)
+      ? data.defaultStage
+      : stages[stages.length - 1]?.key) ?? "league";
+  const [stage, setStage] = useState<StageKey>(() => initialStage);
+  const active = stages.some((s) => s.key === stage) ? stage : initialStage;
 
   if (!stages.length) {
     return (

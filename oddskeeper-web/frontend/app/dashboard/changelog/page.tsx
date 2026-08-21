@@ -23,6 +23,24 @@ const ENTRIES: Entry[] = [
   {
     date: { en: "21 August", tr: "21 Ağustos" },
     title: {
+      en: "European cups: the League tab opens at the current stage",
+      tr: "Avrupa kupaları: Lig sekmesi güncel aşamada açılıyor",
+    },
+    tag: TAG_FIX,
+    items: [
+      {
+        en: "The League tab always opened on the first stage, so during the play-off round the screen still showed the qualifying rounds. It now opens at the stage the season has actually reached: the play-off round right now, the league phase once it starts, and the knockout rounds for a season that is already over. You can still switch between stages with the buttons at the top.",
+        tr: "Lig sekmesi hep ilk aşamada açılıyordu; play-off turu oynanırken ekran hâlâ ön elemeleri gösteriyordu. Artık sezonun geldiği aşamada açılıyor: şu an play-off turu, lig aşaması başlayınca lig aşaması, biten bir sezonda ise eleme turları. Aşamalar arasında üstteki butonlarla yine geçiş yapabilirsiniz.",
+      },
+      {
+        en: "The Teams tab stays empty until the league phase begins, because cup team averages are taken from league-phase matches only. The table now says this inside itself instead of just showing empty rows.",
+        tr: "Takımlar sekmesi lig aşaması başlayana kadar boş kalıyor; kupa takım ortalamaları yalnız lig aşaması maçlarından alınıyor. Tablo artık boş görünmek yerine bunu kendi içinde yazıyor.",
+      },
+    ],
+  },
+  {
+    date: { en: "21 August", tr: "21 Ağustos" },
+    title: {
       en: "Match and player models for the European cups",
       tr: "Avrupa kupaları için maç ve oyuncu modelleri",
     },

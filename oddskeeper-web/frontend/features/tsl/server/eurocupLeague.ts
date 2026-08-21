@@ -73,11 +73,16 @@ export type CupTie = {
 export type CupTieRound = { roundName: string; ties: CupTie[] };
 export type CupBracketRound = { roundLabel: string; order: number; ties: CupTie[] };
 
+// League bolumunun asama sekmeleri (kronolojik sira).
+export type CupStageKey = "qualifying" | "playoff" | "league" | "bracket";
+
 export type CupLeagueBundle = {
   season: string;
   competition: string;
   matchBase: string; // mac detay link koku (tie skorlari tiklanabilir)
   hasLeaguePhase: boolean;
+  // Ilk giriste acilacak asama: sezonun en son ulastigi yer (asagida hesaplanir).
+  defaultStage: CupStageKey | null;
   standings: CupStandingRow[];
   leaguePhaseMatchCount: number;
   qualifying: CupTieRound[];
@@ -329,11 +334,38 @@ export async function loadEurocupLeague(
     }))
     .sort((a, b) => a.order - b.order);
 
+  // ---- Ilk giriste acilacak asama: sezonun EN SON ULASTIGI asama ----
+  // Kural: oynanmis (skoru gelen) maclarin en yenisi hangi asamadaysa o acilir.
+  // Hic mac oynanmadiysa (sezon basi) fikstur tarihi en erken olan asama.
+  // 2026-08-21 sahip istegi: eskiden lig fazi yoksa hep ilk asama (on elemeler)
+  // aciliyordu, play-off oynanirken bile ekran qualifying'de kaliyordu.
+  const STAGE_KEY: Record<Stage, CupStageKey> = {
+    qualifying: "qualifying",
+    playoff_entry: "playoff",
+    league: "league",
+    knockout: "bracket",
+  };
+  let defaultStage: CupStageKey | null = null;
+  let lastPlayedAt = "";
+  let firstFixture: { key: CupStageKey; at: string } | null = null;
+  for (const r of rows) {
+    const at = r.match_datetime ?? "";
+    if (!at) continue;
+    const key = STAGE_KEY[stageOf(r)];
+    if (r.home_score != null && r.away_score != null && at > lastPlayedAt) {
+      lastPlayedAt = at;
+      defaultStage = key;
+    }
+    if (!firstFixture || at < firstFixture.at) firstFixture = { key, at };
+  }
+  if (!defaultStage) defaultStage = firstFixture?.key ?? null;
+
   return {
     season,
     competition,
     matchBase,
     hasLeaguePhase: standings.length > 0,
+    defaultStage,
     standings,
     leaguePhaseMatchCount: leagueRows.length,
     qualifying,

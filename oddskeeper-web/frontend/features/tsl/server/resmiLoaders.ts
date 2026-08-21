@@ -531,6 +531,9 @@ const fetchMsmTeamLog = cachedQuery(
 export type ResmiTeamsTableBundle = {
   season: string;
   teams: TeamTableRow[];
+  // Avrupa kupasi: lig fazi baslamadigi icin tablo bos (elemeler sayilmaz).
+  // Tablonun icinde "lig asamasi baslayinca dolacak" notu gosterilir.
+  leaguePhasePending: boolean;
   mainMarkets: { key: string; higherBetter: boolean }[];
   otherMetrics: {
     key: string;
@@ -769,6 +772,9 @@ export async function loadResmiTeamsTable(
 
   return {
     season,
+    // Kupada lig-fazi maci henuz yoksa (yalniz elemeler oynandi) tablo bos kalir;
+    // bilesen tablonun icinde aciklama satiri gosterebilsin diye isaretlenir.
+    leaguePhasePending: leaguePhaseTeamIds != null && leaguePhaseTeamIds.size === 0,
     teams: displayStandings.map((s) => ({
       id: s.teamId,
       name: s.teamName,

@@ -25,7 +25,7 @@ function fmt(v: number | null): string {
 export default function ResmiTeamsTable({ data }: { data: ResmiTeamsTableBundle }) {
   const { locale } = useI18n();
   const tr = locale === "tr";
-  const { teams, mainMarkets, otherMetrics, mainData, otherData } = data;
+  const { teams, mainMarkets, otherMetrics, mainData, otherData, leaguePhasePending } = data;
 
   const mainKeySet = useMemo(() => new Set(mainMarkets.map((m) => m.key)), [mainMarkets]);
   const [metric, setMetric] = useState<string>(
@@ -143,6 +143,12 @@ export default function ResmiTeamsTable({ data }: { data: ResmiTeamsTableBundle 
     l10: "Last 10",
     ly: "LY",
     leagueAvg: tr ? "Lig ortalaması" : "League avg",
+    // Kupada lig asamasi baslamadan tablo bos gelir; kullanici bos ekrani
+    // hata sanmasin diye nedeni tablonun icinde yazar.
+    emptyLeaguePhase: tr
+      ? "Bu tablo lig aşaması başlayınca dolacak. Şu an sadece eleme turları oynanıyor."
+      : "This table will fill in once the league phase begins. Only the qualifying rounds have been played so far.",
+    empty: tr ? "Veri yok." : "No data.",
   };
 
   return (
@@ -218,6 +224,16 @@ export default function ResmiTeamsTable({ data }: { data: ResmiTeamsTableBundle 
             </tr>
           </thead>
           <tbody>
+            {!sorted.length ? (
+              <tr>
+                <td
+                  colSpan={6}
+                  className="px-3 py-10 text-center text-[13px] leading-relaxed text-ink-2"
+                >
+                  {leaguePhasePending ? L.emptyLeaguePhase : L.empty}
+                </td>
+              </tr>
+            ) : null}
             {sorted.map((r) => (
               <tr key={r.id} className="border-t border-line/60 hover:bg-veil">
                 <td className="px-2 py-1.5 text-center text-[12px] font-semibold tabular-nums text-ink-2">
