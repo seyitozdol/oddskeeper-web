@@ -1,13 +1,20 @@
 import { createClient } from "../../../lib/supabase/server";
-import type {
-  Tff1FixtureRow,
-  Tff1MarketValue,
-  Tff1MatchLogRow,
-  Tff1MatchRow,
-  Tff1PlayerInfo,
-  Tff1PlayerRow,
-  Tff1TeamLogo,
-  Tff1TeamRow,
+// P-5 (select-yildiz): *_COLS sabitleri donen tiplerin birebir kolon listesi;
+// view genisletilse bile payload tip alanlariyla sinirli kalir.
+import {
+  TFF1_FIXTURE_ROW_COLS,
+  TFF1_MATCH_LOG_ROW_COLS,
+  TFF1_MATCH_ROW_COLS,
+  TFF1_PLAYER_ROW_COLS,
+  TFF1_TEAM_ROW_COLS,
+  type Tff1FixtureRow,
+  type Tff1MarketValue,
+  type Tff1MatchLogRow,
+  type Tff1MatchRow,
+  type Tff1PlayerInfo,
+  type Tff1PlayerRow,
+  type Tff1TeamLogo,
+  type Tff1TeamRow,
 } from "../types";
 
 const PAGE_SIZE = 1000; // PostgREST tek istekte en fazla 1000 satir doner
@@ -20,7 +27,7 @@ export async function getTff1PlayerSeasonStats(): Promise<Tff1PlayerRow[]> {
     const { data, error } = await supabase
       .schema("analytics")
       .from("tff1_player_season_stats_mat")
-      .select("*")
+      .select(TFF1_PLAYER_ROW_COLS)
       .order("minutes", { ascending: false })
       .order("player_id", { ascending: true })
       .range(from, from + PAGE_SIZE - 1)
@@ -47,7 +54,7 @@ export async function getTff1Matches(): Promise<Tff1MatchRow[]> {
     const { data, error } = await supabase
       .schema("analytics")
       .from("tff1_matches_v1")
-      .select("*")
+      .select(TFF1_MATCH_ROW_COLS)
       .order("match_datetime", { ascending: false })
       .order("match_id", { ascending: true })
       .range(from, from + PAGE_SIZE - 1)
@@ -165,7 +172,7 @@ export async function getTff1PlayerMatchLog(
   const { data, error } = await supabase
     .schema("analytics")
     .from("tff1_player_match_log_mat")
-    .select("*")
+    .select(TFF1_MATCH_LOG_ROW_COLS)
     .eq("player_id", playerId)
     .order("match_datetime", { ascending: false })
     .limit(300)
@@ -188,7 +195,7 @@ export async function getTff1MatchPlayers(
   const { data, error } = await supabase
     .schema("analytics")
     .from("tff1_player_match_log_mat")
-    .select("*")
+    .select(TFF1_MATCH_LOG_ROW_COLS)
     .eq("match_id", matchId)
     .limit(60)
     .returns<Tff1MatchLogRow[]>();
@@ -207,7 +214,7 @@ export async function getTff1Match(matchId: string): Promise<Tff1MatchRow | null
   const { data, error } = await supabase
     .schema("analytics")
     .from("tff1_matches_v1")
-    .select("*")
+    .select(TFF1_MATCH_ROW_COLS)
     .eq("match_id", matchId)
     .maybeSingle<Tff1MatchRow>();
 
@@ -225,7 +232,7 @@ export async function getTff1Fixtures(): Promise<Tff1FixtureRow[]> {
   const { data, error } = await supabase
     .schema("analytics")
     .from("tff1_fixtures_v1")
-    .select("*")
+    .select(TFF1_FIXTURE_ROW_COLS)
     .order("fixture_datetime", { ascending: true })
     .limit(500)
     .returns<Tff1FixtureRow[]>();
@@ -244,7 +251,7 @@ export async function getTff1TeamSeasonStats(): Promise<Tff1TeamRow[]> {
   const { data, error } = await supabase
     .schema("analytics")
     .from("tff1_team_season_stats_mat")
-    .select("*")
+    .select(TFF1_TEAM_ROW_COLS)
     .order("points", { ascending: false })
     .limit(200)
     .returns<Tff1TeamRow[]>();

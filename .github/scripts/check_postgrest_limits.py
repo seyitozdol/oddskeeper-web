@@ -21,7 +21,9 @@ ROOT = os.path.join(os.path.dirname(__file__), "..", "..")
 FRONTEND = os.path.join(ROOT, "oddskeeper-web", "frontend")
 BASELINE = os.path.join(ROOT, ".github", "postgrest-limits-baseline.txt")
 DIRS = ["app", "components", "features", "lib"]
-OK_TOKENS = (".limit(", ".range(", ".single(", ".maybeSingle(", "1000-cap", "count:", "head: true")
+# .single<T>() / .maybeSingle<T>() generic bicimleri de sinirlayicidir (P-5'te
+# maybeSingle<Record<...>>() kullanimi token'i kacirip yanlis pozitif vermisti).
+OK_TOKENS = (".limit(", ".range(", ".single(", ".single<", ".maybeSingle(", ".maybeSingle<", "1000-cap", "count:", "head: true")
 BIG_LIMIT = re.compile(r"\.limit\(\s*(\d+)")
 
 def scan_file(path):

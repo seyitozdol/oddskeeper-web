@@ -3,6 +3,16 @@ import type { TslAdvancedRow } from "../types";
 
 const PAGE_SIZE = 1000; // PostgREST tek istekte en fazla 1000 satir doner
 
+// select("*") daraltmasi (C-2 Faz 3): TslAdvancedDbRow alanlariyla birebir ayni
+// tutulur; tipe alan eklenirse buraya da eklenmeli.
+const ADVANCED_COLS =
+  "season_label, opta_player_id, appearances, minutes, xgot, xa, key_passes, " +
+  "long_balls, accurate_long_balls, duels_won, duels_lost, aerials_won, " +
+  "aerials_lost, dribbles_won, dribbles_attempted, clearances, ball_recoveries, " +
+  "big_chances_created, big_chances_missed, errors_leading_to_shot, " +
+  "errors_leading_to_goal, km_covered, sprints, top_speed, carry_distance_m, " +
+  "progressive_carry_distance_m";
+
 type TslAdvancedDbRow = {
   season_label: string;
   opta_player_id: string;
@@ -80,7 +90,7 @@ export async function getTslAdvancedStats(): Promise<TslAdvancedRow[]> {
     const { data, error } = await supabase
       .schema("analytics")
       .from("tsl_player_advanced_season_mat")
-      .select("*")
+      .select(ADVANCED_COLS)
       .order("season_label", { ascending: true })
       .order("opta_player_id", { ascending: true })
       .range(from, from + PAGE_SIZE - 1)

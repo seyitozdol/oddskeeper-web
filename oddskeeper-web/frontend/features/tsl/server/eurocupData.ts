@@ -93,6 +93,22 @@ const TEAM_CAT: Record<string, string> = {
   team_fouls_conceded: "discipline",
 };
 
+// P-5 (select-yildiz): standings + teamMetrics'in fiilen okudugu kolonlar.
+// TEAM_MAP'e yeni metrik kolonu eklenince otomatik gelir.
+const TEAM_STAT_COLS = [
+  ...new Set([
+    "team_id", "team_name", "season_label", "played", "wins", "draws", "losses",
+    "goals_for", "goals_against", "points",
+    ...TEAM_MAP.map(([col]) => col),
+  ]),
+].join(",");
+// Dinamik select string'i supabase-js tip-parser'indan gecmez; kolonlar
+// TEAM_STAT_COLS ile sinirli, erisim toNum/String uzerinden.
+type TeamStatRow = { team_id: string | number; team_name: string | null } & Record<
+  string,
+  unknown
+>;
+
 function catLabel(key: string | null): string {
   const m: Record<string, string> = { attacking: "Hücum", build_up: "Oyun Kurma", defending: "Savunma", discipline: "Disiplin" };
   return key ? m[key] ?? key : "";
@@ -172,7 +188,7 @@ export function makeCupProvider(COMP: string, prefix: string) {
 
   async function teamStatRows(season: string) {
     const sb = await createClient();
-    const { data, error } = await sb.schema("analytics").from(V("team_season_stats_v1")).select("*").eq("season_label", season).limit(400);
+    const { data, error } = await sb.schema("analytics").from(V("team_season_stats_v1")).select(TEAM_STAT_COLS).eq("season_label", season).limit(400).returns<TeamStatRow[]>();
     if (error) throw new Error(`${V("team_season_stats_v1")}: ${error.message}`);
     return data ?? [];
   }

@@ -143,6 +143,9 @@ async function getCupTeamPlayerStats(
     const { data } = await supabase
       .schema("analytics")
       .from(`${cup.prefix}_player_season_stats_v1`)
+      // select-yildiz: bilincli genis okuma (satirlar Record<string, unknown> olarak
+      // tutulup metrik kolonu r[col] dinamik anahtarla okunuyor; col CUP_PLAYER_MAP'ten
+      // gelir, statik kolon listesi cikarilamaz)
       .select("*")
       .eq("team_id", sofaTeamId)
       .eq("season_label", s)

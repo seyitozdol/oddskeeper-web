@@ -12,12 +12,35 @@ import type {
   VbPlayerMatch,
 } from "../types";
 
+// select("*") daraltmasi (C-2 Faz 3): kolon listeleri ../types'taki tiplerle
+// birebir ayni tutulur; tipe alan eklenirse buraya da eklenmeli.
+const COMPETITION_COLS =
+  "competition_id, comp_slug, year, gender, name, short_label, sort_key";
+const LEADERBOARD_COLS =
+  "competition_id, fivb_id, short_name, full_name, team_code, position, " +
+  "shirt_number, nationality, height_cm, birth_date, sofascore_player_id, " +
+  "vbw_photo, points, attack_points, block_points, serve_points, scorer_rank, " +
+  "atk_total, atk_success, atk_rank, blk_blocks, blk_eff, blk_rank, srv_aces, " +
+  "srv_success, srv_rank, set_successful, set_rank, dig_digs, dig_rank, " +
+  "rec_successful, rec_success, rec_rank";
+const MATCH_COLS =
+  "competition_id, match_no, match_date, home_code, away_code, home_name, " +
+  "away_name, home_sets, away_sets, set_scores, status";
+const FIXTURE_COLS =
+  "id, competition_name, stage, match_date, match_time, home_code, away_code, " +
+  "home_name, away_name, venue, status";
+const PLAYER_BIO_COLS =
+  "fivb_id, full_name, short_name, position, birth_date, height_cm, " +
+  "nationality, sofascore_player_id, vbw_photo";
+const PLAYER_MATCH_COLS =
+  "competition_id, fivb_id, match_date, home_team, away_team, category, data";
+
 export async function getVolleyballCompetitions(): Promise<VbCompetition[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .schema("analytics")
     .from("vb_competitions_v1")
-    .select("*")
+    .select(COMPETITION_COLS)
     .order("sort_key", { ascending: false })
     .returns<VbCompetition[]>();
   if (error) {
@@ -34,7 +57,7 @@ export async function getVolleyballLeaderboard(
   const { data, error } = await supabase
     .schema("analytics")
     .from("vb_player_leaderboard_v1")
-    .select("*")
+    .select(LEADERBOARD_COLS)
     .eq("competition_id", competitionId)
     .order("points", { ascending: false, nullsFirst: false })
     .returns<VbLeaderboardRow[]>();
@@ -52,7 +75,7 @@ export async function getVolleyballMatches(
   const { data, error } = await supabase
     .schema("analytics")
     .from("vb_matches_v1")
-    .select("*")
+    .select(MATCH_COLS)
     .eq("competition_id", competitionId)
     .order("match_date", { ascending: false, nullsFirst: false })
     .returns<VbMatch[]>();
@@ -69,7 +92,7 @@ export async function getVolleyballFixtures(): Promise<VbFixture[]> {
   const { data, error } = await supabase
     .schema("analytics")
     .from("vb_fixtures_v1")
-    .select("*")
+    .select(FIXTURE_COLS)
     .order("match_date", { ascending: true, nullsFirst: false })
     .returns<VbFixture[]>();
   if (error) {
@@ -88,7 +111,7 @@ export async function getVolleyballPlayer(
   const { data, error } = await supabase
     .schema("analytics")
     .from("vb_player_v1")
-    .select("*")
+    .select(PLAYER_BIO_COLS)
     .eq("fivb_id", fivbId)
     .maybeSingle<VbPlayerBio>();
   if (error) {
@@ -108,7 +131,7 @@ export async function getVolleyballPlayerCompetitions(
     supabase
       .schema("analytics")
       .from("vb_player_leaderboard_v1")
-      .select("*")
+      .select(LEADERBOARD_COLS)
       .eq("fivb_id", fivbId)
       .returns<VbLeaderboardRow[]>(),
     getVolleyballCompetitions(),
@@ -134,7 +157,7 @@ export async function getVolleyballPlayerMatches(
   const { data, error } = await supabase
     .schema("analytics")
     .from("vb_player_match_v1")
-    .select("*")
+    .select(PLAYER_MATCH_COLS)
     .eq("fivb_id", fivbId)
     .eq("competition_id", competitionId)
     .order("match_date", { ascending: false, nullsFirst: false })

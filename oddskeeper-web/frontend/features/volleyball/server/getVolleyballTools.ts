@@ -55,6 +55,9 @@ async function fetchAll<T>(view: string, orderCol: string): Promise<T[]> {
   const out: T[] = [];
   for (let from = 0; ; from += PAGE) {
     const { data, error } = await supabase
+      // select-yildiz: bilincli genis okuma (dinamik view: 3 farkli vb_pm_* view'i
+      // ortak kolon setine sahip degil; ayrica VolleyballTools satirlari Record'a
+      // cast edip market base'lerini dinamik anahtarla okuyor)
       .schema("analytics").from(view).select("*")
       .order(orderCol, { ascending: false, nullsFirst: false })
       .range(from, from + PAGE - 1)
@@ -79,7 +82,7 @@ export async function getVbTeams(): Promise<VbTeam[]> {
   const { data, error } = await supabase
     .schema("analytics")
     .from("vb_pm_teams_v1")
-    .select("*")
+    .select("team_code, team_name")
     .order("team_name", { ascending: true })
     .returns<VbTeam[]>();
   if (error) { console.error("getVbTeams", error.message); return []; }

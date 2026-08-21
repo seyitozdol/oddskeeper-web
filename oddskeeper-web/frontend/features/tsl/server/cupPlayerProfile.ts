@@ -1,8 +1,14 @@
 import { createClient } from "../../../lib/supabase/server";
-import type {
-  Tff1MatchRow,
-  Tff1PlayerRow,
-  Tff1TeamRow,
+// P-5 (select-yildiz): kupa view'lari tff1 klonu + ekstra kolonlar tasiyor
+// (player: photo_url/country/player_slug, team: xg, stage matches: round_*).
+// *_COLS sabitleri donen tiplerin birebir listesi; fazlalik payload'a girmez.
+import {
+  TFF1_MATCH_ROW_COLS,
+  TFF1_PLAYER_ROW_COLS,
+  TFF1_TEAM_ROW_COLS,
+  type Tff1MatchRow,
+  type Tff1PlayerRow,
+  type Tff1TeamRow,
 } from "../../tff1/types";
 
 // Avrupa kupasi veri yukleyicileri (birlesik takim profili + kupa listeleri).
@@ -26,7 +32,7 @@ export async function getCupPlayerSeasonStats(
     let query = supabase
       .schema("analytics")
       .from(`${prefix}_player_season_stats_v1`)
-      .select("*")
+      .select(TFF1_PLAYER_ROW_COLS)
       .order("minutes", { ascending: false })
       .order("player_id", { ascending: true })
       .range(from, from + PAGE_SIZE - 1);
@@ -54,7 +60,7 @@ export async function getCupTeamSeasonStats(
     const { data, error } = await supabase
       .schema("analytics")
       .from(`${prefix}_team_season_stats_v1`)
-      .select("*")
+      .select(TFF1_TEAM_ROW_COLS)
       .order("season_label", { ascending: false })
       .order("team_id", { ascending: true })
       .range(from, from + PAGE_SIZE - 1)
@@ -109,7 +115,7 @@ export async function getCupMatches(
     let query = supabase
       .schema("analytics")
       .from("eurocup_stage_matches_v1")
-      .select("*")
+      .select(TFF1_MATCH_ROW_COLS)
       .order("match_datetime", { ascending: false })
       .range(from, from + PAGE_SIZE - 1);
     if (competition) query = query.eq("competition", competition);

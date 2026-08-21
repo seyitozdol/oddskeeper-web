@@ -114,7 +114,9 @@ export async function cupStandings(
   season: string, meta: Record<string, TslTeamMeta>, matches: TslMatch[]
 ): Promise<TslStandingRow[]> {
   const sb = await createClient();
-  const { data } = await sb.schema("analytics").from("cup_standings_v1").select("*").eq("season_label", season).limit(500);
+  const { data } = await sb.schema("analytics").from("cup_standings_v1")
+    .select("team_id, team_name, played, wins, draws, losses, goals_for, goals_against, points")
+    .eq("season_label", season).limit(500);
   const rows = (data ?? []).map((r) => {
     const id = String(r.team_id);
     const wins = toNum(r.wins) ?? 0, draws = toNum(r.draws) ?? 0, losses = toNum(r.losses) ?? 0;

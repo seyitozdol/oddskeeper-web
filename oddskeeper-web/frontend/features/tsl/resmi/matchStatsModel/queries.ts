@@ -182,6 +182,8 @@ export interface GsheetRow {
 export async function fetchGsheetRows(league: string): Promise<GsheetRow[]> {
   const { data, error } = await sb()
     .from("msm_gsheet_v1")
+    // select-yildiz: bilincli genis okuma (metrik kolonlari Object.keys(r) ile
+    // dinamik toplanir; sabit liste yeni metrik kolonunu sessizce dusurur)
     .select("*")
     .eq("league", league)
     .eq("season_label", FIXTURE_SEASON);
@@ -351,11 +353,21 @@ export async function fetchTeams(league: string): Promise<TeamOption[]> {
     .sort((a, b) => a.name.localeCompare(b.name, "tr"));
 }
 
+// P-5 (select-yildiz): fetchMarketConfigs + fetchRawMarketConfigs'in fiilen
+// okudugu kolonlar (RawMarketConfig alanlari + market). Yeni config kolonu
+// eklenince buraya da ekle.
+const MARKET_CONFIG_COLS =
+  "market,std_home_ft,std_away_ft,std_home_1h,std_away_1h,std_home_2h," +
+  "std_away_2h,split_1h,split_2h,supremacy_applies,referee_applies," +
+  "line_count,send_halves,mid_only,line_count_1h,line_count_2h,under_1h," +
+  "under_2h,payback_1h,payback_2h,supremacy_divisor,enabled";
+
 export async function fetchMarketConfigs(league: string): Promise<Record<string, MarketConfig>> {
   const { data, error } = await sb()
     .from("msm_market_config_v1")
-    .select("*")
-    .eq("league", league);
+    .select(MARKET_CONFIG_COLS)
+    .eq("league", league)
+    .returns<Record<string, unknown>[]>();
   if (error) {
     console.error("fetchMarketConfigs", error);
     return {};
@@ -386,12 +398,20 @@ export async function fetchMarketConfigs(league: string): Promise<Record<string,
   return out;
 }
 
+// P-5 (select-yildiz): fetchModelConfig + fetchRawModelConfig'in fiilen
+// okudugu kolonlar (RawModelConfig alanlari).
+const MODEL_CONFIG_COLS =
+  "margin,referee_weight,supremacy_divisor,xmatrix_w_own_for," +
+  "xmatrix_w_own_alt,xmatrix_w_opp_alt,xmatrix_w_opp_against,su_low,su_high," +
+  "engine,mc_samples,weight_s1,weight_s2,weight_s3,weight_s4,default_etki," +
+  "referee_min_matches";
+
 export async function fetchModelConfig(league: string): Promise<ModelConfig> {
   const { data, error } = await sb()
     .from("msm_model_config_v1")
-    .select("*")
+    .select(MODEL_CONFIG_COLS)
     .eq("league", league)
-    .maybeSingle();
+    .maybeSingle<Record<string, unknown>>();
   if (error || !data) {
     if (error) console.error("fetchModelConfig", error);
     // güvenli varsayılan (msm.model_config defaultlarıyla aynı)
@@ -516,7 +536,7 @@ export interface TemplateRow {
 }
 
 export async function fetchRawModelConfig(league: string): Promise<RawModelConfig | null> {
-  const { data, error } = await sb().from("msm_model_config_v1").select("*").eq("league", league).maybeSingle();
+  const { data, error } = await sb().from("msm_model_config_v1").select(MODEL_CONFIG_COLS).eq("league", league).maybeSingle<Record<string, unknown>>();
   if (error || !data) { if (error) console.error("fetchRawModelConfig", error); return null; }
   const n = (v: unknown) => Number(v);
   return {
@@ -532,7 +552,7 @@ export async function fetchRawModelConfig(league: string): Promise<RawModelConfi
 }
 
 export async function fetchRawMarketConfigs(league: string): Promise<RawMarketConfig[]> {
-  const { data, error } = await sb().from("msm_market_config_v1").select("*").eq("league", league);
+  const { data, error } = await sb().from("msm_market_config_v1").select(MARKET_CONFIG_COLS).eq("league", league).returns<Record<string, unknown>[]>();
   if (error) { console.error("fetchRawMarketConfigs", error); return []; }
   const n = (v: unknown) => Number(v);
   return (data ?? []).map((r) => ({

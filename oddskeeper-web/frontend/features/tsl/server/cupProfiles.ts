@@ -52,7 +52,9 @@ export async function loadCupTeamProfile(teamId: string): Promise<CupTeamProfile
       .select("match_id, match_datetime, round_name, home_team_id, home_team_name, home_team_uuid, home_team_slug, away_team_id, away_team_name, away_team_uuid, away_team_slug, home_score, away_score")
       .or(`home_team_id.eq.${teamId},away_team_id.eq.${teamId}`)
       .order("match_datetime", { ascending: false }).limit(60),
-    sb.schema("analytics").from("cup_standings_v1").select("*").eq("team_id", teamId),
+    sb.schema("analytics").from("cup_standings_v1")
+      .select("season_label, played, wins, draws, losses, goals_for, goals_against")
+      .eq("team_id", teamId),
     sb.schema("analytics").from("cup_team_metrics_v1")
       .select("stat_type, total_value, per_match_value, season_label").eq("team_id", teamId).in("stat_type", Object.keys(TEAM_STAT_LABEL)),
     sb.schema("analytics").from("cup_player_stats_v1")

@@ -13,7 +13,8 @@ const PAGE = 1000;
 export async function getEuroToolsSplits(comp: "E" | "U", season: string): Promise<BktHomeAwaySplitRow[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
-    .schema("analytics").from("el_team_home_away_split_v1").select("*")
+    .schema("analytics").from("el_team_home_away_split_v1")
+    .select("team_slug,team_name,games,ppg,oppg,home_pf,home_pa,away_pf,away_pa,home_pf_std,away_pf_std,pf_std,crest_url")
     .eq("competition", comp).eq("season_label", season)
     .returns<BktHomeAwaySplitRow[]>();
   if (error) { console.error("getEuroToolsSplits", error.message); return []; }
@@ -23,7 +24,8 @@ export async function getEuroToolsSplits(comp: "E" | "U", season: string): Promi
 export async function getEuroToolsForms(comp: "E" | "U", season: string): Promise<BktTeamMetricFormRow[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
-    .schema("analytics").from("el_team_metric_form_v1").select("*")
+    .schema("analytics").from("el_team_metric_form_v1")
+    .select("team_slug,team_name,market_key,market_label,games,season_avg,last10_avg,std")
     .eq("competition", comp).eq("season_label", season)
     .returns<BktTeamMetricFormRow[]>();
   if (error) { console.error("getEuroToolsForms", error.message); return []; }
@@ -35,7 +37,8 @@ export async function getEuroToolsWindows(comp: "E" | "U", season: string): Prom
   const rows: BktPlayerWindowRow[] = [];
   for (let from = 0; ; from += PAGE) {
     const { data, error } = await supabase
-      .schema("analytics").from("el_player_metric_window_v1").select("*")
+      .schema("analytics").from("el_player_metric_window_v1")
+      .select("player_slug,player_name,team_slug,team_name,market_key,market_label,games,avg_minutes,season_avg,last5_avg,last10_avg,calc_std,total")
       .eq("competition", comp).eq("season_label", season)
       .range(from, from + PAGE - 1)
       .returns<BktPlayerWindowRow[]>();
@@ -50,6 +53,7 @@ export async function getEuroToolsTeamLogs(comp: "E" | "U", season: string): Pro
   const rows: BktTeamLogRow[] = [];
   for (let from = 0; ; from += PAGE) {
     const { data, error } = await supabase
+      // select-yildiz: bilincli genis okuma (BktTeamLogRow tip alanlari fg2m/fg2a/ftm/fta bu view'da yok; daraltilamaz)
       .schema("analytics").from("el_team_match_log_v1").select("*")
       .eq("competition", comp).eq("season_label", season)
       .order("match_date", { ascending: false })

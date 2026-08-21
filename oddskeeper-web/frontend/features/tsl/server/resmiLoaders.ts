@@ -86,7 +86,10 @@ type Provider = {
   // satirlarindan kurar, tam-tarama yok); TSL sezon parametresini yok sayar.
   assets(season: string): Promise<Record<string, PlayerAsset>>;
   catalog(season: string): Promise<TslMetricOption[]>;
-  leaderboard(season: string, metricKey: string, meta: Record<string, TslTeamMeta>, includeUnqualified?: boolean): Promise<TslLeaderRow[]>;
+  // topByTotal (P-4): yalniz TSL saglayicisi DB tarafinda uygular (ilk N satir,
+  // toplam-sirali); eurocup/tff1 saglayicilari cache'li playerRows'tan JS'te
+  // hesapladigi icin parametreyi yok sayar, cagiran yine sort+slice yapar.
+  leaderboard(season: string, metricKey: string, meta: Record<string, TslTeamMeta>, includeUnqualified?: boolean, topByTotal?: number): Promise<TslLeaderRow[]>;
   teamMetrics(season: string, meta: Record<string, TslTeamMeta>): Promise<TslTeamMetric[]>;
   teamLeaderboard(season: string, meta: Record<string, TslTeamMeta>): Promise<TslTeamLeaderRow[]>;
   aggression(season: string): Promise<Record<string, TeamAggression>>;
@@ -138,7 +141,7 @@ function providerFor(config: LeagueConfig): Provider {
     players: (s, meta, assets) => getResmiPlayers(s, meta, assets),
     assets: () => getPlayerAssets(),  // TSL: sezon-bagimsiz (H8/C-3 ayri is)
     catalog: (s) => getTslPlayerCatalog(s),
-    leaderboard: (s, mk, _meta, inc) => getTslLeaderboard(s, mk, { includeUnqualified: inc }),
+    leaderboard: (s, mk, _meta, inc, topByTotal) => getTslLeaderboard(s, mk, { includeUnqualified: inc, topByTotal }),
     teamMetrics: (s, meta) => getTslTeamMetrics(s, meta),
     teamLeaderboard: (s, meta) => getTslTeamLeaderboard(s, meta),
     aggression: (s) => getTeamAggression(s),
@@ -293,7 +296,7 @@ export async function loadResmiLig(
     p.standings(season, meta, matches),
     p.assets(season),
     p.upcoming(season, meta),
-    p.leaderboard(season, leaderMetric, meta),
+    p.leaderboard(season, leaderMetric, meta, undefined, 12),
   ]);
   const standings = standingsReal.length ? standingsReal : buildZeroStandings(upcoming, meta);
   const teamHrefById = await buildTeamHrefs(
@@ -341,7 +344,9 @@ export type ResmiResultsBundle = {
 
 async function loadCupRounds(season: string): Promise<CupStageRow[]> {
   const sb = await createClient();
-  const { data } = await sb.schema("analytics").from("cup_stages_v1").select("*").eq("season_label", season);
+  const { data } = await sb.schema("analytics").from("cup_stages_v1")
+    .select("round_id, round_name, match_count, played_count, goals, first_match, last_match")
+    .eq("season_label", season);
   return (data ?? [])
     .map((r) => ({
       roundId: r.round_id == null ? null : Number(r.round_id),
@@ -1040,7 +1045,9 @@ export type ResmiCupStagesBundle = {
 export async function loadResmiCupStages(config: LeagueConfig, season: string): Promise<ResmiCupStagesBundle> {
   const sb = await createClient();
   const [{ data: stageData }, { data: matchData }, localLogos] = await Promise.all([
-    sb.schema("analytics").from("cup_stages_v1").select("*").eq("season_label", season),
+    sb.schema("analytics").from("cup_stages_v1")
+      .select("round_id, round_name, match_count, played_count, goals, first_match, last_match")
+      .eq("season_label", season),
     sb.schema("analytics").from("cup_matches_v1")
       .select("match_id, match_datetime, round_id, round_name, status, home_team_name, home_team_slug, home_team_uuid, away_team_name, away_team_slug, away_team_uuid, home_score, away_score")
       .eq("season_label", season)

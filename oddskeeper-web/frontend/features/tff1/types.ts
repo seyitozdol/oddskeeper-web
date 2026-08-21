@@ -1,5 +1,10 @@
 // TFF 1. Lig (SofaScore) sezon istatistik satirlari.
 // Kaynak view'lar: analytics.tff1_player_season_stats_v1 / tff1_team_season_stats_v1
+//
+// P-5 (select-yildiz): *_COLS sabitleri asagidaki tiplerin BIREBIR kolon
+// listesi; select("*") yerine kullanilir ki view'a eklenen fazladan kolonlar
+// (or. kupa view'larindaki photo_url/country/player_slug) payload'a tasinmasin.
+// Tipe alan ekle/cikar -> ayni adli *_COLS sabitini de guncelle.
 
 export type Tff1PlayerRow = {
   season_label: string;
@@ -63,6 +68,18 @@ export type Tff1PlayerRow = {
   fs_position: string | null;
 };
 
+export const TFF1_PLAYER_ROW_COLS =
+  "season_label,player_id,player_name,team_name,team_id,teams,position_code," +
+  "appearances,starts,minutes,goals,assists,own_goals,shots,shots_on_target," +
+  "big_chances_missed,hit_woodwork,total_passes,accurate_passes,pass_accuracy," +
+  "key_passes,big_chances_created,crosses,accurate_crosses,long_balls," +
+  "accurate_long_balls,tackles,tackles_won,interceptions,clearances,blocks," +
+  "ball_recoveries,duels_won,duels_lost,aerials_won,aerials_lost,fouls," +
+  "was_fouled,offsides,dispossessed,possession_lost,dribbles_won," +
+  "dribbles_attempted,touches,saves,penalties_saved,errors_leading_to_shot," +
+  "errors_leading_to_goal,rating_avg,km_covered,sprints,top_speed,xg,xgot,xa," +
+  "yellow_cards,red_cards,fs_position";
+
 export type Tff1MatchRow = {
   season_label: string;
   match_id: string;
@@ -75,6 +92,10 @@ export type Tff1MatchRow = {
   home_score: number | null;
   away_score: number | null;
 };
+
+export const TFF1_MATCH_ROW_COLS =
+  "season_label,match_id,competition,match_datetime,home_team_id," +
+  "home_team_name,away_team_id,away_team_name,home_score,away_score";
 
 // Mac bazli oyuncu logu (analytics.tff1_player_match_log_mat).
 // source='sofascore' TUM ligleri icerir (kume dusen kulup oyunculari icin
@@ -133,6 +154,17 @@ export type Tff1MatchLogRow = {
   top_speed: number | null;
 };
 
+export const TFF1_MATCH_LOG_ROW_COLS =
+  "season_label,competition,match_id,match_datetime,player_id,player_name," +
+  "team_id,team_name,opponent_id,opponent_name,is_home,home_score,away_score," +
+  "lineup_status,position_code,minutes,rating,goals,assists,shots," +
+  "shots_on_target,total_passes,accurate_passes,key_passes,crosses," +
+  "accurate_crosses,long_balls,accurate_long_balls,tackles,tackles_won," +
+  "interceptions,clearances,blocks,ball_recoveries,duels_won,duels_lost," +
+  "aerials_won,aerials_lost,fouls,was_fouled,offsides,dispossessed," +
+  "possession_lost,dribbles_won,dribbles_attempted,touches,saves," +
+  "penalties_saved,km_covered,sprints,top_speed";
+
 // Yaklasan fikstur (analytics.tff1_fixtures_v1; football.fixtures source='sofascore')
 export type Tff1FixtureRow = {
   fixture_id: number;
@@ -147,6 +179,11 @@ export type Tff1FixtureRow = {
   away_team_name: string | null;
   fixture_status: string | null;
 };
+
+export const TFF1_FIXTURE_ROW_COLS =
+  "fixture_id,season_label,competition,round_number,fixture_date," +
+  "fixture_datetime,home_team_id,home_team_name,away_team_id,away_team_name," +
+  "fixture_status";
 
 export type Tff1PlayerInfo = {
   player_id: string;
@@ -194,3 +231,9 @@ export type Tff1TeamRow = {
   rating_avg: number | null;
   km_per_match: number | null;
 };
+
+export const TFF1_TEAM_ROW_COLS =
+  "season_label,team_id,team_name,played,wins,draws,losses,goals_for," +
+  "goals_against,goal_diff,points,clean_sheets,win_pct,shots,shots_on_target," +
+  "total_passes,accurate_passes,pass_accuracy,key_passes,big_chances_created," +
+  "tackles,interceptions,fouls,rating_avg,km_per_match";

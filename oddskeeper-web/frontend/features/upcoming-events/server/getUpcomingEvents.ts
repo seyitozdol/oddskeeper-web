@@ -5,6 +5,18 @@ import { superLigTeamSlug } from "../priority";
 // upcoming_events_v1 ham satırı (href'ler henüz eklenmemiş).
 type RawRow = Omit<UpcomingEventRow, "home_team_href" | "away_team_href">;
 
+// select("*") daraltması (C-2 Faz 3): RawRow alanlarıyla birebir aynı tutulur;
+// view'daki bets10_event_id bilinçli dışarıda (frontend'te tüketilmiyor).
+const RAW_ROW_COLS =
+  "event_id, sport, category_name, tournament_name, season_name, round_info, " +
+  "home_team_id, home_team_name, home_team_country, home_team_national, " +
+  "away_team_id, away_team_name, away_team_country, away_team_national, " +
+  "gender, start_ts, status_type, status_desc, home_score, away_score, " +
+  "event_slug, updated_at, bet365_has_odds, bet365_market_count, bet365_listed, " +
+  "bets10_has_odds, bets10_market_count, bets10_listed, oddsportal_has_odds, " +
+  "oddsportal_market_count, oddsportal_listed, bmbets_has_odds, " +
+  "bmbets_market_count, bmbets_listed";
+
 const SL_DETAIL_BASE =
   "/dashboard/stats-analysis/football/team-stats/detail?team=";
 const TFF1_TEAM_BASE = "/dashboard/tff-1-lig/team/";
@@ -77,7 +89,7 @@ export async function getUpcomingEvents(): Promise<UpcomingEventRow[]> {
   const { data, error } = await supabase
     .schema("analytics")
     .from("upcoming_events_v1")
-    .select("*")
+    .select(RAW_ROW_COLS)
     .order("start_ts", { ascending: true })
     .limit(500)
     .returns<RawRow[]>();

@@ -160,9 +160,25 @@ function formOf(teamId: string, matches: TslMatch[]): FormResult[] {
   });
 }
 
+// P-5 (select-yildiz): tff1Standings + tff1TeamMetrics'in fiilen okudugu
+// kolonlar. TEAM_MAP'e yeni metrik kolonu eklenince otomatik gelir.
+const TEAM_STAT_COLS = [
+  ...new Set([
+    "team_id", "team_name", "season_label", "played", "wins", "draws", "losses",
+    "goals_for", "goals_against", "points",
+    ...TEAM_MAP.map(([col]) => col),
+  ]),
+].join(",");
+// Dinamik select string'i supabase-js tip-parser'indan gecmez; kolonlar
+// TEAM_STAT_COLS ile sinirli, erisim toNum/String uzerinden.
+type TeamStatRow = { team_id: string | number; team_name: string | null } & Record<
+  string,
+  unknown
+>;
+
 async function teamStatRows(season: string) {
   const sb = await createClient();
-  const { data, error } = await sb.schema("analytics").from("tff1_team_season_stats_mat").select("*").eq("season_label", season).limit(200);
+  const { data, error } = await sb.schema("analytics").from("tff1_team_season_stats_mat").select(TEAM_STAT_COLS).eq("season_label", season).limit(200).returns<TeamStatRow[]>();
   if (error) throw new Error(`tff1_team_season_stats_mat: ${error.message}`);
   return data ?? [];
 }
