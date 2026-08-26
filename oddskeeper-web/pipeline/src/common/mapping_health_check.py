@@ -68,15 +68,24 @@ CHECKS = [
           select player_name, current_team_slug from analytics.player_current_info_bridged_v1
           where current_team_slug is not null group by 1,2 having count(*) > 1
         ) z"""),
+    # Aday (pr) tarafinda YALNIZ eurocup'ta gorunen profiller haric: yabanci UEFA
+    # rakibi, ayni base-isimli TSL/1.Lig kadro oyuncusunun profili olamaz
+    # (2026-08-24 vakasi: Erzurumspor'un I. Yalatif Diabate'si tm620696 ile KF
+    # Egnatia'nin ibrahim-diabate--ss1500169'u AYRI kisiler). ps (birebir slug)
+    # tarafi tam liste kalir.
     ("squad_profile_broken_link", "HIGH",
-     """select count(*) from (
+     f"""select count(*) from (
           with sq as (select player_slug, split_part(player_slug,'--',1) base
                       from analytics.team_current_squad_profile_v1),
                pr as (select player_slug, split_part(player_slug,'--',1) base
-                      from analytics.player_profile_bridged_v1)
+                      from analytics.player_profile_bridged_v1),
+               cand as (select player_slug, base from pr where player_slug in (
+                          select player_slug from analytics.player_profile_bridged_v1
+                          group by 1
+                          having bool_or(coalesce(competition,'') not in {EUROCUP_COMPS})))
           select 1 from sq
           left join pr ps on ps.player_slug = sq.player_slug
-          join pr on pr.base = sq.base and pr.player_slug <> sq.player_slug
+          join cand on cand.base = sq.base and cand.player_slug <> sq.player_slug
           where ps.player_slug is null
         ) z"""),
     # PSM kimlik sozlesmesi: Oyuncu Listesi (player_current_info_v1) ile Model
