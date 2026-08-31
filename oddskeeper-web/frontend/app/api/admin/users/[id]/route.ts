@@ -11,6 +11,9 @@ type PatchBody = {
   email?: string;
   // yeni sifre (en az 8 karakter); admin baska kullanicinin sifresini degistirir
   password?: string;
+  // true = sifresiz giris cihaz kilidini sifirla; bir sonraki giris yapan
+  // cihaz hesabi yeniden sahiplenir
+  resetDevice?: boolean;
 };
 
 const UUID_RE =
@@ -45,13 +48,15 @@ export async function PATCH(
   const hasDirectAlias = "directAlias" in body;
   const hasEmail = typeof body.email === "string";
   const hasPassword = typeof body.password === "string";
+  const hasResetDevice = body.resetDevice === true;
 
   if (
     !hasAllowedKeys &&
     !hasIsAdmin &&
     !hasDirectAlias &&
     !hasEmail &&
-    !hasPassword
+    !hasPassword &&
+    !hasResetDevice
   ) {
     return NextResponse.json({ error: "empty_body" }, { status: 400 });
   }
@@ -188,6 +193,18 @@ export async function PATCH(
         console.error("Admin alias upsert error:", aliasUpsertError);
         return NextResponse.json({ error: "alias_taken" }, { status: 409 });
       }
+    }
+  }
+
+  if (hasResetDevice) {
+    const { error: deviceDeleteError } = await admin
+      .from("direct_access_devices")
+      .delete()
+      .eq("user_id", id);
+
+    if (deviceDeleteError) {
+      console.error("Admin device reset error:", deviceDeleteError);
+      return NextResponse.json({ error: "save_failed" }, { status: 500 });
     }
   }
 

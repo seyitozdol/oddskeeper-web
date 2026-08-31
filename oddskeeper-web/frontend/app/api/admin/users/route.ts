@@ -12,6 +12,10 @@ export type AdminUserRow = {
   allowedKeys: string[] | null;
   // null = normal kullanici; dolu = sifresiz giris alias'i (super user)
   directAlias: string | null;
+  // Cihaz kilidi (sadece alias'li hesaplarda anlamli): null = henuz
+  // sahiplenilmedi, ilk giris yapan cihaz baglanacak.
+  deviceBoundAt: string | null;
+  deviceLastSeenAt: string | null;
 };
 
 export async function GET() {
@@ -27,16 +31,21 @@ export async function GET() {
     { data: list, error: listError },
     { data: perms, error: permError },
     { data: aliases, error: aliasError },
+    { data: devices, error: deviceError },
   ] = await Promise.all([
     admin.auth.admin.listUsers({ page: 1, perPage: 500 }),
     admin.from("user_nav_permissions").select("user_id, is_admin, allowed_keys"),
     admin.from("direct_access_users").select("user_id, alias, active"),
+    admin
+      .from("direct_access_devices")
+      // 1000-cap: alias'li kullanici sayisi kadar satir (kucuk tablo)
+      .select("user_id, created_at, last_seen_at"),
   ]);
 
-  if (listError || permError || aliasError) {
+  if (listError || permError || aliasError || deviceError) {
     console.error(
       "Admin users list error:",
-      listError ?? permError ?? aliasError
+      listError ?? permError ?? aliasError ?? deviceError
     );
     return NextResponse.json({ error: "list_failed" }, { status: 500 });
   }
@@ -49,10 +58,14 @@ export async function GET() {
       .filter((a) => a.active === true)
       .map((a) => [a.user_id as string, a.alias as string])
   );
+  const deviceByUserId = new Map(
+    (devices ?? []).map((d) => [d.user_id as string, d])
+  );
 
   const users: AdminUserRow[] = (list?.users ?? [])
     .map((u) => {
       const perm = permByUserId.get(u.id);
+      const device = deviceByUserId.get(u.id);
       return {
         id: u.id,
         email: u.email ?? "",
@@ -61,6 +74,8 @@ export async function GET() {
         isAdmin: perm?.is_admin === true,
         allowedKeys: (perm?.allowed_keys as string[] | null) ?? null,
         directAlias: aliasByUserId.get(u.id) ?? null,
+        deviceBoundAt: (device?.created_at as string | undefined) ?? null,
+        deviceLastSeenAt: (device?.last_seen_at as string | undefined) ?? null,
       };
     })
     .sort((a, b) => (a.createdAt ?? "").localeCompare(b.createdAt ?? ""));
@@ -210,6 +225,8 @@ export async function POST(request: NextRequest) {
       isAdmin,
       allowedKeys: null,
       directAlias: directAlias || null,
+      deviceBoundAt: null,
+      deviceLastSeenAt: null,
     } satisfies AdminUserRow,
   });
 }

@@ -24,6 +24,8 @@ type AdminUserRow = {
   isAdmin: boolean;
   allowedKeys: string[] | null;
   directAlias: string | null;
+  deviceBoundAt: string | null;
+  deviceLastSeenAt: string | null;
 };
 
 type AdminUsersClientProps = {
@@ -146,9 +148,14 @@ export default function AdminUsersClient({
       isAdmin?: boolean;
       directAlias?: string | null;
       email?: string;
+      resetDevice?: boolean;
     }
   ): Promise<boolean> {
     const previous = users;
+
+    // Alias kaldirilinca cihaz bagi DB'de cascade ile silinir; cihaz sifirlama
+    // da bagi kopartir. Iki durumda da satirdaki cihaz alanlari temizlenir.
+    const clearsDevice = patch.resetDevice === true || patch.directAlias === null;
 
     setSaveError(false);
     setSavingIds((prev) => new Set(prev).add(user.id));
@@ -165,6 +172,9 @@ export default function AdminUsersClient({
                 ? { directAlias: patch.directAlias }
                 : {}),
               ...(patch.email !== undefined ? { email: patch.email } : {}),
+              ...(clearsDevice
+                ? { deviceBoundAt: null, deviceLastSeenAt: null }
+                : {}),
             }
           : u
       )
@@ -259,6 +269,18 @@ export default function AdminUsersClient({
 
   function toggleAdmin(user: AdminUserRow) {
     void patchUser(user, { isAdmin: !user.isAdmin });
+  }
+
+  function resetDevice(user: AdminUserRow) {
+    if (!user.directAlias) return;
+    if (
+      !window.confirm(
+        t("adminUsers.deviceResetConfirm", { alias: user.directAlias })
+      )
+    ) {
+      return;
+    }
+    void patchUser(user, { resetDevice: true });
   }
 
   function formatDate(value: string | null) {
@@ -478,6 +500,37 @@ export default function AdminUsersClient({
                         removeLabel={t("adminUsers.aliasRemove")}
                         onSave={(v) => patchUser(user, { directAlias: v })}
                       />
+                      {user.directAlias ? (
+                        <div className="mt-1 flex items-center gap-1.5 text-[11px] text-ink-3">
+                          {user.deviceBoundAt ? (
+                            <>
+                              <span
+                                title={
+                                  user.deviceLastSeenAt
+                                    ? t("adminUsers.deviceLastSeen", {
+                                        date: formatDate(user.deviceLastSeenAt),
+                                      })
+                                    : undefined
+                                }
+                              >
+                                {t("adminUsers.deviceBound", {
+                                  date: formatDate(user.deviceBoundAt),
+                                })}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => resetDevice(user)}
+                                disabled={isSaving}
+                                className="cursor-pointer rounded-md border border-line px-1.5 py-0.5 text-[10px] font-medium text-ink-2 transition hover:border-line-strong hover:text-ink disabled:cursor-not-allowed disabled:opacity-60"
+                              >
+                                {t("adminUsers.deviceReset")}
+                              </button>
+                            </>
+                          ) : (
+                            <span>{t("adminUsers.devicePending")}</span>
+                          )}
+                        </div>
+                      ) : null}
                     </td>
                     <td className="px-3 py-2.5">
                       <AccessDropdown
