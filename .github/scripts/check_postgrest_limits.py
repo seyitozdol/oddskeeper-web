@@ -24,6 +24,10 @@ DIRS = ["app", "components", "features", "lib"]
 # .single<T>() / .maybeSingle<T>() generic bicimleri de sinirlayicidir (P-5'te
 # maybeSingle<Record<...>>() kullanimi token'i kacirip yanlis pozitif vermisti).
 OK_TOKENS = (".limit(", ".range(", ".single(", ".single<", ".maybeSingle(", ".maybeSingle<", "1000-cap", "count:", "head: true")
+# Yazma zincirleri satir kumesi TARAMAZ (donen satirlar yazilanlarla sinirli);
+# KURAL 2 sinirsiz-select sayimina girmezler (2026-08-31: shortcuts update/delete
+# route'lari yanlis pozitif vermisti). KURAL 1 (limit>1000) onlarda da gecerli kalir.
+WRITE_TOKENS = (".update(", ".delete(", ".insert(", ".upsert(")
 BIG_LIMIT = re.compile(r"\.limit\(\s*(\d+)")
 
 def scan_file(path):
@@ -41,6 +45,11 @@ def scan_file(path):
         for m in BIG_LIMIT.finditer(window):
             if int(m.group(1)) > 1000:
                 big.append(i + 1)
+        # yazma-zinciri muafiyeti geri-bakissiz pencerede aranir: komsu (onceki)
+        # statement'taki .update/.delete bir select zincirini yanlislikla muaf birakmasin
+        chain = "\n".join(lines[i: j + 1])
+        if any(t in chain for t in WRITE_TOKENS):
+            continue
         if not any(t in window for t in OK_TOKENS):
             unbounded.append(i + 1)
     return unbounded, big

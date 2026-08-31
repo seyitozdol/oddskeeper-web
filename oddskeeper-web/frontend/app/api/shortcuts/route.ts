@@ -23,7 +23,7 @@ export async function GET() {
   }
 
   const { data, error } = await createAdminClient()
-    .from("shortcuts")
+    .from("shortcuts") // 1000-cap: header kisayol listesi kucuk (~7 satir)
     .select("id, name, url, logo_url, sort_order")
     .order("sort_order", { ascending: true })
     .order("name", { ascending: true });
