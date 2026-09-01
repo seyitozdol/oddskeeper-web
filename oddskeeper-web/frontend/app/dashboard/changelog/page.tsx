@@ -21,6 +21,24 @@ const TAG_FIX: L = { en: "Fix", tr: "Düzeltme" };
 
 const ENTRIES: Entry[] = [
   {
+    date: { en: "1 September", tr: "1 Eylül" },
+    title: {
+      en: "EuroVolley 2026 on the Volleyball page",
+      tr: "Voleybol sayfasına EuroVolley 2026 geldi",
+    },
+    tag: TAG_NEW,
+    items: [
+      {
+        en: "The Women's European Championship (EuroVolley 2026, hosted partly in Istanbul) is now a tournament of its own on the Volleyball page, next to VNL and the World Championship. Players shows per-player totals for points, serve, reception, attack and block; Results has every final-round match with set scores; Fixtures lists Türkiye's remaining games. Data comes from the CEV and is refreshed as the tournament progresses through the knockout rounds.",
+        tr: "Kadınlar Avrupa Şampiyonası (bir ayağı İstanbul'da oynanan EuroVolley 2026) artık Voleybol sayfasında VNL ve Dünya Şampiyonası'nın yanında ayrı bir turnuva. Players sekmesi oyuncu başına sayı, servis, karşılama, hücum ve blok toplamlarını gösterir; Results tüm final etabı maçlarını set skorlarıyla listeler; Fixtures Türkiye'nin kalan maçlarını gösterir. Veri CEV'den gelir ve turnuva eleme turlarında ilerledikçe güncellenir.",
+      },
+      {
+        en: "Player profiles and the Match-Player Tools also cover the tournament: profile pages have a EuroVolley 2026 chip with match-by-match scoring, and the tools' team pickers include the EuroVolley teams.",
+        tr: "Oyuncu profilleri ve Match-Player Tools da turnuvayı kapsar: profil sayfalarında maç-maç skor tablosuyla EuroVolley 2026 çipi vardır, araçlardaki takım seçicilere EuroVolley takımları eklenmiştir.",
+      },
+    ],
+  },
+  {
     date: { en: "21 August", tr: "21 Ağustos" },
     title: {
       en: "European cups: the League tab opens at the current stage",
