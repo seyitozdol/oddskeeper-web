@@ -90,6 +90,13 @@ chmod +x /opt/oddskeeper/run_upcoming_events.sh /opt/oddskeeper/run_odds_capture
 #    01:59 CEST = 23:59 UTC (kışın 00:59 UTC'ye kayar, zararsız — script sınırı
 #    kendisi hesaplar). Frontend iat kontrolünün ana katmanı.
 59 1 * * *    /opt/oddskeeper/run_daily_logout.sh
+
+# 9) EuroVolley 2026 (CEV, kadın): TURNUVA PENCERELİ (21 Ağu–6 Eyl 2026).
+#    Akşam koşusu günün maçlarını + CEV istatistiklerini çeker; sabah yedeği
+#    gece işlenen veriyi süpürür. Wrapper 2026-09-08'den itibaren no-op;
+#    turnuva bitince bu iki satırı kaldır.
+30 22 * * *   /opt/oddskeeper/run_eurovolley.sh
+15 8 * * *    /opt/oddskeeper/run_eurovolley.sh
 ```
 `public.pipeline_triggers` tablosu gerekir (sql/2026-07-31_pipeline_triggers.sql).
 Wrapper'ları kopyala: `cp oddskeeper-web/pipeline/deploy/run_*.sh /opt/oddskeeper/ && chmod +x /opt/oddskeeper/run_*.sh`
