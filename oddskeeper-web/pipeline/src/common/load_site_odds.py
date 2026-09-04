@@ -82,12 +82,32 @@ def _destem(t: str) -> str:
     return t
 
 
+# Turkce ekzonimler: Bets10 Avrupa kupasi rakiplerini TURKCE cevirisiyle yazar
+# ("Marsilya", "Kizilyildiz"); karsi kaynak (SofaScore) yabanci formu kullaninca
+# token kesisimi 0 kalir ve fuzzy de kurtaramayabilir (marsilya~marseille 0.706 <
+# FUZZY_TOKEN_MIN) -> mac hic eslesmez, b10 rozeti bos (2026-09-04 Besiktas-
+# Marseille EL R1 vakasi). Birebir sozluk guvenli: yanlis pozitif uretmez,
+# esik/margin korumalari devrede kalir. Anahtar/degerler fold()+_destem SONRASI
+# token formundadir; deger birden cok tokene acilabilir.
+_EXONYMS = {
+    "marsilya": ("marseille",),
+    "kizilyildiz": ("crvena", "zvezda"),
+    "kopenhag": ("copenhagen",),
+    "munih": ("munchen",),
+    "sofya": ("sofia",),
+    "monako": ("monaco",),
+}
+
+
 def tokens(name: str) -> set[str]:
     s = fold(name)
     raw = [t for t in "".join(c if c.isalnum() else " " for c in s).split() if t]
     keep = [_destem(t) for t in raw if t not in CLUB_STOPWORDS and len(t) > 1]
     keep = [t for t in keep if len(t) > 1]
-    return set(keep or raw)
+    out: list[str] = []
+    for t in keep or raw:
+        out.extend(_EXONYMS.get(t, (t,)))
+    return set(out)
 
 
 def _fuzzy_cover(ta: set[str], tb: set[str]) -> float:
