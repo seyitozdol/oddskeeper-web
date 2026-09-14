@@ -32,4 +32,5 @@ select
      else 1 end) as sort_key
 from volleyball.competitions c;
 
-grant select on analytics.vb_competitions_v1 to anon, authenticated;
+-- anon lockdown (2026-08-19): anon'a grant yasak; 2026-09-14'te sizinti revoke edildi.
+grant select on analytics.vb_competitions_v1 to authenticated;
