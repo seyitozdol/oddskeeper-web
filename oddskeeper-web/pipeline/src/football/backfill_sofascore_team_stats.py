@@ -85,7 +85,11 @@ def main():
             ev = get(f"{API}/event/{mid}")["event"]
             st = get(f"{API}/event/{mid}/statistics")
             inc = get(f"{API}/event/{mid}/incidents")
-            rows = teamload.build_team_rows(ev, st, inc, comp)
+            try:
+                lu = get(f"{API}/event/{mid}/lineups")  # on_pitch kart kurali icin
+            except Exception:  # noqa: BLE001 - lineups 404 olabilir, fallback loader'da
+                lu = None
+            rows = teamload.build_team_rows(ev, st, inc, comp, lu)
             teamload.upsert(rows)
             done += 1
         except Exception as e:  # noqa

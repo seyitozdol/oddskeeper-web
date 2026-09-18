@@ -165,7 +165,7 @@ def process_league(cfg: dict):
         try:
             stats = get(f"{API}/event/{eid}/statistics")
             inc = get(f"{API}/event/{eid}/incidents")
-            t_ev = teamload.build_team_rows(ev, stats, inc, comp)
+            t_ev = teamload.build_team_rows(ev, stats, inc, comp, lineup)
             # Oyuncu-bazli kart olaylari (sahada-gorulen ayrimi icin). lineup
             # yukarida cekildi; incidents'ten kart+degisiklik okunur.
             c_ev = teamload.build_card_rows(ev, inc, lineup)

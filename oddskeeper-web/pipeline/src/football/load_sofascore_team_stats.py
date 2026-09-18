@@ -9,7 +9,9 @@ added-time/VAR/penalty/own-goal jsonb sofascore_extras'a):
   Shot=summary_shots, SOT=summary_shots_on_target, Corner=summary_corners_won,
   Foul=summary_fouls_conceded, Offside=summary_offsides, Saves=summary_saves,
   Tackle=summary_tackles, Goal Kick=details_goal_kicks, Throw-in=details_total_throws,
-  Card=(summary_yellow_cards, summary_red_cards; toplam=sari+2*kirmizi okuma tarafinda),
+  Card=(summary_yellow_cards, summary_red_cards; toplam=sari+2*kirmizi okuma tarafinda;
+        KURAL 2026-09-18: yalniz sahada-gorulen OYUNCU kartlari — TD/gorevli ve
+        bench/cikmis-oyuncu kartlari sayilmaz, build_card_rows on_pitch kaynagi),
   Wood Work=details_hit_woodwork, xG=details_expected_goals.
 
 Standalone test: python load_sofascore_team_stats.py --event <id> --competition "Süper Lig" [--write]
@@ -54,8 +56,13 @@ def _stat_map(statistics):
     return out
 
 
-def build_team_rows(event, statistics, incidents, competition):
-    """Bir SofaScore event + statistics + incidents -> [home_row, away_row]."""
+def build_team_rows(event, statistics, incidents, competition, lineup=None):
+    """Bir SofaScore event + statistics + incidents -> [home_row, away_row].
+
+    lineup: /event/{id}/lineups yaniti; kart sayiminin sahada-gorulen (on_pitch)
+    kurali icin gerekir. None ise fallback: TD/gorevli kartlari yine dislanir,
+    on_pitch ayrimi yapilmaz (tum caller'lar lineup gecirir; None yalniz
+    lineups'in cekilemedigi nadir durum icindir)."""
     home, away = event["homeTeam"], event["awayTeam"]
     hs = (event.get("homeScore") or {}).get("current")
     as_ = (event.get("awayScore") or {}).get("current")
@@ -92,11 +99,6 @@ def build_team_rows(event, statistics, incidents, competition):
         it, ic = i.get("incidentType"), i.get("incidentClass")
         if it == "injuryTime":
             add[i.get("time")] = i.get("length")
-        elif it == "card":
-            if ic == "yellow":
-                yellow[side] += 1
-            elif ic in ("red", "yellowRed"):
-                red[side] += 1
         elif it == "goal":
             if ic == "penalty":
                 pen[side] += 1
@@ -104,6 +106,33 @@ def build_team_rows(event, statistics, incidents, competition):
                 og[side] += 1
         if it == "varDecision" or ic == "varDecision":
             var[side] += 1
+
+    # KART KURALI (sahip, 2026-09-18; Kasimpasa-Konyaspor TD-sarisi vakasi):
+    # takim kart toplami YALNIZ sahada-gorulen OYUNCU kartlarini sayar. Teknik
+    # ekip/gorevli kartlari (incidents'te player'siz gelir) ve sahada olmayan
+    # (bench / oyundan cikmis) oyuncu kartlari HARIC. Sayim build_card_rows'un
+    # on_pitch mantigindan yapilir ki oyuncu tablosu ile takim toplami hep tutsun.
+    if lineup is not None:
+        for c in build_card_rows(event, incidents, lineup):
+            if not c["on_pitch"]:
+                continue
+            cside = 0 if c["side"] == "home" else 1
+            if c["card_class"] == "yellow":
+                yellow[cside] += 1
+            elif c["card_class"] in ("red", "yellowRed"):
+                red[cside] += 1
+    else:
+        # lineup'siz nadir fallback (or. lineups 404): TD/gorevli yine dislanir,
+        # on_pitch ayrimi yapilamadigindan tum oyuncu kartlari sayilir.
+        for i in (incidents or {}).get("incidents", []):
+            if i.get("incidentType") != "card" or not (i.get("player") or {}).get("id"):
+                continue
+            cside = 0 if i.get("isHome") else 1
+            ic = i.get("incidentClass")
+            if ic == "yellow":
+                yellow[cside] += 1
+            elif ic in ("red", "yellowRed"):
+                red[cside] += 1
 
     def result_code(sf, sa):
         if sf is None or sa is None:
@@ -299,7 +328,11 @@ def _test():
     ev = g(f"{API}/event/{a.event}")["event"]
     st = g(f"{API}/event/{a.event}/statistics")
     inc = g(f"{API}/event/{a.event}/incidents")
-    rows = build_team_rows(ev, st, inc, a.competition)
+    try:
+        lu = g(f"{API}/event/{a.event}/lineups")
+    except Exception:  # noqa: BLE001
+        lu = None
+    rows = build_team_rows(ev, st, inc, a.competition, lu)
     print(json.dumps(rows, ensure_ascii=False, indent=2))
     if a.write:
         upsert(rows)

@@ -142,7 +142,7 @@ def process_season(ut, season_id, comp, sleep, max_matches, flush_every):
         try:
             stats = get(f"{API}/event/{eid}/statistics")
             inc = get(f"{API}/event/{eid}/incidents")
-            t_rows.extend(teamload.build_team_rows(ev, stats, inc, comp))
+            t_rows.extend(teamload.build_team_rows(ev, stats, inc, comp, lineup))
             c_rows.extend(teamload.build_card_rows(ev, inc, lineup))
         except Exception as e:  # noqa
             print(f"  takim-stat atlandi {eid}: {repr(e)[:80]}", flush=True)
