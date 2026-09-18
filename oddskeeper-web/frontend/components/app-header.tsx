@@ -190,12 +190,14 @@ type ShortcutItem = {
   logoUrl: string | null;
 };
 
-// Header Shortcuts menusu: hover'da (mobilde tiklamayla) acilan dis-site
-// kisayol listesi. Liste ilk hover/tiklamada bir kez /api/shortcuts'tan
-// cekilir; icerik admin panelindeki ShortCuts sekmesinden yonetilir.
+// Header Shortcuts menusu: YALNIZ hover'da acik kalan dis-site kisayol
+// listesi (mobilde ilk dokunus hover'i tetikler). Tiklama menuyu PINLEMEZ:
+// eski isOpen toggle'i tiklandiktan sonra imlec cekilse/sekme degisse bile
+// menuyu acik birakiyordu (sahip istegi 2026-09-18 ile kaldirildi). Liste ilk
+// hover/tiklamada bir kez /api/shortcuts'tan cekilir; icerik admin
+// panelindeki ShortCuts sekmesinden yonetilir.
 function ShortcutsMenu() {
   const { t } = useI18n();
-  const [isOpen, setIsOpen] = useState(false);
   const [items, setItems] = useState<ShortcutItem[]>([]);
   const fetchedRef = useRef(false);
 
@@ -218,10 +220,7 @@ function ShortcutsMenu() {
     <div className="group/sc relative" onMouseEnter={ensureLoaded}>
       <button
         type="button"
-        onClick={() => {
-          ensureLoaded();
-          setIsOpen((prev) => !prev);
-        }}
+        onClick={ensureLoaded}
         aria-label={t("nav.shortcuts")}
         title={t("nav.shortcuts")}
         className="flex items-center rounded-lg px-3 py-1.5 text-ink transition hover:bg-veil"
@@ -229,13 +228,7 @@ function ShortcutsMenu() {
         <ShortcutsMark className="h-5 w-5 shrink-0" />
       </button>
 
-      <div
-        className={`absolute left-0 top-full z-50 pt-2 transition duration-200 ${
-          isOpen
-            ? "pointer-events-auto opacity-100"
-            : "pointer-events-none opacity-0 group-hover/sc:pointer-events-auto group-hover/sc:opacity-100"
-        }`}
-      >
+      <div className="pointer-events-none absolute left-0 top-full z-50 pt-2 opacity-0 transition duration-200 group-hover/sc:pointer-events-auto group-hover/sc:opacity-100">
         <div className="w-[200px] rounded-xl border border-line bg-card p-1.5 shadow-lg">
           {items.length === 0 ? (
             <p className="px-3 py-2 text-[12px] text-ink-3">

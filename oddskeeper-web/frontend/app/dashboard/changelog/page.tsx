@@ -21,6 +21,24 @@ const TAG_FIX: L = { en: "Fix", tr: "Düzeltme" };
 
 const ENTRIES: Entry[] = [
   {
+    date: { en: "18 September", tr: "18 Eylül" },
+    title: {
+      en: "Team card counts: only cards shown on the pitch",
+      tr: "Takım kart sayıları: yalnız sahada görülen kartlar",
+    },
+    tag: TAG_FIX,
+    items: [
+      {
+        en: "Team yellow/red card totals (Match Stats Model, the GSheet tab and match tables) also counted cards shown to coaching staff and to players who were not on the pitch. They now count only cards shown to players on the pitch, the same rule the per-player card tables already use. Past matches were recalculated with the same rule.",
+        tr: "Takım sarı/kırmızı kart toplamları (Match Stats Model, GSheet sekmesi ve maç tabloları) teknik ekibe ve sahada olmayan oyunculara gösterilen kartları da sayıyordu. Artık yalnız sahadaki oyunculara gösterilen kartlar sayılıyor; oyuncu kart tablolarının kullandığı kuralın aynısı. Geçmiş maçlar da aynı kuralla yeniden hesaplandı.",
+      },
+      {
+        en: "The header Shortcuts menu now closes as soon as the cursor leaves it; clicking the icon no longer keeps it pinned open.",
+        tr: "Header'daki Shortcuts menüsü imleç üzerinden ayrılır ayrılmaz kapanıyor; ikona tıklamak menüyü artık açık kilitlemiyor.",
+      },
+    ],
+  },
+  {
     date: { en: "1 September", tr: "1 Eylül" },
     title: {
       en: "EuroVolley 2026 on the Volleyball page",
