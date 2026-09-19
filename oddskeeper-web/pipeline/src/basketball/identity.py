@@ -147,38 +147,44 @@ def _review(cur, kind, source_id, source_name, team_slug, season_label, assigned
 
 
 def resolve_teams(cur, team_rows, season_label, logos):
-    """tbf_team_id → {'slug','name'}. Bilinen takımın slug'ı VE adı korunur."""
+    """tbf_team_id → {'slug','name'}. Bilinen takımın slug'ı VE adı korunur.
+
+    TBF takım id'leri SEZONA ÖZEL görünüyor (25/26: ardışık 246936-246974) → aynı kulüp her
+    sezon yeni id ile gelir. Bu yüzden id'ler basketball.team_tbf_ids'te BİRİKİR (hiçbiri
+    ezilmez); yeni id anahtar kelimeyle mevcut kulübe bağlanır, o slug'ın eski sezondan başka
+    bir id taşıması ENGEL DEĞİLDİR. teams.tbf_team_id yalnız "son görülen id"dir."""
     out = {}
     for tr in team_rows:
         tid, raw = tr["tbf_team_id"], tr["team_name"]
         if tid in out:
             continue
-        cur.execute("select team_slug, team_name from basketball.teams where tbf_team_id=%s", (tid,))
+        cur.execute("""select t.team_slug, t.team_name from basketball.team_tbf_ids i
+                       join basketball.teams t on t.team_slug = i.team_slug where i.tbf_team_id=%s""", (tid,))
         row = cur.fetchone()
         if not row:
             slug = match_team_slug(raw)
             if slug:
-                cur.execute("select team_slug, team_name, tbf_team_id from basketball.teams "
-                            "where team_slug=%s", (slug,))
+                cur.execute("select team_slug, team_name from basketball.teams where team_slug=%s", (slug,))
                 row = cur.fetchone()
-                if row and row[2] is not None and row[2] != tid:
-                    row, slug = None, None      # o slug başka tbf id'ye bağlı → yeni takım gibi davran
             if row:
-                cur.execute("update basketball.teams set tbf_team_id=%s, updated_at=now() "
-                            "where team_slug=%s", (tid, row[0]))
                 print(f"[kimlik] takim baglandi: tbf={tid} '{raw}' -> {row[0]}", flush=True)
             else:
                 new_slug = slug or slugify(raw) or f"tbf-team-{tid}"
                 cur.execute("select 1 from basketball.teams where team_slug=%s", (new_slug,))
                 if cur.fetchone():
                     new_slug = f"{new_slug}-{tid}"
-                cur.execute("""insert into basketball.teams (team_slug, team_name, season_label, tbf_team_id)
-                               values (%s,%s,%s,%s)""", (new_slug, raw, season_label, tid))
+                cur.execute("""insert into basketball.teams (team_slug, team_name, season_label)
+                               values (%s,%s,%s)""", (new_slug, raw, season_label))
                 _review(cur, "team", tid, raw, new_slug, season_label, new_slug, "new-team", [])
                 row = (new_slug, raw)
-        cur.execute("""update basketball.teams set season_label=%s,
+            cur.execute("""insert into basketball.team_tbf_ids (tbf_team_id, team_slug, season_label, tbf_name)
+                           values (%s,%s,%s,%s) on conflict (tbf_team_id) do nothing""",
+                        (tid, row[0], season_label, raw))
+        # "son görülen id": önce bu id'yi taşıyan başka satır varsa boşalt (unique index)
+        cur.execute("update basketball.teams set tbf_team_id=null where tbf_team_id=%s and team_slug<>%s", (tid, row[0]))
+        cur.execute("""update basketball.teams set tbf_team_id=%s, season_label=%s,
                            logo_url=coalesce(%s, logo_url), updated_at=now()
-                       where team_slug=%s""", (season_label, logos.get(tid), row[0]))
+                       where team_slug=%s""", (tid, season_label, logos.get(tid), row[0]))
         out[tid] = {"slug": row[0], "name": row[1]}
     return out
 
@@ -196,17 +202,20 @@ def _candidate_index(cur, season_label):
                      on r.player_slug = p.player_slug and r.season_label = %s""", (season_label,))
     rows = cur.fetchall()
     has_tbf = {r[0] for r in rows if r[3] is not None}
-    by_key, pool = {}, []
+    by_key, pool, taken = {}, [], {}
     for slug, name, team, _tbf in rows:
         target = canon.get(slug, slug)
-        if slug in has_tbf or target in has_tbf:
-            continue        # kimliği zaten id'li; isimle yeniden bağlanmaz
         toks = name_tokens(name)
         if len(toks) < 2:
             continue
+        if slug in has_tbf or target in has_tbf:
+            # kimliği zaten id'li; isimle yeniden BAĞLANMAZ ama aynı isim yeni bir tbf id ile
+            # gelirse bu bir alarmdır (adaş oyuncu ya da TBF id'leri sezonlar arası değişiyor).
+            taken.setdefault(frozenset(toks), set()).add(target)
+            continue
         by_key.setdefault(frozenset(toks), set()).add(target)
         pool.append({"slug": target, "name": name, "team": team, "toks": toks})
-    return by_key, pool
+    return by_key, pool, taken
 
 
 def resolve_players(cur, player_rows, season_label, team_map):
@@ -221,7 +230,7 @@ def resolve_players(cur, player_rows, season_label, team_map):
 
     unknown = [pid for pid in ids if pid not in out]
     if unknown:
-        by_key, pool = _candidate_index(cur, season_label)
+        by_key, pool, taken = _candidate_index(cur, season_label)
         cur.execute("select player_slug from basketball.players")
         used = {r[0] for r in cur.fetchall()}
         for pid in unknown:
@@ -259,6 +268,9 @@ def resolve_players(cur, player_rows, season_label, team_map):
             if len(cands) > 1:
                 sugg = [{"slug": s, "tier": "exact-ambiguous"} for s in sorted(cands)]
                 _review(cur, "player", pid, raw, tslug, season_label, slug, "ambiguous-exact", sugg)
+            elif taken.get(frozenset(toks)):
+                sugg = [{"slug": s, "tier": "exact-name-other-tbf-id"} for s in sorted(taken[frozenset(toks)])]
+                _review(cur, "player", pid, raw, tslug, season_label, slug, "exact-name-different-tbf-id", sugg)
             elif toks:
                 seen, sugg = set(), []
                 for c in pool:
