@@ -14,7 +14,7 @@ import BasketballPlayerDrawer from "./BasketballPlayerDrawer";
 import type { PmFixture, PmMarketConfig, PmModelConfig } from "../pmQueries";
 import type {
   BktHomeAwaySplitRow, BktTeamMetricFormRow, BktPlayerWindowRow,
-  BktTeamLogRow, BktInputRow, BktPlayerRoleRow,
+  BktTeamLogRow, BktInputRow, BktPlayerRoleRow, BktRosterMode,
 } from "../types";
 
 // Export gecmisi: container'a lift edilen snapshot girisi (Add aninda uretilir).
@@ -52,6 +52,7 @@ type Props = {
   config: PmMarketConfig[];
   inputRows: BktInputRow[];
   roles?: BktPlayerRoleRow[];   // BSL oyuncu rol+pozisyon (Player Dist etiketi)
+  rosterMode?: BktRosterMode | null;   // sezon kadrosu modu: üyelik team_rosters'tan (yeni sezon başı)
   modelConfig?: PmModelConfig[];   // lider rozet toggle'ları (leader_*)
   competition?: "E" | "U";   // EL/EC ise drawer euro veriye bağlanır
   historyLeague?: string;   // export gecmisi ligi (basketball | euroleague | eurocup)
@@ -106,7 +107,7 @@ function NumInput({ value, onChange, step = 0.1, w = "w-16", warn = false }: { v
   );
 }
 
-export default function BasketballTools({ pmFixtures, splits, forms, windows, teamLogs, playerIds, config, inputRows, roles = [], modelConfig = [], competition, historyLeague = "basketball", historyReloadKey = 0, onAdd }: Props) {
+export default function BasketballTools({ pmFixtures, splits, forms, windows, teamLogs, playerIds, config, inputRows, roles = [], rosterMode = null, modelConfig = [], competition, historyLeague = "basketball", historyReloadKey = 0, onAdd }: Props) {
   const { t, locale } = useI18n();
   // Model ağırlıkları (Config > Model). Player: son10/son5/sezon karışımı (saf).
   // Team: Excel TeamProps F karışımı sezon/son10/son5 (sonra sayı uplift'i). Config'ten değişince canlı.
@@ -477,6 +478,24 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
           </div>
         ) : null}
         <div className="space-y-4">
+        {rosterMode ? (
+          <div className="rounded-md border border-accent/30 bg-accent-soft px-3 py-2 text-[12px] leading-relaxed text-ink-2">
+            <span className="font-semibold text-accent-ink">{t("basketball.rosterBannerTitle").replace("{season}", rosterMode.season)}</span>{" "}
+            {t("basketball.rosterBannerBody")}
+            {[homeSlug, awaySlug].filter((sl, i, arr) => sl && arr.indexOf(sl) === i).map((sl) => {
+              const src = rosterMode.teamSource[sl];
+              const name = splitBy.get(sl)?.team_name ?? sl;
+              if (!src || src.season === rosterMode.season) return null;
+              return (
+                <span key={sl} className="block text-ink-3">
+                  {src.season
+                    ? t("basketball.rosterTeamFallback").replace("{team}", name).replace("{prev}", src.season).replace("{season}", rosterMode.season).replace("{n}", String(src.gamesCurrent))
+                    : t("basketball.rosterTeamNoData").replace("{team}", name)}
+                </span>
+              );
+            })}
+          </div>
+        ) : null}
         {/* seçim satırı */}
         <div className="flex flex-wrap items-end gap-3">
         <label className="flex flex-col gap-1">
@@ -564,7 +583,7 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
               onAdd={(rows) => addWithHistory(rows, "player")} historySlot={historyDropdown} historyNotice={historyNotice}
               playerIds={playerIds} playerCfg={playerCfg} playerMarkets={playerMarkets}
               existingKeys={existingKeys} existingPlayerMkt={existingPlayerMkt} onReset={resetPlayer} competition={competition} fixExtId={fixExtId}
-              roleBy={roleBy} euroTeamSlugs={euroTeamSlugs} leaderBy={leaderBy} locale={locale} t={t} />
+              roleBy={roleBy} euroTeamSlugs={euroTeamSlugs} leaderBy={leaderBy} rosterMode={rosterMode} locale={locale} t={t} />
           )}
         </>
       ) : (<p className="text-sm text-ink-3">{t("basketball.matchPickTeams")}</p>)}
@@ -716,7 +735,7 @@ function TeamRecent({ name, logs, locale, t }: { name: string; logs: BktTeamLogR
 }
 
 /* ---------- Player distribution panel ---------- */
-function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effAway, winBy, isTicked, setTick, playerValue, setVal, playerModel, teamTarget, onAdd, historySlot, historyNotice, playerIds, playerCfg, playerMarkets, existingKeys, existingPlayerMkt, onReset, competition, fixExtId, roleBy, euroTeamSlugs, leaderBy, locale, t }: {
+function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effAway, winBy, isTicked, setTick, playerValue, setVal, playerModel, teamTarget, onAdd, historySlot, historyNotice, playerIds, playerCfg, playerMarkets, existingKeys, existingPlayerMkt, onReset, competition, fixExtId, roleBy, euroTeamSlugs, leaderBy, rosterMode, locale, t }: {
   homeSlug: string; awaySlug: string; homeName: string; awayName: string; effHome: number; effAway: number;
   winBy: Map<string, Map<string, BktPlayerWindowRow[]>>;
   isTicked: (s: string, mk: string, w: BktPlayerWindowRow) => boolean;
@@ -739,6 +758,7 @@ function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effA
   roleBy: Map<string, BktPlayerRoleRow>;
   euroTeamSlugs: Set<string>;
   leaderBy: Map<string, string[]>;
+  rosterMode: BktRosterMode | null;
   locale: "tr" | "en";
   t: (k: string) => string;
 }) {
@@ -774,7 +794,8 @@ function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effA
   };
   const dir = sort.dir === "asc" ? 1 : -1;
   const players = allList
-    .filter((w) => w.avg_minutes >= 5 || w.season_avg >= 1)
+    // kadro modunda ligde hiç maçı olmayan (yeni) oyuncu da görünür: trader tüm kadroyu görsün
+    .filter((w) => w.avg_minutes >= 5 || w.season_avg >= 1 || (rosterMode != null && w.games === 0))
     .slice()
     .sort((a, b) => {
       const va = sortVal(a), vb = sortVal(b);
@@ -905,6 +926,12 @@ function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effA
                     {(leaderBy.get(`${slug}:${w.player_slug}`) ?? []).map((lk) => (
                       <span key={lk} title={`${t("basketball.leaderTitle")}: ${t(lk)}`} className="ml-1 inline-block rounded bg-warn/15 px-1 py-0.5 text-[9px] font-bold text-warn">★{t(lk)}</span>
                     ))}
+                    {rosterMode && roleOf(w)?.origin === "transfer" && roleOf(w)?.prev_team_name ? (
+                      <span title={t("basketball.originTransferInfo")} className="ml-1 inline-block cursor-help rounded bg-veil px-1 py-0.5 text-[9px] font-semibold text-ink-2">↔ {roleOf(w)?.prev_team_name}</span>
+                    ) : null}
+                    {rosterMode && roleOf(w)?.confirmed === false ? (
+                      <span title={t("basketball.rosterUnconfirmedInfo")} className="ml-1 cursor-help text-[10px] font-bold text-ink-3">?</span>
+                    ) : null}
                   </td>
                   <td className="px-2 py-1 text-center">
                     {normalizePositionCode(roleOf(w)?.position) ? (

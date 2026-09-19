@@ -6,9 +6,9 @@ import type { Locale } from "@/lib/i18n/config";
 // Dosyası OLAN slug'lar. Listede yoksa null döner → TeamCrest baş harf rozetine düşer
 // (yeni çıkan takımda kırık görsel yerine). Yeni logo eklenince slug'ı buraya da ekle.
 const TEAM_LOGO_SLUGS = new Set([
-  "aliaga-petkim-spor", "anadolu-efes", "bahcesehir-koleji", "besiktas", "bursaspor", "buyukcekmece",
-  "erokspor", "fenerbahce", "galatasaray", "karsiyaka", "manisa-basket", "merkezefendi-belediyesi",
-  "mersin-bsb", "tofas", "trabzonspor", "turk-telekom",
+  "aliaga-petkim-spor", "anadolu-efes", "bahcesehir-koleji", "bandirma-bordo", "besiktas", "bursaspor",
+  "buyukcekmece", "cayirova-belediyesi", "erokspor", "fenerbahce", "galatasaray", "karsiyaka",
+  "manisa-basket", "merkezefendi-belediyesi", "mersin-bsb", "tofas", "trabzonspor", "turk-telekom",
 ]);
 
 export function teamLogoPath(slug: string | null | undefined): string | null {

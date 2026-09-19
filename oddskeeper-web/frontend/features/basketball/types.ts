@@ -284,6 +284,12 @@ export type BktPlayerRoleRow = {
   role: string;   // starter | rotation | limited | garbage | departed
   sofascore_player_id?: number | null;  // BSL: oyuncu fotografi (Player Dist avatar)
   image_url?: string | null;            // EL/EC: EuroLeague headshot (Player Dist avatar)
+  // Yalniz SEZON KADROSU modunda (bb_player_role_roster_v1):
+  games_current?: number;                          // kadro sezonunda oynadigi mac
+  origin?: "returning" | "transfer" | "new";       // new = ligde hic maci yok
+  prev_team_slug?: string | null;                  // transfer ise geldigi takim
+  prev_team_name?: string | null;
+  confirmed?: boolean;                             // kadro uyeligi iki kaynakta/macta dogrulandi
 };
 
 export type BktPlayerWindowRow = {
@@ -300,6 +306,15 @@ export type BktPlayerWindowRow = {
   last10_avg: number | null;
   calc_std: number;
   total: number;
+  games_current?: number;   // yalniz kadro modunda: kadro sezonundaki mac sayisi
+};
+
+// Tools "sezon kadrosu" modu: uyelik team_rosters'tan, oyuncu rakamlari gecmis maclardan.
+// teamSource: takim metriklerinin (splits/forms/logs) hangi sezondan geldigi; null = veri yok.
+export type BktRosterMode = {
+  season: string;
+  prevSeason: string;
+  teamSource: Record<string, { season: string | null; gamesCurrent: number }>;
 };
 
 export type BktFixtureRow = {

@@ -23,14 +23,22 @@ const ENTRIES: Entry[] = [
   {
     date: { en: "19 September", tr: "19 Eylül" },
     title: {
-      en: "BSL 2026-27: real team list",
-      tr: "BSL 2026-27: gerçek takım listesi",
+      en: "BSL 2026-27: new squads in Match-Player Tools",
+      tr: "BSL 2026-27: Match-Player Tools'ta yeni kadrolar",
     },
-    tag: TAG_FIX,
+    tag: TAG_NEW,
     items: [
       {
-        en: "The BSL 2026-27 standings showed last season's teams as a placeholder. They now list the real 16: Bandırma Bordo and Çayırova Belediyesi came up, Büyükçekmece and Mersin BŞB went down. The two new teams show an initials badge until their logos are added.",
-        tr: "BSL 2026-27 puan durumu yer tutucu olarak geçen sezonun takımlarını gösteriyordu. Artık gerçek 16 takım listeleniyor: Bandırma Bordo ve Çayırova Belediyesi çıktı, Büyükçekmece ve Mersin BŞB düştü. İki yeni takım, logoları eklenene kadar baş harf rozetiyle görünüyor.",
+        en: "BSL Match-Player Tools now opens on 2026-27 and lists every team with its new-season squad. Player numbers come from each player's previous and current season games, whichever team he played for, so a transferred player brings his numbers with him. A small badge shows the team he came from, and new signings with no league games yet are listed with empty numbers so you can enter them by hand.",
+        tr: "BSL Match-Player Tools artık 2026-27 sezonuyla açılıyor ve her takımı yeni sezon kadrosuyla listeliyor. Oyuncu rakamları, hangi takımda oynadığına bakılmadan oyuncunun önceki ve güncel sezon maçlarından geliyor; yani transfer olan oyuncu rakamlarını yanında getiriyor. Küçük bir rozet geldiği takımı gösteriyor, ligde henüz maçı olmayan yeni imzalar da elle değer girebilmen için boş rakamla listeleniyor.",
+      },
+      {
+        en: "Team metrics use last season until a team has played 5 games in the new season; the note above the match numbers says which season is in use. Newly promoted teams have no team data yet, so their points are entered by hand. The 2025-26 tab works as before.",
+        tr: "Takım metrikleri, takım yeni sezonda 5 maç oynayana kadar geçen sezondan geliyor; hangi sezonun kullanıldığı maç sayılarının üstündeki notta yazıyor. Yeni çıkan takımların henüz takım verisi yok, sayıları elle giriliyor. 2025-26 sekmesi eskisi gibi çalışıyor.",
+      },
+      {
+        en: "The BSL 2026-27 standings showed last season's teams as a placeholder. They now list the real 16: Bandırma Bordo and Çayırova Belediyesi came up (with their logos), Büyükçekmece and Mersin BŞB went down.",
+        tr: "BSL 2026-27 puan durumu yer tutucu olarak geçen sezonun takımlarını gösteriyordu. Artık gerçek 16 takım listeleniyor: Bandırma Bordo ve Çayırova Belediyesi çıktı (logolarıyla), Büyükçekmece ve Mersin BŞB düştü.",
       },
       {
         en: "Behind the scenes, player identities were prepared for the new season so that returning players keep their history and their platform IDs when the first match data arrives.",

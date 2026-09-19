@@ -359,8 +359,10 @@ def run(args):
         try:
             with conn.cursor() as cur:
                 cur.execute("refresh materialized view analytics.bb_player_metric_window_v1")
+                # sezon kadrosu projeksiyonu (Tools kadro modu) da maç verisinden beslenir
+                cur.execute("refresh materialized view analytics.bb_player_metric_window_roster_v1")
             conn.commit()
-            print("[tbf] tools window matview tazelendi (bb_player_metric_window_v1)", flush=True)
+            print("[tbf] tools window matview'lari tazelendi (window + window_roster)", flush=True)
         except Exception as e:
             print(f"[tbf] UYARI: window matview refresh hatasi {e!r} — ELLE tazele: "
                   f"refresh materialized view analytics.bb_player_metric_window_v1", flush=True)

@@ -1,36 +1,21 @@
 import Link from "next/link";
-import {
-  getBasketballHomeAwaySplits,
-  getBasketballTeamMetricForms,
-  getBasketballPlayerWindows,
-  getBasketballAllTeamMatchLogs,
-  getBasketballPlayerList,
-  getBasketballPlayerRoles,
-} from "@/features/basketball/server/getBasketballStats";
+import { getBasketballToolsData } from "@/features/basketball/server/toolsProjection";
 import BasketballParticipantTools from "@/features/basketball/components/BasketballParticipantTools";
 import BasketballScrapeButton from "@/features/basketball/components/BasketballScrapeButton";
 import SeasonToggle from "@/components/SeasonToggle";
-import { EURO_SEASONS } from "@/features/euroleague/config";
+import { EURO_SEASONS, normalizeSeason } from "@/features/euroleague/config";
 import { getT } from "@/lib/i18n/server";
 import { getNavAccess } from "@/lib/nav-access-server";
 
-// Tools sezon seçici (?season); default 2025-2026 (verili sezon). 2026-27 kadro/veri
-// gelince o sezon çalışır.
-const TOOLS_SEASON = "2025-2026";
+// Tools sezon seçici (?season); default güncel sezon. Sezonun kadrosu (team_rosters) varsa
+// "sezon kadrosu" modu çalışır: yeni kadro + oyuncuların geçmiş maç rakamları
+// (bkz. features/basketball/server/toolsProjection.ts).
 
 export default async function BasketballToolsPage({ searchParams }: { searchParams: Promise<{ season?: string }> }) {
   const { season } = await searchParams;
-  const seasonLabel = (EURO_SEASONS as readonly string[]).includes(season ?? "") ? (season as string) : TOOLS_SEASON;
-  const [splits, forms, windows, teamLogs, players, roles, t, access] = await Promise.all([
-    getBasketballHomeAwaySplits(seasonLabel),
-    getBasketballTeamMetricForms(seasonLabel),
-    getBasketballPlayerWindows(seasonLabel),
-    getBasketballAllTeamMatchLogs(seasonLabel),
-    getBasketballPlayerList(seasonLabel),
-    getBasketballPlayerRoles(seasonLabel),
-    getT(),
-    getNavAccess(),
-  ]);
+  const seasonLabel = normalizeSeason(season);
+  const [data, t, access] = await Promise.all([getBasketballToolsData(seasonLabel), getT(), getNavAccess()]);
+  const { splits, forms, windows, teamLogs, players, roles, rosterMode } = data;
 
   return (
     <section className="w-full px-4 pb-14 lg:px-8">
@@ -45,7 +30,7 @@ export default async function BasketballToolsPage({ searchParams }: { searchPara
         </div>
       </div>
 
-      <BasketballParticipantTools splits={splits} forms={forms} windows={windows} teamLogs={teamLogs} players={players} roles={roles} />
+      <BasketballParticipantTools splits={splits} forms={forms} windows={windows} teamLogs={teamLogs} players={players} roles={roles} rosterMode={rosterMode} />
     </section>
   );
 }

@@ -18,7 +18,7 @@ import {
 } from "../pmQueries";
 import type {
   BktHomeAwaySplitRow, BktTeamMetricFormRow, BktPlayerWindowRow,
-  BktTeamLogRow, BktPlayerListRow, BktInputRow, BktPlayerRoleRow,
+  BktTeamLogRow, BktPlayerListRow, BktInputRow, BktPlayerRoleRow, BktRosterMode,
 } from "../types";
 
 type Props = {
@@ -28,6 +28,7 @@ type Props = {
   teamLogs: BktTeamLogRow[];
   players: BktPlayerListRow[];
   roles?: BktPlayerRoleRow[];   // BSL oyuncu rol+pozisyon (Player Dist etiketi); EL/EC'de yok
+  rosterMode?: BktRosterMode | null;   // BSL sezon kadrosu modu (yeni sezon başı); yoksa maç-güdümlü
   league?: string;          // 'basketball' (BSL) | 'euroleague' | 'eurocup'
   toolsBase?: string;       // takım/oyuncu profil linkleri için kök (örn /dashboard/euro/euroleague)
 };
@@ -38,7 +39,7 @@ type InputType = "player" | "team";
 const btnSave = "rounded-md border border-accent bg-accent px-3 py-1.5 text-[12px] font-semibold text-on-accent hover:opacity-90";
 const btnGhost = "rounded-md border border-line px-3 py-1.5 text-[12px] font-semibold text-ink-2 hover:text-ink";
 
-export default function BasketballParticipantTools({ splits, forms, windows, teamLogs, players, roles = [], league = "basketball" }: Props) {
+export default function BasketballParticipantTools({ splits, forms, windows, teamLogs, players, roles = [], rosterMode = null, league = "basketball" }: Props) {
   const { t, locale } = useI18n();
   const [tab, setTab] = useState<Tab>("model");
   const [fixtures, setFixtures] = useState<PmFixture[]>([]);
@@ -107,7 +108,7 @@ export default function BasketballParticipantTools({ splits, forms, windows, tea
       {/* Model her zaman mount kalır → sekme değişince fixture/takım seçimi kaybolmaz */}
       <div className={tab === "model" ? "" : "hidden"}>
         <BasketballTools pmFixtures={fixtures} splits={splits} forms={forms} windows={windows} teamLogs={teamLogs}
-          playerIds={playerIds} config={config} inputRows={inputRows} roles={roles} modelConfig={modelConfig}
+          playerIds={playerIds} config={config} inputRows={inputRows} roles={roles} rosterMode={rosterMode} modelConfig={modelConfig}
           competition={league === "euroleague" ? "E" : league === "eurocup" ? "U" : undefined}
           historyLeague={league} historyReloadKey={historyReloadKey}
           onAdd={handleAdd} />

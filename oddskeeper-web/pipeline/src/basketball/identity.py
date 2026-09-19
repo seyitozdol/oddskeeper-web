@@ -274,4 +274,11 @@ def resolve_players(cur, player_rows, season_label, team_map):
         cur.execute("""update basketball.players set team_slug=%s, team_name=%s, jersey_no=%s,
                            season_label=%s, updated_at=now() where player_slug=%s""",
                     (team["slug"], team["name"], r["jersey_no"], season_label, out[pid]["slug"]))
+        # Sezon kadrosu maç verisinden kendini düzeltir: sahaya çıktığı takım = güncel takımı
+        # (sezon içi transferde satır yeni takıma taşınır). Tools kadro modu bunu okur.
+        cur.execute("""insert into basketball.team_rosters (season_label, player_slug, team_slug, source, confirmed)
+                       values (%s,%s,%s,'tbf',true)
+                       on conflict (season_label, player_slug) do update set
+                           team_slug=excluded.team_slug, source='tbf', confirmed=true, updated_at=now()""",
+                    (season_label, out[pid]["slug"], team["slug"]))
     return out
