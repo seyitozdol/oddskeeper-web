@@ -33,6 +33,7 @@ import os
 import re
 import sys
 import time
+import urllib.error
 import urllib.request
 from datetime import datetime, timedelta, timezone
 
@@ -280,7 +281,12 @@ def run(args):
     min_age = float(os.environ.get("FS_BSL_MIN_AGE_H", "2.5")) * 3600
     max_age = float(os.environ.get("FS_BSL_MAX_AGE_D", "14")) * 86400
     now = time.time()
-    sign, games = discover(args.season_path, all_pages=args.all_pages)
+    try:
+        sign, games = discover(args.season_path, all_pages=args.all_pages)
+    except (urllib.error.URLError, TimeoutError, OSError) as e:
+        # geçici ağ/kaynak arızası: log triyajının bildiği biçimde yaz, sonraki tur telafi eder
+        print(f"[fs-bsl] HATA: kesif basarisiz ({e!r}); sonraki turda tekrar denenecek", flush=True)
+        return
     if args.match:
         games = [g for g in games if g["mid"] == args.match]      # yalnız o ligin sonuçlarında varsa
     elif not args.no_age_window:
@@ -294,8 +300,12 @@ def run(args):
             with conn.cursor() as cur:
                 if already_loaded(cur, g["mid"]):
                     continue
-        team_rows, player_rows = fetch_match(sign, g)
         label = f"{g['home']['name']} {g['home']['pts']}-{g['away']['pts']} {g['away']['name']}"
+        try:
+            team_rows, player_rows = fetch_match(sign, g)
+        except (urllib.error.URLError, TimeoutError, OSError) as e:
+            print(f"[fs-bsl] HATA: {g['mid']} {label} cekilemedi ({e!r}); sonraki turda tekrar denenecek", flush=True)
+            continue
         if len(player_rows) < 10:          # box-score henüz yayınlanmamış → sonraki turda tekrar dene
             print(f"[fs-bsl]  {g['mid']} {label}: oyuncu verisi eksik ({len(player_rows)}), beklemede", flush=True)
             continue

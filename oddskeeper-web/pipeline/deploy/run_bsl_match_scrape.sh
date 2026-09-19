@@ -24,7 +24,7 @@ RUN_OUT=$(mktemp)
 rc=$?
 
 # Sessiz turlar logu sisirmesin: yalniz bir sey olduysa (mac islendi / bekleyen var / hata) yaz.
-if [ "$rc" -ne 0 ] || grep -q 'yuklendi\|beklemede\|ATLANDI\|INCELEME' "$RUN_OUT"; then
+if [ "$rc" -ne 0 ] || grep -qE 'yuklendi|beklemede|ATLANDI|INCELEME|HATA' "$RUN_OUT"; then
   { echo "$(date '+%F %T') --- bsl_match_scrape rc=$rc"; cat "$RUN_OUT"; } >> "$LOG/bsl_match_scrape.log"
 fi
 
