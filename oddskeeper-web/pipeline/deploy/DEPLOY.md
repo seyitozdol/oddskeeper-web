@@ -74,10 +74,17 @@ chmod +x /opt/oddskeeper/run_upcoming_events.sh /opt/oddskeeper/run_odds_capture
 #    işleri kendi sabit saatlerinde ETKİLENMEDEN devam eder.
 * * * * *  /opt/oddskeeper/run_trigger_check.sh
 
-# 6) TBF basketbol box-score (headful+xvfb+TR proxy → basketball.*): HAZIR AMA KAPALI.
-#    BSL yeni sezon BAŞLAMADI. Sezon başlayınca: run_tbf_basketball.sh içindeki
-#    TBF_LEAGUE_ID/TBF_SEASON_ID/TBF_SEASON_LABEL'i yeni sezona göre güncelle,
-#    sonra bu satırı aç (günde bir yeter; maçlar haftalık, idempotent upsert).
+# 6a) BSL basketbol maç-sonrası OTOMATİK akış (kaynak FlashScore, 2026-09-19): futbol
+#    match_scrape kalıbı. Saf HTTP (proxy/tarayıcı/sezon id'si YOK); tip-off + 2.5 saat geçmiş,
+#    yüklenmemiş maçları çekip basketball.*'a yazar (source='flashscore'), Tools matview'larını
+#    tazeler, kadro tablosunu (team_rosters) maçtan günceller. Maç yoksa tek istekle çıkar.
+#    Kimlik fs_player_id ile; geçmiş oyuncuların id'si build_fs_player_bridge.py ile bağlandı.
+#    Çift yazım koruması: aynı maç başka kaynaktan yazılmışsa atlar (6b AÇILIRSA çakışmaz).
+*/10 * * * *  /opt/oddskeeper/run_bsl_match_scrape.sh
+
+# 6b) TBF basketbol box-score (headful+xvfb+TR proxy → basketball.*): YEDEK, KAPALI.
+#    6a devredeyken GEREKMEZ (tek farkı fouls_drawn alanı). Açılacaksa: run_tbf_basketball.sh
+#    içindeki TBF_LEAGUE_ID/TBF_SEASON_ID/TBF_SEASON_LABEL her sezon elle güncellenir.
 #    KİMLİK (2026-09-19): scraper tbf id'si olmayan oyuncu/takımı MEVCUT kayda bağlar
 #    (src/basketball/identity.py: tam isim → tek aday; sponsorlu takım adı → TEAM_KEYWORDS).
 #    Bağlayamadığı ama benzeri olan kimlik basketball.identity_review'a düşer ve wrapper

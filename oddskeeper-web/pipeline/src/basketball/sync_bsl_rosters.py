@@ -320,7 +320,7 @@ def run(args):
                        on conflict (season_label, player_slug) do update set
                            team_slug=excluded.team_slug, source=excluded.source,
                            confirmed=excluded.confirmed, updated_at=now()
-                       where basketball.team_rosters.source <> 'tbf'""",   # maçta görülen üyelik ezilmez
+                       where basketball.team_rosters.source not in ('tbf', 'flashscore')""",   # maçta görülen üyelik ezilmez
                     (season, team, d["slug"], source, confirmed))
         n_roster += 1
     cur.execute("refresh materialized view analytics.bb_player_metric_window_roster_v1")

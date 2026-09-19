@@ -36,7 +36,7 @@ import psycopg2.extras
 from dotenv import load_dotenv
 import os
 
-from identity import resolve_players, resolve_teams, slugify
+from identity import current_season_label, other_source_has, resolve_players, resolve_teams, slugify
 
 BASE = "https://www.tbf.org.tr"
 SOURCE = "tbf_api"
@@ -185,6 +185,7 @@ def normalize_match(header: dict, box: dict, meta: dict):
             "home_away": side, "opponent_slug": slugify(opp["name"]), "opponent_name": opp["name"],
             "points": pts, "opp_points": opp_pts,
             "tbf_team_id": team["id"], "opp_tbf_team_id": opp["id"], "tbf_match_id": match_id,
+            "source_team_id": team["id"],
         }
         base.update(_stat_cols(total or {}))
         base.pop("minutes", None); base.pop("seconds_played", None)  # takımda yok
@@ -208,7 +209,8 @@ def normalize_match(header: dict, box: dict, meta: dict):
                 "source": SOURCE, "season_label": meta["season_label"], "competition": comp,
                 "match_key": match_key, "match_date": match_date, "week": week,
                 "tbf_player_id": pid, "player_name": pl.get("playerName"),
-                "team_id": team["id"], "team_name": team["name"], "team_slug": slugify(team["name"]),
+                "team_id": team["id"], "source_team_id": team["id"],
+                "team_name": team["name"], "team_slug": slugify(team["name"]),
                 "jersey_no": str(pl.get("jerseyNumber") or "") or None,
                 "tbf_match_id": match_id,
             }
@@ -238,9 +240,15 @@ def write_match(cur, team_rows, player_rows, season_label, logos):
 
     Slug/isimler TBF ham adından DEĞİL kimlik katmanından gelir (identity.py):
     sponsorlu takım adı ya da oyuncu isim varyantı yeni kayıt açmaz."""
-    teams = resolve_teams(cur, team_rows, season_label, logos)
-    players = resolve_players(cur, player_rows, season_label, teams)
+    teams = resolve_teams(cur, team_rows, season_label, logos, source="tbf")
     home = next(t for t in team_rows if t["home_away"] == "Home")
+    h, a = teams[home["tbf_team_id"]], teams[home["opp_tbf_team_id"]]
+    dup = other_source_has(cur, season_label, home["match_date"], home["week"], h["slug"], a["slug"], home["points"], home["opp_points"], SOURCE)
+    if dup:       # BSL'nin otomatik kaynağı FlashScore; aynı maçı iki kaynak yazarsa view'lar ikiye katlar
+        print(f"[tbf]  maç {home['tbf_match_id']} ATLANDI: {h['name']} - {a['name']} zaten '{dup}' kaynağından yazılı", flush=True)
+        return
+    players = resolve_players(cur, player_rows, season_label, teams, source="tbf",
+                              update_roster=(season_label == current_season_label()))
     match_key = f"{teams[home['tbf_team_id']]['name']} - {teams[home['opp_tbf_team_id']]['name']}"
     for r in player_rows:
         r = dict(r)

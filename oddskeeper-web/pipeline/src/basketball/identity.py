@@ -1,4 +1,4 @@
-"""BSL kimlik çözümleme: TBF playerId / teamId → MEVCUT player_slug / team_slug.
+"""BSL kimlik çözümleme: kaynak (TBF / FlashScore) oyuncu+takım id → MEVCUT player_slug / team_slug.
 
 NEDEN: eski veri (excel_v38) tbf id taşımıyor. Scraper yalnız tbf id ile arayınca
 dönen her oyuncu/takım yeni slug alıp geçmişinden kopuyordu (2026-09-19 tespiti).
@@ -133,33 +133,73 @@ def match_team_slug(tbf_name: str):
 
 
 # ------------------------------- DB katmanı -------------------------------
-def _review(cur, kind, source_id, source_name, team_slug, season_label, assigned_slug,
+# Kaynak tanımları: her maç kaynağı kendi id uzayını getirir; kimlik çözümleme aynıdır.
+#   id_col  : basketball.players'taki kalıcı id kolonu
+#   row_id  : loader satırlarında oyuncu id anahtarı
+#   review  : identity_review.source değeri
+SOURCES = {
+    "tbf":        {"id_col": "tbf_player_id", "row_id": "tbf_player_id", "review": "tbf_api"},
+    "flashscore": {"id_col": "fs_player_id",  "row_id": "fs_player_id",  "review": "flashscore"},
+}
+
+
+def current_season_label(today=None):
+    """Bugünün BSL sezonu (sınır 1 Temmuz): kadro tablosu yalnız bu sezonun maçıyla güncellenir."""
+    import datetime as _dt
+    d = today or _dt.date.today()
+    start = d.year if d.month >= 7 else d.year - 1
+    return f"{start}-{start + 1}"
+
+
+def _review(cur, kind, source, source_id, source_name, team_slug, season_label, assigned_slug,
             reason, candidates):
     cur.execute("""
         insert into basketball.identity_review
-            (kind, source_id, source_name, team_slug, season_label, assigned_slug, reason, candidates)
-        values (%s,%s,%s,%s,%s,%s,%s,%s)
+            (kind, source, source_id, source_name, team_slug, season_label, assigned_slug, reason, candidates)
+        values (%s,%s,%s,%s,%s,%s,%s,%s,%s)
         on conflict (kind, source, source_id) do nothing
-    """, (kind, source_id, source_name, team_slug, season_label, assigned_slug, reason,
-          json.dumps(candidates, ensure_ascii=False)))
-    print(f"[kimlik] INCELEME {kind} tbf={source_id} '{source_name}' -> {assigned_slug} "
+    """, (kind, SOURCES[source]["review"], str(source_id), source_name, team_slug, season_label,
+          assigned_slug, reason, json.dumps(candidates, ensure_ascii=False)))
+    print(f"[kimlik] INCELEME {kind} {source}={source_id} '{source_name}' -> {assigned_slug} "
           f"({reason}; aday: {[c['slug'] for c in candidates]})", flush=True)
 
 
-def resolve_teams(cur, team_rows, season_label, logos):
-    """tbf_team_id → {'slug','name'}. Bilinen takımın slug'ı VE adı korunur.
+def other_source_has(cur, season_label, match_date, week, home_slug, away_slug,
+                     home_points, away_points, row_source):
+    """Aynı maç BAŞKA kaynaktan yazılmış mı → o kaynağın adı.
 
-    TBF takım id'leri SEZONA ÖZEL görünüyor (25/26: ardışık 246936-246974) → aynı kulüp her
-    sezon yeni id ile gelir. Bu yüzden id'ler basketball.team_tbf_ids'te BİRİKİR (hiçbiri
-    ezilmez); yeni id anahtar kelimeyle mevcut kulübe bağlanır, o slug'ın eski sezondan başka
-    bir id taşıması ENGEL DEĞİLDİR. teams.tbf_team_id yalnız "son görülen id"dir."""
+    View'lar tüm kaynakları topladığından iki kaynak aynı maçı yazarsa istatistikler ikiye
+    katlanır; her loader yazmadan önce buna bakar. Anahtar: ev+dep slug + İKİ SKOR; buna ek
+    olarak tarih ±1 gün ya da aynı hafta. excel_v38 satırlarında tarih (gün/ay takası) ve
+    hafta (TBF play-off'ta boş) güvenilmez → o kaynak için eşleşme + iki skor yeter
+    (2026-09-19: bu yüzden 3 play-off maçı çift yazılmıştı; skorlar o gün düzeltildi)."""
+    cur.execute("""select source from basketball.team_match_stats
+                   where season_label=%s and team_slug=%s and opponent_slug=%s and home_away='Home'
+                     and source <> %s and points=%s and opp_points=%s
+                     and (source = 'excel_v38' or week = %s
+                          or match_date between %s::date - 1 and %s::date + 1) limit 1""",
+                (season_label, home_slug, away_slug, row_source, home_points, away_points,
+                 week, match_date, match_date))
+    r = cur.fetchone()
+    return r[0] if r else None
+
+
+def resolve_teams(cur, team_rows, season_label, logos=None, source="tbf"):
+    """kaynak takım id → {'slug','name'}. Bilinen takımın slug'ı VE adı korunur.
+
+    Satırlar `source_team_id` + `team_name` taşır. TBF takım id'leri SEZONA ÖZEL (25/26: ardışık
+    246936-246974) → aynı kulüp her sezon yeni id ile gelir. Bu yüzden id'ler
+    basketball.team_source_ids'te BİRİKİR (hiçbiri ezilmez); yeni id anahtar kelimeyle mevcut
+    kulübe bağlanır, o slug'ın başka bir id taşıması ENGEL DEĞİLDİR."""
+    logos = logos or {}
     out = {}
     for tr in team_rows:
-        tid, raw = tr["tbf_team_id"], tr["team_name"]
+        tid, raw = tr["source_team_id"], tr["team_name"]
         if tid in out:
             continue
-        cur.execute("""select t.team_slug, t.team_name from basketball.team_tbf_ids i
-                       join basketball.teams t on t.team_slug = i.team_slug where i.tbf_team_id=%s""", (tid,))
+        cur.execute("""select t.team_slug, t.team_name from basketball.team_source_ids i
+                       join basketball.teams t on t.team_slug = i.team_slug
+                       where i.source=%s and i.source_team_id=%s""", (source, str(tid)))
         row = cur.fetchone()
         if not row:
             slug = match_team_slug(raw)
@@ -167,50 +207,55 @@ def resolve_teams(cur, team_rows, season_label, logos):
                 cur.execute("select team_slug, team_name from basketball.teams where team_slug=%s", (slug,))
                 row = cur.fetchone()
             if row:
-                print(f"[kimlik] takim baglandi: tbf={tid} '{raw}' -> {row[0]}", flush=True)
+                print(f"[kimlik] takim baglandi: {source}={tid} '{raw}' -> {row[0]}", flush=True)
             else:
-                new_slug = slug or slugify(raw) or f"tbf-team-{tid}"
+                new_slug = slug or slugify(raw) or f"{source}-team-{tid}"
                 cur.execute("select 1 from basketball.teams where team_slug=%s", (new_slug,))
                 if cur.fetchone():
                     new_slug = f"{new_slug}-{tid}"
                 cur.execute("""insert into basketball.teams (team_slug, team_name, season_label)
                                values (%s,%s,%s)""", (new_slug, raw, season_label))
-                _review(cur, "team", tid, raw, new_slug, season_label, new_slug, "new-team", [])
+                _review(cur, "team", source, tid, raw, new_slug, season_label, new_slug, "new-team", [])
                 row = (new_slug, raw)
-            cur.execute("""insert into basketball.team_tbf_ids (tbf_team_id, team_slug, season_label, tbf_name)
-                           values (%s,%s,%s,%s) on conflict (tbf_team_id) do nothing""",
-                        (tid, row[0], season_label, raw))
-        # "son görülen id": önce bu id'yi taşıyan başka satır varsa boşalt (unique index)
-        cur.execute("update basketball.teams set tbf_team_id=null where tbf_team_id=%s and team_slug<>%s", (tid, row[0]))
-        cur.execute("""update basketball.teams set tbf_team_id=%s, season_label=%s,
+            cur.execute("""insert into basketball.team_source_ids
+                               (source, source_team_id, team_slug, season_label, source_name)
+                           values (%s,%s,%s,%s,%s) on conflict (source, source_team_id) do nothing""",
+                        (source, str(tid), row[0], season_label, raw))
+        if source == "tbf":
+            # teams.tbf_team_id = "son görülen tbf id" (unique index: önce başka satırdan boşalt)
+            cur.execute("update basketball.teams set tbf_team_id=null where tbf_team_id=%s and team_slug<>%s",
+                        (tid, row[0]))
+            cur.execute("update basketball.teams set tbf_team_id=%s where team_slug=%s", (tid, row[0]))
+        cur.execute("""update basketball.teams set season_label=%s,
                            logo_url=coalesce(%s, logo_url), updated_at=now()
-                       where team_slug=%s""", (tid, season_label, logos.get(tid), row[0]))
+                       where team_slug=%s""", (season_label, logos.get(tid), row[0]))
         out[tid] = {"slug": row[0], "name": row[1]}
     return out
 
 
-def _candidate_index(cur, season_label):
-    """tbf id'siz oyuncular: isim anahtarı → kanonik slug kümesi (+ fuzzy için liste).
+def _candidate_index(cur, season_label, id_col):
+    """Bu kaynağın id'sini henüz TAŞIMAYAN oyuncular: isim anahtarı → kanonik slug kümesi.
 
     Adayın takımı = o sezonun kadro tablosu (team_rosters; transferi bilir), yoksa
-    players.team_slug (son görüldüğü takım)."""
+    players.team_slug (son görüldüğü takım). `taken`: id'si olan oyuncuların isim anahtarları
+    (aynı isim yeni bir id ile gelirse alarm için)."""
     cur.execute("select alias_slug, canonical_slug from analytics.bb_pm_player_merges")
     canon = dict(cur.fetchall())
-    cur.execute("""select p.player_slug, p.player_name, coalesce(r.team_slug, p.team_slug), p.tbf_player_id
-                   from basketball.players p
-                   left join basketball.team_rosters r
-                     on r.player_slug = p.player_slug and r.season_label = %s""", (season_label,))
+    cur.execute(f"""select p.player_slug, p.player_name, coalesce(r.team_slug, p.team_slug), p.{id_col}
+                    from basketball.players p
+                    left join basketball.team_rosters r
+                      on r.player_slug = p.player_slug and r.season_label = %s""", (season_label,))
     rows = cur.fetchall()
-    has_tbf = {r[0] for r in rows if r[3] is not None}
+    has_id = {r[0] for r in rows if r[3] is not None}
     by_key, pool, taken = {}, [], {}
-    for slug, name, team, _tbf in rows:
+    for slug, name, team, _sid in rows:
         target = canon.get(slug, slug)
         toks = name_tokens(name)
         if len(toks) < 2:
             continue
-        if slug in has_tbf or target in has_tbf:
-            # kimliği zaten id'li; isimle yeniden BAĞLANMAZ ama aynı isim yeni bir tbf id ile
-            # gelirse bu bir alarmdır (adaş oyuncu ya da TBF id'leri sezonlar arası değişiyor).
+        if slug in has_id or target in has_id:
+            # kimliği zaten id'li; isimle yeniden BAĞLANMAZ ama aynı isim yeni bir id ile
+            # gelirse bu bir alarmdır (adaş oyuncu ya da kaynak id'leri sezonlar arası değişiyor).
             taken.setdefault(frozenset(toks), set()).add(target)
             continue
         by_key.setdefault(frozenset(toks), set()).add(target)
@@ -218,26 +263,40 @@ def _candidate_index(cur, season_label):
     return by_key, pool, taken
 
 
-def resolve_players(cur, player_rows, season_label, team_map):
-    """tbf_player_id → {'slug','name'}; oyuncu boyutunu günceller."""
+def resolve_players(cur, player_rows, season_label, team_map, source="tbf", update_roster=True):
+    """kaynak oyuncu id → {'slug','name'}; oyuncu boyutunu ve sezon kadrosunu günceller.
+
+    update_roster=False: GEÇMİŞ sezon maçı yüklenirken kadro tablosuna dokunma (Tools, kadrosu
+    olan sezonu "sezon kadrosu" modunda açar; eski sezonu yarım kadroyla o moda sokmamak için).
+
+    Satırlar SOURCES[source]['row_id'] + `player_name` + `source_team_id` taşır."""
+    id_col, row_id = SOURCES[source]["id_col"], SOURCES[source]["row_id"]
     latest = {}
     for r in player_rows:
-        latest[r["tbf_player_id"]] = r
+        latest[r[row_id]] = r
     ids = list(latest)
-    cur.execute("select tbf_player_id, player_slug, player_name from basketball.players "
-                "where tbf_player_id = any(%s)", (ids,))
+    cur.execute(f"select {id_col}, player_slug, player_name from basketball.players "
+                f"where {id_col} = any(%s)", (ids,))
     out = {r[0]: {"slug": r[1], "name": r[2]} for r in cur.fetchall()}
+    # ek id'ler: kaynak aynı kişiye birden çok id vermiş olabilir (player_source_ids)
+    cur.execute("""select i.source_player_id, p.player_slug, p.player_name
+                   from basketball.player_source_ids i join basketball.players p using (player_slug)
+                   where i.source=%s and i.source_player_id = any(%s)""", (source, [str(x) for x in ids]))
+    extra = {r[0]: {"slug": r[1], "name": r[2]} for r in cur.fetchall()}
+    for pid in ids:
+        if pid not in out and str(pid) in extra:
+            out[pid] = extra[str(pid)]
 
     unknown = [pid for pid in ids if pid not in out]
     if unknown:
-        by_key, pool, taken = _candidate_index(cur, season_label)
+        by_key, pool, taken = _candidate_index(cur, season_label, id_col)
         cur.execute("select player_slug from basketball.players")
         used = {r[0] for r in cur.fetchall()}
         for pid in unknown:
             r = latest[pid]
             raw = r["player_name"] or ""
             toks = name_tokens(raw)
-            tslug = (team_map.get(r["team_id"]) or {}).get("slug") or r["team_slug"]
+            tslug = (team_map.get(r["source_team_id"]) or {}).get("slug")
             cands = by_key.get(frozenset(toks), set()) if len(toks) >= 2 else set()
             link = cands
             if not cands:
@@ -247,30 +306,30 @@ def resolve_players(cur, player_rows, season_label, team_map):
                         if c["team"] == tslug and fuzzy_tier(toks, c["toks"]) == "subset"}
             if len(link) == 1:
                 slug = next(iter(link))
-                cur.execute("update basketball.players set tbf_player_id=%s, updated_at=now() "
-                            "where player_slug=%s and tbf_player_id is null returning player_name", (pid, slug))
+                cur.execute(f"update basketball.players set {id_col}=%s, updated_at=now() "
+                            f"where player_slug=%s and {id_col} is null returning player_name", (pid, slug))
                 got = cur.fetchone()
                 if got:
                     by_key.pop(frozenset(toks), None)
                     pool[:] = [c for c in pool if c["slug"] != slug]
                     out[pid] = {"slug": slug, "name": got[0]}
-                    print(f"[kimlik] oyuncu baglandi: tbf={pid} '{raw}' -> {slug}", flush=True)
+                    print(f"[kimlik] oyuncu baglandi: {source}={pid} '{raw}' -> {slug}", flush=True)
                     continue
-            # yeni slug (scraper durmaz); benzer mevcut oyuncu varsa incelemeye düş
-            slug = slugify(raw) or f"tbf-{pid}"
+            # yeni slug (loader durmaz); benzer mevcut oyuncu varsa incelemeye düş
+            slug = slugify(raw) or f"{source}-{pid}"
             if slug in used:
-                slug = f"{slug}-{pid}"
+                slug = f"{slug}-{pid}".lower()
             used.add(slug)
             name = display_name(raw)
-            cur.execute("""insert into basketball.players (player_slug, player_name, season_label, tbf_player_id)
-                           values (%s,%s,%s,%s)""", (slug, name, season_label, pid))
+            cur.execute(f"""insert into basketball.players (player_slug, player_name, season_label, {id_col})
+                            values (%s,%s,%s,%s)""", (slug, name, season_label, pid))
             out[pid] = {"slug": slug, "name": name}
             if len(cands) > 1:
                 sugg = [{"slug": s, "tier": "exact-ambiguous"} for s in sorted(cands)]
-                _review(cur, "player", pid, raw, tslug, season_label, slug, "ambiguous-exact", sugg)
+                _review(cur, "player", source, pid, raw, tslug, season_label, slug, "ambiguous-exact", sugg)
             elif taken.get(frozenset(toks)):
-                sugg = [{"slug": s, "tier": "exact-name-other-tbf-id"} for s in sorted(taken[frozenset(toks)])]
-                _review(cur, "player", pid, raw, tslug, season_label, slug, "exact-name-different-tbf-id", sugg)
+                sugg = [{"slug": s, "tier": "exact-name-other-id"} for s in sorted(taken[frozenset(toks)])]
+                _review(cur, "player", source, pid, raw, tslug, season_label, slug, "exact-name-different-id", sugg)
             elif toks:
                 seen, sugg = set(), []
                 for c in pool:
@@ -279,18 +338,20 @@ def resolve_players(cur, player_rows, season_label, team_map):
                         seen.add(c["slug"])
                         sugg.append({"slug": c["slug"], "name": c["name"], "team": c["team"], "tier": tier})
                 if sugg:
-                    _review(cur, "player", pid, raw, tslug, season_label, slug, "similar-existing", sugg)
+                    _review(cur, "player", source, pid, raw, tslug, season_label, slug, "similar-existing", sugg)
 
     for pid, r in latest.items():
-        team = team_map.get(r["team_id"]) or {"slug": r["team_slug"], "name": r["team_name"]}
-        cur.execute("""update basketball.players set team_slug=%s, team_name=%s, jersey_no=%s,
+        team = team_map.get(r["source_team_id"])
+        if not team or not update_roster:
+            continue
+        cur.execute("""update basketball.players set team_slug=%s, team_name=%s, jersey_no=coalesce(%s, jersey_no),
                            season_label=%s, updated_at=now() where player_slug=%s""",
-                    (team["slug"], team["name"], r["jersey_no"], season_label, out[pid]["slug"]))
+                    (team["slug"], team["name"], r.get("jersey_no"), season_label, out[pid]["slug"]))
         # Sezon kadrosu maç verisinden kendini düzeltir: sahaya çıktığı takım = güncel takımı
         # (sezon içi transferde satır yeni takıma taşınır). Tools kadro modu bunu okur.
         cur.execute("""insert into basketball.team_rosters (season_label, player_slug, team_slug, source, confirmed)
-                       values (%s,%s,%s,'tbf',true)
+                       values (%s,%s,%s,%s,true)
                        on conflict (season_label, player_slug) do update set
-                           team_slug=excluded.team_slug, source='tbf', confirmed=true, updated_at=now()""",
-                    (season_label, out[pid]["slug"], team["slug"]))
+                           team_slug=excluded.team_slug, source=excluded.source, confirmed=true, updated_at=now()""",
+                    (season_label, out[pid]["slug"], team["slug"], source))
     return out

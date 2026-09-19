@@ -40,8 +40,10 @@ def sig(row, cols):
     return None if any(v is None for v in vals) else vals
 
 
-def vote(pairs, min_votes=3, min_share=0.9):
-    """pairs: [(source_id, slug|None)] → (accepted {id: slug}, rejected {id: neden})."""
+def vote(pairs, min_votes=3, min_share=0.9, allow_multi=False):
+    """pairs: [(source_id, slug|None)] → (accepted {id: slug}, rejected {id: neden}).
+
+    allow_multi: bir slug'a birden çok id talip olabilir (kaynak aynı kişiye iki id vermişse)."""
     by_id = defaultdict(list)
     for sid, slug in pairs:
         by_id[sid].append(slug)
@@ -60,7 +62,7 @@ def vote(pairs, min_votes=3, min_share=0.9):
             accepted[sid] = slug
     claimed = Counter(accepted.values())
     for sid, slug in list(accepted.items()):
-        if claimed[slug] > 1:
+        if claimed[slug] > 1 and not allow_multi:
             rejected[sid] = f"slug'a birden cok id talip: {slug}"
             del accepted[sid]
     return accepted, rejected

@@ -37,6 +37,14 @@ const ENTRIES: Entry[] = [
         tr: "Takım metrikleri, takım yeni sezonda 5 maç oynayana kadar geçen sezondan geliyor; hangi sezonun kullanıldığı maç sayılarının üstündeki notta yazıyor. Yeni çıkan takımların henüz takım verisi yok, sayıları elle giriliyor. 2025-26 sekmesi eskisi gibi çalışıyor.",
       },
       {
+        en: "BSL match data now arrives on its own: about 30 minutes after a game ends, the box score is loaded, standings and player numbers update, and each team's squad follows who actually played. No manual step, the same way football works.",
+        tr: "BSL maç verisi artık kendiliğinden geliyor: maç bittikten yaklaşık 30 dakika sonra box-score yükleniyor, puan durumu ve oyuncu rakamları güncelleniyor, takım kadroları da sahaya çıkan oyunculara göre kendini düzeltiyor. Futbolda olduğu gibi elle yapılan bir adım yok.",
+      },
+      {
+        en: "BSL 2025-26 is now complete: the last 10 play-off games (end of the semi-finals and the finals) were missing and have been added, and wrong opponent scores in 25 play-off rows were corrected. Manisa Basket appears as Körfez Basket in 2026-27.",
+        tr: "BSL 2025-26 artık eksiksiz: son 10 play-off maçı (yarı final sonu ve finaller) eksikti, eklendi; 25 play-off satırındaki yanlış rakip skoru düzeltildi. Manisa Basket 2026-27'de Körfez Basket adıyla görünüyor.",
+      },
+      {
         en: "The BSL 2026-27 standings showed last season's teams as a placeholder. They now list the real 16: Bandırma Bordo and Çayırova Belediyesi came up (with their logos), Büyükçekmece and Mersin BŞB went down.",
         tr: "BSL 2026-27 puan durumu yer tutucu olarak geçen sezonun takımlarını gösteriyordu. Artık gerçek 16 takım listeleniyor: Bandırma Bordo ve Çayırova Belediyesi çıktı (logolarıyla), Büyükçekmece ve Mersin BŞB düştü.",
       },

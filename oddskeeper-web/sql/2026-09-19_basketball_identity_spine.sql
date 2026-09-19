@@ -67,15 +67,5 @@ create index if not exists ix_bb_team_rosters_team on basketball.team_rosters(se
 alter table basketball.team_rosters enable row level security;
 revoke all on basketball.team_rosters from anon, authenticated;
 
--- TBF takim id'leri SEZONA OZEL (25/26: ardisik 246936-246974) -> ayni kulup her sezon yeni id
--- alir. Id'ler burada BIRIKIR; basketball.teams.tbf_team_id yalniz "son gorulen id"dir.
--- Yazan: identity.resolve_teams (yeni id anahtar kelimeyle mevcut kulube baglanir).
-create table if not exists basketball.team_tbf_ids (
-  tbf_team_id bigint primary key,
-  team_slug text not null references basketball.teams(team_slug) on update cascade,
-  season_label text,
-  tbf_name text,
-  created_at timestamptz not null default now()
-);
-alter table basketball.team_tbf_ids enable row level security;
-revoke all on basketball.team_tbf_ids from anon, authenticated;
+-- (TBF sezonluk takim id'leri icin tablo: bkz. 2026-09-19_basketball_flashscore_source.sql,
+--  basketball.team_source_ids; kaynak-bagimsiz tek tablo.)
