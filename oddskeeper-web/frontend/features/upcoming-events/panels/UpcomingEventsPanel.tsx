@@ -255,33 +255,41 @@ export default function UpcomingEventsPanel({
     );
   }
 
+  // href (maçın o sitedeki sayfası) doluysa rozet yeni sekmede açılan linktir;
+  // yoksa düz rozet kalır.
   function SiteMark({
     site,
     value,
     marketCount,
     listed,
+    href,
   }: {
     site: SiteKey;
     value: boolean | null;
     marketCount: number;
     listed: boolean;
+    href: string | null;
   }) {
-    if (value) {
+    if (value || listed) {
+      const title = value
+        ? t("upcomingEvents.marketCountTitle", { count: marketCount })
+        : t("upcomingEvents.oddsListedTitle");
+      const tone = value ? "items-center" : "opacity-40 grayscale";
+      if (href) {
+        return (
+          <a
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`inline-flex ${tone} transition hover:opacity-80 hover:grayscale-0`}
+            title={`${title}, ${t("upcomingEvents.openMatchPage")}`}
+          >
+            {brandBadge(site)}
+          </a>
+        );
+      }
       return (
-        <span
-          className="inline-flex items-center"
-          title={t("upcomingEvents.marketCountTitle", { count: marketCount })}
-        >
-          {brandBadge(site)}
-        </span>
-      );
-    }
-    if (!value && listed) {
-      return (
-        <span
-          className="inline-flex opacity-40 grayscale"
-          title={t("upcomingEvents.oddsListedTitle")}
-        >
+        <span className={`inline-flex ${tone}`} title={title}>
           {brandBadge(site)}
         </span>
       );
@@ -549,6 +557,7 @@ export default function UpcomingEventsPanel({
                             value={e.bet365_has_odds}
                             marketCount={e.bet365_market_count}
                             listed={e.bet365_listed}
+                            href={e.bet365_event_url}
                           />
                         </td>
                         <td className="px-1 py-1 text-center">
@@ -557,6 +566,7 @@ export default function UpcomingEventsPanel({
                             value={e.bets10_has_odds}
                             marketCount={e.bets10_market_count}
                             listed={e.bets10_listed}
+                            href={e.bets10_event_url}
                           />
                         </td>
                         <td className="px-1 py-1 text-center">
@@ -565,6 +575,7 @@ export default function UpcomingEventsPanel({
                             value={e.oddsportal_has_odds}
                             marketCount={e.oddsportal_market_count}
                             listed={e.oddsportal_listed}
+                            href={e.oddsportal_event_url}
                           />
                         </td>
                         <td className="px-1 py-1 text-center">
@@ -573,6 +584,7 @@ export default function UpcomingEventsPanel({
                             value={e.bmbets_has_odds}
                             marketCount={e.bmbets_market_count}
                             listed={e.bmbets_listed}
+                            href={e.bmbets_event_url}
                           />
                         </td>
                       </tr>

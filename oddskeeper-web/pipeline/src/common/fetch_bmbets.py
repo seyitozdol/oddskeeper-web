@@ -83,7 +83,11 @@ def parse_rows(html: str) -> list[dict]:
         # futbolda 3 yollu (1/X/2) bekliyoruz; "-" veya eksik hucre = oran yok
         if len(odds) < 3 or not all(ODDS_RE.match(o) for o in odds[:3]):
             continue
-        out.append({"home": home, "away": away, "o1": odds[0], "ox": odds[1], "o2": odds[2]})
+        # takim adi linki = mac sayfasi (/football/<ulke>/<lig>/<ev>-v-<dep>-<id>/)
+        href = names[0].get("href") or ""
+        url = BASE + href if href.startswith("/") else None
+        out.append({"home": home, "away": away, "o1": odds[0], "ox": odds[1], "o2": odds[2],
+                    "url": url})
     return out
 
 
@@ -154,12 +158,14 @@ def main() -> None:
         return
 
     now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    url_by_pair = {(r["home"], r["away"]): r.get("url") for r in scraped}
     per_event: dict[int, dict] = {}
     for (h, a), m in matches.items():
         eid = m["event_id"]
         rows = [r for r in site_rows if r["home"] == h and r["away"] == a]
         per_event[eid] = {"home": h, "away": a, "score": m["score"],
-                          "markets": {r["market"] for r in rows}}
+                          "markets": {r["market"] for r in rows},
+                          "url": url_by_pair.get((h, a))}
         for r in rows:
             cur.execute(
                 """insert into tracker.site_event_odds
@@ -174,13 +180,15 @@ def main() -> None:
     for eid, info in per_event.items():
         cur.execute(
             """insert into tracker.event_odds_availability
-               (event_id, site, has_odds, listed, market_count, site_home_name, site_away_name, match_score, checked_at)
-               values (%s,'bmbets',true,true,%s,%s,%s,%s,now())
+               (event_id, site, has_odds, listed, market_count, site_home_name, site_away_name,
+                site_event_url, match_score, checked_at)
+               values (%s,'bmbets',true,true,%s,%s,%s,%s,%s,now())
                on conflict (event_id, site) do update set
                  has_odds=true, listed=true, market_count=excluded.market_count,
                  site_home_name=excluded.site_home_name, site_away_name=excluded.site_away_name,
+                 site_event_url=excluded.site_event_url,
                  match_score=excluded.match_score, checked_at=now()""",
-            (eid, len(info["markets"]), info["home"], info["away"], info["score"]),
+            (eid, len(info["markets"]), info["home"], info["away"], info["url"], info["score"]),
         )
     conn.commit()
     conn.close()

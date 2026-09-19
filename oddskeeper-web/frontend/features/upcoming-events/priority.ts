@@ -34,27 +34,6 @@ import type { UpcomingEventRow } from "./types";
 // Toplam yıldız üst sınırı (kullanıcı tercihi).
 const MAX_STARS = 5;
 
-// Süper Lig SofaScore takım id'leri (ref.sofascore_team_logos).
-const SUPER_LIG_TEAM_IDS = new Set<number>([
-  6362, // Alanyaspor
-  3056, // Antalyaspor
-  3086, // Başakşehir FK
-  3050, // Beşiktaş JK
-  3064, // Çaykur Rizespor
-  7040, // Eyüpspor
-  3052, // Fenerbahçe
-  3061, // Galatasaray
-  5138, // Gaziantep FK
-  3054, // Göztepe
-  6063, // Kasımpaşa
-  3072, // Kayserispor
-  3085, // Konyaspor
-  3053, // Samsunspor
-  3051, // Trabzonspor
-  3065, // Kocaelispor (2025/26 çıkan)
-  7802, // Gençlerbirliği (2025/26 çıkan)
-]);
-
 // 4 büyük futbol kulübü (SofaScore id'leri) — maçta her biri +1 yıldız.
 const BIG_FOUR_TEAM_IDS = new Set<number>([
   3061, // Galatasaray
@@ -68,29 +47,6 @@ const BIG_FOUR_NAME_TOKENS = [
   "fenerbahce",
   "besiktas",
   "trabzonspor",
-];
-
-// İsim bazlı yedek eşleşme (id boş gelirse). Normalize edilmiş isimde bu
-// belirteçlerden biri geçerse Süper Lig kulübü sayılır. SADECE 2025/26 Süper
-// Lig takımları.
-const SUPER_LIG_NAME_TOKENS = [
-  "galatasaray",
-  "fenerbahce",
-  "besiktas",
-  "trabzonspor",
-  "basaksehir",
-  "samsunspor",
-  "eyupspor",
-  "kasimpasa",
-  "konyaspor",
-  "gaziantep",
-  "antalyaspor",
-  "alanyaspor",
-  "rizespor",
-  "kayserispor",
-  "goztepe",
-  "kocaelispor",
-  "genclerbirligi",
 ];
 
 // Basketbol yıldızlı takımları (isim belirteci -> yıldız). SofaScore takım
@@ -119,33 +75,6 @@ function normalize(value: string | null | undefined): string {
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "")
     .replace(/[^a-z0-9]/g, "");
-}
-
-// Süper Lig SofaScore takım id'si -> takım detay sayfası slug'ı
-// (public/images/football_logos dosya adları). "Bizim takımlar" için maç
-// listesindeki isimler bu slug ile takım sayfasına linklenir.
-const SUPER_LIG_TEAM_SLUGS: Record<number, string> = {
-  6362: "alanyaspor",
-  3056: "antalyaspor",
-  3086: "basaksehir",
-  3050: "besiktas",
-  3064: "rizespor",
-  7040: "eyupspor",
-  3052: "fenerbahce",
-  3061: "galatasaray",
-  5138: "gaziantep",
-  3054: "goztepe",
-  6063: "kasimpasa",
-  3072: "kayserispor",
-  3085: "konyaspor",
-  3053: "samsunspor",
-  3051: "trabzonspor",
-};
-
-// Takımın detay sayfası slug'ı (yalnız Süper Lig kulüpleri); yoksa null.
-export function superLigTeamSlug(teamId: number | null): string | null {
-  if (teamId == null) return null;
-  return SUPER_LIG_TEAM_SLUGS[teamId] ?? null;
 }
 
 // Alt yaş / genç takımı mı (U15..U23, "youth", "PAF"). NOT: "gençler" belirteci

@@ -23,6 +23,24 @@ const ENTRIES: Entry[] = [
   {
     date: { en: "19 September", tr: "19 Eylül" },
     title: {
+      en: "Upcoming Events: clickable site badges, correct team pages",
+      tr: "Upcoming Events: tıklanabilir site rozetleri, doğru takım sayfaları",
+    },
+    tag: TAG_NEW,
+    items: [
+      {
+        en: "In Upcoming Events the Bets10 and BMBets badges on a match are now links: click one and that match's page on the site opens in a new tab. The Bets10 link always uses the site's current address.",
+        tr: "Upcoming Events'te maç satırındaki Bets10 ve BMBets rozetleri artık link: tıklayınca o maçın sitedeki sayfası yeni sekmede açılıyor. Bets10 linki her zaman sitenin güncel adresini kullanıyor.",
+      },
+      {
+        en: "Team names now open the team's current page. Promoted teams such as Amed, Çorum FK and Erzurumspor FK used to open their old 1. Lig page; they now open their Süper Lig profile, and relegated teams open their 1. Lig page. The league is read from the current season's fixtures, so it stays right after every season change.",
+        tr: "Takım adları artık takımın güncel sayfasını açıyor. Amed, Çorum FK ve Erzurumspor FK gibi yükselen takımlar eski 1. Lig sayfasına gidiyordu; artık Süper Lig profilleri açılıyor, düşen takımlar da 1. Lig sayfasına gidiyor. Lig bilgisi güncel sezon fikstüründen okunduğu için her sezon değişiminde kendiliğinden doğru kalıyor.",
+      },
+    ],
+  },
+  {
+    date: { en: "19 September", tr: "19 Eylül" },
+    title: {
       en: "BSL 2026-27: new squads in Match-Player Tools",
       tr: "BSL 2026-27: Match-Player Tools'ta yeni kadrolar",
     },

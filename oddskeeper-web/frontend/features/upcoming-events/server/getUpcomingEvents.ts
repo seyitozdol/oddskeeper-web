@@ -1,12 +1,12 @@
 import { createClient } from "@/lib/supabase/server";
 import type { UpcomingEventRow } from "../types";
-import { superLigTeamSlug } from "../priority";
+import { getTeamHrefResolver } from "./teamLinks";
 
 // upcoming_events_v1 ham satırı (href'ler henüz eklenmemiş).
 type RawRow = Omit<UpcomingEventRow, "home_team_href" | "away_team_href">;
 
 // select("*") daraltması (C-2 Faz 3): RawRow alanlarıyla birebir aynı tutulur;
-// view'daki bets10_event_id bilinçli dışarıda (frontend'te tüketilmiyor).
+// view'daki bets10_event_id bilinçli dışarıda (link için *_event_url yeterli).
 const RAW_ROW_COLS =
   "event_id, sport, category_name, tournament_name, season_name, round_info, " +
   "home_team_id, home_team_name, home_team_country, home_team_national, " +
@@ -15,31 +15,8 @@ const RAW_ROW_COLS =
   "event_slug, updated_at, bet365_has_odds, bet365_market_count, bet365_listed, " +
   "bets10_has_odds, bets10_market_count, bets10_listed, oddsportal_has_odds, " +
   "oddsportal_market_count, oddsportal_listed, bmbets_has_odds, " +
-  "bmbets_market_count, bmbets_listed";
-
-const SL_DETAIL_BASE =
-  "/dashboard/stats-analysis/football/team-stats/detail?team=";
-const TFF1_TEAM_BASE = "/dashboard/tff-1-lig/team/";
-
-// 1. Lig takım sayfası (/dashboard/tff-1-lig/team/<id>) olan SofaScore takım
-// id'leri. Kaynak: analytics.tff1_team_season_stats_mat (2026-07-30). Sayfa
-// verisi authenticated'a açık olduğundan runtime sorgu yerine sabit tutulur;
-// sezon başında 1. Lig kadrosu değişirse buradan güncellenir.
-const TFF1_TEAM_IDS = new Set<number>([
-  3101, 4952, 77629, 4954, 24750, 3103, 3076, 6366, 24759, 3065, 297102,
-  207011, 202391, 3066, 7802, 55625, 6414, 44320, 3091, 202390, 3069, 3080,
-  262480, 55603, 3090, 388264, 7032,
-]);
-
-// Takımın detay sayfası linki: futbolda Süper Lig -> stats detay,
-// 1. Lig -> tff-1-lig; diğer sporlar/eşleşmeyenler için null.
-function teamHref(sport: string, teamId: number | null): string | null {
-  if (sport !== "football" || teamId == null) return null;
-  const slug = superLigTeamSlug(teamId);
-  if (slug) return `${SL_DETAIL_BASE}${slug}`;
-  if (TFF1_TEAM_IDS.has(teamId)) return `${TFF1_TEAM_BASE}${teamId}`;
-  return null;
-}
+  "bmbets_market_count, bmbets_listed, bet365_event_url, bets10_event_url, " +
+  "oddsportal_event_url, bmbets_event_url";
 
 // Aynı maç iki farklı SofaScore event_id ile gelebilir (özellikle hazırlık
 // maçları iki federasyon/kategori altında listelenir). Bu ikinci kayıt SAATİ
@@ -86,13 +63,16 @@ function dedupe(rows: RawRow[]): RawRow[] {
 export async function getUpcomingEvents(): Promise<UpcomingEventRow[]> {
   const supabase = await createClient();
 
-  const { data, error } = await supabase
-    .schema("analytics")
-    .from("upcoming_events_v1")
-    .select(RAW_ROW_COLS)
-    .order("start_ts", { ascending: true })
-    .limit(500)
-    .returns<RawRow[]>();
+  const [{ data, error }, teamHref] = await Promise.all([
+    supabase
+      .schema("analytics")
+      .from("upcoming_events_v1")
+      .select(RAW_ROW_COLS)
+      .order("start_ts", { ascending: true })
+      .limit(500)
+      .returns<RawRow[]>(),
+    getTeamHrefResolver(),
+  ]);
 
   if (error) {
     console.error("getUpcomingEvents error:", error.message);

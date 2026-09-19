@@ -21,6 +21,7 @@ import re
 import sys
 import unicodedata
 from difflib import SequenceMatcher
+from urllib.parse import urlsplit
 
 import psycopg2
 from dotenv import load_dotenv
@@ -273,6 +274,23 @@ def site_from_dump(path: str) -> str:
     raise SystemExit(f"site taninmadi: {host!r}")
 
 
+def bets10_event_url(pages: list[dict], site_event_id: str | None) -> str | None:
+    """Bets10 mac sayfasi adresi (Upcoming Events rozet linki).
+
+    Alan adi periyodik degisir (10021bets10 -> 10031bets10 ...); capture her
+    sayfanin YERLESTIGI url'i dump'a yazar, guncel adres oradan okunur.
+    /tr/spor-bahisleri?eventId=<id> yolu spor/ligden bagimsiz mac sayfasini acar
+    (2026-09-19 futbol + basketbolda dogrulandi).
+    """
+    if not site_event_id:
+        return None
+    for p in pages:
+        parts = urlsplit(p.get("url") or "")
+        if parts.scheme and "bets10" in parts.netloc:
+            return f"{parts.scheme}://{parts.netloc}/tr/spor-bahisleri?eventId={site_event_id}"
+    return None
+
+
 def main() -> None:
     path = sys.argv[1]
     dry = "--dry-run" in sys.argv
@@ -280,7 +298,10 @@ def main() -> None:
     site = site_from_dump(path)
     # Ag-yakalama (capture_odds_vps.py) dump'i = kind:"network-capture";
     # DOM snapshot'tan (capture_odds_headless/snippet) farkli parser kullanir.
-    dump_kind = json.load(open(path, encoding="utf-8")).get("kind", "")
+    dump_meta = json.load(open(path, encoding="utf-8"))
+    dump_kind = dump_meta.get("kind", "")
+    dump_pages = dump_meta.get("pages") or []  # mac linki icin yerlesen adresler
+    del dump_meta  # buyuk dump; parser kendi okur
     if dump_kind == "network-capture":
         parser = parse_bets10_net
     else:
@@ -403,15 +424,20 @@ def main() -> None:
             "away": a,
             "score": m["score"],
             "site_event_id": site_eid,
+            "site_event_url": (
+                bets10_event_url(dump_pages, site_eid) if site == "bets10" else None
+            ),
         }
 
+    # site_event_url: adres cozulemezse (null) eldeki son gecerli link korunur.
     for event_id, info in per_event.items():
         cur.execute(
             """
             insert into tracker.event_odds_availability (
                 event_id, site, has_odds, listed, market_count,
-                site_home_name, site_away_name, site_event_id, match_score, checked_at
-            ) values (%s,%s,true,true,%s,%s,%s,%s,%s,now())
+                site_home_name, site_away_name, site_event_id, site_event_url,
+                match_score, checked_at
+            ) values (%s,%s,true,true,%s,%s,%s,%s,%s,%s,now())
             on conflict (event_id, site) do update set
                 has_odds = true,
                 listed = true,
@@ -419,12 +445,17 @@ def main() -> None:
                 site_home_name = excluded.site_home_name,
                 site_away_name = excluded.site_away_name,
                 site_event_id = excluded.site_event_id,
+                site_event_url = coalesce(
+                    excluded.site_event_url,
+                    tracker.event_odds_availability.site_event_url
+                ),
                 match_score = excluded.match_score,
                 checked_at = now()
             """,
             (
                 event_id, site, info["market_count"],
-                info["home"], info["away"], info["site_event_id"], info["score"],
+                info["home"], info["away"], info["site_event_id"],
+                info["site_event_url"], info["score"],
             ),
         )
 

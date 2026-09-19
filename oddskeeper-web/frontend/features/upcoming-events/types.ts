@@ -29,7 +29,8 @@ export type UpcomingEventRow = {
   event_slug: string | null;
   updated_at: string;
   // Server tarafında zenginleştirilir: takım detay sayfası linki (yoksa null).
-  // Süper Lig -> stats-analysis detay; 1. Lig -> tff-1-lig/team/<id>.
+  // Takımın GÜNCEL ligine göre: Süper Lig -> football profili;
+  // 1. Lig -> tff-1-lig/team/<id> (bkz. server/teamLinks.ts).
   home_team_href: string | null;
   away_team_href: string | null;
   // tracker.event_odds_availability'den.
@@ -48,4 +49,10 @@ export type UpcomingEventRow = {
   bmbets_has_odds: boolean | null;
   bmbets_market_count: number;
   bmbets_listed: boolean;
+  // Maçın o sitedeki sayfası (event_odds_availability.site_event_url; loader
+  // doldurur). Doluysa marka rozeti bu adrese linklenir, null ise düz rozet.
+  bet365_event_url: string | null;
+  bets10_event_url: string | null;
+  oddsportal_event_url: string | null;
+  bmbets_event_url: string | null;
 };
