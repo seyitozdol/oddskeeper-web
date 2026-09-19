@@ -5,7 +5,7 @@ Girdi: fetch_tbf_bsl.py'nin GEÇMİŞ sezon dökümü (DB'ye yazmadan):
         --season-label 2025-2026 --dry-run --dump-json /tmp/tbf_2025-2026.json
 
 Yöntem: TBF box-score satırı ile DB'deki excel_v38 satırı AYNI maçın AYNI oyuncusuysa
-istatistik imzaları (süre + 14 sayaç) birebir aynıdır. Önce takımlar çözülür, sonra
+istatistik imzaları (süre + 13 sayaç) birebir aynıdır. Önce takımlar çözülür, sonra
 oyuncu imzasına takım da katılır (birkaç saniyelik boş satırların çakışmasını keser).
 Sezon genelinde imza → DB slug eşlemesi kurulur, her tbf_player_id için oy sayılır.
 Tarih KULLANILMAZ (excel match_date'lerinde gün/ay takası var), isim KULLANILMAZ
@@ -27,10 +27,12 @@ from collections import Counter, defaultdict
 import psycopg2
 from dotenv import load_dotenv
 
+# Faul kolonlari imzada YOK: excel_v38 verisinde fouls_committed <-> fouls_drawn yer degistirmis
+# (2026-09-19 olcumu: diger 14 kolon 4691/4691 birebir, faul kolonlari yalniz takasla tutuyor).
 P_SIG = ["seconds_played", "points", "fg2m", "fg2a", "fg3m", "fg3a", "ftm", "fta", "oreb", "dreb",
-         "assists", "turnovers", "steals", "blocks", "fouls_committed"]
+         "assists", "turnovers", "steals", "blocks"]
 T_SIG = ["points", "opp_points", "fg2m", "fg2a", "fg3m", "fg3a", "ftm", "fta", "oreb", "dreb",
-         "assists", "turnovers", "steals", "blocks", "fouls_committed"]
+         "assists", "turnovers", "steals", "blocks"]
 
 
 def sig(row, cols):
