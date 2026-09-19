@@ -21,6 +21,24 @@ const TAG_FIX: L = { en: "Fix", tr: "Düzeltme" };
 
 const ENTRIES: Entry[] = [
   {
+    date: { en: "19 September", tr: "19 Eylül" },
+    title: {
+      en: "BSL 2026-27: real team list",
+      tr: "BSL 2026-27: gerçek takım listesi",
+    },
+    tag: TAG_FIX,
+    items: [
+      {
+        en: "The BSL 2026-27 standings showed last season's teams as a placeholder. They now list the real 16: Bandırma Bordo and Çayırova Belediyesi came up, Büyükçekmece and Mersin BŞB went down. The two new teams show an initials badge until their logos are added.",
+        tr: "BSL 2026-27 puan durumu yer tutucu olarak geçen sezonun takımlarını gösteriyordu. Artık gerçek 16 takım listeleniyor: Bandırma Bordo ve Çayırova Belediyesi çıktı, Büyükçekmece ve Mersin BŞB düştü. İki yeni takım, logoları eklenene kadar baş harf rozetiyle görünüyor.",
+      },
+      {
+        en: "Behind the scenes, player identities were prepared for the new season so that returning players keep their history and their platform IDs when the first match data arrives.",
+        tr: "Arka planda oyuncu kimlikleri yeni sezona hazırlandı: ilk maç verisi geldiğinde dönen oyuncular geçmişlerini ve platform ID'lerini koruyacak.",
+      },
+    ],
+  },
+  {
     date: { en: "18 September", tr: "18 Eylül" },
     title: {
       en: "Team card counts: only cards shown on the pitch",
