@@ -1,9 +1,10 @@
 """TBF (tbf.org.tr) BSL basketbol maç + oyuncu box-score scraper'ı.
 
 Kimlik TBF numerik id'leri ÜZERİNDEN kurulur (playerId / teamId / matchId):
-isim varyasyonu ("Vincent Poirier" vs "Vincent Yann Poirier") sorun OLMAZ,
-fuzzy-match GEREKMEZ. Veri basketball.player_match_stats + team_match_stats'a
-(source='tbf_api') yazılır; oyuncu/takım boyutları tbf id'ye göre upsert edilir.
+isim varyasyonu ("Vincent Poirier" vs "Vincent Yann Poirier") sorun OLMAZ.
+Veri basketball.player_match_stats + team_match_stats'a (source='tbf_api') yazılır.
+tbf id'si henüz DB'de olmayan oyuncu/takımın MEVCUT kayda bağlanması identity.py'de
+(tam isim → tek aday; yoksa yeni slug + basketball.identity_review kuyruğu).
 
 ERİŞİM (yalnız VPS'te çalışır):
   - Site TR-geo kısıtlı  → DataImpulse TR proxy (PROXY_ODDS_TR ya da PROXY_URL+__cr.tr).
@@ -28,13 +29,14 @@ import json
 import re
 import sys
 import time
-import unicodedata
 from datetime import datetime
 
 import psycopg2
 import psycopg2.extras
 from dotenv import load_dotenv
 import os
+
+from identity import resolve_players, resolve_teams, slugify
 
 BASE = "https://www.tbf.org.tr"
 SOURCE = "tbf_api"
@@ -43,20 +45,6 @@ UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
 
 
 # ----------------------------- yardımcılar -----------------------------
-def slugify(name: str) -> str:
-    """Türkçe → ascii, küçük harf, tireli. Futbol/basketbol slug konvansiyonu."""
-    s = name or ""
-    for a, b in [("İ", "i"), ("I", "i"), ("ı", "i"), ("Ş", "s"), ("ş", "s"),
-                 ("Ğ", "g"), ("ğ", "g"), ("Ç", "c"), ("ç", "c"),
-                 ("Ö", "o"), ("ö", "o"), ("Ü", "u"), ("ü", "u")]:
-        s = s.replace(a, b)
-    s = unicodedata.normalize("NFKD", s)
-    s = "".join(c for c in s if not unicodedata.combining(c))
-    s = s.lower()
-    s = re.sub(r"[^a-z0-9]+", "-", s).strip("-")
-    return s
-
-
 def to_seconds(mmss: str):
     if not mmss:
         return None
@@ -196,7 +184,7 @@ def normalize_match(header: dict, box: dict, meta: dict):
             "team_slug": slugify(team["name"]), "team_name": team["name"],
             "home_away": side, "opponent_slug": slugify(opp["name"]), "opponent_name": opp["name"],
             "points": pts, "opp_points": opp_pts,
-            "tbf_team_id": team["id"], "tbf_match_id": match_id,
+            "tbf_team_id": team["id"], "opp_tbf_team_id": opp["id"], "tbf_match_id": match_id,
         }
         base.update(_stat_cols(total or {}))
         base.pop("minutes", None); base.pop("seconds_played", None)  # takımda yok
@@ -245,58 +233,20 @@ TMS_COLS = ["source", "season_label", "competition", "match_key", "match_date", 
             "tbf_team_id", "tbf_match_id"]
 
 
-def resolve_player_slugs(cur, player_rows, season_label):
-    """tbf_player_id → player_slug. Yeni oyuncuya isimden slug (çakışırsa id ekle), boyutu upsert."""
-    ids = {r["tbf_player_id"] for r in player_rows}
-    cur.execute("select tbf_player_id, player_slug from basketball.players where tbf_player_id = any(%s)",
-                (list(ids),))
-    id2slug = {r[0]: r[1] for r in cur.fetchall()}
-    cur.execute("select player_slug from basketball.players")
-    used = {r[0] for r in cur.fetchall()}
-    # her tbf id için son görülen isim/takım
-    latest = {}
-    for r in player_rows:
-        latest[r["tbf_player_id"]] = r
-    for pid, r in latest.items():
-        if pid in id2slug:
-            slug = id2slug[pid]
-        else:
-            slug = slugify(r["player_name"]) or f"tbf-{pid}"
-            if slug in used:
-                slug = f"{slug}-{pid}"
-            used.add(slug)
-            id2slug[pid] = slug
-        cur.execute("""
-            insert into basketball.players (player_slug, player_name, team_slug, team_name,
-                                            jersey_no, season_label, tbf_player_id)
-            values (%s,%s,%s,%s,%s,%s,%s)
-            on conflict (player_slug) do update set
-                player_name=excluded.player_name, team_slug=excluded.team_slug,
-                team_name=excluded.team_name, jersey_no=excluded.jersey_no,
-                tbf_player_id=excluded.tbf_player_id, updated_at=now()
-        """, (slug, r["player_name"], r["team_slug"], r["team_name"],
-              r["jersey_no"], season_label, pid))
-    return id2slug
-
-
-def upsert_teams(cur, team_rows, season_label, logos):
-    for tr in team_rows:
-        cur.execute("""
-            insert into basketball.teams (team_slug, team_name, season_label, tbf_team_id, logo_url)
-            values (%s,%s,%s,%s,%s)
-            on conflict (team_slug) do update set
-                team_name=excluded.team_name, tbf_team_id=excluded.tbf_team_id,
-                logo_url=coalesce(excluded.logo_url, basketball.teams.logo_url), updated_at=now()
-        """, (tr["team_slug"], tr["team_name"], season_label, tr["tbf_team_id"],
-              logos.get(tr["tbf_team_id"])))
-
-
 def write_match(cur, team_rows, player_rows, season_label, logos):
-    """Tek cursor üzerinde tüm yazımlar (commit YOK — çağıran yönetir)."""
-    upsert_teams(cur, team_rows, season_label, logos)
-    id2slug = resolve_player_slugs(cur, player_rows, season_label)
+    """Tek cursor üzerinde tüm yazımlar (commit YOK — çağıran yönetir).
+
+    Slug/isimler TBF ham adından DEĞİL kimlik katmanından gelir (identity.py):
+    sponsorlu takım adı ya da oyuncu isim varyantı yeni kayıt açmaz."""
+    teams = resolve_teams(cur, team_rows, season_label, logos)
+    players = resolve_players(cur, player_rows, season_label, teams)
+    home = next(t for t in team_rows if t["home_away"] == "Home")
+    match_key = f"{teams[home['tbf_team_id']]['name']} - {teams[home['opp_tbf_team_id']]['name']}"
     for r in player_rows:
-        r = dict(r); r["player_slug"] = id2slug[r["tbf_player_id"]]
+        r = dict(r)
+        who, team = players[r["tbf_player_id"]], teams[r["team_id"]]
+        r.update(player_slug=who["slug"], player_name=who["name"], match_key=match_key,
+                 team_slug=team["slug"], team_name=team["name"])
         vals = [r.get(c) for c in PMS_COLS]
         setexpr = ", ".join(f"{c}=excluded.{c}" for c in PMS_COLS if c not in ("tbf_match_id", "tbf_player_id"))
         cur.execute(f"""insert into basketball.player_match_stats ({",".join(PMS_COLS)})
@@ -305,6 +255,10 @@ def write_match(cur, team_rows, player_rows, season_label, logos):
                 where tbf_match_id is not null and tbf_player_id is not null
             do update set {setexpr}, updated_at=now()""", vals)
     for r in team_rows:
+        r = dict(r)
+        team, opp = teams[r["tbf_team_id"]], teams[r["opp_tbf_team_id"]]
+        r.update(match_key=match_key, team_slug=team["slug"], team_name=team["name"],
+                 opponent_slug=opp["slug"], opponent_name=opp["name"])
         vals = [r.get(c) for c in TMS_COLS]
         setexpr = ", ".join(f"{c}=excluded.{c}" for c in TMS_COLS if c not in ("tbf_match_id", "tbf_team_id"))
         cur.execute(f"""insert into basketball.team_match_stats ({",".join(TMS_COLS)})
@@ -335,6 +289,7 @@ def run(args):
 
     n_matches = n_players = 0
     logos = {}
+    dump = []
     with TbfSession(proxy, bootstrap) as ses:
         print("[tbf] Cloudflare geçildi:", ses.pg.title(), flush=True)
 
@@ -379,6 +334,8 @@ def run(args):
                     logos[t["teamId"]] = t["logo"]
             n_matches += 1
             n_players += len(player_rows)
+            if args.dump_json:
+                dump.append({"match_id": mid, "team_rows": team_rows, "player_rows": player_rows})
             if args.dry_run:
                 print(f"\n=== maç {mid}: {team_rows[0]['match_key']} "
                       f"({team_rows[0]['points']}-{team_rows[1]['points']}) "
@@ -409,6 +366,10 @@ def run(args):
                   f"refresh materialized view analytics.bb_player_metric_window_v1", flush=True)
     if conn:
         conn.close()
+    if args.dump_json:
+        with open(args.dump_json, "w", encoding="utf-8") as f:
+            json.dump(dump, f, ensure_ascii=False)
+        print(f"[tbf] dump yazildi: {args.dump_json} ({len(dump)} mac)", flush=True)
     print(f"\n[tbf] BİTTİ: {n_matches} maç, {n_players} oyuncu-satırı "
           f"({'DRY-RUN, DB yazılmadı' if args.dry_run else 'DB yazıldı'}).", flush=True)
 
@@ -421,6 +382,7 @@ def main():
     ap.add_argument("--week", type=int, help="tek hafta (WeekFilter)")
     ap.add_argument("--match", type=int, help="tek maç (matchId) — test için")
     ap.add_argument("--dry-run", action="store_true", help="DB yazma, sadece normalize edip yazdır")
+    ap.add_argument("--dump-json", help="normalize satırları bu dosyaya yaz (backfill_tbf_player_ids.py girdisi)")
     run(ap.parse_args())
 
 

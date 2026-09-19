@@ -78,6 +78,15 @@ chmod +x /opt/oddskeeper/run_upcoming_events.sh /opt/oddskeeper/run_odds_capture
 #    BSL yeni sezon BAŞLAMADI. Sezon başlayınca: run_tbf_basketball.sh içindeki
 #    TBF_LEAGUE_ID/TBF_SEASON_ID/TBF_SEASON_LABEL'i yeni sezona göre güncelle,
 #    sonra bu satırı aç (günde bir yeter; maçlar haftalık, idempotent upsert).
+#    KİMLİK (2026-09-19): scraper tbf id'si olmayan oyuncu/takımı MEVCUT kayda bağlar
+#    (src/basketball/identity.py: tam isim → tek aday; sponsorlu takım adı → TEAM_KEYWORDS).
+#    Bağlayamadığı ama benzeri olan kimlik basketball.identity_review'a düşer ve wrapper
+#    ntfy atar; birleştirme analytics.bb_pm_player_merges (alias→canonical) ile yapılır.
+#    İLK AÇILIŞTAN ÖNCE (bir kez): geçmiş sezon oyuncularına tbf id backfill'i, isimsiz:
+#      xvfb-run -a $VENV $PIPELINE/src/basketball/fetch_tbf_bsl.py --league-id 20728 --season-id 172 \
+#        --season-label 2025-2026 --dry-run --dump-json /tmp/tbf_2025-2026.json
+#      $VENV $PIPELINE/src/basketball/backfill_tbf_player_ids.py /tmp/tbf_2025-2026.json          # rapor
+#      $VENV $PIPELINE/src/basketball/backfill_tbf_player_ids.py /tmp/tbf_2025-2026.json --apply
 # 0 6 * * *   /opt/oddskeeper/run_tbf_basketball.sh
 
 # 7) TSL kadro tazeleme (apifootball squads -> team_squad_current -> player_mapping

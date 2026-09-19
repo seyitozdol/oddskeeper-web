@@ -35,6 +35,17 @@ exec 9>/tmp/ok_tbf_basketball.lock
 flock -n 9 || { echo "$(date '+%F %T') tbf_basketball zaten calisiyor, atlandi" >> "$LOG/tbf_basketball.log"; exit 0; }
 
 # Tüm haftaları tara, oynanmış maçları id-anchored upsert et (tekrar çalışınca idempotent).
+RUN_OUT=$(mktemp)
 xvfb-run -a "$VENV" "$PIPELINE/src/basketball/fetch_tbf_bsl.py" \
   --league-id "$TBF_LEAGUE_ID" --season-id "$TBF_SEASON_ID" --season-label "$TBF_SEASON_LABEL" \
-  >> "$LOG/tbf_basketball.log" 2>&1
+  > "$RUN_OUT" 2>&1
+cat "$RUN_OUT" >> "$LOG/tbf_basketball.log"
+
+# Kimlik katmanı otomatik bağlayamadığı (ama benzeri olan) oyuncu/takım gördüyse haber ver:
+# yeni slug açıldı, mükerrer olabilir → basketball.identity_review'a bak, gerekirse birleştir.
+N_REVIEW=$(grep -c 'kimlik. INCELEME' "$RUN_OUT" || true)
+if [ "${N_REVIEW:-0}" -gt 0 ]; then
+  /opt/oddskeeper/notify.sh "BSL kimlik incelemesi: $N_REVIEW kayit" \
+    "$(grep 'kimlik. INCELEME' "$RUN_OUT" | head -5 | cut -c1-160)" default
+fi
+rm -f "$RUN_OUT"
