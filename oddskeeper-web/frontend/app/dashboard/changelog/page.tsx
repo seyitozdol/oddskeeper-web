@@ -33,6 +33,10 @@ const ENTRIES: Entry[] = [
         tr: "Upcoming Events'te maç satırındaki Bets10 ve BMBets rozetleri artık link: tıklayınca o maçın sitedeki sayfası yeni sekmede açılıyor. Bets10 linki her zaman sitenin güncel adresini kullanıyor.",
       },
       {
+        en: "The bet365 badge is a link too. bet365 gives us no direct match address, so the badge opens the site's search for the home team, where the match is listed with its odds.",
+        tr: "bet365 rozeti de link. bet365 doğrudan maç adresi vermediği için rozet sitenin ev sahibi takım aramasını açıyor; maç orada oranlarıyla listeleniyor.",
+      },
+      {
         en: "Team names now open the team's current page. Promoted teams such as Amed, Çorum FK and Erzurumspor FK used to open their old 1. Lig page; they now open their Süper Lig profile, and relegated teams open their 1. Lig page. The league is read from the current season's fixtures, so it stays right after every season change.",
         tr: "Takım adları artık takımın güncel sayfasını açıyor. Amed, Çorum FK ve Erzurumspor FK gibi yükselen takımlar eski 1. Lig sayfasına gidiyordu; artık Süper Lig profilleri açılıyor, düşen takımlar da 1. Lig sayfasına gidiyor. Lig bilgisi güncel sezon fikstüründen okunduğu için her sezon değişiminde kendiliğinden doğru kalıyor.",
       },

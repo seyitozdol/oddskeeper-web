@@ -18,13 +18,14 @@ from __future__ import annotations
 import os
 import sys
 import time
+from urllib.parse import quote
 
 import psycopg2
 import requests
 from dotenv import load_dotenv
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from load_site_odds import resolve  # takim-adi eslestirme  # noqa: E402
+from load_site_odds import CLUB_STOPWORDS, fold, resolve  # takim-adi eslestirme  # noqa: E402
 
 API_BASE = "https://v3.football.api-sports.io"
 SEASON = 2026
@@ -43,6 +44,23 @@ BOOKMAKER_BET365 = 8
 LEAGUES = [2, 3, 848, 667, 203, 204, 206]
 MW_BET = "Match Winner"
 OU_BET = "Goals Over/Under"
+
+
+def bet365_search_url(team: str) -> str | None:
+    """bet365 site-ici arama adresi (Upcoming Events rozet linki).
+
+    API-Football bet365'in mac id'sini vermez, bu yuzden dogrudan mac sayfasi
+    kurulamaz; #/AX/K^<terim>/ adresi takimin maclarini oranlariyla listeler
+    (2026-09-19 kullanici tarayicisinda dogrulandi). Terim = takim adinin en uzun
+    ayirt edici kelimesi, ASCII'ye indirgenmis: bet365 aksansiz ad kullanir
+    ("Besiktas") ve kulup ekleri (FK, S.K., 1969) kaynaklar arasinda tutmaz.
+    """
+    words = "".join(c if c.isalnum() else " " for c in fold(team)).split()
+    keep = [w for w in words if w not in CLUB_STOPWORDS and not w.isdigit() and len(w) > 2]
+    if not (keep or words):
+        return None
+    term = max(keep or words, key=len)
+    return f"https://www.bet365.com/#/AX/K^{quote(term.capitalize())}/"
 
 
 def api_get(key: str, path: str) -> dict:
@@ -168,13 +186,16 @@ def main() -> None:
     for eid, info in per_event.items():
         cur.execute(
             """insert into tracker.event_odds_availability
-               (event_id, site, has_odds, listed, market_count, site_home_name, site_away_name, match_score, checked_at)
-               values (%s,'bet365',true,true,%s,%s,%s,%s,now())
+               (event_id, site, has_odds, listed, market_count, site_home_name, site_away_name,
+                site_event_url, match_score, checked_at)
+               values (%s,'bet365',true,true,%s,%s,%s,%s,%s,now())
                on conflict (event_id, site) do update set
                  has_odds=true, listed=true, market_count=excluded.market_count,
                  site_home_name=excluded.site_home_name, site_away_name=excluded.site_away_name,
+                 site_event_url=excluded.site_event_url,
                  match_score=excluded.match_score, checked_at=now()""",
-            (eid, len(info["markets"]), info["home"], info["away"], info["score"]),
+            (eid, len(info["markets"]), info["home"], info["away"],
+             bet365_search_url(info["home"]), info["score"]),
         )
     conn.commit()
     conn.close()

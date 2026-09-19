@@ -5,8 +5,10 @@
 --            (load_site_odds; adres dump'in cekildigi guncel numarali alan adi,
 --            eski adresler yolu+sorguyu koruyarak guncele yonleniyor)
 --   bmbets : https://bmbets.com<mac satirindaki href> (fetch_bmbets)
---   bet365 / oddsportal: simdilik null (bet365 orani API-Football'dan geliyor,
---            bet365 mac id'si yok; loader doldurursa rozet kendiliginden linklenir)
+--   bet365 : https://www.bet365.com/#/AX/K^<ev sahibi>/ (fetch_apifootball_odds).
+--            Oran API-Football'dan geldigi icin bet365 mac id'si YOK; mac sayfasi
+--            yerine site-ici arama acilir (mac sonuclarda oranlariyla listelenir).
+--   oddsportal: simdilik null (loader doldurursa rozet kendiliginden linklenir)
 -- Kolon site-bagimsiz; frontend yalniz dolu URL'i linkler.
 
 alter table tracker.event_odds_availability

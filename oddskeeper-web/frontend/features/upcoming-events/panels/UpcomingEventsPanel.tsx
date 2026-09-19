@@ -256,7 +256,8 @@ export default function UpcomingEventsPanel({
   }
 
   // href (maçın o sitedeki sayfası) doluysa rozet yeni sekmede açılan linktir;
-  // yoksa düz rozet kalır.
+  // yoksa düz rozet kalır. bet365'te maç id'si olmadığından link maç sayfası
+  // değil, takım adıyla site içi aramadır (maç sonuçlarda listelenir).
   function SiteMark({
     site,
     value,
@@ -282,7 +283,11 @@ export default function UpcomingEventsPanel({
             target="_blank"
             rel="noopener noreferrer"
             className={`inline-flex ${tone} transition hover:opacity-80 hover:grayscale-0`}
-            title={`${title}, ${t("upcomingEvents.openMatchPage")}`}
+            title={`${title}, ${t(
+              site === "bet365"
+                ? "upcomingEvents.openMatchSearch"
+                : "upcomingEvents.openMatchPage"
+            )}`}
           >
             {brandBadge(site)}
           </a>
