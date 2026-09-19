@@ -174,7 +174,10 @@ def normalize_match(header: dict, box: dict, meta: dict):
     match_key = f"{home['name']} - {away['name']}"
     match_date = (header.get("matchDateTime") or meta.get("match_date") or "")[:10] or None
     week = parse_week(meta.get("week"))
-    comp = meta.get("competition") or header.get("faaliyetAdi")
+    # Sabit etiket: view'lar competition'a göre gruplar; TBF'nin faaliyet adı ("BSL 2025-2026")
+    # excel/flashscore satırlarındaki "Basketbol Süper Ligi"nden farklı olunca puan durumu ve
+    # oyuncu pencereleri ikiye bölünüyordu (2026-09-19).
+    comp = "Basketbol Süper Ligi"
     hs, as_ = num(header.get("homeTeamScore")), num(header.get("awayTeamScore"))
 
     def team_row(side, team, opp, total, pts, opp_pts):
