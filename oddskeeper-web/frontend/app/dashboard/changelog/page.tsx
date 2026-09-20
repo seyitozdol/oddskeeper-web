@@ -21,6 +21,24 @@ const TAG_FIX: L = { en: "Fix", tr: "Düzeltme" };
 
 const ENTRIES: Entry[] = [
   {
+    date: { en: "20 September", tr: "20 Eylül" },
+    title: {
+      en: "Squad Audit for basketball, and squads on team pages",
+      tr: "Basketbol için Kadro Denetimi ve takım sayfalarında kadrolar",
+    },
+    tag: TAG_NEW,
+    items: [
+      {
+        en: "Squad Audit now has a Football / Basketball switch. The basketball side compares our BSL season squads with RealGM and lists: players we have that RealGM does not (and who have not played for the team yet), players RealGM has that we miss, squad players without a participant id, and squad players without a photo. It rebuilds every morning and after each match; a player drops off the first list as soon as he plays for the team.",
+        tr: "Kadro Denetimi'ne Futbol / Basketbol anahtarı geldi. Basketbol tarafı BSL sezon kadrolarımızı RealGM ile kıyaslıyor ve şunları listeliyor: bizde olup RealGM'de olmayan (ve henüz o takımda maça çıkmamış) oyuncular, RealGM'de olup bizde eksik olanlar, participant id'si olmayan kadro oyuncuları ve fotoğrafı olmayan kadro oyuncuları. Her sabah ve her maçtan sonra yeniden kuruluyor; oyuncu takımda maça çıkar çıkmaz ilk listeden düşüyor.",
+      },
+      {
+        en: "BSL team pages now show the full 2026-27 squad (photo, position, role) before any game is played, and new signings with no league games yet get a profile page with their photo, team, position and height. Photos were added for 48 new players; 229 of 242 squad players now have one.",
+        tr: "BSL takım sayfaları artık 2026-27 kadrosunu maç oynanmadan da tam gösteriyor (fotoğraf, pozisyon, rol); ligde henüz maçı olmayan yeni transferlerin de fotoğraf, takım, pozisyon ve boy bilgisiyle profil sayfası var. 48 yeni oyuncuya fotoğraf eklendi; 242 kadro oyuncusunun 229'unda artık fotoğraf var.",
+      },
+    ],
+  },
+  {
     date: { en: "19 September", tr: "19 Eylül" },
     title: {
       en: "Upcoming Events: clickable site badges, correct team pages",

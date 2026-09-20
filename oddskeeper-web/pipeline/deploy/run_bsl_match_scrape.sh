@@ -23,8 +23,15 @@ RUN_OUT=$(mktemp)
 "$VENV" -u "$PIPELINE/src/basketball/fetch_flashscore_bsl.py" > "$RUN_OUT" 2>&1
 rc=$?
 
+# Kadro denetimi (/dashboard/squad-audit?sport=basketball) yalniz DB okur: mac yuklendiyse hemen
+# (sahaya cikan oyuncu "RealGM'de yok" listesinden duser), ayrica her sabah 06:00-06:09 turunda
+# (participant id / fotograf degisiklikleri yansisin). Futboldaki sabah denetiminin karsiligi.
+if grep -q 'yuklendi' "$RUN_OUT" || [ "$(date +%H%M | cut -c1-3)" = "060" ]; then
+  "$VENV" -u "$PIPELINE/src/basketball/build_bsl_squad_audit.py" >> "$RUN_OUT" 2>&1 || true
+fi
+
 # Sessiz turlar logu sisirmesin: yalniz bir sey olduysa (mac islendi / bekleyen var / hata) yaz.
-if [ "$rc" -ne 0 ] || grep -qE 'yuklendi|beklemede|ATLANDI|INCELEME|HATA' "$RUN_OUT"; then
+if [ "$rc" -ne 0 ] || grep -qE 'yuklendi|beklemede|ATLANDI|INCELEME|HATA|Traceback' "$RUN_OUT"; then
   { echo "$(date '+%F %T') --- bsl_match_scrape rc=$rc"; cat "$RUN_OUT"; } >> "$LOG/bsl_match_scrape.log"
 fi
 

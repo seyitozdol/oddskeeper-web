@@ -9,6 +9,7 @@ import {
   getEuroTeamRoster,
   getEuroTeamLog,
 } from "@/features/euroleague/server";
+import { getBasketballSeasonRoster, mergeRosterWithStats } from "@/features/basketball/server/roster";
 import { bslTeamToComp } from "@/features/basketball/unified";
 import { euroTeamToComp } from "@/features/euroleague/unified";
 import TeamProfileTabs from "@/features/basketball/components/TeamProfileTabs";
@@ -25,12 +26,15 @@ export default async function BasketballTeamPage({
 }) {
   const [{ teamSlug }, { season }, t] = await Promise.all([params, searchParams, getT()]);
   const seasonLabel = normalizeSeason(season);
-  const [team, roster, log, euroTeams] = await Promise.all([
+  const [team, statRoster, members, log, euroTeams] = await Promise.all([
     getBasketballTeam(teamSlug, seasonLabel),
     getBasketballTeamRoster(teamSlug, seasonLabel),
+    getBasketballSeasonRoster(teamSlug, seasonLabel),
     getBasketballTeamMatchLog(teamSlug, seasonLabel),
     getEuroTeamsForBslSlug(teamSlug, seasonLabel),
   ]);
+  // Sezon kadrosu varsa (yeni sezon) liste kadrodan gelir: henüz maça çıkmamış oyuncu da görünür.
+  const roster = mergeRosterWithStats(members, statRoster);
 
   const header = (
     <div className="flex items-center justify-between gap-3">

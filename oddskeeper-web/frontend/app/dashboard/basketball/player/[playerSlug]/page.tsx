@@ -6,6 +6,7 @@ import {
   getBasketballPlayerEuroSeasons,
   getBasketballPlayerEuroLog,
 } from "@/features/basketball/server/getBasketballStats";
+import { getBasketballRosterIdentity } from "@/features/basketball/server/roster";
 import PlayerProfileTabs from "@/features/basketball/components/PlayerProfileTabs";
 import { bslPlayerToComp, euroSeasonToComp, emptyBslComp } from "@/features/basketball/unified";
 import { normalizeSeason, EURO_SEASONS } from "@/features/euroleague/config";
@@ -29,7 +30,9 @@ export default async function BasketballPlayerPage({
   ]);
 
   // Seçili sezonda veri yoksa kimliği en yeni sezondan çek → boş şablon (takım gibi).
-  const identity = player ?? (await getBasketballPlayerAny(playerSlug));
+  // Ligde hiç maçı olmayan (yeni transfer) oyuncuda kimlik sezon kadrosundan gelir.
+  const identity =
+    player ?? (await getBasketballPlayerAny(playerSlug)) ?? (await getBasketballRosterIdentity(playerSlug));
 
   const comps = player
     ? [bslPlayerToComp(player, log), ...euroSeasons.map((s) => euroSeasonToComp(s, euroLog))]
