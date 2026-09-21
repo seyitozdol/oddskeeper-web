@@ -21,6 +21,20 @@ const TAG_FIX: L = { en: "Fix", tr: "Düzeltme" };
 
 const ENTRIES: Entry[] = [
   {
+    date: { en: "21 September", tr: "21 Eylül" },
+    title: {
+      en: "Basketball tools: closed Under is written as 1 in the Excel",
+      tr: "Basketbol araçları: kapalı Under Excel'e 1 olarak yazılıyor",
+    },
+    tag: TAG_FIX,
+    items: [
+      {
+        en: "In Match-Player Tools, lines whose Under is closed by the Config (lines beyond the market's Under count) used to come out with an empty Under price in the Excel. They are now written as 1. The rule covers every market in the Config, for both Player and Team outputs, in BSL, EuroLeague and EuroCup. The Input tab shows the same value, so what you see is what gets printed.",
+        tr: "Match-Player Tools'ta Config gereği Under'ı kapalı olan line'lar (marketin Under adedinin dışında kalanlar) Excel'de Under fiyatı boş çıkıyordu. Artık 1 yazılıyor. Kural Config'teki tüm marketler için geçerli; Player ve Team çıktılarında, BSL, EuroLeague ve EuroCup'ta. Input sekmesi de aynı değeri gösteriyor, yani ekranda gördüğün neyse dosyaya o yazılıyor.",
+      },
+    ],
+  },
+  {
     date: { en: "20 September", tr: "20 Eylül" },
     title: {
       en: "Squad Audit for basketball, and squads on team pages",

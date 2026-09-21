@@ -653,8 +653,13 @@ function ConfigTab({ config, reload, modelConfig, reloadModelConfig, inputType, 
 }
 
 /* ---------- Input ---------- */
-// Selection_1 hep Over, Selection_2_Name hep Under; Selection_2_Price under yoksa boş.
-// Market Status kural yoksa boş. Player'da participant + sort order kolonları var, team'de yok.
+// Selection_1 hep Over, Selection_2_Name hep Under. Under KAPALI line'da (Config'teki
+// under_lines disinda kalan, under = null) Selection_2_Price BOS BIRAKILMAZ, 1 yazilir:
+// kural tum config icin gecerli (player + team, BSL/EuroLeague/EuroCup), tek cikis noktasi
+// exportXlsx. Market Status kural yoksa boş. Player'da participant + sort order kolonları
+// var, team'de yok.
+const UNDER_CLOSED_PRICE = 1;
+const exportUnder = (r: BktInputRow) => r.under ?? UNDER_CLOSED_PRICE;
 const PLAYER_IN_HEADERS = ["Fixture ID", "Market Template", "Market Participant", "Market Participant Sort Order", "Line", "Market Status", "Selection_1_Name", "Selection_1_Price", "Selection_2_Name", "Selection_2_Price"];
 const TEAM_IN_HEADERS = ["Fixture ID", "Market Template", "Line", "Market Status", "Selection_1_Name", "Selection_1_Price", "Selection_2_Name", "Selection_2_Price"];
 
@@ -670,8 +675,8 @@ function InputTab({ allRows, setRows, initialType, onExported, t }: {
     const XLSX = await import("xlsx");
     const headers = isTeam ? TEAM_IN_HEADERS : PLAYER_IN_HEADERS;
     const aoa = [headers, ...rows.map((r) => isTeam
-      ? [r.fixtureExtId, r.template, r.line, "", "Over", r.over, "Under", r.under ?? ""]
-      : [r.fixtureExtId, r.template, r.participant, r.side, r.line, "", "Over", r.over, "Under", r.under ?? ""])];
+      ? [r.fixtureExtId, r.template, r.line, "", "Over", r.over, "Under", exportUnder(r)]
+      : [r.fixtureExtId, r.template, r.participant, r.side, r.line, "", "Over", r.over, "Under", exportUnder(r)])];
     const ws = XLSX.utils.aoa_to_sheet(aoa);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "input");
@@ -714,7 +719,7 @@ function InputTab({ allRows, setRows, initialType, onExported, t }: {
                   {!isTeam && <><td className="px-2 py-0.5 text-ink-3">{r.participant}</td><td className="px-2 py-0.5 text-right tabular-nums text-ink-3">{r.side}</td></>}
                   <td className="px-2 py-0.5 text-right tabular-nums text-ink">{r.line.toFixed(1)}</td>
                   <td className="px-2 py-0.5 text-right tabular-nums text-ink">{r.over.toFixed(2)}</td>
-                  <td className="px-2 py-0.5 text-right tabular-nums text-ink-2">{r.under == null ? "—" : r.under.toFixed(2)}</td>
+                  <td className="px-2 py-0.5 text-right tabular-nums text-ink-2">{exportUnder(r).toFixed(2)}</td>
                   <td className="px-2 py-0.5 text-ink whitespace-nowrap">{rowName(r)}</td>
                   <td className="px-2 py-0.5 text-right"><button onClick={() => removeRow(r)} className="text-neg hover:underline">×</button></td>
                 </tr>
