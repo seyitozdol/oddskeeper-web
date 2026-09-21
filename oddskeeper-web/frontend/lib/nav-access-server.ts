@@ -1,5 +1,6 @@
 import { cache } from "react";
 import { isDailyLogoutEnabled, isSessionPastDailyLogout } from "./auth/daily-logout";
+import { NAV_KEYS } from "./nav-permissions";
 import { createClient } from "./supabase/server";
 
 export type NavAccess = {
@@ -34,7 +35,9 @@ export const getNavAccess = cache(async (): Promise<NavAccess> => {
 
   if (!user) {
     if (isDevAuthBypass()) {
-      return { userId: null, userEmail: null, isAdmin: true, allowedKeys: null };
+      // Tum anahtarlar ACIKCA listelenir: explicit-only anahtarlar (header-egg)
+      // dev'de de test edilebilsin. Diger tuketiciler icin null ile esdeger.
+      return { userId: null, userEmail: null, isAdmin: true, allowedKeys: [...NAV_KEYS] };
     }
     return { userId: null, userEmail: null, isAdmin: false, allowedKeys: null };
   }

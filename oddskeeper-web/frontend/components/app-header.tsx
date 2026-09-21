@@ -9,6 +9,7 @@ import { useI18n } from "../lib/i18n/LanguageProvider";
 import { LOCALES, type Locale } from "../lib/i18n/config";
 import { THEMES, type Theme } from "../lib/theme";
 import { isNavKeyVisible, type NavKey } from "../lib/nav-permissions";
+import HeaderEgg from "./HeaderEgg";
 import ThemeSelect from "./ThemeSelect";
 import { ClipboardList } from "lucide-react";
 
@@ -356,6 +357,11 @@ export default function AppHeader({
           </Link>
 
           <nav className="hidden items-center gap-1 md:flex">
+            {/* Header surprizi: explicit-only izin (admin dahil kimseye
+                kendiliginden acilmaz). Nav basinda: dar ekranda sag kume
+                nav sonunu orttugu icin sonda kaybolurdu. */}
+            {can("header-egg") ? <HeaderEgg /> : null}
+
             {can("upcoming-events") ? (
               <Link
                 href="/dashboard/upcoming-events"
@@ -497,6 +503,8 @@ export default function AppHeader({
 
       <div className="px-4 pb-2 md:hidden">
         <div className="flex flex-wrap gap-1.5">
+          {can("header-egg") ? <HeaderEgg /> : null}
+
           {can("upcoming-events") ? (
             <Link
               href="/dashboard/upcoming-events"

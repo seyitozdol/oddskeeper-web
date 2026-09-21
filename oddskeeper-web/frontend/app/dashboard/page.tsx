@@ -10,8 +10,12 @@ import { NAV_PERMISSION_ITEMS, isNavKeyAllowed } from "@/lib/nav-permissions";
 export default async function DashboardPage() {
   const access = await getNavAccess();
 
-  const first = NAV_PERMISSION_ITEMS.find((item) =>
-    isNavKeyAllowed(item.key, access.allowedKeys)
+  // href'i /dashboard olan bayrak-anahtarlar (shortcuts, header-egg) hedef
+  // sayilmaz: yalniz onlara sahip kullanici kendine yonlenip donguye girerdi.
+  const first = NAV_PERMISSION_ITEMS.find(
+    (item) =>
+      item.href !== "/dashboard" &&
+      isNavKeyAllowed(item.key, access.allowedKeys)
   );
 
   if (first) {

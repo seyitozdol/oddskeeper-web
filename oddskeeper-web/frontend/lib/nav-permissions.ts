@@ -35,6 +35,11 @@ export const NAV_KEYS = [
   // gorunurluk bayragi: varsayilanda herkes gorur (NULL tam-erisim kapsar),
   // admin access listesinden kullanici bazinda kapatilabilir.
   "shortcuts",
+  // Header surprizi (hover'da opucuk atan kafa + kalpler). Route DEGIL, salt
+  // gorunurluk bayragi ve EXPLICIT-ONLY: varsayilanda KIMSE gormez (admin dahil),
+  // yalniz access listesinden ACIKCA isaretlenen kullanici gorur. Ic saka:
+  // changelog'a YAZILMAZ. Gorseller de ayni izinle /api/header-egg'den servis edilir.
+  "header-egg",
 ] as const;
 
 export type NavKey = (typeof NAV_KEYS)[number];
@@ -151,6 +156,14 @@ export const NAV_PERMISSION_ITEMS: NavPermissionItem[] = [
     href: "/dashboard",
     pathPrefixes: ["/__shortcuts__"],
   },
+  {
+    key: "header-egg",
+    labelKey: "nav.headerEgg",
+    // Gercek bir sayfa degil (header'daki surpriz kafa). pathPrefixes inert
+    // (shortcuts/msm-gsheet deseni).
+    href: "/dashboard",
+    pathPrefixes: ["/__header-egg__"],
+  },
 ];
 
 export function isValidNavKey(value: string): value is NavKey {
@@ -160,20 +173,30 @@ export function isValidNavKey(value: string): value is NavKey {
 // OPT-IN anahtarlar: NULL (tam erisim) kullanicilar bunlari GORMEZ. Yalniz admin
 // VEYA allowed_keys'te ACIKCA listelenmisse gorunur/erisilir. Yeni veya soft-launch
 // bolumleri varsayilanda admin'e ozel tutmak icin (or. league-eurocl).
-export const OPT_IN_NAV_KEYS: readonly NavKey[] = ["league-eurocl", "league-euel", "league-euecl"];
+export const OPT_IN_NAV_KEYS: readonly NavKey[] = ["league-eurocl", "league-euel", "league-euecl", "header-egg"];
 
 export function isOptInNavKey(key: NavKey): boolean {
   return OPT_IN_NAV_KEYS.includes(key);
 }
 
-// Gorunurluk/erisim karari (header + proxy ortak). Admin her seyi gorur. Opt-in
-// anahtar admin degilse yalniz ACIK izinle acilir (NULL tam-erisim onu kapsamaz).
-// Opt-in olmayan anahtarlar mevcut NULL=tam-erisim davranisini korur.
+// EXPLICIT-ONLY anahtarlar: opt-in'in siki hali. ADMIN DAHIL herkes icin yalniz
+// allowed_keys'te ACIKCA listelenmisse gorunur (admin bypass'i yok). header-egg
+// ic saka oldugu icin diger admin'lere de kendiliginden acilmaz; gormesi istenen
+// kisi (admin'in kendisi dahil) access listesinden tek tek isaretlenir.
+export const EXPLICIT_ONLY_NAV_KEYS: readonly NavKey[] = ["header-egg"];
+
+// Gorunurluk/erisim karari (header + proxy ortak). Admin her seyi gorur
+// (explicit-only anahtarlar haric). Opt-in anahtar admin degilse yalniz ACIK
+// izinle acilir (NULL tam-erisim onu kapsamaz). Opt-in olmayan anahtarlar mevcut
+// NULL=tam-erisim davranisini korur.
 export function isNavKeyVisible(
   key: NavKey,
   allowedKeys: string[] | null | undefined,
   isAdmin: boolean
 ): boolean {
+  if (EXPLICIT_ONLY_NAV_KEYS.includes(key)) {
+    return Array.isArray(allowedKeys) && allowedKeys.includes(key);
+  }
   if (isAdmin) return true;
   if (isOptInNavKey(key)) {
     return Array.isArray(allowedKeys) && allowedKeys.includes(key);

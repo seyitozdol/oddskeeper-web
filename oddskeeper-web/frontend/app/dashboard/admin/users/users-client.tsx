@@ -13,6 +13,8 @@ import {
   NAV_KEYS,
   NAV_PERMISSION_ITEMS,
   isNavKeyAllowed,
+  isNavKeyVisible,
+  isOptInNavKey,
   type NavKey,
 } from "@/lib/nav-permissions";
 
@@ -259,7 +261,11 @@ export default function AdminUsersClient({
   }
 
   function toggleNavKey(user: AdminUserRow, key: NavKey) {
-    const current = user.allowedKeys ?? [...NAV_KEYS];
+    // NULL (tam erisim) acik listeye cevrilirken opt-in anahtarlar DAHIL EDILMEZ:
+    // yoksa herhangi bir kutuyu degistirmek opt-in bolumleri (CL/EL/Con,
+    // header-egg) o kullaniciya sessizce aciyordu.
+    const current =
+      user.allowedKeys ?? NAV_KEYS.filter((k) => !isOptInNavKey(k));
     const next = current.includes(key)
       ? current.filter((k) => k !== key)
       : [...current, key];
@@ -291,8 +297,12 @@ export default function AdminUsersClient({
     );
   }
 
+  // Opt-in anahtarlar "tam erisim" ozetine girmez: varsayilanda kapali,
+  // ayrica acilan ekstralardir.
   const hasFullAccess = (user: AdminUserRow) =>
-    NAV_KEYS.every((key) => isNavKeyAllowed(key, user.allowedKeys));
+    NAV_KEYS.every(
+      (key) => isOptInNavKey(key) || isNavKeyAllowed(key, user.allowedKeys)
+    );
 
   return (
     <div className="mx-auto w-full max-w-6xl">
@@ -748,8 +758,10 @@ function AccessDropdown({
     return () => document.removeEventListener("mousedown", onOutsideClick);
   }, [open]);
 
+  // isNavKeyVisible (admin=false): opt-in anahtar yalniz ACIKCA listelenmisse
+  // isaretli gorunur; NULL tam-erisim onu kapsamaz (header/proxy ile ayni kural).
   const checkedCount = NAV_PERMISSION_ITEMS.filter((item) =>
-    isNavKeyAllowed(item.key, user.allowedKeys)
+    isNavKeyVisible(item.key, user.allowedKeys, false)
   ).length;
 
   return (
@@ -779,7 +791,7 @@ function AccessDropdown({
       {open ? (
         <div className="absolute left-0 top-full z-20 mt-1 w-56 rounded-lg border border-line bg-card p-1.5 shadow-lg">
           {NAV_PERMISSION_ITEMS.map((item) => {
-            const checked = isNavKeyAllowed(item.key, user.allowedKeys);
+            const checked = isNavKeyVisible(item.key, user.allowedKeys, false);
 
             return (
               <label
