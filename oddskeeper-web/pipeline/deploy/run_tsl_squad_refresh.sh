@@ -77,7 +77,13 @@ run() {  # $1=etiket  $2=script  $3.. = "VAR=val" ise env, degilse script arguma
   fi
   # 1c) Sentetik kadro: TM'de olup bizde olmayan oyunculara sentetik kimlik + kadro
   #     satiri + SofaScore koprusu. API-Football yetisince otomatik emekli olur.
-  run "1c) sentetik kadro"    apply_synthetic_squad.py --seed
+  #     Icinde TM fetch'i var (2026-09-21 canli kosuda yakalandi) -> kapiya bagli;
+  #     seed listesi zaten TM-audit'e dayali, pencere disinda uretecegi is yok.
+  if [ "$TM_ON" = "1" ]; then
+    run "1c) sentetik kadro"    apply_synthetic_squad.py --seed
+  else
+    echo "----- $(date -u '+%F %T UTC') 1c) sentetik kadro ATLANDI (TM pencere disi) -----"
+  fi
   run "2) remap (additive)"   remap_players_additive.py APPLY=1
   # 2b) apifootball<->sofascore kimlik haritasi: yeni transferler kadroya girince
   #     PSM guncel-sezon Avg koprusu (af-<id> -> sofascore -> tsl_ss) icin tazele.
