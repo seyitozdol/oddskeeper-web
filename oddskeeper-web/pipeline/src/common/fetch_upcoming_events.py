@@ -21,9 +21,11 @@ Kullanim: python fetch_upcoming_events.py [gun_sayisi]  (varsayilan 28)
 Periyodik: VPS'te cron (/opt/oddskeeper/run_upcoming_events.sh).
 """
 import os
+import secrets
 import sys
 import time
 from datetime import date, datetime, timedelta, timezone
+from urllib.parse import unquote, urlsplit
 
 import psycopg2
 from curl_cffi import requests as creq
@@ -36,6 +38,35 @@ DEFAULT_DAYS_AHEAD = 28
 # main() icinde load_dotenv sonrasi doldurulur. SofaScore residential proxy
 # (PROXY_URL, .env) ardindan cekilir; bos kalirsa VPS'te 403 gelir.
 PROXIES: dict = {}
+_RAW_PROXY = ""
+
+
+def _sticky_proxy(raw: str, sessid: str) -> str:
+    """DataImpulse STICKY oturumu: user sonuna ';sessid.<id>' (capture_odds_vps
+    deseniyle ayni; ayni sessid ~30dk ayni exit IP'de kalir). Rotating gw her
+    istegi BASKA exit'e dusuruyordu; havuzdaki bozuk exit'ler (sahte sertifika,
+    WRONG_VERSION_NUMBER, timeout, 403) 19-22 Eyl'de gunde 75-132 istegi
+    patlatti ve bugun/yarin kategorileri cekilemez oldu. 'sessid.' zaten
+    varsa (env elle sabitlemis) dokunma."""
+    if "://" not in raw or "@" not in raw:
+        return raw
+    p = urlsplit(raw)
+    user = unquote(p.username or "")
+    if not user or "sessid." in user:
+        return raw
+    pwd = unquote(p.password or "")
+    cred = f"{user};sessid.{sessid}" + (f":{pwd}" if pwd else "")
+    return f"{p.scheme}://{cred}@{p.hostname}:{p.port}"
+
+
+def _new_session() -> None:
+    """Yeni sticky sessid kur. Kosu basinda bir kez; sonra yalniz basarisiz
+    istekte cagrilir (iyi exit korunur, bozuk exit terk edilir)."""
+    global PROXIES
+    if not _RAW_PROXY:
+        return
+    sticky = _sticky_proxy(_RAW_PROXY, secrets.token_hex(6))
+    PROXIES = {"http": sticky, "https": sticky}
 
 # Kategori id'leri /api/v1/sport/{sport}/categories ciktisindan (2026-07-30).
 # "all": kategorinin tum maclari; "tr_only": sadece TR takimli maclar.
@@ -80,7 +111,7 @@ def log(msg: str) -> None:
 
 
 def get_json(url: str) -> dict | None:
-    for attempt in (1, 2):
+    for attempt in (1, 2, 3):
         try:
             r = creq.get(url, impersonate="chrome", timeout=40, proxies=PROXIES)
             if r.status_code == 200:
@@ -90,6 +121,7 @@ def get_json(url: str) -> dict | None:
             log(f"HTTP {r.status_code} ({attempt}. deneme): {url}")
         except Exception as ex:
             log(f"istek hatasi ({attempt}. deneme): {url} -> {ex}")
+        _new_session()  # bozuk exit'ten kac: sonraki deneme yeni sticky oturumda
         time.sleep(2.0)
     return None
 
@@ -153,8 +185,9 @@ def main() -> None:
     proxy = (os.environ.get("PROXY_URL") or "").strip()
     if not proxy:
         raise SystemExit("Eksik PROXY_URL (.env) - SofaScore proxy'siz 403 verir")
-    global PROXIES
-    PROXIES = {"http": proxy, "https": proxy}
+    global _RAW_PROXY
+    _RAW_PROXY = proxy
+    _new_session()  # sticky sessid ile basla; bozuk exit'te get_json yenisine kacar
 
     conn = psycopg2.connect(os.environ["DATABASE_URL"])
     conn.autocommit = False
