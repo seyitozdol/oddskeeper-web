@@ -21,6 +21,24 @@ const TAG_FIX: L = { en: "Fix", tr: "Düzeltme" };
 
 const ENTRIES: Entry[] = [
   {
+    date: { en: "22 September", tr: "22 Eylül" },
+    title: {
+      en: "Upcoming Events: BSL emblem and stricter basketball odds matching",
+      tr: "Upcoming Events: BSL amblemi ve basketbolda daha sıkı oran eşleştirme",
+    },
+    tag: TAG_FIX,
+    items: [
+      {
+        en: "Basketball Super League matches now show the BSL emblem next to the tournament name, the same way football leagues do.",
+        tr: "Basketbol Süper Ligi maçlarında turnuva adının yanında artık BSL amblemi görünüyor; futbol liglerindeki gibi.",
+      },
+      {
+        en: "Bookmaker odds are now linked only within the same sport and within a few days of the fixture date. A basketball fixture can no longer pick up the odds of a football match between clubs with the same name (for example Manisa - Erokspor), and a match from a different week can no longer be shown with another week's odds.",
+        tr: "Bahis oranları artık yalnız aynı spor içinde ve fikstür tarihine birkaç gün yakınlıkta bağlanıyor. Aynı adlı kulüplerin futbol maçının oranı basketbol maçında (örneğin Manisa - Erokspor) görünmüyor; farklı haftadaki bir maç başka haftanın oranıyla gösterilmiyor.",
+      },
+    ],
+  },
+  {
     date: { en: "21 September", tr: "21 Eylül" },
     title: {
       en: "Basketball tools: closed Under is written as 1 in the Excel",
