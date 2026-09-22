@@ -142,8 +142,21 @@ def _fuzzy_cover(ta: set[str], tb: set[str]) -> float:
     return max(cov(ta, tb), cov(tb, ta))
 
 
+# TAM-AD alias sozlugu (sahip bilgisi 2026-09-22): bahis sitesi takimi SPONSOR adiyla
+# yazar, SofaScore baska sponsor/kurum adiyla; token kesisimi sifir kalir ve
+# ekzonim/fuzzy kurtaramaz. Anahtar fold() sonrasi TAM ad (kucuk harf, ASCII),
+# deger SofaScore'daki ad. Her iki tarafa simetrik uygulanir. Sponsor degisince
+# satiri guncelle.
+TEAM_ALIASES = {
+    "ilab basketbol": "Sigortam.net Itu BB",   # Bets10 TBL -> SofaScore
+    "ogm ormanspor": "Orman Gençlik",           # Bets10 TBL -> SofaScore
+}
+
+
 def name_score(a: str, b: str) -> float:
     """0..1 benzerlik. Token kesisimi + kapsama (substring) + bulanik kapsama."""
+    a = TEAM_ALIASES.get(fold(a).strip(), a)
+    b = TEAM_ALIASES.get(fold(b).strip(), b)
     ta, tb = tokens(a), tokens(b)
     if not ta or not tb:
         return 0.0
