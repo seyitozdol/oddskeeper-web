@@ -255,6 +255,42 @@ export default function UpcomingEventsPanel({
     );
   }
 
+  // SB Manager wordmark'i (sahip görseli 2026-09-22): beyaz zemin, kalın turkuaz
+  // "sb" + ince turuncu "manager". Bahis rozetleri gibi dış logo dosyası yok.
+  function sbManagerBadge() {
+    return (
+      <span className="inline-flex h-4 items-center rounded-[3px] bg-white px-1 text-[10px] leading-none tracking-tight ring-1 ring-black/10">
+        <span className="font-extrabold text-[#17b0c6]">sb</span>
+        <span className="font-normal text-[#f5a11c]">manager</span>
+      </span>
+    );
+  }
+
+  // Bets10'dan çekilen her maçın fixture id'si (f-...) SB Manager fixture-v2
+  // sayfasına derin linktir; id yoksa (Bets10'da olmayan maç) boş nokta.
+  const SB_MANAGER_BASE =
+    "https://tradingtools.ble.local/fixture-management/fixture-v2/";
+  function SbManagerMark({ fixtureId }: { fixtureId: string | null }) {
+    if (!fixtureId) {
+      return (
+        <span className="text-[11px] text-ink-3/50" title={t("upcomingEvents.oddsUnchecked")}>
+          ·
+        </span>
+      );
+    }
+    return (
+      <a
+        href={SB_MANAGER_BASE + encodeURIComponent(fixtureId)}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex items-center transition hover:opacity-80"
+        title={`${fixtureId}, ${t("upcomingEvents.openSbManager")}`}
+      >
+        {sbManagerBadge()}
+      </a>
+    );
+  }
+
   // href (maçın o sitedeki sayfası) doluysa rozet yeni sekmede açılan linktir;
   // yoksa düz rozet kalır. bet365'te maç id'si olmadığından link maç sayfası
   // değil, takım adıyla site içi aramadır (maç sonuçlarda listelenir).
@@ -468,6 +504,7 @@ export default function UpcomingEventsPanel({
                   {brandBadge("oddsportal")}
                 </th>
                 <th className="px-1 py-1 text-center">{brandBadge("bmbets")}</th>
+                <th className="px-1 py-1 text-center">{sbManagerBadge()}</th>
               </tr>
             </thead>
             <tbody>
@@ -475,7 +512,7 @@ export default function UpcomingEventsPanel({
                 <Fragment key={key}>
                   <tr>
                     <td
-                      colSpan={9}
+                      colSpan={10}
                       className="border-y border-line bg-veil px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-3"
                     >
                       {dayLabel(key, rows[0])}
@@ -591,6 +628,9 @@ export default function UpcomingEventsPanel({
                             listed={e.bmbets_listed}
                             href={e.bmbets_event_url}
                           />
+                        </td>
+                        <td className="px-1 py-1 text-center">
+                          <SbManagerMark fixtureId={e.bets10_event_id} />
                         </td>
                       </tr>
                     );

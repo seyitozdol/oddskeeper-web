@@ -6,7 +6,8 @@ import { getTeamHrefResolver } from "./teamLinks";
 type RawRow = Omit<UpcomingEventRow, "home_team_href" | "away_team_href">;
 
 // select("*") daraltması (C-2 Faz 3): RawRow alanlarıyla birebir aynı tutulur;
-// view'daki bets10_event_id bilinçli dışarıda (link için *_event_url yeterli).
+// bets10_event_id (Bets10 fixture id) SB Manager derin linki için çekilir
+// (tradingtools fixture-v2/<id>); rozet linkleri *_event_url ile kurulur.
 const RAW_ROW_COLS =
   "event_id, sport, category_name, tournament_name, season_name, round_info, " +
   "home_team_id, home_team_name, home_team_country, home_team_national, " +
@@ -15,7 +16,7 @@ const RAW_ROW_COLS =
   "event_slug, updated_at, bet365_has_odds, bet365_market_count, bet365_listed, " +
   "bets10_has_odds, bets10_market_count, bets10_listed, oddsportal_has_odds, " +
   "oddsportal_market_count, oddsportal_listed, bmbets_has_odds, " +
-  "bmbets_market_count, bmbets_listed, bet365_event_url, bets10_event_url, " +
+  "bmbets_market_count, bmbets_listed, bet365_event_url, bets10_event_id, bets10_event_url, " +
   "oddsportal_event_url, bmbets_event_url";
 
 // Aynı maç iki farklı SofaScore event_id ile gelebilir (özellikle hazırlık

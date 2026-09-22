@@ -52,6 +52,8 @@ export type UpcomingEventRow = {
   // Maçın o sitedeki sayfası (event_odds_availability.site_event_url; loader
   // doldurur). Doluysa marka rozeti bu adrese linklenir, null ise düz rozet.
   bet365_event_url: string | null;
+  /** Bets10 fixture id ("f-..."); SB Manager derin linki bununla kurulur. */
+  bets10_event_id: string | null;
   bets10_event_url: string | null;
   oddsportal_event_url: string | null;
   bmbets_event_url: string | null;
