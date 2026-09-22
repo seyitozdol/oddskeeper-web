@@ -111,6 +111,9 @@ _EXONYMS = {
     "munih": ("munchen",),
     "sofya": ("sofia",),
     "monako": ("monaco",),
+    # SofaScore "Barça Basket" (fold: barca) vs Bets10 "FC Barcelona": difflib 0.714
+    # < FUZZY 0.72, Euroleague Barca-Efes rozetsiz kaliyordu (2026-09-22).
+    "barca": ("barcelona",),
 }
 
 
