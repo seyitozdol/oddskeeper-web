@@ -28,9 +28,10 @@ export type PmFixture = {
   external_id: string | null;
   match_date: string | null;
   note: string | null;
-  // Basketbol: Bets10 toplam sayı + handikap çizgisi (ev perspektifi). Voleybol yazmaz (opsiyonel).
+  // Basketbol: Bets10 toplam sayı + handikap çizgisi (ev perspektifi) + hafta. Voleybol yazmaz (opsiyonel).
   total_line?: number | null;
   hcp_line?: number | null;
+  week?: number | null;
 };
 
 // Bets10 basketbol bağı (resolver link_fixtures_bets10.py -> tracker.bb_fixture_bets10_link).
@@ -44,6 +45,7 @@ export type BbBets10Link = {
   away_team_name: string | null;
   tournament_name: string | null;
   start_ts: string | null;
+  week: number | null;      // SofaScore 'Round N'; kupa finali vb. null
   home_odds: number | null;
   away_odds: number | null;
   hcp_line: number | null;
@@ -57,7 +59,7 @@ export async function fetchBets10Links(league = "basketball"): Promise<BbBets10L
   const supabase = createClient();
   const { data, error } = await supabase
     .schema("analytics").from("bb_fixture_bets10_link_v1")
-    .select("event_id,bets10_event_id,home_team_slug,away_team_slug,home_team_name,away_team_name,tournament_name,start_ts,home_odds,away_odds,hcp_line,hcp_home_odds,hcp_away_odds,total_line,total_over_odds,total_under_odds")
+    .select("event_id,bets10_event_id,home_team_slug,away_team_slug,home_team_name,away_team_name,tournament_name,start_ts,week,home_odds,away_odds,hcp_line,hcp_home_odds,hcp_away_odds,total_line,total_over_odds,total_under_odds")
     .eq("league", league)
     .order("start_ts", { ascending: true })
     .limit(200)
@@ -144,7 +146,7 @@ export async function fetchPmFixtures(league = "basketball"): Promise<PmFixture[
   const supabase = createClient();
   const { data, error } = await supabase
     .schema("analytics").from("bb_pm_fixtures")
-    .select("id,home_team_slug,away_team_slug,home_team_name,away_team_name,external_id,match_date,note,total_line,hcp_line")
+    .select("id,home_team_slug,away_team_slug,home_team_name,away_team_name,external_id,match_date,note,total_line,hcp_line,week")
     .eq("league", league)
     .order("match_date", { ascending: true, nullsFirst: false })
     .order("id", { ascending: true })

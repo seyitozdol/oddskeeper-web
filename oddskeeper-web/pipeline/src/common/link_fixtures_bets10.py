@@ -324,31 +324,47 @@ def _bb_markets(sels: list[tuple[str, str, float | None]], home: str, away: str)
     return out
 
 
+_ROUND_RE = re.compile(r"^\s*round\s+(\d+)\s*$", re.IGNORECASE)
+
+
+def _bb_week(round_info: str | None) -> int | None:
+    """SofaScore round_info 'Round 3' -> 3; 'Final', 'Semifinals' vb. -> None."""
+    m = _ROUND_RE.match(round_info or "")
+    return int(m.group(1)) if m else None
+
+
 def load_bets10_basketball(cur) -> dict[int, dict]:
-    """SofaScore event_id -> Bets10 basketbol maci (lig anahtari + ham secimler)."""
+    """SofaScore event_id -> yaklasan basketbol maci (lig anahtari + hafta + Bets10 secimleri).
+
+    Kaynak upcoming_events (son 1 gun + gelecek); Bets10 orani olmayan mac da gelir
+    (site_event_id/oran alanlari None) ki Fixtures sekmesi haftayi TAM listelesin.
+    """
     cur.execute(
         """
-        select o.event_id, o.site_event_id, o.market_name, o.selection, o.odds,
+        select u.event_id, o.site_event_id, o.market_name, o.selection, o.odds,
                u.home_team_name, u.away_team_name, u.home_team_id, u.away_team_id,
-               u.tournament_name, u.category_name, u.start_ts
-        from analytics.upcoming_event_odds_v1 o
-        join tracker.upcoming_events u on u.event_id = o.event_id
-        where o.site = 'bets10' and u.sport = 'basketball'
+               u.tournament_name, u.category_name, u.start_ts, u.round_info
+        from tracker.upcoming_events u
+        left join analytics.upcoming_event_odds_v1 o
+          on o.event_id = u.event_id and o.site = 'bets10'
+        where u.sport = 'basketball'
+          and u.start_ts > now() - interval '1 day'
         """
     )
     ev: dict[int, dict] = {}
-    for (eid, seid, market, sel, odds, home, away, hid, aid, tour, cat, start_ts) in cur.fetchall():
+    for (eid, seid, market, sel, odds, home, away, hid, aid, tour, cat, start_ts, rinfo) in cur.fetchall():
         league = _bb_league(tour, cat)
         if not league:
             continue
         e = ev.setdefault(eid, {
             "event_id": eid, "site_event_id": seid, "league": league,
             "home": home, "away": away, "home_id": hid, "away_id": aid,
-            "tournament": tour, "start_ts": start_ts, "sels": [],
+            "tournament": tour, "start_ts": start_ts, "week": _bb_week(rinfo), "sels": [],
         })
         if seid and not e["site_event_id"]:
             e["site_event_id"] = seid
-        e["sels"].append((market, sel, float(odds) if odds is not None else None))
+        if market is not None:
+            e["sels"].append((market, sel, float(odds) if odds is not None else None))
     for e in ev.values():
         e.update(_bb_markets(e["sels"], e["home"], e["away"]))
     return ev
@@ -391,6 +407,10 @@ def _best_team(name: str, teams: list[tuple[str, str, list[str]]]) -> tuple[str,
     scored.sort(key=lambda t: t[0], reverse=True)
     best = scored[0]
     second = scored[1][0] if len(scored) > 1 else 0.0
+    # TAM ad eslesmesi (1.0) kesindir; margin aranmaz. Ornek: 'Maxima Roma' MRO'ya 1.0,
+    # BCR ('Roma Basketball' -> {roma}) kapsama ile 0.9 -> margin 0.1 ile bosa dusuyordu.
+    if best[0] >= 0.999 and second < 0.999:
+        return best[1], best[2], round(best[0], 3)
     if best[0] >= MATCH_THRESHOLD and (best[0] - second) >= MARGIN:
         return best[1], best[2], round(best[0], 3)
     return None
@@ -420,7 +440,7 @@ def resolve_basketball(cur, events: dict[int, dict]) -> list[dict]:
         out.append({
             "league": e["league"], "event_id": e["event_id"], "bets10_event_id": e["site_event_id"],
             "home_team_slug": hs, "away_team_slug": as_, "home_team_name": hn, "away_team_name": an,
-            "tournament_name": e["tournament"], "start_ts": e["start_ts"],
+            "tournament_name": e["tournament"], "start_ts": e["start_ts"], "week": e["week"],
             "home_odds": e["home_odds"], "away_odds": e["away_odds"],
             "hcp_line": e["hcp_line"], "hcp_home_odds": e["hcp_home_odds"], "hcp_away_odds": e["hcp_away_odds"],
             "total_line": e["total_line"], "total_over_odds": e["total_over_odds"], "total_under_odds": e["total_under_odds"],
@@ -466,15 +486,16 @@ def main() -> None:
     bb_started = sum(1 for e in bb_events.values() if e["start_ts"] is not None and e["start_ts"] <= now)
     bb_events = {k: e for k, e in bb_events.items() if e["start_ts"] is None or e["start_ts"] > now}
     bb_rows = resolve_basketball(cur, bb_events)
-    print(f"\nB10 basketbol maçı (BSL/EL/EC, oranlı): {len(bb_events)}"
+    with_b10 = sum(1 for r in bb_rows if r["bets10_event_id"])
+    print(f"\nyaklaşan basketbol maçı (BSL/EL/EC): {len(bb_events)}"
           + (f"; başlamış (donduruldu): {bb_started}" if bb_started else ""))
-    print(f"eşleşen basketbol maçı: {len(bb_rows)} "
-          f"(bsl {sum(1 for r in bb_rows if r['league']=='basketball')}, "
+    print(f"eşleşen basketbol maçı: {len(bb_rows)} (B10 oranlı {with_b10}; "
+          f"bsl {sum(1 for r in bb_rows if r['league']=='basketball')}, "
           f"el {sum(1 for r in bb_rows if r['league']=='euroleague')}, "
           f"ec {sum(1 for r in bb_rows if r['league']=='eurocup')})")
     unmatched = [e for e in bb_events.values() if e["event_id"] not in {r["event_id"] for r in bb_rows}]
     for r in sorted(bb_rows, key=lambda r: (r["league"], r["start_ts"] or now)):
-        print(f"  {r['league']} eid={r['event_id']} b10={r['bets10_event_id']} "
+        print(f"  {r['league']} w={r['week']} eid={r['event_id']} b10={r['bets10_event_id']} "
               f"{r['home_team_slug']} - {r['away_team_slug']} "
               f"ML={r['home_odds']}/{r['away_odds']} HCP={r['hcp_line']} "
               f"({r['hcp_home_odds']}/{r['hcp_away_odds']}) TOT={r['total_line']} score={r['match_score']}")
@@ -490,18 +511,18 @@ def main() -> None:
             """
             insert into tracker.bb_fixture_bets10_link
               (league, event_id, bets10_event_id, home_team_slug, away_team_slug,
-               home_team_name, away_team_name, tournament_name, start_ts,
+               home_team_name, away_team_name, tournament_name, start_ts, week,
                home_odds, away_odds, hcp_line, hcp_home_odds, hcp_away_odds,
                total_line, total_over_odds, total_under_odds, match_score, updated_at)
             values (%(league)s,%(event_id)s,%(bets10_event_id)s,%(home_team_slug)s,%(away_team_slug)s,
-                    %(home_team_name)s,%(away_team_name)s,%(tournament_name)s,%(start_ts)s,
+                    %(home_team_name)s,%(away_team_name)s,%(tournament_name)s,%(start_ts)s,%(week)s,
                     %(home_odds)s,%(away_odds)s,%(hcp_line)s,%(hcp_home_odds)s,%(hcp_away_odds)s,
                     %(total_line)s,%(total_over_odds)s,%(total_under_odds)s,%(match_score)s, now())
             on conflict (league, event_id) do update set
               bets10_event_id = excluded.bets10_event_id,
               home_team_slug = excluded.home_team_slug, away_team_slug = excluded.away_team_slug,
               home_team_name = excluded.home_team_name, away_team_name = excluded.away_team_name,
-              tournament_name = excluded.tournament_name, start_ts = excluded.start_ts,
+              tournament_name = excluded.tournament_name, start_ts = excluded.start_ts, week = excluded.week,
               home_odds = excluded.home_odds, away_odds = excluded.away_odds,
               hcp_line = excluded.hcp_line, hcp_home_odds = excluded.hcp_home_odds, hcp_away_odds = excluded.hcp_away_odds,
               total_line = excluded.total_line, total_over_odds = excluded.total_over_odds, total_under_odds = excluded.total_under_odds,

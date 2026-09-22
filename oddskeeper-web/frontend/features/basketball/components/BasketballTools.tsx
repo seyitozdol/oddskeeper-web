@@ -215,6 +215,20 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
   const [tab, setTab] = useState<"team" | "player">("team");
   const [fixSel, setFixSel] = useState("");
   const fixExtId = pmFixtures.find((f) => String(f.id) === fixSel)?.external_id ?? "";
+  // Fikstür dropdown'ı haftaya göre gruplu (optgroup); haftasız (kupa/manuel) satırlar üstte düz.
+  const fixtureGroups = useMemo(() => {
+    const by = new Map<number, PmFixture[]>();
+    const none: PmFixture[] = [];
+    for (const f of pmFixtures) {
+      if (f.week == null) { none.push(f); continue; }
+      if (!by.has(f.week)) by.set(f.week, []);
+      by.get(f.week)!.push(f);
+    }
+    return { none, weeks: [...by.keys()].sort((x, y) => x - y).map((w) => ({ week: w, rows: by.get(w)! })) };
+  }, [pmFixtures]);
+  const fixtureOption = (f: PmFixture) => (
+    <option key={f.id} value={f.id}>{(f.home_team_name || f.home_team_slug)} — {(f.away_team_name || f.away_team_slug)}{f.external_id ? ` [${f.external_id}]` : ""}</option>
+  );
 
   const home = splitBy.get(homeSlug);
   const away = splitBy.get(awaySlug);
@@ -509,7 +523,10 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
             onChange={(e) => { setFixSel(e.target.value); setPtsOv({ h: null, a: null }); const f = pmFixtures.find((x) => String(x.id) === e.target.value); if (f) { setHomeSlug(f.home_team_slug); setAwaySlug(f.away_team_slug); } }}
             className="rounded-md border border-line bg-field px-2 py-1.5 text-[13px] text-ink outline-none focus:border-line-strong">
             <option value="">{t("basketball.fixtureManual")}…</option>
-            {pmFixtures.map((f) => (<option key={f.id} value={f.id}>{(f.home_team_name || f.home_team_slug)} — {(f.away_team_name || f.away_team_slug)}{f.external_id ? ` [${f.external_id}]` : ""}</option>))}
+            {fixtureGroups.none.map(fixtureOption)}
+            {fixtureGroups.weeks.map((g) => (
+              <optgroup key={g.week} label={`${t("basketball.week")} ${g.week}`}>{g.rows.map(fixtureOption)}</optgroup>
+            ))}
           </select>
         </label>
         <label className="flex flex-col gap-1">

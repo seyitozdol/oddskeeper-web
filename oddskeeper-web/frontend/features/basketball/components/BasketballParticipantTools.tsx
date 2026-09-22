@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useI18n } from "@/lib/i18n/LanguageProvider";
@@ -285,7 +285,12 @@ const numOrNull = (s: string): number | null => {
   const v = parseFloat(s.replace(",", "."));
   return Number.isNaN(v) ? null : v;
 };
-type FixEdit = { external_id?: string; total_line?: string; hcp_line?: string };
+const intOrNull = (s: string): number | null => {
+  const v = numOrNull(s);
+  return v == null ? null : Math.round(v);
+};
+type FixEdit = { external_id?: string; total_line?: string; hcp_line?: string; week?: string };
+type WeekSel = number | "all";
 
 function FixturesTab({ fixtures, teams, reload, league, isAdmin, locale, t }: {
   fixtures: PmFixture[]; teams: { slug: string; name: string }[]; reload: () => void; league: string;
@@ -294,8 +299,9 @@ function FixturesTab({ fixtures, teams, reload, league, isAdmin, locale, t }: {
   const [h, setH] = useState(teams[0]?.slug ?? "");
   const [a, setA] = useState(teams[1]?.slug ?? "");
   const [ext, setExt] = useState("");
+  const [newWeek, setNewWeek] = useState("");
   const [links, setLinks] = useState<BbBets10Link[]>([]);
-  // Satır düzenlemeleri (ext id / toplam / handikap): local state; Kaydet DB'ye yazar + reload.
+  // Satır düzenlemeleri (ext id / toplam / handikap / hafta): local state; Kaydet DB'ye yazar + reload.
   const [edits, setEdits] = useState<Record<number, FixEdit>>({});
   const [busy, setBusy] = useState(false);
   const reloadLinks = () => fetchBets10Links(league).then(setLinks);
@@ -311,21 +317,52 @@ function FixturesTab({ fixtures, teams, reload, league, isAdmin, locale, t }: {
     for (const f of fixtures) { const l = linkFor(f); if (l) s.add(l.event_id); }
     return s;
   }, [fixtures, links]); // eslint-disable-line react-hooks/exhaustive-deps
-  const pending = links.filter((l) => !linkStarted(l) && !matchedEvents.has(l.event_id));
+
+  // ── Hafta (futboldaki Round dropdown karşılığı) ──
+  // Hafta kaynağı: link.week (SofaScore 'Round N') ve fixture.week. Bir hafta "bitti" = o haftanın
+  // tüm maçları başlamış ve tarihli fikstürlerinin hiçbiri gelecekte değil. Aktif haftalar üstte,
+  // bitenler altta; açılış = ilk aktif hafta (bir kez). Haftasız satırlar (kupa/manuel) her seçimde görünür.
+  const [week, setWeek] = useState<WeekSel>("all");
+  const weekInitRef = useRef(false);
+  const { weekOptions, completedWeeks } = useMemo(() => {
+    const future = new Map<number, boolean>();
+    const today = new Date().toISOString().slice(0, 10);
+    for (const l of links) if (l.week != null) future.set(l.week, (future.get(l.week) ?? false) || !linkStarted(l));
+    for (const f of fixtures) if (f.week != null) future.set(f.week, (future.get(f.week) ?? false) || !f.match_date || f.match_date >= today);
+    const weeks = [...future.keys()].sort((x, y) => x - y);
+    const completed = new Set(weeks.filter((w) => !future.get(w)));
+    return { weekOptions: [...weeks.filter((w) => !completed.has(w)), ...weeks.filter((w) => completed.has(w))], completedWeeks: completed };
+  }, [links, fixtures]);
+  useEffect(() => {
+    if (weekInitRef.current || weekOptions.length === 0) return;
+    weekInitRef.current = true;
+    const first = weekOptions.find((w) => !completedWeeks.has(w));
+    if (first != null) setWeek(first);
+  }, [weekOptions, completedWeeks]);
+  const inWeek = (w: number | null | undefined) => week === "all" || w == null || w === week;
+  const weekLabel = (w: number) => `${t("basketball.week")} ${w}${completedWeeks.has(w) ? ` (${t("basketball.weekDone")})` : ""}`;
+
+  const pendingAll = links.filter((l) => !linkStarted(l) && !matchedEvents.has(l.event_id));
+  const pending = pendingAll
+    .filter((l) => inWeek(l.week))
+    .sort((x, y) => (x.week ?? 0) - (y.week ?? 0) || String(x.start_ts ?? "").localeCompare(String(y.start_ts ?? "")));
+  const pendingWithId = pending.filter((l) => !!l.bets10_event_id);
+  const visibleFixtures = fixtures.filter((f) => inWeek(f.week));
 
   const add = async () => {
     if (!h || !a || h === a) return;
-    await insertFixture({ home_team_slug: h, away_team_slug: a, home_team_name: nameOf(h), away_team_name: nameOf(a), external_id: ext.trim() || null, match_date: null, note: null, total_line: null, hcp_line: null }, league);
+    await insertFixture({ home_team_slug: h, away_team_slug: a, home_team_name: nameOf(h), away_team_name: nameOf(a), external_id: ext.trim() || null, match_date: null, note: null, total_line: null, hcp_line: null, week: intOrNull(newWeek) }, league);
     setExt(""); reload();
   };
   const addFromLink = (l: BbBets10Link) => insertFixture({
     home_team_slug: l.home_team_slug, away_team_slug: l.away_team_slug,
     home_team_name: nameOf(l.home_team_slug, l.home_team_name), away_team_name: nameOf(l.away_team_slug, l.away_team_name),
     external_id: l.bets10_event_id, match_date: l.start_ts ? l.start_ts.slice(0, 10) : null, note: null,
-    total_line: l.total_line, hcp_line: l.hcp_line,
+    total_line: l.total_line, hcp_line: l.hcp_line, week: l.week,
   }, league);
   const addOne = async (l: BbBets10Link) => { setBusy(true); await addFromLink(l); setBusy(false); reload(); };
-  const fillAll = async () => { setBusy(true); for (const l of pending) await addFromLink(l); setBusy(false); reload(); };
+  // "Bets10'dan doldur": görünen (seçili hafta) + Bets10 id'si olan maçlar.
+  const fillAll = async () => { setBusy(true); for (const l of pendingWithId) await addFromLink(l); setBusy(false); reload(); };
 
   const val = (f: PmFixture, k: keyof FixEdit): string => {
     const e = edits[f.id]?.[k];
@@ -339,10 +376,11 @@ function FixturesTab({ fixtures, teams, reload, league, isAdmin, locale, t }: {
     external_id: l.bets10_event_id ?? "",
     total_line: l.total_line == null ? "" : String(l.total_line),
     hcp_line: l.hcp_line == null ? "" : String(l.hcp_line),
+    ...(l.week != null && val(f, "week") === "" ? { week: String(l.week) } : {}),
   });
-  // Öneri, satırdaki (düzenlenmiş/kaydedilmiş) değerden farklı mı → Uygula göster.
+  // Öneri, satırdaki (düzenlenmiş/kaydedilmiş) değerden farklı mı → Uygula göster (Bets10 id'si varsa).
   const suggestDiff = (f: PmFixture, l: BbBets10Link) =>
-    val(f, "external_id") !== (l.bets10_event_id ?? "") || numOrNull(val(f, "total_line")) !== l.total_line || numOrNull(val(f, "hcp_line")) !== l.hcp_line;
+    !!l.bets10_event_id && (val(f, "external_id") !== l.bets10_event_id || numOrNull(val(f, "total_line")) !== l.total_line || numOrNull(val(f, "hcp_line")) !== l.hcp_line);
   const save = async () => {
     const entries = Object.entries(edits);
     if (entries.length === 0) return;
@@ -352,34 +390,49 @@ function FixturesTab({ fixtures, teams, reload, league, isAdmin, locale, t }: {
       if (p.external_id !== undefined) row.external_id = p.external_id.trim() || null;
       if (p.total_line !== undefined) row.total_line = numOrNull(p.total_line);
       if (p.hcp_line !== undefined) row.hcp_line = numOrNull(p.hcp_line);
+      if (p.week !== undefined) row.week = intOrNull(p.week);
       await updateFixture(Number(id), row);
     }
     setBusy(false); setEdits({}); reload();
   };
 
   const inp = "rounded border border-line bg-field px-2 py-0.5 text-[12px] text-ink outline-none focus:border-line-strong";
-  const linkSummary = (l: BbBets10Link) =>
-    `H ${fmtLine(l.hcp_line, true)} (${fmtOdds(l.hcp_home_odds)}/${fmtOdds(l.hcp_away_odds)}) · T ${fmtLine(l.total_line)}${l.total_line != null ? ` (${fmtOdds(l.total_over_odds)}/${fmtOdds(l.total_under_odds)})` : ""} · ML ${fmtOdds(l.home_odds)}/${fmtOdds(l.away_odds)}`;
+  const sel = "rounded-md border border-line bg-field px-2 py-1.5 text-[13px] text-ink";
+  const linkSummary = (l: BbBets10Link) => l.bets10_event_id
+    ? `H ${fmtLine(l.hcp_line, true)} (${fmtOdds(l.hcp_home_odds)}/${fmtOdds(l.hcp_away_odds)}) · T ${fmtLine(l.total_line)}${l.total_line != null ? ` (${fmtOdds(l.total_over_odds)}/${fmtOdds(l.total_under_odds)})` : ""} · ML ${fmtOdds(l.home_odds)}/${fmtOdds(l.away_odds)}`
+    : t("basketball.betsNone");
+  const weekBadge = (w: number | null | undefined) => (w != null && week === "all")
+    ? <span className="rounded bg-veil px-1.5 py-0.5 text-[10px] font-semibold text-ink-3">{t("basketball.week")} {w}</span>
+    : null;
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-end gap-2">
-        <select value={h} onChange={(e) => setH(e.target.value)} className="rounded-md border border-line bg-field px-2 py-1.5 text-[13px] text-ink">{teams.map((x) => <option key={x.slug} value={x.slug}>{x.name}</option>)}</select>
+        <label className="flex flex-col gap-1">
+          <span className="text-[10px] uppercase tracking-[0.14em] text-ink-3">{t("basketball.week")}</span>
+          <select value={String(week)} onChange={(e) => setWeek(e.target.value === "all" ? "all" : Number(e.target.value))} className={sel}>
+            <option value="all">{t("basketball.allWeeks")}</option>
+            {weekOptions.map((w) => <option key={w} value={w}>{weekLabel(w)}</option>)}
+          </select>
+        </label>
+        <span className="mx-1 self-stretch border-l border-line" />
+        <select value={h} onChange={(e) => setH(e.target.value)} className={sel}>{teams.map((x) => <option key={x.slug} value={x.slug}>{x.name}</option>)}</select>
         <span className="pb-2 text-ink-3">vs</span>
-        <select value={a} onChange={(e) => setA(e.target.value)} className="rounded-md border border-line bg-field px-2 py-1.5 text-[13px] text-ink">{teams.map((x) => <option key={x.slug} value={x.slug}>{x.name}</option>)}</select>
+        <select value={a} onChange={(e) => setA(e.target.value)} className={sel}>{teams.map((x) => <option key={x.slug} value={x.slug}>{x.name}</option>)}</select>
         <input placeholder={t("basketball.extId")} value={ext} onChange={(e) => setExt(e.target.value)} className="w-28 rounded-md border border-line bg-field px-2 py-1.5 text-[13px] text-ink" />
+        <input type="number" min={1} placeholder={t("basketball.week")} value={newWeek} onChange={(e) => setNewWeek(e.target.value)} className="w-16 rounded-md border border-line bg-field px-2 py-1.5 text-[13px] text-ink" />
         <button onClick={add} className={btnSave}>{t("basketball.addFixture")}</button>
         <button onClick={save} disabled={busy || Object.keys(edits).length === 0} className={`${btnGhost} disabled:opacity-50`}>{t("basketball.save")}{Object.keys(edits).length ? ` (${Object.keys(edits).length})` : ""}</button>
         {isAdmin ? <div className="ml-auto" title={t("basketball.betsRefreshHint")}><RefreshNowButton kind="bets10_odds" onDone={reloadLinks} /></div> : null}
       </div>
 
-      {/* Bets10'da olup fikstürde olmayan maçlar: id otomatik görünür; yazma yalnız butonla */}
+      {/* Yaklaşan maçlar (SofaScore hafta + varsa Bets10 id/çizgi): otomatik görünür, yazma yalnız butonla */}
       <div className="rounded-lg border border-line bg-card-2/40 px-3 py-2.5">
         <div className="flex flex-wrap items-center gap-3">
           <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-3"><TenText text={t("basketball.betsPending")} /> ({pending.length})</span>
-          <button onClick={fillAll} disabled={busy || pending.length === 0} title={t("basketball.betsHint")}
+          <button onClick={fillAll} disabled={busy || pendingWithId.length === 0} title={t("basketball.betsHint")}
             className="rounded-md border border-accent/40 bg-accent/10 px-3 py-1 text-[12px] font-semibold text-accent-ink hover:bg-accent/20 disabled:opacity-40">
-            <TenText text={t("basketball.betsFill")} />{pending.length ? ` (${pending.length})` : ""}
+            <TenText text={t("basketball.betsFill")} />{pendingWithId.length ? ` (${pendingWithId.length})` : ""}
           </button>
           <span className="text-[11px] text-ink-3"><TenText text={t("basketball.betsTotalNote")} /></span>
         </div>
@@ -388,6 +441,7 @@ function FixturesTab({ fixtures, teams, reload, league, isAdmin, locale, t }: {
             {pending.map((l) => (
               <li key={l.event_id} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-1 text-[12px]">
                 <span className="w-24 shrink-0 tabular-nums text-ink-3">{l.start_ts ? formatMatchDate(l.start_ts, locale) : "—"}</span>
+                {weekBadge(l.week)}
                 <span className="text-ink">{nameOf(l.home_team_slug, l.home_team_name)} <span className="text-ink-3">-</span> {nameOf(l.away_team_slug, l.away_team_name)}</span>
                 <span className="font-mono text-[11px] text-ink-2">{l.bets10_event_id ?? "—"}</span>
                 <span className="tabular-nums text-ink-3">{linkSummary(l)}</span>
@@ -400,6 +454,7 @@ function FixturesTab({ fixtures, teams, reload, league, isAdmin, locale, t }: {
 
       <table className="min-w-full border-collapse text-[13px]">
         <thead><tr className="border-b border-line text-[10px] uppercase tracking-[0.1em] text-ink-3">
+          <th className="px-2 py-1.5 text-right">{t("basketball.week")}</th>
           <th className="px-2 py-1.5 text-left">{t("basketball.fixHome")}</th><th className="px-2 py-1.5 text-left">{t("basketball.fixAway")}</th>
           <th className="px-2 py-1.5 text-left">{t("basketball.extId")}</th>
           <th className="px-2 py-1.5 text-right">{t("basketball.fixTotal")}</th>
@@ -408,11 +463,12 @@ function FixturesTab({ fixtures, teams, reload, league, isAdmin, locale, t }: {
           <th className="px-2 py-1.5"></th>
         </tr></thead>
         <tbody>
-          {fixtures.map((f) => {
+          {visibleFixtures.map((f) => {
             const l = linkFor(f);
             const started = l ? linkStarted(l) : false;
             return (
               <tr key={f.id} className="border-t border-line hover:bg-veil">
+                <td className="px-2 py-1 text-right"><input type="number" min={1} value={val(f, "week")} onChange={(e) => patch(f.id, { week: e.target.value })} className={`${inp} w-14 text-right tabular-nums`} /></td>
                 <td className="px-2 py-1 text-ink whitespace-nowrap">{f.home_team_name}</td><td className="px-2 py-1 text-ink whitespace-nowrap">{f.away_team_name}</td>
                 <td className="px-2 py-1"><input value={val(f, "external_id")} onChange={(e) => patch(f.id, { external_id: e.target.value })} className={`${inp} w-44 font-mono text-[11px]`} /></td>
                 <td className="px-2 py-1 text-right"><input type="number" step="0.5" value={val(f, "total_line")} onChange={(e) => patch(f.id, { total_line: e.target.value })} className={`${inp} w-20 text-right tabular-nums`} /></td>
@@ -433,7 +489,7 @@ function FixturesTab({ fixtures, teams, reload, league, isAdmin, locale, t }: {
               </tr>
             );
           })}
-          {fixtures.length === 0 ? <tr><td colSpan={7} className="px-2 py-3 text-[12px] text-ink-3">—</td></tr> : null}
+          {visibleFixtures.length === 0 ? <tr><td colSpan={8} className="px-2 py-3 text-[12px] text-ink-3">—</td></tr> : null}
         </tbody>
       </table>
     </div>
