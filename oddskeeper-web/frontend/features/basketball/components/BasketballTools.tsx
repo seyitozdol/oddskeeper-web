@@ -63,8 +63,8 @@ type Props = {
 const PROP_PAYBACK = 0.915;
 const TEAM_PAYBACK = 0.96;
 
-// Yüzde metrikleri: hacim değil oran → projeksiyona ölçeklenmez, log'dan hesaplanır.
-// (ftpct log'da ftm/fta olmadığından hesaplanamaz; fgmadepct = fgm/fga.)
+// Yüzde metrikleri: hacim değil oran → projeksiyona ölçeklenmez, takım maç logundan
+// hesaplanır (fgmadepct = fgm/fga, ftpct = ftm/fta; BSL + EL/EC loglarında ftm/fta var).
 const PCT_METRICS = new Set(["fgmadepct", "ftpct"]);
 
 // Config satırı yoksa kullanılacak varsayılan line kuralı (mevcut mid±2 davranışı).
@@ -167,7 +167,8 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
         seen.add(c.base_metric);
         out.push({ key: c.base_metric, label: metricLabel(c.base_metric, locale, c.label ?? c.base_metric) });
       }
-      return out.length ? out : TEAM_MARKETS.map((m) => ({ key: m.key, label: m.label }));
+      // statik fallback: yüzde metrikleri toplanmaz → Total tablosunda gösterilmez
+      return out.length ? out : TEAM_MARKETS.filter((m) => side !== "total" || !PCT_METRICS.has(m.key)).map((m) => ({ key: m.key, label: m.label }));
     };
     return { home: forSide("home"), away: forSide("away"), total: forSide("total") };
   }, [teamCfg, locale]);
@@ -305,11 +306,14 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
     for (const [v, w] of parts) if (w > 0) { num += v * w; den += w; }
     return den > 0 ? Math.round((num / den) * 10) / 10 : null;
   };
-  // Sezon yüzdesi (FG%) log'lardan: Σyapılan / Σdenenen. Form view'ında yüzde yok.
+  // Sezon yüzdesi (FG% / FT%) log'lardan: Σyapılan / Σdenenen. Form view'ında yüzde yok.
   const teamSeasonPct = (slug: string, mk: string): number | null => {
-    if (mk !== "fgmadepct") return null; // ftpct: log'da ftm/fta yok
+    if (mk !== "fgmadepct" && mk !== "ftpct") return null;
     let made = 0, att = 0;
-    for (const g of logsBy.get(slug) ?? []) { if (g.fgm != null && g.fga != null) { made += g.fgm; att += g.fga; } }
+    for (const g of logsBy.get(slug) ?? []) {
+      const m = mk === "ftpct" ? g.ftm : g.fgm, a = mk === "ftpct" ? g.fta : g.fga;
+      if (m != null && a != null) { made += m; att += a; }
+    }
     return att > 0 ? Math.round((made / att) * 1000) / 10 : null;
   };
   // AVG kolonu: form view'ından; yoksa (yüzde metrikleri) log'dan hesapla.

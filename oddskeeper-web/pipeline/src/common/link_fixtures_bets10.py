@@ -14,12 +14,16 @@ okur ve Fixture ID sekmesinde "Bets10'dan doldur" önerisi olarak gösterir.
   TFF1 : analytics.tff1_fixtures_v1 SofaScore-native; fixture_id == SofaScore
          event_id (aynı id uzayı, doğrulandı) -> KESİN eşleşme, bulanıklık yok.
 
+Basketbol (BSL / EuroLeague / EuroCup): fikstur kaynagi yok, bag EVENT bazli
+-> tracker.bb_fixture_bets10_link (bkz. dosya sonundaki BASKETBOL bolumu).
+
 Kullanım:
   python link_fixtures_bets10.py [--dry-run]
 """
 from __future__ import annotations
 
 import os
+import re
 import sys
 from datetime import datetime, timezone
 
@@ -166,6 +170,265 @@ def _row(league: str, fixture_id, e: dict, score: float) -> dict:
     }
 
 
+# =============================================================================
+# BASKETBOL (BSL / EuroLeague / EuroCup) -> tracker.bb_fixture_bets10_link
+#
+# Basketbolda fikstur kaynagi yok (bb_pm_fixtures elle ekleniyor); bag EVENT
+# bazli: SofaScore event -> bizim takim slug'lari. Frontend Fixtures sekmesi
+# bu tablodan "Bets10'dan doldur" ile fikstur uretir / mevcut fiksture onerir.
+# Bets10 basketbolda 1X2 yok: 'Mac Kazanani' (2 yol) + 'Handikap' (cok cizgili,
+# '1 (-6.5)' / '2 (+6.5)') + (feed'e girerse) toplam sayi. Cok cizgide ANA
+# cizgi = oranlari en dengeli olan (|ev-dep| min; esitlikte medyana en yakin).
+#
+# Takim kimligi:
+#   BSL   : basketball.teams.sofascore_team_id == upcoming_events.home/away_team_id
+#           (KESIN; yoksa ad bulanik yedek). Turnuva: kategori Turkey + Super
+#           League / Super Cup / Kupa (kadin, gencler, TBL/TB2L disarida).
+#   EL/EC : euroleague.teams (son sezon) team_name/abbr/editorial + BB_ALIASES
+#           varyantlari ile name_score (esik/margin load_site_odds ile ayni).
+# =============================================================================
+
+# EL/EC team_code -> SofaScore/Bets10 ad varyantlari (euroleague.teams adlarina ek).
+# Anahtar ad fold() oncesi serbest; name_score icinde katlanir. Sponsor degisince ekle.
+BB_ALIASES: dict[str, tuple[str, ...]] = {
+    "BAR": ("Barça Basket", "Barcelona"),
+    "MIL": ("Olimpia Milano", "EA7 Emporio Armani Milan", "Armani Milano"),
+    "MUN": ("Bayern München", "Bayern Munich"),
+    "DUB": ("BC Dubai", "Dubai"),
+    "HTA": ("Hapoel Tel-Aviv", "Hapoel Tel Aviv"),
+    "ZAL": ("Kauno Žalgiris", "Zalgiris"),
+    "RED": ("KK Crvena zvezda", "Crvena Zvezda", "Kızılyıldız"),
+    "PAR": ("KK Partizan Mozzart Bet", "Partizan"),
+    "OLY": ("Olympiacos BC", "Olympiacos"),
+    "PAN": ("Panathinaikos BC", "Panathinaikos"),
+    "TEL": ("Maccabi Tel Aviv",),
+    "BAS": ("Kosner Baskonia", "Baskonia"),
+    "ULK": ("Fenerbahçe Beko", "Fenerbahçe Tarfin", "Fenerbahçe"),
+    "IST": ("Anadolu Efes",),
+    "BES": ("Beşiktaş Gain", "Beşiktaş"),
+    "ASV": ("ASVEL", "LDLC ASVEL"),
+    "PRS": ("Paris Basketball", "Paris"),
+    "TTK": ("Türk Telekom B.K.", "Türk Telekom"),
+    "BUR": ("Tofaş Bursa", "Tofaş"),
+    "BAH": ("Bahçeşehir Koleji",),
+    "VNC": ("Umana Reyer Venezia", "Reyer Venezia"),
+    "NIN": ("BV Chemnitz 99", "Niners Chemnitz"),
+    "NAP": ("Guerri Napoli Basketball", "Napoli"),
+    "BOU": ("JL Bourg Basket", "JL Bourg"),
+    "BUD": ("KK Budućnost VOLI", "Buducnost"),
+    "MAN": ("Kids&Us Manresa", "BAXI Manresa", "Manresa"),
+    "BLK": ("Balkan Botevgrad",),
+    "BCR": ("BC Roma Spqr", "Roma"),
+    "MRO": ("Maxima Roma",),
+    "SIA": ("Šiauliai", "Siauliai"),
+    "TNF": ("La Laguna Tenerife", "Tenerife"),
+    "MCO": ("AS Monaco", "Monaco"),
+    "LJU": ("Cedevita Olimpija",),
+    "JER": ("Hapoel Jerusalem",),
+    "TRN": ("Dolomiti Energia Trento", "Trento"),
+    "WRO": ("Slask Wroclaw", "Śląsk Wrocław"),
+    "ULM": ("ratiopharm Ulm", "Ulm"),
+    "KLA": ("Neptunas Klaipeda", "Neptūnas"),
+    "LKB": ("Lietkabelis",),
+    "LLI": ("London Lions",),
+    "CLU": ("U-BT Cluj-Napoca", "Cluj"),
+    "ARI": ("Aris Thessaloniki", "Aris"),
+    "PAO": ("PAOK",),
+    "BGS": ("San Pablo Burgos", "Burgos"),
+    "FRA": ("Skyliners Frankfurt", "Frankfurt"),
+    "LEM": ("Le Mans",),
+    "RIG": ("Riga Zelli", "VEF Riga"),
+    "RTK": ("Rostock Seawolves",),
+    "TRT": ("Derthona Tortona", "Bertram Tortona"),
+}
+
+_BB_EXCLUDE = ("women", "kadin", "gencler", "kbsl", "tbl", "tb2l", "u16", "u18", "u19", "u20", "u21")
+_HCP_SEL_RE = re.compile(r"^\s*([12])\s*\(\s*([+-]?\d+(?:[.,]\d+)?)\s*\)")
+_NUM_RE = re.compile(r"[+-]?\d+(?:[.,]\d+)?")
+
+
+def _bb_league(tournament: str | None, category: str | None) -> str | None:
+    t = fold(tournament or "")
+    if any(x in t for x in _BB_EXCLUDE):
+        return None
+    if t.startswith("euroleague"):
+        return "euroleague"
+    if t.startswith("eurocup"):
+        return "eurocup"
+    if fold(category or "") == "turkey" and any(
+        x in t for x in ("super league", "super cup", "turkish cup", "turkiye cup", "basketball cup", "kupa")
+    ):
+        return "basketball"
+    return None
+
+
+def _num(s: str) -> float:
+    return float(s.replace(",", "."))
+
+
+def _pick_main(lines: dict[float, list]) -> tuple[float, float, float] | None:
+    """{cizgi: [oran_a, oran_b]} -> en dengeli cizgi (|a-b| min; esitlikte medyana en yakin)."""
+    full = [(ln, ab[0], ab[1]) for ln, ab in lines.items() if ab[0] is not None and ab[1] is not None]
+    if not full:
+        return None
+    med = sorted(ln for ln, _, _ in full)[len(full) // 2]
+    full.sort(key=lambda t: (abs(t[1] - t[2]), abs(t[0] - med)))
+    return full[0]
+
+
+def _bb_markets(sels: list[tuple[str, str, float | None]], home: str, away: str) -> dict:
+    """(market, selection, odds) listesi -> kazanan / handikap / toplam alanlari."""
+    win: list[tuple[str, float]] = []
+    hcp: dict[float, list] = {}
+    tot: dict[float, list] = {}
+    for market, sel, odds in sels:
+        if odds is None:
+            continue
+        m = fold(market)
+        s = fold(sel)
+        if "kazanan" in m or m in ("winner", "moneyline", "mac sonucu"):
+            win.append((sel, odds))
+        elif "handikap" in m or "handicap" in m:
+            mm = _HCP_SEL_RE.match(sel)
+            if not mm:
+                continue
+            side, val = mm.group(1), _num(mm.group(2))
+            line = val if side == "1" else -val   # ev perspektifi
+            hcp.setdefault(line, [None, None])[0 if side == "1" else 1] = odds
+        elif "toplam" in m or "alt/ust" in m or "ust/alt" in m or "over/under" in m or "total" in m:
+            is_over = s.startswith("ust") or s.startswith("over") or s.startswith("+")
+            is_under = s.startswith("alt") or s.startswith("under") or s.startswith("-")
+            if not (is_over or is_under):
+                continue
+            num = _NUM_RE.search(sel) or _NUM_RE.search(market)
+            if not num:
+                continue
+            line = abs(_num(num.group(0)))
+            tot.setdefault(line, [None, None])[0 if is_over else 1] = odds
+    out: dict = {
+        "home_odds": None, "away_odds": None,
+        "hcp_line": None, "hcp_home_odds": None, "hcp_away_odds": None,
+        "total_line": None, "total_over_odds": None, "total_under_odds": None,
+    }
+    if len(win) == 2:
+        (s1, o1), (s2, o2) = win
+        # ad puani: hangi secim ev? (Bets10 adi varyant olabilir: 'Tofas' vs 'Tofaş Bursa')
+        s1_home = name_score(s1, home) + name_score(s2, away) >= name_score(s1, away) + name_score(s2, home)
+        out["home_odds"], out["away_odds"] = (o1, o2) if s1_home else (o2, o1)
+    h = _pick_main(hcp)
+    if h:
+        out["hcp_line"], out["hcp_home_odds"], out["hcp_away_odds"] = h
+    t = _pick_main(tot)
+    if t:
+        out["total_line"], out["total_over_odds"], out["total_under_odds"] = t
+    return out
+
+
+def load_bets10_basketball(cur) -> dict[int, dict]:
+    """SofaScore event_id -> Bets10 basketbol maci (lig anahtari + ham secimler)."""
+    cur.execute(
+        """
+        select o.event_id, o.site_event_id, o.market_name, o.selection, o.odds,
+               u.home_team_name, u.away_team_name, u.home_team_id, u.away_team_id,
+               u.tournament_name, u.category_name, u.start_ts
+        from analytics.upcoming_event_odds_v1 o
+        join tracker.upcoming_events u on u.event_id = o.event_id
+        where o.site = 'bets10' and u.sport = 'basketball'
+        """
+    )
+    ev: dict[int, dict] = {}
+    for (eid, seid, market, sel, odds, home, away, hid, aid, tour, cat, start_ts) in cur.fetchall():
+        league = _bb_league(tour, cat)
+        if not league:
+            continue
+        e = ev.setdefault(eid, {
+            "event_id": eid, "site_event_id": seid, "league": league,
+            "home": home, "away": away, "home_id": hid, "away_id": aid,
+            "tournament": tour, "start_ts": start_ts, "sels": [],
+        })
+        if seid and not e["site_event_id"]:
+            e["site_event_id"] = seid
+        e["sels"].append((market, sel, float(odds) if odds is not None else None))
+    for e in ev.values():
+        e.update(_bb_markets(e["sels"], e["home"], e["away"]))
+    return ev
+
+
+def _load_bb_teams(cur) -> dict[str, dict]:
+    """lig -> {'by_id': {sofa_id: (slug, ad)}, 'names': [(slug, ad, [varyantlar])]}."""
+    out: dict[str, dict] = {"basketball": {"by_id": {}, "names": []},
+                            "euroleague": {"by_id": {}, "names": []},
+                            "eurocup": {"by_id": {}, "names": []}}
+    cur.execute("select team_slug, team_name, sofascore_team_id from basketball.teams")
+    for slug, name, sid in cur.fetchall():
+        if sid is not None:
+            out["basketball"]["by_id"][int(sid)] = (slug, name)
+        out["basketball"]["names"].append((slug, name, [name]))
+    cur.execute(
+        """
+        select t.competition, t.team_code, t.team_name, t.abbr_name, t.editorial_name
+        from euroleague.teams t
+        where t.season_code = (select max(season_code) from euroleague.teams x where x.competition = t.competition)
+        """
+    )
+    for comp, code, name, abbr, edit in cur.fetchall():
+        league = "euroleague" if comp == "E" else "eurocup"
+        variants = [v.strip() for v in (name, abbr, edit) if v and v.strip()]
+        variants += list(BB_ALIASES.get(code, ()))
+        out[league]["names"].append((code, name or code, variants))
+    return out
+
+
+def _best_team(name: str, teams: list[tuple[str, str, list[str]]]) -> tuple[str, str, float] | None:
+    """Ad -> (slug, ad, puan); esik + margin korumali (load_site_odds ile ayni)."""
+    scored = []
+    for slug, tname, variants in teams:
+        s = max((name_score(name, v) for v in variants), default=0.0)
+        if s > 0:
+            scored.append((s, slug, tname))
+    if not scored:
+        return None
+    scored.sort(key=lambda t: t[0], reverse=True)
+    best = scored[0]
+    second = scored[1][0] if len(scored) > 1 else 0.0
+    if best[0] >= MATCH_THRESHOLD and (best[0] - second) >= MARGIN:
+        return best[1], best[2], round(best[0], 3)
+    return None
+
+
+def resolve_basketball(cur, events: dict[int, dict]) -> list[dict]:
+    teams = _load_bb_teams(cur)
+    out = []
+    for e in events.values():
+        lg = teams[e["league"]]
+        sides = []
+        for nm, sid in ((e["home"], e["home_id"]), (e["away"], e["away_id"])):
+            hit = lg["by_id"].get(int(sid)) if sid is not None else None
+            if hit:
+                sides.append((hit[0], hit[1], 1.0))
+                continue
+            bt = _best_team(nm, lg["names"])
+            if not bt:
+                sides.append(None)
+                break
+            sides.append(bt)
+        if len(sides) < 2 or any(s is None for s in sides):
+            continue
+        (hs, hn, hsc), (as_, an, asc) = sides
+        if hs == as_:
+            continue
+        out.append({
+            "league": e["league"], "event_id": e["event_id"], "bets10_event_id": e["site_event_id"],
+            "home_team_slug": hs, "away_team_slug": as_, "home_team_name": hn, "away_team_name": an,
+            "tournament_name": e["tournament"], "start_ts": e["start_ts"],
+            "home_odds": e["home_odds"], "away_odds": e["away_odds"],
+            "hcp_line": e["hcp_line"], "hcp_home_odds": e["hcp_home_odds"], "hcp_away_odds": e["hcp_away_odds"],
+            "total_line": e["total_line"], "total_over_odds": e["total_over_odds"], "total_under_odds": e["total_under_odds"],
+            "match_score": round(min(hsc, asc), 3),
+        })
+    return out
+
+
 def main() -> None:
     dry = "--dry-run" in sys.argv
     here = os.path.dirname(os.path.abspath(__file__))
@@ -198,9 +461,56 @@ def main() -> None:
               f"1X2={r['home_odds']}/{r['draw_odds']}/{r['away_odds']} "
               f"score={r['match_score']}")
 
+    # ---- basketbol (ayni deadline kurali) ----
+    bb_events = load_bets10_basketball(cur)
+    bb_started = sum(1 for e in bb_events.values() if e["start_ts"] is not None and e["start_ts"] <= now)
+    bb_events = {k: e for k, e in bb_events.items() if e["start_ts"] is None or e["start_ts"] > now}
+    bb_rows = resolve_basketball(cur, bb_events)
+    print(f"\nB10 basketbol maçı (BSL/EL/EC, oranlı): {len(bb_events)}"
+          + (f"; başlamış (donduruldu): {bb_started}" if bb_started else ""))
+    print(f"eşleşen basketbol maçı: {len(bb_rows)} "
+          f"(bsl {sum(1 for r in bb_rows if r['league']=='basketball')}, "
+          f"el {sum(1 for r in bb_rows if r['league']=='euroleague')}, "
+          f"ec {sum(1 for r in bb_rows if r['league']=='eurocup')})")
+    unmatched = [e for e in bb_events.values() if e["event_id"] not in {r["event_id"] for r in bb_rows}]
+    for r in sorted(bb_rows, key=lambda r: (r["league"], r["start_ts"] or now)):
+        print(f"  {r['league']} eid={r['event_id']} b10={r['bets10_event_id']} "
+              f"{r['home_team_slug']} - {r['away_team_slug']} "
+              f"ML={r['home_odds']}/{r['away_odds']} HCP={r['hcp_line']} "
+              f"({r['hcp_home_odds']}/{r['hcp_away_odds']}) TOT={r['total_line']} score={r['match_score']}")
+    for e in unmatched:
+        print(f"  ! eşleşmedi {e['league']} eid={e['event_id']} {e['home']} - {e['away']} ({e['tournament']})")
+
     if dry:
         print("\n--dry-run: yazılmadı")
         return
+
+    for r in bb_rows:
+        cur.execute(
+            """
+            insert into tracker.bb_fixture_bets10_link
+              (league, event_id, bets10_event_id, home_team_slug, away_team_slug,
+               home_team_name, away_team_name, tournament_name, start_ts,
+               home_odds, away_odds, hcp_line, hcp_home_odds, hcp_away_odds,
+               total_line, total_over_odds, total_under_odds, match_score, updated_at)
+            values (%(league)s,%(event_id)s,%(bets10_event_id)s,%(home_team_slug)s,%(away_team_slug)s,
+                    %(home_team_name)s,%(away_team_name)s,%(tournament_name)s,%(start_ts)s,
+                    %(home_odds)s,%(away_odds)s,%(hcp_line)s,%(hcp_home_odds)s,%(hcp_away_odds)s,
+                    %(total_line)s,%(total_over_odds)s,%(total_under_odds)s,%(match_score)s, now())
+            on conflict (league, event_id) do update set
+              bets10_event_id = excluded.bets10_event_id,
+              home_team_slug = excluded.home_team_slug, away_team_slug = excluded.away_team_slug,
+              home_team_name = excluded.home_team_name, away_team_name = excluded.away_team_name,
+              tournament_name = excluded.tournament_name, start_ts = excluded.start_ts,
+              home_odds = excluded.home_odds, away_odds = excluded.away_odds,
+              hcp_line = excluded.hcp_line, hcp_home_odds = excluded.hcp_home_odds, hcp_away_odds = excluded.hcp_away_odds,
+              total_line = excluded.total_line, total_over_odds = excluded.total_over_odds, total_under_odds = excluded.total_under_odds,
+              match_score = excluded.match_score, updated_at = now()
+            """,
+            r,
+        )
+    # Eski maclar (30+ gun) tablodan dusulur; fiksture uygulanmis degerler bb_pm_fixtures'ta kalir.
+    cur.execute("delete from tracker.bb_fixture_bets10_link where start_ts < now() - interval '30 days'")
 
     for r in rows:
         cur.execute(
@@ -223,7 +533,7 @@ def main() -> None:
         )
     conn.commit()
     conn.close()
-    print(f"\nyazıldı: {len(rows)} bağ")
+    print(f"\nyazıldı: {len(rows)} futbol bağı + {len(bb_rows)} basketbol bağı")
 
 
 if __name__ == "__main__":

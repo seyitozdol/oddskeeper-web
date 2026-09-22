@@ -8,6 +8,7 @@ import {
 import BasketballParticipantTools from "@/features/basketball/components/BasketballParticipantTools";
 import SeasonToggle from "@/components/SeasonToggle";
 import { getT } from "@/lib/i18n/server";
+import { getNavAccess } from "@/lib/nav-access-server";
 
 // EL/EC Match-Player Tools — BSL araçlarının EL/EC portu (aynı bileşen, el_* tools view'ları).
 // pm sayı (PM Pts Model odds tab'ı) hariç; Config/Player List/Fixtures/Model/Input tam.
@@ -22,7 +23,7 @@ export default async function EuroToolsPage({
   params: Promise<{ comp: string }>;
   searchParams: Promise<{ season?: string }>;
 }) {
-  const [{ comp }, { season }, t] = await Promise.all([params, searchParams, getT()]);
+  const [{ comp }, { season }, t, access] = await Promise.all([params, searchParams, getT(), getNavAccess()]);
   const cfg = resolveEuroComp(comp);
   if (!cfg) notFound();
   const code = cfg.code; // 'E' | 'U'
@@ -53,7 +54,7 @@ export default async function EuroToolsPage({
         </div>
       </div>
       <BasketballParticipantTools splits={splits} forms={forms} windows={windows} teamLogs={teamLogs}
-        players={players} roles={roles} league={cfg.key} toolsBase={`/dashboard/euro/${cfg.key}`} />
+        players={players} roles={roles} league={cfg.key} toolsBase={`/dashboard/euro/${cfg.key}`} isAdmin={access.isAdmin} />
     </section>
   );
 }

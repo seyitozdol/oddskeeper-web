@@ -23,6 +23,28 @@ const ENTRIES: Entry[] = [
   {
     date: { en: "22 September", tr: "22 Eylül" },
     title: {
+      en: "Basketball Match-Player Tools: FT%, player search and Bets10 fixtures",
+      tr: "Basketbol Match-Player Tools: FT%, oyuncu arama ve Bets10 fikstürleri",
+    },
+    tag: TAG_NEW,
+    items: [
+      {
+        en: "Team Metrics now has a Free Throw % row for home and away (BSL, EuroLeague, EuroCup). Like FG%, it is a percentage, so it is not scaled to the match projection; the model blends the per-match percentages. The rows are in Config > Market Templates (home/away FT %) where you can set the template and std.",
+        tr: "Team Metrics'e ev ve deplasman için Serbest Atış % satırı eklendi (BSL, EuroLeague, EuroCup). FG% gibi yüzde olduğu için maç projeksiyonuna ölçeklenmez; model maç-bazlı yüzdeleri harmanlar. Satırlar Config > Market Templates'te (ev/dep Serbest %), şablon ve std oradan ayarlanır.",
+      },
+      {
+        en: "Player List has a search box that filters by player or team name. Player and team names are now links to their profile pages.",
+        tr: "Oyuncu Listesi'ne oyuncu veya takım adına göre süzen bir arama kutusu geldi. Oyuncu ve takım adları artık profil sayfalarına link.",
+      },
+      {
+        en: "Fixtures: upcoming matches that are on Bets10 for the league are listed automatically with their fixture id, handicap and total points line. \"Fill from Bets10\" adds them all, \"Add\" adds one, and existing fixtures get an \"Apply\" suggestion. Manual entry stays. Instead of 1X2 odds, basketball fixtures carry total points and handicap boxes (Bets10 currently sends only the handicap; the total fills in once it appears in the feed).",
+        tr: "Fikstürler: ligin Bets10'da olan yaklaşan maçları fikstür id'si, handikap ve toplam sayı çizgisiyle otomatik listelenir. \"Bets10'dan doldur\" hepsini, \"Ekle\" tekini ekler; mevcut fikstürlere \"Uygula\" önerisi çıkar. Manuel ekleme aynen duruyor. 1X2 oranı yerine basketbol fikstürlerinde toplam sayı ve handikap kutuları var (Bets10 şimdilik yalnız handikap gönderiyor; toplam feed'e girince dolar).",
+      },
+    ],
+  },
+  {
+    date: { en: "22 September", tr: "22 Eylül" },
+    title: {
       en: "Upcoming Events: BSL emblem and stricter basketball odds matching",
       tr: "Upcoming Events: BSL amblemi ve basketbolda daha sıkı oran eşleştirme",
     },

@@ -1,16 +1,20 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useI18n } from "@/lib/i18n/LanguageProvider";
 import BasketballTools, { type HistorySnapEntry } from "./BasketballTools";
 import RetentionConfig from "@/features/model-history/RetentionConfig";
+import RefreshNowButton from "@/features/upcoming-events/components/RefreshNowButton";
+import { TenText } from "@/components/TenBadge";
 import { postModelHistory, exportFileName, type ModelHistoryDraft } from "@/lib/model-history";
 import { confirmPermanentSave } from "@/lib/confirm-save";
 import { configLabel, METRIC_LABELS, metricLabel } from "../marketConfig";
-import { ALL_ROLES, roleBadgeClass, roleLabelKey, roleDescKey } from "../lib";
+import { ALL_ROLES, roleBadgeClass, roleLabelKey, roleDescKey, formatMatchDate } from "../lib";
 import {
   fetchPmFixtures, insertFixture, updateFixture, deleteFixture, PmFixture,
+  fetchBets10Links, BbBets10Link,
   fetchPlayerIds, savePlayerIds,
   savePlayerMerges, PmMerge,
   fetchMarketConfig, upsertMarketConfig, deleteMarketConfig, PmMarketConfig,
@@ -31,6 +35,7 @@ type Props = {
   rosterMode?: BktRosterMode | null;   // BSL sezon kadrosu modu (yeni sezon başı); yoksa maç-güdümlü
   league?: string;          // 'basketball' (BSL) | 'euroleague' | 'eurocup'
   toolsBase?: string;       // takım/oyuncu profil linkleri için kök (örn /dashboard/euro/euroleague)
+  isAdmin?: boolean;        // Fixtures sekmesinde "oranları şimdi yenile" (Bets10 yakalama) butonu
 };
 
 type Tab = "model" | "players" | "fixtures" | "config" | "input";
@@ -39,8 +44,10 @@ type InputType = "player" | "team";
 const btnSave = "rounded-md border border-accent bg-accent px-3 py-1.5 text-[12px] font-semibold text-on-accent hover:opacity-90";
 const btnGhost = "rounded-md border border-line px-3 py-1.5 text-[12px] font-semibold text-ink-2 hover:text-ink";
 
-export default function BasketballParticipantTools({ splits, forms, windows, teamLogs, players, roles = [], rosterMode = null, league = "basketball" }: Props) {
+export default function BasketballParticipantTools({ splits, forms, windows, teamLogs, players, roles = [], rosterMode = null, league = "basketball", toolsBase, isAdmin = false }: Props) {
   const { t, locale } = useI18n();
+  // Profil linkleri: BSL /dashboard/basketball/{player|team}/<slug>; EL/EC toolsBase/{player|team}/<code>.
+  const profileBase = toolsBase ?? "/dashboard/basketball";
   const [tab, setTab] = useState<Tab>("model");
   const [fixtures, setFixtures] = useState<PmFixture[]>([]);
   const [playerIds, setPlayerIds] = useState<Record<string, string>>({});
@@ -113,8 +120,8 @@ export default function BasketballParticipantTools({ splits, forms, windows, tea
           historyLeague={league} historyReloadKey={historyReloadKey}
           onAdd={handleAdd} />
       </div>
-      {tab === "players" && <PlayerListTab players={players} playerIds={playerIds} onSaved={setPlayerIds} league={league} t={t} />}
-      {tab === "fixtures" && <FixturesTab fixtures={fixtures} teams={teams} reload={reloadFixtures} league={league} t={t} />}
+      {tab === "players" && <PlayerListTab players={players} playerIds={playerIds} onSaved={setPlayerIds} league={league} profileBase={profileBase} t={t} />}
+      {tab === "fixtures" && <FixturesTab fixtures={fixtures} teams={teams} reload={reloadFixtures} league={league} isAdmin={isAdmin} locale={locale} t={t} />}
       {tab === "config" && (
         <div className="space-y-4">
           <ConfigTab config={config} reload={reloadConfig} modelConfig={modelConfig} reloadModelConfig={reloadModelConfig} inputType={inputType} setInputType={setInputType} league={league} locale={locale} t={t} />
@@ -153,12 +160,20 @@ function findDuplicatePlayers(players: BktPlayerListRow[]): BktPlayerListRow[][]
   return out;
 }
 
-function PlayerListTab({ players, playerIds, onSaved, league, t }: { players: BktPlayerListRow[]; playerIds: Record<string, string>; onSaved: (m: Record<string, string>) => void; league: string; t: (k: string) => string }) {
+function PlayerListTab({ players, playerIds, onSaved, league, profileBase, t }: { players: BktPlayerListRow[]; playerIds: Record<string, string>; onSaved: (m: Record<string, string>) => void; league: string; profileBase: string; t: (k: string) => string }) {
   const router = useRouter();
   const [edits, setEdits] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [canon, setCanon] = useState<Record<string, string>>({});
   const [merging, setMerging] = useState<string | null>(null);
+  // Arama: oyuncu VEYA takım adı (Türkçe/aksan katlanmış, kısmi eşleşme). Kayıt düzenlemeleri
+  // (edits) slug anahtarlı olduğu için süzme/kaydetme birbirini etkilemez.
+  const [q, setQ] = useState("");
+  const filtered = useMemo(() => {
+    const f = foldName(q);
+    if (!f) return players;
+    return players.filter((p) => foldName(p.player_name).includes(f) || foldName(p.team_name ?? "").includes(f));
+  }, [players, q]);
   const dupGroups = useMemo(() => findDuplicatePlayers(players), [players]);
   const dupSlugs = useMemo(() => new Set(dupGroups.flat().map((p) => p.player_slug)), [dupGroups]);
   const groupKey = (g: BktPlayerListRow[]) => g.map((p) => p.player_slug).sort().join("|");
@@ -186,9 +201,15 @@ function PlayerListTab({ players, playerIds, onSaved, league, t }: { players: Bk
   };
   return (
     <div>
-      <div className="mb-3 flex items-center gap-3">
+      <div className="mb-3 flex flex-wrap items-center gap-3">
         <button onClick={save} disabled={saving || Object.keys(edits).length === 0} className={`${btnSave} disabled:opacity-50`}>{t("basketball.save")}</button>
-        <span className="text-[11px] text-ink-3">{players.length}</span>
+        <div className="relative">
+          <svg aria-hidden width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-ink-3"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("basketball.searchPlayers")}
+            className="w-64 rounded-md border border-line bg-field py-1.5 pl-7 pr-7 text-[13px] text-ink outline-none placeholder:text-ink-3 focus:border-line-strong" />
+          {q ? <button onClick={() => setQ("")} aria-label={t("basketball.clear")} className="absolute right-2 top-1/2 -translate-y-1/2 text-[12px] text-ink-3 hover:text-ink">×</button> : null}
+        </div>
+        <span className="text-[11px] tabular-nums text-ink-3">{q ? t("basketball.searchCount").replace("{n}", String(filtered.length)).replace("{total}", String(players.length)) : players.length}</span>
       </div>
       {dupGroups.length > 0 && (
         <div className="mb-3 rounded-lg border border-warn/30 bg-warn/10 px-3 py-2.5">
@@ -225,15 +246,23 @@ function PlayerListTab({ players, playerIds, onSaved, league, t }: { players: Bk
             <th className="px-2 py-1.5 text-right">{t("basketball.games")}</th><th className="px-2 py-1.5 text-left">{t("basketball.extId")}</th>
           </tr></thead>
           <tbody>
-            {players.map((p) => (
+            {filtered.map((p) => (
               <tr key={p.player_slug} className={`border-t border-line hover:bg-veil ${dupSlugs.has(p.player_slug) ? "bg-warn/5" : ""}`}>
-                <td className="px-2 py-1 text-ink whitespace-nowrap">{dupSlugs.has(p.player_slug) && <span className="mr-1 text-warn" title={t("basketball.dupTitle")}>⚠</span>}{p.player_name}</td>
-                <td className="px-2 py-1 text-ink-2 whitespace-nowrap">{p.team_name}</td>
+                <td className="px-2 py-1 text-ink whitespace-nowrap">
+                  {dupSlugs.has(p.player_slug) && <span className="mr-1 text-warn" title={t("basketball.dupTitle")}>⚠</span>}
+                  <Link href={`${profileBase}/player/${encodeURIComponent(p.player_slug)}`} title={t("basketball.openProfile")} className="hover:text-accent-ink hover:underline">{p.player_name}</Link>
+                </td>
+                <td className="px-2 py-1 text-ink-2 whitespace-nowrap">
+                  {p.team_slug
+                    ? <Link href={`${profileBase}/team/${encodeURIComponent(p.team_slug)}`} title={t("basketball.openProfile")} className="hover:text-accent-ink hover:underline">{p.team_name}</Link>
+                    : p.team_name}
+                </td>
                 <td className="px-2 py-1 text-right tabular-nums text-ink-3">{p.games}</td>
                 <td className="px-2 py-1"><input value={val(p.player_slug)} onChange={(e) => setEdits((s) => ({ ...s, [p.player_slug]: e.target.value }))}
                   className="w-40 rounded border border-line bg-field px-2 py-0.5 text-[12px] text-ink outline-none focus:border-line-strong" /></td>
               </tr>
             ))}
+            {filtered.length === 0 ? <tr><td colSpan={4} className="px-2 py-3 text-[12px] text-ink-3">—</td></tr> : null}
           </tbody>
         </table>
       </div>
@@ -242,49 +271,169 @@ function PlayerListTab({ players, playerIds, onSaved, league, t }: { players: Bk
 }
 
 /* ---------- Fixtures ---------- */
-function FixturesTab({ fixtures, teams, reload, league, t }: { fixtures: PmFixture[]; teams: { slug: string; name: string }[]; reload: () => void; league: string; t: (k: string) => string }) {
+// Bets10 bağı (futboldaki MSM Fixture ID kalıbı): resolver'ın yazdığı bb_fixture_bets10_link
+// EVENT bazlı (takım slug'ları bizim uzayda). Basketbolda 1X2 yok → toplam sayı + handikap
+// kutuları. Fikstür satırı ↔ link eşleşmesi: external_id == bets10_event_id, ya da
+// external_id BOŞ + aynı ev/dep slug çifti (başlamamış). Otomatik YAZMAZ: "Bets10'da var,
+// fikstürde yok" listesi + "Bets10'dan doldur" / satır başı Ekle + mevcut satırda Uygula.
+// Başlamış maçta öneri/Ekle kapalı (deadline donması; canlı oran/çizgi sızmasın).
+const linkStarted = (lk: BbBets10Link) => !!lk.start_ts && new Date(lk.start_ts).getTime() <= Date.now();
+const fmtLine = (v: number | null | undefined, signed = false) => (v == null ? "—" : signed && v > 0 ? `+${v}` : String(v));
+const fmtOdds = (v: number | null | undefined) => (v == null ? "-" : v.toFixed(2));
+const numOrNull = (s: string): number | null => {
+  if (s.trim() === "") return null;
+  const v = parseFloat(s.replace(",", "."));
+  return Number.isNaN(v) ? null : v;
+};
+type FixEdit = { external_id?: string; total_line?: string; hcp_line?: string };
+
+function FixturesTab({ fixtures, teams, reload, league, isAdmin, locale, t }: {
+  fixtures: PmFixture[]; teams: { slug: string; name: string }[]; reload: () => void; league: string;
+  isAdmin: boolean; locale: "tr" | "en"; t: (k: string) => string;
+}) {
   const [h, setH] = useState(teams[0]?.slug ?? "");
   const [a, setA] = useState(teams[1]?.slug ?? "");
   const [ext, setExt] = useState("");
-  // external_id düzenlemeleri: local edit state; Kaydet DB'ye yazar + reload (sekme değişince kaybolmaz).
-  const [extEdits, setExtEdits] = useState<Record<number, string>>({});
+  const [links, setLinks] = useState<BbBets10Link[]>([]);
+  // Satır düzenlemeleri (ext id / toplam / handikap): local state; Kaydet DB'ye yazar + reload.
+  const [edits, setEdits] = useState<Record<number, FixEdit>>({});
+  const [busy, setBusy] = useState(false);
+  const reloadLinks = () => fetchBets10Links(league).then(setLinks);
+  useEffect(() => { reloadLinks(); }, [league]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const nameOf = (slug: string, fallback?: string | null) => teams.find((x) => x.slug === slug)?.name ?? fallback ?? slug;
+  const linkFor = (f: PmFixture): BbBets10Link | undefined => {
+    if (f.external_id) return links.find((l) => l.bets10_event_id === f.external_id);
+    return links.find((l) => l.home_team_slug === f.home_team_slug && l.away_team_slug === f.away_team_slug && !linkStarted(l));
+  };
+  const matchedEvents = useMemo(() => {
+    const s = new Set<number>();
+    for (const f of fixtures) { const l = linkFor(f); if (l) s.add(l.event_id); }
+    return s;
+  }, [fixtures, links]); // eslint-disable-line react-hooks/exhaustive-deps
+  const pending = links.filter((l) => !linkStarted(l) && !matchedEvents.has(l.event_id));
+
   const add = async () => {
     if (!h || !a || h === a) return;
-    const hn = teams.find((x) => x.slug === h)?.name ?? h, an = teams.find((x) => x.slug === a)?.name ?? a;
-    await insertFixture({ home_team_slug: h, away_team_slug: a, home_team_name: hn, away_team_name: an, external_id: ext.trim() || null, match_date: null, note: null }, league);
+    await insertFixture({ home_team_slug: h, away_team_slug: a, home_team_name: nameOf(h), away_team_name: nameOf(a), external_id: ext.trim() || null, match_date: null, note: null, total_line: null, hcp_line: null }, league);
     setExt(""); reload();
   };
-  const extVal = (f: PmFixture) => extEdits[f.id] ?? f.external_id ?? "";
-  const saveExt = async () => {
-    const entries = Object.entries(extEdits);
-    if (entries.length === 0) return;
-    for (const [id, v] of entries) await updateFixture(Number(id), { external_id: v.trim() || null });
-    setExtEdits({}); reload();
+  const addFromLink = (l: BbBets10Link) => insertFixture({
+    home_team_slug: l.home_team_slug, away_team_slug: l.away_team_slug,
+    home_team_name: nameOf(l.home_team_slug, l.home_team_name), away_team_name: nameOf(l.away_team_slug, l.away_team_name),
+    external_id: l.bets10_event_id, match_date: l.start_ts ? l.start_ts.slice(0, 10) : null, note: null,
+    total_line: l.total_line, hcp_line: l.hcp_line,
+  }, league);
+  const addOne = async (l: BbBets10Link) => { setBusy(true); await addFromLink(l); setBusy(false); reload(); };
+  const fillAll = async () => { setBusy(true); for (const l of pending) await addFromLink(l); setBusy(false); reload(); };
+
+  const val = (f: PmFixture, k: keyof FixEdit): string => {
+    const e = edits[f.id]?.[k];
+    if (e !== undefined) return e;
+    if (k === "external_id") return f.external_id ?? "";
+    const v = f[k];
+    return v == null ? "" : String(v);
   };
+  const patch = (id: number, p: FixEdit) => setEdits((s) => ({ ...s, [id]: { ...s[id], ...p } }));
+  const applyLink = (f: PmFixture, l: BbBets10Link) => patch(f.id, {
+    external_id: l.bets10_event_id ?? "",
+    total_line: l.total_line == null ? "" : String(l.total_line),
+    hcp_line: l.hcp_line == null ? "" : String(l.hcp_line),
+  });
+  // Öneri, satırdaki (düzenlenmiş/kaydedilmiş) değerden farklı mı → Uygula göster.
+  const suggestDiff = (f: PmFixture, l: BbBets10Link) =>
+    val(f, "external_id") !== (l.bets10_event_id ?? "") || numOrNull(val(f, "total_line")) !== l.total_line || numOrNull(val(f, "hcp_line")) !== l.hcp_line;
+  const save = async () => {
+    const entries = Object.entries(edits);
+    if (entries.length === 0) return;
+    setBusy(true);
+    for (const [id, p] of entries) {
+      const row: Partial<PmFixture> = {};
+      if (p.external_id !== undefined) row.external_id = p.external_id.trim() || null;
+      if (p.total_line !== undefined) row.total_line = numOrNull(p.total_line);
+      if (p.hcp_line !== undefined) row.hcp_line = numOrNull(p.hcp_line);
+      await updateFixture(Number(id), row);
+    }
+    setBusy(false); setEdits({}); reload();
+  };
+
+  const inp = "rounded border border-line bg-field px-2 py-0.5 text-[12px] text-ink outline-none focus:border-line-strong";
+  const linkSummary = (l: BbBets10Link) =>
+    `H ${fmtLine(l.hcp_line, true)} (${fmtOdds(l.hcp_home_odds)}/${fmtOdds(l.hcp_away_odds)}) · T ${fmtLine(l.total_line)}${l.total_line != null ? ` (${fmtOdds(l.total_over_odds)}/${fmtOdds(l.total_under_odds)})` : ""} · ML ${fmtOdds(l.home_odds)}/${fmtOdds(l.away_odds)}`;
+
   return (
-    <div>
-      <div className="mb-4 flex flex-wrap items-end gap-2">
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-end gap-2">
         <select value={h} onChange={(e) => setH(e.target.value)} className="rounded-md border border-line bg-field px-2 py-1.5 text-[13px] text-ink">{teams.map((x) => <option key={x.slug} value={x.slug}>{x.name}</option>)}</select>
         <span className="pb-2 text-ink-3">vs</span>
         <select value={a} onChange={(e) => setA(e.target.value)} className="rounded-md border border-line bg-field px-2 py-1.5 text-[13px] text-ink">{teams.map((x) => <option key={x.slug} value={x.slug}>{x.name}</option>)}</select>
         <input placeholder={t("basketball.extId")} value={ext} onChange={(e) => setExt(e.target.value)} className="w-28 rounded-md border border-line bg-field px-2 py-1.5 text-[13px] text-ink" />
         <button onClick={add} className={btnSave}>{t("basketball.addFixture")}</button>
-        <button onClick={saveExt} disabled={Object.keys(extEdits).length === 0} className={`${btnGhost} disabled:opacity-50`}>{t("basketball.save")}</button>
+        <button onClick={save} disabled={busy || Object.keys(edits).length === 0} className={`${btnGhost} disabled:opacity-50`}>{t("basketball.save")}{Object.keys(edits).length ? ` (${Object.keys(edits).length})` : ""}</button>
+        {isAdmin ? <div className="ml-auto" title={t("basketball.betsRefreshHint")}><RefreshNowButton kind="bets10_odds" onDone={reloadLinks} /></div> : null}
       </div>
+
+      {/* Bets10'da olup fikstürde olmayan maçlar: id otomatik görünür; yazma yalnız butonla */}
+      <div className="rounded-lg border border-line bg-card-2/40 px-3 py-2.5">
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-3"><TenText text={t("basketball.betsPending")} /> ({pending.length})</span>
+          <button onClick={fillAll} disabled={busy || pending.length === 0} title={t("basketball.betsHint")}
+            className="rounded-md border border-accent/40 bg-accent/10 px-3 py-1 text-[12px] font-semibold text-accent-ink hover:bg-accent/20 disabled:opacity-40">
+            <TenText text={t("basketball.betsFill")} />{pending.length ? ` (${pending.length})` : ""}
+          </button>
+          <span className="text-[11px] text-ink-3"><TenText text={t("basketball.betsTotalNote")} /></span>
+        </div>
+        {pending.length > 0 ? (
+          <ul className="mt-2 divide-y divide-line/60">
+            {pending.map((l) => (
+              <li key={l.event_id} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-1 text-[12px]">
+                <span className="w-24 shrink-0 tabular-nums text-ink-3">{l.start_ts ? formatMatchDate(l.start_ts, locale) : "—"}</span>
+                <span className="text-ink">{nameOf(l.home_team_slug, l.home_team_name)} <span className="text-ink-3">-</span> {nameOf(l.away_team_slug, l.away_team_name)}</span>
+                <span className="font-mono text-[11px] text-ink-2">{l.bets10_event_id ?? "—"}</span>
+                <span className="tabular-nums text-ink-3">{linkSummary(l)}</span>
+                <button onClick={() => addOne(l)} disabled={busy} className="ml-auto rounded border border-line px-2 py-0.5 text-[11px] font-semibold text-ink-2 hover:text-ink disabled:opacity-40">{t("basketball.betsAdd")}</button>
+              </li>
+            ))}
+          </ul>
+        ) : <p className="mt-1 text-[11px] text-ink-3"><TenText text={t("basketball.betsPendingNone")} /></p>}
+      </div>
+
       <table className="min-w-full border-collapse text-[13px]">
         <thead><tr className="border-b border-line text-[10px] uppercase tracking-[0.1em] text-ink-3">
           <th className="px-2 py-1.5 text-left">{t("basketball.fixHome")}</th><th className="px-2 py-1.5 text-left">{t("basketball.fixAway")}</th>
-          <th className="px-2 py-1.5 text-left">{t("basketball.extId")}</th><th className="px-2 py-1.5"></th>
+          <th className="px-2 py-1.5 text-left">{t("basketball.extId")}</th>
+          <th className="px-2 py-1.5 text-right">{t("basketball.fixTotal")}</th>
+          <th className="px-2 py-1.5 text-right">{t("basketball.fixHcp")}</th>
+          <th className="px-2 py-1.5 text-left"><TenText text={t("basketball.betsHint")} /></th>
+          <th className="px-2 py-1.5"></th>
         </tr></thead>
         <tbody>
-          {fixtures.map((f) => (
-            <tr key={f.id} className="border-t border-line hover:bg-veil">
-              <td className="px-2 py-1 text-ink">{f.home_team_name}</td><td className="px-2 py-1 text-ink">{f.away_team_name}</td>
-              <td className="px-2 py-1"><input value={extVal(f)} onChange={(e) => setExtEdits((s) => ({ ...s, [f.id]: e.target.value }))} className="w-28 rounded border border-line bg-field px-2 py-0.5 text-[12px] text-ink outline-none focus:border-line-strong" /></td>
-              <td className="px-2 py-1 text-right"><button onClick={async () => { await deleteFixture(f.id); reload(); }} className="text-[12px] text-neg hover:underline">×</button></td>
-            </tr>
-          ))}
-          {fixtures.length === 0 ? <tr><td colSpan={4} className="px-2 py-3 text-[12px] text-ink-3">—</td></tr> : null}
+          {fixtures.map((f) => {
+            const l = linkFor(f);
+            const started = l ? linkStarted(l) : false;
+            return (
+              <tr key={f.id} className="border-t border-line hover:bg-veil">
+                <td className="px-2 py-1 text-ink whitespace-nowrap">{f.home_team_name}</td><td className="px-2 py-1 text-ink whitespace-nowrap">{f.away_team_name}</td>
+                <td className="px-2 py-1"><input value={val(f, "external_id")} onChange={(e) => patch(f.id, { external_id: e.target.value })} className={`${inp} w-44 font-mono text-[11px]`} /></td>
+                <td className="px-2 py-1 text-right"><input type="number" step="0.5" value={val(f, "total_line")} onChange={(e) => patch(f.id, { total_line: e.target.value })} className={`${inp} w-20 text-right tabular-nums`} /></td>
+                <td className="px-2 py-1 text-right"><input type="number" step="0.5" value={val(f, "hcp_line")} onChange={(e) => patch(f.id, { hcp_line: e.target.value })} className={`${inp} w-20 text-right tabular-nums`} /></td>
+                <td className="px-2 py-1 text-[11px] whitespace-nowrap">
+                  {l ? (
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className="tabular-nums text-ink-3" title={l.bets10_event_id ?? undefined}>{linkSummary(l)}</span>
+                      {started
+                        ? <span className="rounded bg-veil px-1.5 py-0.5 text-[10px] font-semibold uppercase text-ink-3">{t("basketball.betsStarted")}</span>
+                        : suggestDiff(f, l)
+                          ? <button onClick={() => applyLink(f, l)} className="rounded border border-accent/40 bg-accent/10 px-1.5 py-0.5 text-[10px] font-medium text-accent-ink hover:bg-accent/20">{t("basketball.betsApply")}</button>
+                          : null}
+                    </span>
+                  ) : <span className="text-ink-3">—</span>}
+                </td>
+                <td className="px-2 py-1 text-right"><button onClick={async () => { await deleteFixture(f.id); reload(); }} className="text-[12px] text-neg hover:underline">×</button></td>
+              </tr>
+            );
+          })}
+          {fixtures.length === 0 ? <tr><td colSpan={7} className="px-2 py-3 text-[12px] text-ink-3">—</td></tr> : null}
         </tbody>
       </table>
     </div>

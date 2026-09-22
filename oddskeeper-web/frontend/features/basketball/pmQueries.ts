@@ -28,7 +28,53 @@ export type PmFixture = {
   external_id: string | null;
   match_date: string | null;
   note: string | null;
+  // Basketbol: Bets10 toplam sayı + handikap çizgisi (ev perspektifi). Voleybol yazmaz (opsiyonel).
+  total_line?: number | null;
+  hcp_line?: number | null;
 };
+
+// Bets10 basketbol bağı (resolver link_fixtures_bets10.py -> tracker.bb_fixture_bets10_link).
+// Event bazlı: takım slug'ları bizim uzayda; Fixtures sekmesi "Bets10'dan doldur" + satır önerisi.
+export type BbBets10Link = {
+  event_id: number;
+  bets10_event_id: string | null;
+  home_team_slug: string;
+  away_team_slug: string;
+  home_team_name: string | null;
+  away_team_name: string | null;
+  tournament_name: string | null;
+  start_ts: string | null;
+  home_odds: number | null;
+  away_odds: number | null;
+  hcp_line: number | null;
+  hcp_home_odds: number | null;
+  hcp_away_odds: number | null;
+  total_line: number | null;
+  total_over_odds: number | null;
+  total_under_odds: number | null;
+};
+export async function fetchBets10Links(league = "basketball"): Promise<BbBets10Link[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .schema("analytics").from("bb_fixture_bets10_link_v1")
+    .select("event_id,bets10_event_id,home_team_slug,away_team_slug,home_team_name,away_team_name,tournament_name,start_ts,home_odds,away_odds,hcp_line,hcp_home_odds,hcp_away_odds,total_line,total_over_odds,total_under_odds")
+    .eq("league", league)
+    .order("start_ts", { ascending: true })
+    .limit(200)
+    .returns<BbBets10Link[]>();
+  if (error) { console.error("fetchBets10Links", error.message); return []; }
+  return (data ?? []).map((r) => ({
+    ...r,
+    home_odds: r.home_odds != null ? Number(r.home_odds) : null,
+    away_odds: r.away_odds != null ? Number(r.away_odds) : null,
+    hcp_line: r.hcp_line != null ? Number(r.hcp_line) : null,
+    hcp_home_odds: r.hcp_home_odds != null ? Number(r.hcp_home_odds) : null,
+    hcp_away_odds: r.hcp_away_odds != null ? Number(r.hcp_away_odds) : null,
+    total_line: r.total_line != null ? Number(r.total_line) : null,
+    total_over_odds: r.total_over_odds != null ? Number(r.total_over_odds) : null,
+    total_under_odds: r.total_under_odds != null ? Number(r.total_under_odds) : null,
+  }));
+}
 
 /* ---------------- markets ---------------- */
 export async function fetchMarkets(league = "basketball"): Promise<PmMarket[]> {
@@ -98,13 +144,17 @@ export async function fetchPmFixtures(league = "basketball"): Promise<PmFixture[
   const supabase = createClient();
   const { data, error } = await supabase
     .schema("analytics").from("bb_pm_fixtures")
-    .select("id,home_team_slug,away_team_slug,home_team_name,away_team_name,external_id,match_date,note")
+    .select("id,home_team_slug,away_team_slug,home_team_name,away_team_name,external_id,match_date,note,total_line,hcp_line")
     .eq("league", league)
     .order("match_date", { ascending: true, nullsFirst: false })
     .order("id", { ascending: true })
     .returns<PmFixture[]>();
   if (error) { console.error("fetchPmFixtures", error.message); return []; }
-  return data ?? [];
+  return (data ?? []).map((f) => ({
+    ...f,
+    total_line: f.total_line != null ? Number(f.total_line) : null,
+    hcp_line: f.hcp_line != null ? Number(f.hcp_line) : null,
+  }));
 }
 export async function insertFixture(f: Omit<PmFixture, "id">, league = "basketball"): Promise<boolean> {
   return pmWrite(PM_WRITE, { league, action: "insertFixture", payload: { fixture: f } });

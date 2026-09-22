@@ -30,7 +30,7 @@ export default async function BasketballToolsPage({ searchParams }: { searchPara
         </div>
       </div>
 
-      <BasketballParticipantTools splits={splits} forms={forms} windows={windows} teamLogs={teamLogs} players={players} roles={roles} rosterMode={rosterMode} />
+      <BasketballParticipantTools splits={splits} forms={forms} windows={windows} teamLogs={teamLogs} players={players} roles={roles} rosterMode={rosterMode} isAdmin={access.isAdmin} />
     </section>
   );
 }

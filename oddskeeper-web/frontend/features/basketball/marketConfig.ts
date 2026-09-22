@@ -46,6 +46,9 @@ export const TEAM_STD: Record<string, number> = {
   blocks: 2,
   turnovers: 1.1,
   fgm: 4.5,
+  // Yüzde metrikleri (Excel'de takım için yok): maç-bazlı yüzde std'si; Config'ten değiştirilebilir.
+  fgmadepct: 7,
+  ftpct: 7,
 };
 export function teamStd(key: string): number {
   return TEAM_STD[key] ?? 3;
@@ -60,6 +63,7 @@ export const TEAM_MARKETS: { key: string; label: string }[] = [
   { key: "threes", label: "3 Sayı" },
   { key: "twos", label: "2 Sayı" },
   { key: "ftm", label: "Serbest Atış" },
+  { key: "ftpct", label: "Serbest %" },
   { key: "steals", label: "Top Çalma" },
   { key: "blocks", label: "Blok" },
   { key: "turnovers", label: "Top Kaybı" },
@@ -100,6 +104,12 @@ export function metricInfo(key: string, locale: string): string {
     return locale === "tr"
       ? "Takım sayısı. Üstteki maç projeksiyonundan gelir (takım hücumu × rakip savunması / lig ortalaması, log5); sadece oradan değiştirilir."
       : "Team points. Comes from the match projection above (team offense x opponent defense / league average, log5); it can only be changed there.";
+  }
+  if (key === "fgmadepct" || key === "ftpct") {
+    const made = key === "ftpct" ? (locale === "tr" ? "serbest atış" : "free throw") : (locale === "tr" ? "şut" : "field goal");
+    return locale === "tr"
+      ? `${name}: takımın maç başına ${made} isabet yüzdesi (Σyapılan / Σdenenen, maç logundan). Yüzde olduğu için maç projeksiyonuna ÖLÇEKLENMEZ: Model = maç-bazlı yüzdelerin L10 WTD karışımı (Sezon/Son10/Son5). Trader'ı elle değiştirebilirsin.`
+      : `${name}: the team's ${made} percentage per match (Σmade / Σattempted, from the match log). Being a percentage it is NOT scaled to the match projection: Model = the L10 WTD blend (Season/Last10/Last5) of per-match percentages. You can override Trader.`;
   }
   if (key === "oreb" || key === "dreb" || key === "rebounds") {
     return locale === "tr"
