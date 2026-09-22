@@ -94,7 +94,10 @@ function footballLogo(flat: string, raw: string): LeagueLogo | null {
 function basketballLogo(flat: string): LeagueLogo | null {
   if (flat.includes("euroleague")) return EUROLEAGUE;
   if (flat.includes("eurocup")) return EUROCUP;
-  if (flat.includes("superlig")) return BSL; // Basketbol Süper Ligi
+  // Basketbol Süper Ligi: SofaScore tracker'da Ingilizce "Turkish Basketball
+  // Super League" (Upcoming Events), yerel yuzeylerde "Basketbol Süper Ligi".
+  // "supercup" (Türkiye Basketbol Süper Kupası) bilerek disarida kalir.
+  if (flat.includes("superlig") || flat.includes("basketballsuperleague")) return BSL;
   // BCL ("Champions League") ve TBL icin amblem yok -> null.
   return null;
 }

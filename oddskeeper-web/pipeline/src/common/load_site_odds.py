@@ -20,6 +20,7 @@ import os
 import re
 import sys
 import unicodedata
+from datetime import datetime, timezone
 from difflib import SequenceMatcher
 from urllib.parse import urlsplit
 
@@ -38,10 +39,23 @@ CLUB_STOPWORDS = {
     "fc", "sc", "sk", "jk", "fk", "cf", "ac", "as", "if", "bk", "bc",
     "club", "kulubu", "spor", "sports", "sportif", "afc", "cfr", "ks",
     "tc", "sv", "vfl", "vfb", "fsv", "rc", "us", "ss", "ssc", "aik",
+    # Basketbol jenerikleri (2026-09-22 TBL vakasi): "ILab Basketbol" ile
+    # "Gaziantep Basketbol" yalniz 'basketbol' ortak diye 0.45 aliyor, 'CO
+    # Basket'~'CO Basketbol' 1.0 ile birlesince FARKLI macta yanlis rozet
+    # olusuyordu. Kulup kimligi tasimayan bu ekler atilir; 'CO Basket' vs
+    # 'CO Basketbol' yine 1.0 (co), 'Manisa BSB Spor' vs 'Manisa Basket' 1.0.
+    "basketbol", "basketball", "basket", "bsb", "bbsk",
 }
 
 MATCH_THRESHOLD = 0.55
 MARGIN = 0.15  # en iyi ile ikinci arasindaki asgari fark
+# Tarih penceresi (2026-09-22): site maci ile aday event arasinda en fazla bu
+# kadar fark olabilir. Amac 19 Eyl'deki bir maci 26 Eyl'deki ayni-ev-takimli maca
+# baglamayi kesmek (haftalik lig ritmi = 7 gun). 4 gun genis tutuldu cunku
+# kaynaklar arasi fikstur kaymasi oluyor (Manisa-Erokspor SofaScore 25 Eyl,
+# Bets10 28 Eyl). start bilgisi olmayan kaynaklarda (bmbets/oddsportal) kisit
+# uygulanmaz (eski davranis).
+DATE_WINDOW_HOURS = 96
 
 # Bulanik token eslemesi: farkli kaynaklar ayni kulubu yakin ama ayni-olmayan
 # yazimla verebilir (ornek: API-Football 'Rennes' vs SofaScore 'Stade Rennais';
@@ -195,7 +209,26 @@ def _best_match(home: str, away: str, our_events: list[dict], scorer) -> dict | 
     return None
 
 
-def resolve(site_events: list[tuple[str, str]], our_events: list[dict]) -> dict:
+def _parse_site_start(text) -> datetime | None:
+    """'2026-09-19T12:30:00Z' -> aware datetime; bos/bilinmeyen bicim -> None."""
+    if not text:
+        return None
+    try:
+        return datetime.fromisoformat(str(text).replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
+def _within_window(site_start, ev_start) -> bool:
+    if site_start is None or ev_start is None:
+        return True  # tarih bilgisi yoksa kisit yok (eski davranis)
+    if ev_start.tzinfo is None:
+        ev_start = ev_start.replace(tzinfo=timezone.utc)
+    return abs((ev_start - site_start).total_seconds()) <= DATE_WINDOW_HOURS * 3600
+
+
+def resolve(site_events: list[tuple[str, str]], our_events: list[dict],
+            site_starts: dict | None = None, site_sports: dict | None = None) -> dict:
     """(home, away) -> {event_id, score}. Belirsiz eslesmeler atlanir.
 
     Iki gecis: once DUZ yon (mevcut davranis; iki bacakli Avrupa eslemelerinde
@@ -204,16 +237,37 @@ def resolve(site_events: list[tuple[str, str]], our_events: list[dict]) -> dict:
     sirasiyla verdiginde (ornek: SofaScore 'Udinese - Trabzonspor', bet365
     'Trabzonspor - Udinese') oran yine dogru event'e baglanir. Ters yon yalnizca
     yedek oldugu icin, ayni ikilinin iki ayri bacagini birbirine karistirmaz.
+
+    site_starts: {(home, away): start_iso} verilirse adaylar DATE_WINDOW_HOURS
+    penceresine suzulur (2026-09-22: 19 Eyl TBL maci 26 Eyl maca baglanmisti).
+    site_sports: {(home, away): 'football'|'basketball'} verilirse adaylar AYNI
+    SPORLA sinirlanir. 2026-09-22 vakasi: Bets10 basketbol 'Manisa BSB Spor -
+    Erokspor' futbol 1.Lig 'Manisa FK - Esenler Erokspor'a 0.9 ile baglanmisti;
+    TBL/BSL'de futbol kulubuyle ayni adli takim cok (Konyaspor, Goztepe,
+    Ankaragucu, Bursaspor, Trabzonspor...). Sport bilgisi yoksa kisit yok.
     """
+    starts = {k: _parse_site_start(v) for k, v in (site_starts or {}).items()}
+    sports = site_sports or {}
+
+    def cands(key):
+        evs = our_events
+        sp = sports.get(key)
+        if sp:
+            evs = [ev for ev in evs if (ev.get("sport") or sp) == sp]
+        st = starts.get(key)
+        if st is not None:
+            evs = [ev for ev in evs if _within_window(st, ev.get("start_ts"))]
+        return evs
+
     out = {}
     for home, away in site_events:
-        m = _best_match(home, away, our_events, pair_score)
+        m = _best_match(home, away, cands((home, away)), pair_score)
         if m:
             out[(home, away)] = m
     for home, away in site_events:
         if (home, away) in out:
             continue
-        m = _best_match(home, away, our_events, pair_score_rev)
+        m = _best_match(home, away, cands((home, away)), pair_score_rev)
         if m:
             out[(home, away)] = m
     return out
@@ -362,7 +416,16 @@ def main() -> None:
     ]
 
     site_pairs = sorted({(r["home"], r["away"]) for r in rows})
-    matches = resolve(site_pairs, our)
+    # Tarih penceresi + spor kisiti icin site macinin baslangici (Bets10
+    # start_text ISO) ve sporu (parse_bets10_network categoryName -> sport).
+    site_starts, site_sports = {}, {}
+    for r in rows:
+        key = (r["home"], r["away"])
+        if r.get("start_text") and key not in site_starts:
+            site_starts[key] = r["start_text"]
+        if r.get("sport") and key not in site_sports:
+            site_sports[key] = r["sport"]
+    matches = resolve(site_pairs, our, site_starts, site_sports)
 
     matched_ids = {m["event_id"] for m in matches.values()}
     listed_matches = resolve_listed(listed_rows, our, exclude=matched_ids)
