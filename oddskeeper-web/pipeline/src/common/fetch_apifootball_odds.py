@@ -41,7 +41,11 @@ BOOKMAKER_BET365 = 8
 # domestic desende; kupa basladiginda dolar, o zamana kadar loader sessizce atlar.
 # Milli takim turnuvalari mac oldukca eklenebilir (10=uluslararasi hazirlik,
 # 5=Nations, 4=EURO elemeleri, 34=Dunya K. elemeleri UEFA).
-LEAGUES = [2, 3, 848, 667, 203, 204, 206]
+# 2/3/848 = Sampiyonlar/Avrupa/Konferans, 667 = kulup hazirlik, 203/204/206 = Super Lig/1.Lig/
+# Turkiye Kupasi, 5 = UEFA Uluslar Ligi, 10 = milli hazirlik (World Friendlies). Ikisi de
+# SEASON=2026 ile calisir (2026-09-23 dogrulandi: NL 10 fikstur bet365 oranli). U21 eleme
+# (850) API'de sezon 2027 ve fikstursuz, eklenmedi.
+LEAGUES = [2, 3, 848, 667, 203, 204, 206, 5, 10]
 MW_BET = "Match Winner"
 OU_BET = "Goals Over/Under"
 

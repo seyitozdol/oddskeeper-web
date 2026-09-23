@@ -8,6 +8,10 @@ proxy/GB gerekmez - 2026-07-30 dogrulandi). Oranlar DOM'da render:
   (1X2 orani). Lig sayfasi o ligin yaklasan maclarini + 1X2 verir.
   NOT: 2026-08 arayuz yenilemesiyle eski div.group.flex yapisi kalkti; artik
   kararli data-testid tutamaklarina baglaniyoruz (class'lar Tailwind ile degisir).
+  NOT 2 (2026-09-23): data-testid'ler de KALKTI (1 Eylul'den beri tum ligler 0 mac).
+  Yedek yol: mac satiri = a[href*="/h2h/"] ("15:00 Samsunspor - Trabzonspor"),
+  1X2 oranlari ayni satir kabinin (anchor'un parent'i) metninde anchor'dan sonra.
+  Iki yol da denenir; data-testid geri gelirse o oncelikli.
 
 Turk domestic (Super Lig/1.Lig) + Avrupa kupalarini kapsar - en genis kaynak.
 Headful Chromium + Xvfb (sistem chromium). Eslestirme load_site_odds.resolve.
@@ -71,6 +75,25 @@ EXTRACT_JS = r"""() => {
     if (odds.length < 3) continue;
     out.push({ home, away, o1: odds[0], ox: odds[1], o2: odds[2] });
   }
+  // 2026-09 arayuzu: data-testid yok. Mac linki /football/h2h/<ev>/<dep>/, metni
+  // "15:00 Ev - Dep" (saat yerine dakika/"Postp." de olabilir); oranlar anchor'un
+  // parent'inin metninde anchor metninden SONRA gelen ilk 3 ondalik.
+  if (out.length === 0) {
+    for (const a of document.querySelectorAll('a[href*="/h2h/"]')) {
+      const t = clean(a.innerText);
+      const m = t.match(/^(?:(?:\d{1,2}:\d{2}|\d{1,3}'|[A-Za-z.]{2,7})\s+)?(.+?)\s+[-–]\s+(.+)$/);
+      if (!m) continue;
+      const home = strip(m[1]), away = strip(m[2]);
+      if (!home || !away || home.length > 40 || away.length > 40) continue;
+      const row = a.parentElement;
+      if (!row) continue;
+      const rowText = clean(row.innerText);
+      const rest = rowText.startsWith(t) ? rowText.slice(t.length) : rowText.replace(t, '');
+      const odds = (rest.match(/\d{1,3}\.\d{1,2}/g) || []).slice(0, 3);
+      if (odds.length < 3) continue;
+      out.push({ home, away, o1: odds[0], ox: odds[1], o2: odds[2] });
+    }
+  }
   // benzersiz (home,away)
   const seen = new Set(), uniq = [];
   for (const r of out) { const k = r.home + '|' + r.away; if (!seen.has(k)) { seen.add(k); uniq.push(r); } }
@@ -103,7 +126,7 @@ def scrape(chromium_path: str | None) -> list[dict]:
                 prev = -1
                 for _ in range(15):
                     n = p.evaluate(
-                        "() => document.querySelectorAll('[data-testid=\"game-row\"]').length"
+                        "() => document.querySelectorAll('[data-testid=\"game-row\"], a[href*=\"/h2h/\"]').length"
                     )
                     if n == prev:
                         break
