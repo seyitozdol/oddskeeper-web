@@ -45,6 +45,10 @@ const ENTRIES: Entry[] = [
         tr: "Upcoming Events: Bets10 oranları artık UEFA Uluslar Ligi maçlarını da kapsıyor (Türkiye - Fransa ve grubun diğer maçları); Türkçe yazılan milli takım adları (Fransa, İtalya, Belçika...) fikstürle doğru eşleşiyor.",
       },
       {
+        en: "Upcoming Events: handball is in. The Turkish men's and women's Süper Lig matches are listed with one priority star and a Handball tab. In volleyball the Sultanlar Ligi and Efeler Ligi now appear under their real names (SofaScore labels them \"VVSL Lig, Women\" and \"First Division\"); they stay in the low-profile group without stars. No bookmaker links for these, list only.",
+        tr: "Upcoming Events: hentbol geldi. Türkiye Erkekler ve Kadınlar Süper Ligi maçları tek öncelik yıldızı ve Hentbol sekmesiyle listeleniyor. Voleybolda Sultanlar Ligi ve Efeler Ligi artık gerçek adlarıyla görünüyor (SofaScore \"VVSL Lig, Women\" ve \"First Division\" diyordu); yıldızsız, low profile grubunda kalıyorlar. Bunlar için bahis sitesi linki yok, sadece liste.",
+      },
+      {
         en: "Upcoming Events: the OddsPortal badge is back (the site had changed its page markup on 1 September and nothing had matched since). bet365, OddsPortal and BMBets now also cover the Nations League and national-team friendlies, so the Türkiye matches show all four sources.",
         tr: "Upcoming Events: OddsPortal rozeti geri geldi (site 1 Eylül'de sayfa yapısını değiştirmişti, o günden beri hiç eşleşme yoktu). bet365, OddsPortal ve BMBets artık Uluslar Ligi ve milli hazırlık maçlarını da kapsıyor; Türkiye maçlarında dört kaynak da görünüyor.",
       },

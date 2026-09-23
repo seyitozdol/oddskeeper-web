@@ -22,6 +22,9 @@
 //     A Milli (erkek) ................ 3
 //   Voleybol
 //     Kadın A Milli .................. 3
+//     Sultanlar / Efeler Ligi ........ 0 (listede, "low profile"; kullanıcı 2026-09-23)
+//   Hentbol (2026-09-23)
+//     Süper Lig (erkek VE kadın) ..... 1 (kadın kulüp kuralının istisnası)
 //
 // Alt yaş (U16/U18/U19/U21, PAF, youth) takımlarının maçları ve kadın KULÜP
 // takımlarının maçları yıldız almaz. Milli takım cinsiyet kuralı: futbol/basketbol
@@ -168,6 +171,12 @@ export function eventStarCount(e: UpcomingEventRow): number {
     if ((e.sport === "football" || e.sport === "basketball") && !women) return 3;
     if (e.sport === "volleyball" && women) return 3;
     return 0; // diğer milli maçlar (ör. kadın futbol milli) yıldızsız
+  }
+
+  // Hentbol: yalnız Süper Lig çekiliyor; erkek ve kadın ligi tek yıldız (kadın kulüp
+  // kuralı burada uygulanmaz, kullanıcı isteği).
+  if (e.sport === "handball") {
+    return /s[uü]per\s*lig/i.test(e.tournament_name) ? 1 : 0;
   }
 
   // Kadın kulüp takımlarının maçları yıldız almaz.

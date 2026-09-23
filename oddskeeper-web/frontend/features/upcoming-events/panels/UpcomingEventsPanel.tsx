@@ -21,12 +21,14 @@ const SPORT_ICON: Record<TrackedSport, string> = {
   football: "/icons/football.svg",
   basketball: "/icons/basketball.svg",
   volleyball: "/icons/volleyball.svg",
+  handball: "/icons/handball.svg",
 };
 
 const SPORT_LABEL_KEY: Record<TrackedSport, string> = {
   football: "upcomingEvents.football",
   basketball: "upcomingEvents.basketball",
   volleyball: "upcomingEvents.volleyball",
+  handball: "upcomingEvents.handball",
 };
 
 // Istanbul saatine gore YYYY-MM-DD (gun gruplama anahtari).

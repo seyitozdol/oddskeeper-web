@@ -1,7 +1,7 @@
 // analytics.upcoming_events_v1 satirlari (kaynak: tracker.upcoming_events,
 // SofaScore'dan pipeline/src/common/fetch_upcoming_events.py ile beslenir).
 
-export const TRACKED_SPORTS = ["football", "basketball", "volleyball"] as const;
+export const TRACKED_SPORTS = ["football", "basketball", "volleyball", "handball"] as const;
 
 export type TrackedSport = (typeof TRACKED_SPORTS)[number];
 

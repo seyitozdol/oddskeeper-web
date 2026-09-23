@@ -1,6 +1,7 @@
 """Upcoming Event Tracker: SofaScore'dan Turk takimlarinin yaklasan maclarini ceker.
 
-Futbol / basketbol / voleybol icin iki tur kategori taranir:
+Futbol / basketbol / voleybol / hentbol (2026-09-23: yalniz Super Lig E+K) icin iki tur
+kategori taranir:
   - Turkiye kategorileri: gunun tum maclari alinir (ligler ve alt ligler dahil).
   - Avrupa / Dunya / Uluslararasi kategorileri: iki takimdan biri TR ise alinir
     (Avrupa kupasi elemeleri, milli takimlar, kadin takimlari dahil).
@@ -21,6 +22,7 @@ Kullanim: python fetch_upcoming_events.py [gun_sayisi]  (varsayilan 28)
 Periyodik: VPS'te cron (/opt/oddskeeper/run_upcoming_events.sh).
 """
 import os
+import re
 import secrets
 import sys
 import time
@@ -74,6 +76,25 @@ CATEGORY_PLAN = {
     "football": {"all": [46], "tr_only": [1465, 1468]},      # Turkey / Europe, World
     "basketball": {"all": [112], "tr_only": [103]},          # Turkey / International
     "volleyball": {"all": [195], "tr_only": [136]},          # Turkey / International
+    "handball": {"all": [413], "tr_only": []},               # Turkey (2026-09-23)
+}
+
+# Turnuva suzgeci (spor -> regex, tournament.name VEYA uniqueTournament.name uzerinde):
+# hentbolda yalniz Erkekler + Kadinlar Super Ligi istendi (1./2. Lig, Super Kupa disarida).
+# SofaScore adlari: erkek tournament "Superlig" / unique "Süper Lig"; kadin "Super Lig, Women".
+TOURNAMENT_ALLOW = {
+    "handball": re.compile(r"s[uü]per\s*lig", re.IGNORECASE),
+}
+
+# Gorunen turnuva adi duzeltmesi (uniqueTournament id -> ad). SofaScore'un tournament.name'i
+# bazen tanınmaz: Sultanlar Ligi "VVSL Lig, Women", Efeler Ligi "First Division", hentbol
+# erkek "Superlig". Diger sporlarda tournament.name DEGISTIRILMEZ (Bets10 resolver
+# 'Trendyol Süper Lig' gibi adlara bagli).
+UT_NAME_OVERRIDE = {
+    969: "Sultanlar Ligi",          # voleybol kadin (Vodafone Sultans League)
+    967: "Efeler Ligi",             # voleybol erkek
+    14249: "Süper Lig",             # hentbol erkek
+    24128: "Süper Lig, Women",      # hentbol kadin
 }
 
 UPSERT_SQL = """
@@ -143,6 +164,10 @@ def event_row(event: dict, sport: str) -> dict | None:
     if not ts or not event.get("id") or not home.get("name") or not away.get("name"):
         return None
     tournament = event.get("tournament") or {}
+    ut = tournament.get("uniqueTournament") or {}
+    allow = TOURNAMENT_ALLOW.get(sport)
+    if allow and not (allow.search(tournament.get("name") or "") or allow.search(ut.get("name") or "")):
+        return None
     round_info = (event.get("roundInfo") or {}).get("name")
     if not round_info:
         rnd = (event.get("roundInfo") or {}).get("round")
@@ -151,7 +176,7 @@ def event_row(event: dict, sport: str) -> dict | None:
         "event_id": event["id"],
         "sport": sport,
         "category_name": (tournament.get("category") or {}).get("name"),
-        "tournament_name": tournament.get("name") or "?",
+        "tournament_name": UT_NAME_OVERRIDE.get(ut.get("id")) or tournament.get("name") or "?",
         "season_name": (event.get("season") or {}).get("name"),
         "round_info": round_info,
         "gender": home.get("gender"),
