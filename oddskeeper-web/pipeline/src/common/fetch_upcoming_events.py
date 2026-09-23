@@ -85,6 +85,12 @@ CATEGORY_PLAN = {
 TOURNAMENT_ALLOW = {
     "handball": re.compile(r"s[uü]per\s*lig", re.IGNORECASE),
 }
+# Disarida birakilan turnuvalar (spor -> regex). Voleybol Turkey kategorisi 21 bolgesel
+# "Erkekler/Kadinlar 2. Ligi, N. Grup" grubuyla ~380 mac getiriyordu; Upcoming Events
+# 500 satir limitiyle 10 Ekim'de kesiliyor, Efeler Ligi (17 Eki) listeye giremiyordu.
+TOURNAMENT_DENY = {
+    "volleyball": re.compile(r"\b2\.\s*lig", re.IGNORECASE),
+}
 
 # Gorunen turnuva adi duzeltmesi (uniqueTournament id -> ad). SofaScore'un tournament.name'i
 # bazen tanınmaz: Sultanlar Ligi "VVSL Lig, Women", Efeler Ligi "First Division", hentbol
@@ -165,8 +171,12 @@ def event_row(event: dict, sport: str) -> dict | None:
         return None
     tournament = event.get("tournament") or {}
     ut = tournament.get("uniqueTournament") or {}
+    t_name, ut_name = tournament.get("name") or "", ut.get("name") or ""
     allow = TOURNAMENT_ALLOW.get(sport)
-    if allow and not (allow.search(tournament.get("name") or "") or allow.search(ut.get("name") or "")):
+    if allow and not (allow.search(t_name) or allow.search(ut_name)):
+        return None
+    deny = TOURNAMENT_DENY.get(sport)
+    if deny and (deny.search(t_name) or deny.search(ut_name)):
         return None
     round_info = (event.get("roundInfo") or {}).get("name")
     if not round_info:
