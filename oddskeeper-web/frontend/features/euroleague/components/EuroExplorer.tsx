@@ -72,7 +72,7 @@ export default function EuroExplorer({
     { key: "league", label: t("basketball.tabLeague") },
     { key: "players", label: t("basketball.tabPlayersList") },
     { key: "teams", label: t("basketball.tabTeamsList") },
-    { key: "results", label: t("basketball.tabResults") },
+    { key: "results", label: t("basketball.tabResultsFixtures") },
     { key: "playerRankings", label: t("basketball.tabPlayerRankings") },
     { key: "teamRankings", label: t("basketball.tabTeamRankings") },
   ];

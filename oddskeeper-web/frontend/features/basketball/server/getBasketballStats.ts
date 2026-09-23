@@ -190,20 +190,23 @@ export async function getBasketballPlayerList(season: string = SEASON): Promise<
   return data ?? [];
 }
 
-export async function getBasketballFixtures(): Promise<BktFixtureRow[]> {
+// Yaklaşan maçlar (SofaScore); sezon view'da İstanbul tarihinden türetilir. Kupa maçında
+// rakip BSL dışı olabilir (slug null) → view en az bir tarafı BSL olanları verir.
+export async function getBasketballFixtures(season: string = SEASON): Promise<BktFixtureRow[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .schema("analytics")
     .from("bb_fixtures_v1")
-    .select("fixture_id,season_label,competition,week,match_text,home_team_slug,home_team_name,away_team_slug,away_team_name")
-    .order("fixture_id", { ascending: true })
+    .select("fixture_id,season_label,competition,week,round_label,match_text,home_team_slug,home_team_name,away_team_slug,away_team_name,start_ts,status_type")
+    .eq("season_label", season)
+    .order("start_ts", { ascending: true })
+    .limit(400)
     .returns<BktFixtureRow[]>();
   if (error) {
     console.error("getBasketballFixtures error:", error.message);
     return [];
   }
-  // yalnız iki takımı dolu olanlar (Excel Fixture'da boş satırlar var)
-  return (data ?? []).filter((f) => f.home_team_slug && f.away_team_slug);
+  return data ?? [];
 }
 
 // Mac-seviyesi liste (bir satir = bir mac). Hub Results sekmesi.

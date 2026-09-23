@@ -21,6 +21,28 @@ const TAG_FIX: L = { en: "Fix", tr: "Düzeltme" };
 
 const ENTRIES: Entry[] = [
   {
+    date: { en: "23 September", tr: "23 Eylül" },
+    title: {
+      en: "BSL: upcoming fixtures on the hub and FG% for the away team",
+      tr: "BSL: hub'da yaklaşan fikstür ve deplasman için FG%",
+    },
+    tag: TAG_NEW,
+    items: [
+      {
+        en: "The BSL page's Results tab is now Results & Fixtures: the upcoming week's matches (date, time, teams) come from the live schedule, with an \"All upcoming\" switch for the following weeks. The League tab card shows the next matches too.",
+        tr: "BSL sayfasındaki Sonuçlar sekmesi artık Sonuçlar & Fikstür: gelecek haftanın maçları (tarih, saat, takımlar) canlı fikstürden gelir; \"Tüm yaklaşan\" ile sonraki haftalar da açılır. Lig sekmesindeki kart da sıradaki maçları gösterir.",
+      },
+      {
+        en: "Match-Player Tools Team Metrics: FG % now has a proper home and away row in all three leagues (it used to exist only as a home-side test row), next to FT %. Template and std are set in Config > Market Templates.",
+        tr: "Match-Player Tools Team Metrics: FG % artık üç ligde de ev ve deplasman satırı olarak var (eskiden yalnız ev tarafında test satırıydı), FT %'nin yanında. Şablon ve std Config > Market Templates'ten ayarlanır.",
+      },
+      {
+        en: "Fixtures tab: postponed matches drop out of the upcoming list and the rescheduled match takes their place.",
+        tr: "Fikstürler sekmesi: ertelenen maçlar yaklaşan listeden düşer, yeni tarihli maç yerine gelir.",
+      },
+    ],
+  },
+  {
     date: { en: "22 September", tr: "22 Eylül" },
     title: {
       en: "Basketball Match-Player Tools: FT%, player search and Bets10 fixtures",

@@ -349,6 +349,7 @@ def load_bets10_basketball(cur) -> dict[int, dict]:
           on o.event_id = u.event_id and o.site = 'bets10'
         where u.sport = 'basketball'
           and u.start_ts > now() - interval '1 day'
+          and coalesce(u.status_type, '') not in ('postponed', 'cancelled', 'canceled')
         """
     )
     ev: dict[int, dict] = {}
@@ -532,6 +533,15 @@ def main() -> None:
         )
     # Eski maclar (30+ gun) tablodan dusulur; fiksture uygulanmis degerler bb_pm_fixtures'ta kalir.
     cur.execute("delete from tracker.bb_fixture_bets10_link where start_ts < now() - interval '30 days'")
+    # Ertelenen/iptal mac (SofaScore yeni event acar; ornek Manisa-Erokspor R1) listeden dusulur.
+    cur.execute(
+        """
+        delete from tracker.bb_fixture_bets10_link l
+        using tracker.upcoming_events u
+        where u.event_id = l.event_id
+          and coalesce(u.status_type, '') in ('postponed', 'cancelled', 'canceled')
+        """
+    )
 
     for r in rows:
         cur.execute(

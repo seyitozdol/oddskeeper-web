@@ -317,16 +317,21 @@ export type BktRosterMode = {
   teamSource: Record<string, { season: string | null; gamesCurrent: number }>;
 };
 
+// Hub Results&Fixtures: yaklaşan maçlar (bb_fixtures_v1 = SofaScore upcoming_events; slug basketball.teams
+// sofascore_team_id ile). Lig maçında week 'Round N'; kupa maçında week null, round_label 'Final' vb.
 export type BktFixtureRow = {
   fixture_id: number;
   season_label: string | null;
-  competition: string | null;
+  competition: string | null;     // 'BSL' | kupa adı
   week: number | null;
+  round_label?: string | null;
   match_text: string | null;
   home_team_slug: string | null;
   home_team_name: string | null;
   away_team_slug: string | null;
   away_team_name: string | null;
+  start_ts?: string | null;
+  status_type?: string | null;
 };
 
 // Mac listesi (bb_games_v1) — hub Results sekmesi. Bir satir = bir mac (ev perspektifi).

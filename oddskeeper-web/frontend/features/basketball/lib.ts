@@ -31,6 +31,8 @@ export function teamInitials(name: string | null | undefined): string {
   return (words[0][0] + words[1][0]).toUpperCase();
 }
 
+// Tarih/saat İstanbul saatine göre (tarayıcı dilimine bağlı gün kayması olmasın;
+// tarih-only 'YYYY-MM-DD' UTC gece yarısı = İstanbul aynı gün).
 export function formatMatchDate(value: string | null | undefined, locale: Locale): string {
   if (!value) return "";
   const d = new Date(value);
@@ -39,6 +41,17 @@ export function formatMatchDate(value: string | null | undefined, locale: Locale
     day: "2-digit",
     month: "short",
     year: "numeric",
+    timeZone: "Europe/Istanbul",
+  });
+}
+export function formatMatchTime(value: string | null | undefined, locale: Locale): string {
+  if (!value) return "";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleTimeString(locale === "tr" ? "tr-TR" : "en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "Europe/Istanbul",
   });
 }
 

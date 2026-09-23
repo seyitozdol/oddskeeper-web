@@ -16,7 +16,7 @@ export default async function BasketballPage({
     getBasketballPlayerLeaderboard(seasonLabel),
     getBasketballTeamPointsModel(),
     getBasketballGames(seasonLabel),
-    getBasketballFixtures(),
+    getBasketballFixtures(seasonLabel),
     getT(),
   ]);
   const VALID_TABS = ["league", "players", "teams", "results", "playerRankings", "teamRankings", "match"] as const;
