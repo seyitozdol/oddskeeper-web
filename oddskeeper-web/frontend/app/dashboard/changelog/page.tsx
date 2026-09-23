@@ -41,6 +41,10 @@ const ENTRIES: Entry[] = [
         tr: "Fikstürler sekmesi: ertelenen maçlar yaklaşan listeden düşer, yeni tarihli maç yerine gelir.",
       },
       {
+        en: "Upcoming Events: Bets10 odds now cover UEFA Nations League matches (Türkiye - France and the rest of the group), and national-team names in Turkish (Fransa, İtalya, Belçika...) are matched to the fixture list correctly.",
+        tr: "Upcoming Events: Bets10 oranları artık UEFA Uluslar Ligi maçlarını da kapsıyor (Türkiye - Fransa ve grubun diğer maçları); Türkçe yazılan milli takım adları (Fransa, İtalya, Belçika...) fikstürle doğru eşleşiyor.",
+      },
+      {
         en: "Player Distribution: for Pts+Reb, Pts+Ast and Pts+Reb+Ast the Value now defaults to the sum of the points / rebounds / assists you already sent to Input for that player in the same fixture (marked with Σ). If one component was not sent, the usual season average stays; typing a value still overrides.",
         tr: "Player Distribution: Sayı+Rib, Sayı+Asist ve Sayı+Rib+Asist marketlerinde Value artık aynı maçta o oyuncu için Input'a gönderdiğin sayı / ribaund / asist değerlerinin toplamıyla gelir (Σ işaretli). Bileşenlerden biri gönderilmediyse her zamanki sezon ortalaması kalır; elle yazdığın değer yine üstün.",
       },
