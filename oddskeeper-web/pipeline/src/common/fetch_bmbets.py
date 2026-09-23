@@ -41,6 +41,11 @@ LEAGUES = [
     ("Konferans Ligi", "/football/europe/uefa-conference-league/"),
     ("Konferans Ligi Eleme", "/football/europe/uefa-conference-league-qualification/"),
     ("Kulüp Hazırlık", "/football/world/club-friendlies/"),
+    # Milli takim (2026-09-23, Turkiye-Fransa vakasi; URL'ler bmbets /football/ index'inden):
+    # Uluslar Ligi A (Turkiye A Ligi'nde; B/C/D ayri sayfa), U21 Avrupa eleme, milli hazirlik.
+    ("Uluslar Ligi A", "/football/europe/uefa-nations-league-a/"),
+    ("U21 Avrupa Eleme", "/football/europe/uefa-championship-u21-qualification/"),
+    ("Milli Hazırlık", "/football/world/friendly-internationals/"),
 ]
 
 ODDS_RE = re.compile(r"^\d+(?:\.\d{1,2})?$")
