@@ -116,6 +116,36 @@ _EXONYMS = {
     "barca": ("barcelona",),
 }
 
+# ULKE EKZONIMLERI (2026-09-23, Turkiye-Fransa Uluslar Ligi vakasi): Bets10 milli
+# takimlari TURKCE ulke adiyla yazar ("Fransa"), SofaScore INGILIZCE ("France");
+# fuzzy kurtarmiyor (fransa~france 0.667 < 0.72) -> tek taraf 0 -> mac eslesmez.
+# Anahtar fold() sonrasi TEK token; cok kelimeli adlar kelime kelime (kuzey+irlanda,
+# beyaz+rusya, bosna+hersek). Deger SofaScore token'lari (fold sonrasi).
+_COUNTRY_EXONYMS = {
+    "fransa": ("france",), "italya": ("italy",), "belcika": ("belgium",), "almanya": ("germany",),
+    "ispanya": ("spain",), "hollanda": ("netherlands",), "ingiltere": ("england",),
+    "portekiz": ("portugal",), "hirvatistan": ("croatia",), "danimarka": ("denmark",),
+    "isvec": ("sweden",), "norvec": ("norway",), "polonya": ("poland",), "yunanistan": ("greece",),
+    "isvicre": ("switzerland",), "avusturya": ("austria",), "cekya": ("czechia", "czech"),
+    "macaristan": ("hungary",), "ukrayna": ("ukraine",), "romanya": ("romania",),
+    "sirbistan": ("serbia",), "bosna": ("bosnia",), "hersek": ("herzegovina",),
+    "slovenya": ("slovenia",), "slovakya": ("slovakia",), "irlanda": ("ireland",),
+    "iskocya": ("scotland",), "galler": ("wales",), "kuzey": ("northern", "north"),
+    "israil": ("israel",), "gurcistan": ("georgia",), "ermenistan": ("armenia",),
+    "azerbaycan": ("azerbaijan",), "kazakistan": ("kazakhstan",), "letonya": ("latvia",),
+    "litvanya": ("lithuania",), "estonya": ("estonia",), "finlandiya": ("finland",),
+    "izlanda": ("iceland",), "luksemburg": ("luxembourg",), "andora": ("andorra",),
+    "cebelitarik": ("gibraltar",), "karadag": ("montenegro",), "kosova": ("kosovo",),
+    "arnavutluk": ("albania",), "makedonya": ("macedonia",), "bulgaristan": ("bulgaria",),
+    "beyaz": ("belarus",), "rusya": ("russia",), "kibris": ("cyprus",), "faroe": ("faroe",),
+    "adalari": ("islands",), "lihtenstayn": ("liechtenstein",), "moldova": ("moldova",),
+    "turkiye": ("turkiye", "turkey"), "brezilya": ("brazil",), "arjantin": ("argentina",),
+    "abd": ("usa", "united", "states"), "meksika": ("mexico",), "japonya": ("japan",),
+    "guney": ("south",), "kore": ("korea",), "misir": ("egypt",), "fas": ("morocco",),
+    "cezayir": ("algeria",), "tunus": ("tunisia",), "kolombiya": ("colombia",), "sili": ("chile",),
+}
+_EXONYMS.update(_COUNTRY_EXONYMS)
+
 
 def tokens(name: str) -> set[str]:
     s = fold(name)

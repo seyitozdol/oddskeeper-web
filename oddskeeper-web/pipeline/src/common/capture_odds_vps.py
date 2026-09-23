@@ -91,8 +91,13 @@ BETS10_PAGES = [
     ("basketbol-super-lig", "/tr/spor-bahisleri/basketbol/turkiye/turkiye-basketbol-super-ligi"),
     ("basketbol-tbl", "/tr/spor-bahisleri/basketbol/turkiye/turkiye-basketbol-ligi"),
     ("basketbol-euroleague", "/tr/spor-bahisleri/basketbol/euroleague/euroleague"),
-    # --- milli takimlar (SEZON DISI; uluslararasi turnuvalar mac oldukca eklenir) ---
-    ("futbol-milli-eleme", "/tr/spor-bahisleri/futbol/dunya-kupasi-eleme-uefa/dunya-kupasi-eleme-uefa"),
+    # --- milli takimlar ---
+    # UEFA Uluslar Ligi (2026-09-23; Turkiye-Fransa kullanici fark etti). Slug dump'taki
+    # event slug'larindan dogrulandi: futbol/uluslar-ligi/uefa-uluslar-ligi/<mac>.
+    ("futbol-uluslar-ligi", "/tr/spor-bahisleri/futbol/uluslar-ligi/uefa-uluslar-ligi"),
+    # Dunya Kupasi eleme (dunya-kupasi-eleme-uefa/dunya-kupasi-eleme-uefa) 2026 elemeleri
+    # bitince futbol kokune yonlenip alakasiz ligleri (Hindistan, Tayland...) yakaliyordu;
+    # 2030 elemeleri baslayinca slug'i dogrulayip geri ekle.
 ]
 SITES: dict[str, dict] = {
     "bets10": {
