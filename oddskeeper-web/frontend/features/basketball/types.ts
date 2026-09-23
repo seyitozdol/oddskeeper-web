@@ -205,6 +205,11 @@ export type BktInputRow = {
   marketLabel: string;
   playerName: string;
   teamName: string;
+  // Oyuncu satırlarında: hangi oyuncu/metrik hangi değerle gönderildi (kombine market
+  // varsayılanı = gönderilen sayı/ribaund/asist toplamı). Export'a yazılmaz.
+  playerSlug?: string;
+  metricKey?: string;   // base metric: points | rebounds | assists | ...
+  value?: number;
 };
 
 export type BktEuroSeasonRow = {

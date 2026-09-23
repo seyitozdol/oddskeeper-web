@@ -76,6 +76,14 @@ const DEFAULT_LINE_CFG: LineConfig = {
 // Input mükerrer kontrolü: aynı tip+template+katılımcı+taraf+line = aynı satır.
 const rowKey = (r: BktInputRow) => `${r.kind}|${r.template}|${r.participant}|${r.side}|${r.line}`;
 
+// Kombine marketlerin bileşenleri (base metric). Varsayılan değer = aynı maç + oyuncu için
+// Input'a GÖNDERİLMİŞ bileşen değerlerinin toplamı; biri eksikse toplam yok (sezon ort. kalır).
+const COMBO_PARTS: Record<string, string[]> = {
+  pr: ["points", "rebounds"],
+  pa: ["points", "assists"],
+  pra: ["points", "rebounds", "assists"],
+};
+
 // Futbol tarzı özet: kaç market gönderildi / atlandı (neden).
 function addStatusMsg(t: (k: string) => string, sent: number, dup: number, noTpl: number, zero: number): string {
   if (sent + dup + noTpl + zero === 0) return t("basketball.statNone");
@@ -368,10 +376,34 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
     if (den <= 0) return Math.round((w.season_avg ?? 0) * 10) / 10;
     return Math.round((num / den) * 10) / 10;
   };
+  // Bu maç için Input'a gönderilmiş oyuncu değerleri: "playerSlug|metricKey" → value.
+  const sentValueBy = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const r of inputRows) {
+      if (r.kind !== "player" || r.fixtureExtId !== fixExtId || !r.playerSlug || !r.metricKey || r.value == null) continue;
+      m.set(`${r.playerSlug}|${r.metricKey}`, r.value);
+    }
+    return m;
+  }, [inputRows, fixExtId]);
+  // Kombine market (pr/pa/pra) için gönderilmiş bileşenlerin toplamı; eksik bileşen → null.
+  const comboValue = (mk: string, w: BktPlayerWindowRow): number | null => {
+    const parts = COMBO_PARTS[playerMarketBy.get(mk)?.base ?? ""];
+    if (!parts) return null;
+    let sum = 0;
+    for (const p of parts) {
+      const v = sentValueBy.get(`${w.player_slug}|${p}`);
+      if (v == null) return null;
+      sum += v;
+    }
+    return Math.round(sum * 10) / 10;
+  };
   const playerValue = (slug: string, mk: string, w: BktPlayerWindowRow, list: BktPlayerWindowRow[], effPts: number, distribute: boolean) => {
     const k = `${slug}:${mk}:${w.player_slug}`;
     if (playerVal[k] != null) return playerVal[k];                              // elle override
     if (!isTicked(slug, mk, w)) return 0;
+    // kombine market: Input'a gönderilmiş sayı/ribaund/asist toplamı varsa o (elle düzeltilir)
+    const combo = comboValue(mk, w);
+    if (combo != null) return combo;
     // kombine + yüzde marketleri dağıtılmaz: oyuncunun kendi ortalaması (elle düzeltilir)
     if (!(playerMarketBy.get(mk)?.distributable ?? true)) return Math.round((w.season_avg ?? 0) * 10) / 10;
     // Dağıt kapalı (varsayılan): oyuncunun Model değeri (son10/son5/sezon karışımı).
@@ -600,6 +632,7 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
             <PlayerDistPanel homeSlug={homeSlug} awaySlug={awaySlug} homeName={home.team_name} awayName={away.team_name}
               effHome={effHome} effAway={effAway} winBy={winBy} isTicked={isTicked} setTick={(k, v) => setTicks((p) => ({ ...p, [k]: v }))}
               playerValue={playerValue} setVal={(k, v) => setPlayerVal((p) => ({ ...p, [k]: v }))} playerModel={playerModel}
+              comboValue={comboValue} isOverridden={(k) => playerVal[k] != null}
               teamTarget={(slug, mk) => teamTrader(slug, mk, slug === homeSlug ? effHome : effAway)}
               onAdd={(rows) => addWithHistory(rows, "player")} historySlot={historyDropdown} historyNotice={historyNotice}
               playerIds={playerIds} playerCfg={playerCfg} playerMarkets={playerMarkets}
@@ -756,7 +789,7 @@ function TeamRecent({ name, logs, locale, t }: { name: string; logs: BktTeamLogR
 }
 
 /* ---------- Player distribution panel ---------- */
-function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effAway, winBy, isTicked, setTick, playerValue, setVal, playerModel, teamTarget, onAdd, historySlot, historyNotice, playerIds, playerCfg, playerMarkets, existingKeys, existingPlayerMkt, onReset, competition, fixExtId, roleBy, euroTeamSlugs, leaderBy, rosterMode, locale, t }: {
+function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effAway, winBy, isTicked, setTick, playerValue, setVal, playerModel, comboValue, isOverridden, teamTarget, onAdd, historySlot, historyNotice, playerIds, playerCfg, playerMarkets, existingKeys, existingPlayerMkt, onReset, competition, fixExtId, roleBy, euroTeamSlugs, leaderBy, rosterMode, locale, t }: {
   homeSlug: string; awaySlug: string; homeName: string; awayName: string; effHome: number; effAway: number;
   winBy: Map<string, Map<string, BktPlayerWindowRow[]>>;
   isTicked: (s: string, mk: string, w: BktPlayerWindowRow) => boolean;
@@ -764,6 +797,8 @@ function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effA
   playerValue: (s: string, mk: string, w: BktPlayerWindowRow, list: BktPlayerWindowRow[], e: number, distribute: boolean) => number;
   setVal: (k: string, v: number) => void;
   playerModel: (w: BktPlayerWindowRow) => number;
+  comboValue: (mk: string, w: BktPlayerWindowRow) => number | null;
+  isOverridden: (k: string) => boolean;
   teamTarget: (s: string, mk: string) => number;
   onAdd: (rows: BktInputRow[]) => void;
   historySlot?: ReactNode;
@@ -849,9 +884,10 @@ function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effA
       if (!isTicked(slug, mk, w)) continue;
       if (!(tplCur ?? met.tpl)) { noTpl++; continue; }                  // şablon yok
       if (alreadyIn(w)) { dup++; continue; }                            // oyuncu+market zaten Input'ta
-      if (!(playerValue(slug, mk, w, allList, eff, distribute) > 0)) { zero++; continue; } // 0/negatif
+      const value = playerValue(slug, mk, w, allList, eff, distribute);
+      if (!(value > 0)) { zero++; continue; } // 0/negatif
       for (const r of ladderFor(w)) {
-        rows.push({ kind: "player", fixtureExtId: fixExtId, template: tplCur ?? met.tpl, participant: participantOf(w), side: sideNum, line: r.line, over: r.overPrice, under: r.underPrice, marketLabel: met.label, playerName: w.player_name, teamName: teamNm });
+        rows.push({ kind: "player", fixtureExtId: fixExtId, template: tplCur ?? met.tpl, participant: participantOf(w), side: sideNum, line: r.line, over: r.overPrice, under: r.underPrice, marketLabel: met.label, playerName: w.player_name, teamName: teamNm, playerSlug: w.player_slug, metricKey: met.base, value });
       }
       sent++;
     }
@@ -970,7 +1006,16 @@ function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effA
                   <td className="px-2 py-1 text-right tabular-nums text-ink-3">{fmt(w.last10_avg)}</td>
                   <td className="px-2 py-1 text-right tabular-nums text-ink-2">{fmt(w.season_avg)}</td>
                   <td className="px-2 py-1 text-right tabular-nums text-ink-2">{fmt(playerModel(w))}</td>
-                  <td className="px-2 py-1 text-right">{on ? <NumInput value={val} onChange={(v) => setVal(k, v)} /> : <span className="text-ink-3">-</span>}</td>
+                  <td className="px-2 py-1 text-right">
+                    {on ? (
+                      <span className="inline-flex items-center justify-end gap-1">
+                        {!isOverridden(k) && comboValue(mk, w) != null ? (
+                          <span title={t("basketball.comboFromInput")} className="cursor-help rounded bg-accent-soft px-1 py-0.5 text-[10px] font-bold text-accent-ink">Σ</span>
+                        ) : null}
+                        <NumInput value={val} onChange={(v) => setVal(k, v)} />
+                      </span>
+                    ) : <span className="text-ink-3">-</span>}
+                  </td>
                   <td className="px-2 py-1 text-right">
                     <div className="flex items-center justify-end gap-1.5">
                       <span className="tabular-nums text-accent-ink">{mid ? `${mid.line.toFixed(1)} ${mid.overPrice.toFixed(2)}/${mid.underPrice.toFixed(2)}` : "-"}</span>

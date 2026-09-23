@@ -40,6 +40,10 @@ const ENTRIES: Entry[] = [
         en: "Fixtures tab: postponed matches drop out of the upcoming list and the rescheduled match takes their place.",
         tr: "Fikstürler sekmesi: ertelenen maçlar yaklaşan listeden düşer, yeni tarihli maç yerine gelir.",
       },
+      {
+        en: "Player Distribution: for Pts+Reb, Pts+Ast and Pts+Reb+Ast the Value now defaults to the sum of the points / rebounds / assists you already sent to Input for that player in the same fixture (marked with Σ). If one component was not sent, the usual season average stays; typing a value still overrides.",
+        tr: "Player Distribution: Sayı+Rib, Sayı+Asist ve Sayı+Rib+Asist marketlerinde Value artık aynı maçta o oyuncu için Input'a gönderdiğin sayı / ribaund / asist değerlerinin toplamıyla gelir (Σ işaretli). Bileşenlerden biri gönderilmediyse her zamanki sezon ortalaması kalır; elle yazdığın değer yine üstün.",
+      },
     ],
   },
   {
