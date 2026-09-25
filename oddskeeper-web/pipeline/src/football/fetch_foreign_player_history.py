@@ -65,7 +65,7 @@ def get(path: str, tries: int = 3):
     last = None
     for i in range(tries):
         try:
-            r = cr.get(API + path, impersonate="chrome", timeout=30)
+            r = cr.get(API + path, impersonate="safari17_0", timeout=30)
             if r.status_code == 200:
                 time.sleep(SLEEP)
                 return r.json()

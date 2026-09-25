@@ -7,7 +7,7 @@ build_team_rows/build_card_rows/build_shot_rows + upsert) yeniden kullanir; fark
   - events/last/{page} sayfalarini sonuna kadar gezer (grace fetcher yalniz 0-1).
   - competition etiketi parametrik (guard'larla uyumlu; or. 'UEFA Şampiyonlar Ligi').
   - PROXY OPSIYONEL: PROXY_URL varsa kullanir (VPS), yoksa dogrudan (lokal; curl_cffi
-    impersonate=chrome ile 403 yok).
+    impersonate=safari17_0 ile 403 yok; chrome parmak izi 2026-09-25 itibariyla bloklu).
 Idempotent (hepsi upsert); yarida kesilirse tekrar kosulabilir. Her N macta bir flush
 eder (kismi ilerleme kalici + restartable).
 
@@ -46,7 +46,7 @@ def get(url, tries=4):
     last = None
     for _ in range(tries):
         try:
-            r = cr.get(url, headers=HDR, proxies=PROXIES, impersonate="chrome", timeout=40)
+            r = cr.get(url, headers=HDR, proxies=PROXIES, impersonate="safari17_0", timeout=40)
             if r.status_code == 200:
                 return r.json()
             if r.status_code == 404:

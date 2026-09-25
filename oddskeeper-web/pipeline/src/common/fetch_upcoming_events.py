@@ -6,7 +6,7 @@ kategori taranir:
   - Avrupa / Dunya / Uluslararasi kategorileri: iki takimdan biri TR ise alinir
     (Avrupa kupasi elemeleri, milli takimlar, kadin takimlari dahil).
 
-Dogrudan requests 403 yedigi icin curl_cffi ile Chrome TLS taklidi yapilir
+Dogrudan requests 403 yedigi icin curl_cffi ile Safari TLS taklidi yapilir (chrome parmak izi 2026-09-25 itibariyla "challenge" 403 aliyor)
 (api.sofascore.com tarayici disi TLS parmak izlerini engelliyor).
 
 SofaScore datacenter IP'lerini de engelledigi icin istekler PROXY_URL
@@ -140,7 +140,7 @@ def log(msg: str) -> None:
 def get_json(url: str) -> dict | None:
     for attempt in (1, 2, 3):
         try:
-            r = creq.get(url, impersonate="chrome", timeout=40, proxies=PROXIES)
+            r = creq.get(url, impersonate="safari17_0", timeout=40, proxies=PROXIES)
             if r.status_code == 200:
                 return r.json()
             if r.status_code == 404:

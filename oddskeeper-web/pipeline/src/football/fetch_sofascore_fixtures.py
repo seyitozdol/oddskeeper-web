@@ -42,7 +42,7 @@ def get(url, tries=3):
     for _ in range(tries):
         try:
             r = cr.get(url, headers={"Accept": "application/json"},
-                       proxies=PROXIES, impersonate="chrome", timeout=30)
+                       proxies=PROXIES, impersonate="safari17_0", timeout=30)
             if r.status_code == 200:
                 return r.json()
             if r.status_code == 404:

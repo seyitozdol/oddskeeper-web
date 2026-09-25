@@ -318,7 +318,7 @@ def _test():
     def g(u):
         for _ in range(4):
             try:
-                r = cr.get(u, headers={"Accept": "application/json"}, proxies=P, impersonate="chrome", timeout=40)
+                r = cr.get(u, headers={"Accept": "application/json"}, proxies=P, impersonate="safari17_0", timeout=40)
                 if r.status_code == 200:
                     return r.json()
             except Exception:

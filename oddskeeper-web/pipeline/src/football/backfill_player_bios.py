@@ -141,7 +141,7 @@ def main() -> None:
             s_err += 1
             continue
         try:
-            r = cr.get(f"{SOFA}/player/{sid}", impersonate="chrome", timeout=30)
+            r = cr.get(f"{SOFA}/player/{sid}", impersonate="safari17_0", timeout=30)
             p = (r.json() or {}).get("player") if r.status_code == 200 else None
         except Exception as e:  # noqa
             print(f"  HATA {pname}: {repr(e)[:70]}", flush=True)

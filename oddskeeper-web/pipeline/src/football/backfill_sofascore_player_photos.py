@@ -30,7 +30,7 @@ MAX = int(os.environ.get("PH_MAX", "0"))
 
 def valid_photo(pid: str) -> bool:
     try:
-        r = cr.get(IMG.format(id=pid), impersonate="chrome", timeout=15)
+        r = cr.get(IMG.format(id=pid), impersonate="safari17_0", timeout=15)
         return r.status_code == 200 and r.headers.get("content-type", "").startswith("image") and len(r.content) > 500
     except Exception:  # noqa
         return False

@@ -72,7 +72,7 @@ def get(url, tries=3):
     last = None
     for _ in range(tries):
         try:
-            r = cr.get(url, headers=HDR, proxies=PROXIES, impersonate="chrome", timeout=40)
+            r = cr.get(url, headers=HDR, proxies=PROXIES, impersonate="safari17_0", timeout=40)
             if r.status_code == 200:
                 return r.json()
             last = f"HTTP {r.status_code}: {r.text[:120]}"

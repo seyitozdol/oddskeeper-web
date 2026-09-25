@@ -27,7 +27,7 @@ DEFAULT_COMPS = ["UEFA Şampiyonlar Ligi", "UEFA Avrupa Ligi", "UEFA Konferans L
 
 def valid_logo(tid: str) -> bool:
     try:
-        r = cr.get(IMG.format(id=tid), impersonate="chrome", timeout=20)
+        r = cr.get(IMG.format(id=tid), impersonate="safari17_0", timeout=20)
         return r.status_code == 200 and r.headers.get("content-type", "").startswith("image") and len(r.content) > 500
     except Exception:  # noqa
         return False

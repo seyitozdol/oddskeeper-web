@@ -37,7 +37,7 @@ NAME_OVERRIDES = {
 
 def probe(url: str) -> bool:
     try:
-        r = cr.get(url, impersonate="chrome", timeout=20)
+        r = cr.get(url, impersonate="safari17_0", timeout=20)
         return r.status_code == 200 and (r.headers.get("content-type") or "").startswith("image/")
     except Exception:
         return False

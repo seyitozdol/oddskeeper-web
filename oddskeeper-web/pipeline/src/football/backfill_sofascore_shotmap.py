@@ -80,7 +80,7 @@ def main() -> None:
         for attempt in range(3):
             try:
                 r = cr.get(f"{API}/event/{eid}/shotmap", proxies=proxies,
-                           impersonate="chrome", timeout=30)
+                           impersonate="safari17_0", timeout=30)
                 if r.status_code == 200:
                     rows = build_shot_rows(eid, r.json().get("shotmap", []))
                 elif r.status_code == 404:
