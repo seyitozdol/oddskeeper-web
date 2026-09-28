@@ -60,6 +60,19 @@ RULES = [
      "scrape_hash dedup bug'i (bilinen, fail-open; fix bekliyor)"),
     ("kupa_gol_detay", re.compile(r"UYARI ham gol \d+ != skor"), "noise",
      "kupa eleme gol-detay boslugu (kaynak vermiyor; skor dogru)"),
+    # --- EL/EC otomatik akisi (euro_match_scrape.log): genel "[x] HATA:" kuralindan ONCE ---
+    # kalici sorunlar gecici ag hatasi gibi etiketlenmesin (wrapper bunlarda rc=2 ile anlik ntfy atar)
+    # (futbol yuklayicilarinin "UYARI: mat refresh basarisiz" satirlari bu kurala GIRMEZ: capali)
+    ("el_refresh_fail", re.compile(r"^\[el\] HATA: el_player_metric_window_v1 refresh basarisiz"), "crit",
+     "EL/EC Tools matview refresh basarisiz (elle tazele)"),
+    ("el_link_butunluk", re.compile(r"\[el-link\] HATA: (orphan link|manuel bag|alias bag)"), "crit",
+     "EL-BSL oyuncu bagi butunlugu bozuk (elle mudahale)"),
+    # mac basina TEK kez basilir (tekrar esigine hic ulasmaz) ve sonra 14 gun penceresinden sessizce
+    # duser: bu yuzden KRITIK, yoksa "kendiliginden gecen tur" altinda kaybolur
+    ("el_mac_takildi", re.compile(r"saat sonra (API hala oynanmadi|box-score hala eksik)"), "crit",
+     "EL/EC maci tip-off'tan 24 saat sonra hala yuklenemedi (elle kontrol)"),
+    ("api_hiz_siniri", re.compile(r"API hiz siniri"), "warn",
+     "EuroLeague API hiz siniri/engel (gecici; sonraki tur telafi eder)"),
     # --- WARN: bilinen gecici siniflar ---
     ("odds_bos_kosu", re.compile(r"\[HATA\] ikinci deneme de verisiz"), "warn",
      "Bets10 bos kosu; gunde 4 kosu, sonraki telafi eder"),

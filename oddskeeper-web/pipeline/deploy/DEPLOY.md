@@ -96,6 +96,21 @@ chmod +x /opt/oddskeeper/run_upcoming_events.sh /opt/oddskeeper/run_odds_capture
 #      $VENV $PIPELINE/src/basketball/backfill_tbf_player_ids.py /tmp/tbf_2025-2026.json --apply
 # 0 6 * * *   /opt/oddskeeper/run_tbf_basketball.sh
 
+# 6c) EuroLeague + EuroCup maç-sonrası OTOMATİK akış (kaynak api-live.euroleague.net v2, 2026-09-28):
+#    6a kalıbı, BSL'den 5 dk kaydırmalı. Açık API (proxy/tarayıcı yok); sezon kodu elle verilmez
+#    (identity.current_season_label, sınır 1 Temmuz: E2026/U2026). Adaylar DB'den seçilir: tip-off +
+#    2.5 saat geçmiş, 14 günden yeni, team_match_stats'ı olmayan maçlar (maç yoksa HTTP isteği yok).
+#    Tip-off + 20 saatte box bir kez daha çekilir (resmi istatistik düzeltmesi, "duzeltildi").
+#    00/06/12/18 turlarında program API ile eşitlenir: ertelenen maç/saat, takım değişimi; oynanmamış
+#    ve istatistiksiz bayat maç/takım silinir. game_date GERÇEK UTC (API utcDate).
+#    Yükleme/düzeltme olunca: el_player_metric_window_v1 CONCURRENTLY tazelenir, EL->BSL bağlayıcısı
+#    (match_euroleague_bsl.py --auto; 06 turunda --auto --people) koşar, yeni bağ kurulursa
+#    build_bsl_squad_audit.py. Log: logs/euro_match_scrape.log (yalnız bir şey olunca yazılır).
+#    ntfy: çökme -> "EL/EC mac scrape FAILED" (high); "[kimlik] INCELEME" -> "EL/EC kimlik incelemesi".
+#    Env (pipeline/.env, opsiyonel): EL_MIN_AGE_H=2.5 EL_MAX_AGE_D=14 EL_SETTLE_H=20 EL_RUN_INTERVAL_MIN=10
+#    Kurulum ve elle komutlar: aşağıda "EL/EC otomatik akış (İş 6c)".
+5-59/10 * * * *  /opt/oddskeeper/run_euro_match_scrape.sh
+
 # 7) TSL kadro tazeleme (apifootball squads -> team_squad_current -> player_mapping
 #    -> TM piyasa değeri): yeni transferler kadroya girsin. Proxy/tarayıcı YOK.
 #    GEÇİCİ: TSL maçları BAŞLAYANA KADAR günlük; sezon başlayınca bu satırı kaldır
@@ -123,6 +138,38 @@ artık TSL + 1.Lig'i (LEAGUES: ut=52 + ut=98) besler. Mevcut `run_sofascore.sh`
 kapsar; ikisi de idempotent, çakışma zararsız. Kurulum: `cp .../run_match_scrape.sh
 /opt/oddskeeper/ && chmod +x /opt/oddskeeper/run_match_scrape.sh` + cron İş 0.
 `.env`'e `API_FOOTBALL_KEY` ekli olmalı (bet365 işi için).
+
+**EL/EC otomatik akış (İş 6c):** `run_euro_match_scrape.sh` yeni (repo'daki `git pull` /opt kopyasını
+güncellemez). ÖNCE iki SQL (scrape cron'larının koşmadığı bir dakikada, ör. :02-:03 ya da :07-:08):
+`sql/2026-09-28_metric_window_season_partition.sql` (yoksa ilk 26/27 yüklemesi 25/26 Tools'unun
+son-5/10'unu bozar) ve `sql/2026-09-28_euroleague_link_fk.sql`. Sonra kurulum:
+```bash
+cp /opt/oddskeeper/repo/oddskeeper-web/pipeline/deploy/run_euro_match_scrape.sh /opt/oddskeeper/
+chmod +x /opt/oddskeeper/run_euro_match_scrape.sh
+# crontab -e -> 5-59/10 * * * *  /opt/oddskeeper/run_euro_match_scrape.sh
+EURO_FORCE_SYNC=1 /opt/oddskeeper/run_euro_match_scrape.sh   # ilk tur: programı hemen eşitle (saatler UTC'ye)
+```
+Elle (`cd /opt/oddskeeper/repo/oddskeeper-web/pipeline`, `V=/opt/oddskeeper/venv/bin/python`):
+```bash
+$V src/basketball/fetch_euroleague.py --auto --sync-schedule --dry-run   # ne yapacağını göster, DB'ye yazmaz
+# BİR KEZ: geçmiş sezon saatlerini UTC'ye düzelt (eski loader Madrid saatini UTC diye yazıyordu, +1/+2 saat);
+# düzeltme stats satırlarının game_date'ine de yayılır. Önce aynı komutu --dry-run ile çalıştır.
+$V src/basketball/fetch_euroleague.py --competition E --season-code E2025 --season-label 2025-2026 --schedule
+$V src/basketball/fetch_euroleague.py --competition U --season-code U2025 --season-label 2025-2026 --schedule
+# Geçmiş bir sezonun box-score'larını baştan yükle (backfill; tüm oynanmış maçlar). API Cloudflare
+# hız sınırlı (429 "Error 1015", ~4 dk blok): --sleep 1 ile yavaş git; 429'da Retry-After kadar bekler.
+$V src/basketball/fetch_euroleague.py --competition E --season-code E2025 --season-label 2025-2026 --sleep 1
+# EL->BSL bağlayıcısı elle (kulüp kadrolarıyla, önce --dry-run):
+$V src/basketball/match_euroleague_bsl.py --auto --people
+```
+rc anlamı: 0 tamam; 1 beklenmeyen istisna (Traceback); 2 elle müdahale isteyen kalıcı sorun (Tools
+matview refresh başarısız ya da EL-BSL bağ bütünlüğü: yetim/manuel/alias bağ). İkisinde de wrapper
+"EL/EC mac scrape FAILED" ntfy'ı atar; log_triage bunları KRİTİK sayar.
+İnceleme kuyruğu (`basketball.identity_review`, source='euroleague'): elle bağlayınca bağlayıcı kaydı
+kendisi kapatır. "Mevcut bağ doğru, böyle kalsın" kararı için `status='ignored'` yap; `resolved`
+"düzeltildi" demektir ve sorun tekrar görülürse kayıt yeniden açılıp bildirilir.
+Sezon devri: 1 Temmuz'dan sonra yeni sezon (ör. E2027) API'de yayınlanana kadar program turu
+`[el] E2027: sezon programi henuz yayinlanmadi` basar; hata değildir, loga da yazılmaz.
 
 ## İş 2 — SPIKE (parser yazmadan önce, ZORUNLU)
 `capture_odds_vps.py` şu an yalnızca ağı kaydeder. Önce dump al, incele:
