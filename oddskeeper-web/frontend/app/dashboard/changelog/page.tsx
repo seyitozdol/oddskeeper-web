@@ -23,6 +23,36 @@ const ENTRIES: Entry[] = [
   {
     date: { en: "28 September", tr: "28 Eylül" },
     title: {
+      en: "EuroLeague and EuroCup: box scores load on their own",
+      tr: "EuroLeague ve EuroCup: box-score'lar kendiliğinden geliyor",
+    },
+    tag: TAG_NEW,
+    items: [
+      {
+        en: "EuroLeague and EuroCup box scores now load on their own after each game, the same way BSL works: standings, player numbers and profiles update with no manual step. EuroLeague 2026-27 round 1 is already in.",
+        tr: "EuroLeague ve EuroCup box-score'ları artık her maçtan sonra kendiliğinden yükleniyor, BSL'deki gibi: puan durumu, oyuncu rakamları ve profiller elle bir adım olmadan güncelleniyor. EuroLeague 2026-27 1. tur verisi yüklendi.",
+      },
+      {
+        en: "Tofaş's BSL team page now has the EuroCup switch next to BSL, like the other Turkish teams in EuroLeague and EuroCup.",
+        tr: "Tofaş'ın BSL takım sayfasında artık BSL'nin yanında EuroCup düğmesi de var; EuroLeague ve EuroCup'taki diğer Türk takımlarında olduğu gibi.",
+      },
+      {
+        en: "EuroLeague and EuroCup match times were stored 1-2 hours late, so some late games were listed under the next day. They are now correct.",
+        tr: "EuroLeague ve EuroCup maç saatleri 1-2 saat geç kaydediliyordu; bu yüzden bazı geç saatli maçlar ertesi günün tarihinde görünüyordu. Artık doğru.",
+      },
+      {
+        en: "Match-Player Tools (BSL, EuroLeague, EuroCup): the player card that opens when you click a name now follows the selected season. It used to show 2025-26 even on the 2026-27 tab. If the player has no games in that season yet, the card shows the previous season and says which one.",
+        tr: "Match-Player Tools (BSL, EuroLeague, EuroCup): oyuncu adına tıklayınca açılan kart artık seçili sezonu gösteriyor; önceden 2026-27 sekmesinde bile 2025-26 rakamları geliyordu. Oyuncunun o sezonda henüz maçı yoksa kart önceki sezonu gösteriyor ve hangi sezon olduğunu yazıyor.",
+      },
+      {
+        en: "EuroLeague and EuroCup Match-Player Tools open on 2026-27 once the new season reaches round 5. Until then they open on 2025-26, and the season switch works as before. The 2025-26 last 5 and last 10 game averages no longer change as new-season games come in (in BSL too).",
+        tr: "EuroLeague ve EuroCup Match-Player Tools, yeni sezonda 5. tura gelinince 2026-27 ile açılacak. O zamana kadar 2025-26 ile açılıyor; sezon seçici eskisi gibi çalışıyor. 2025-26'nın son 5 ve son 10 maç ortalamaları artık yeni sezonun maçları geldikçe bozulmuyor (BSL'de de).",
+      },
+    ],
+  },
+  {
+    date: { en: "28 September", tr: "28 Eylül" },
+    title: {
       en: "Upcoming Events: every BSL match gets its stars",
       tr: "Upcoming Events: her BSL maçı yıldızını alıyor",
     },

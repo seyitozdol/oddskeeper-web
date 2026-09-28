@@ -2,28 +2,51 @@
 
 import { useEffect, useState } from "react";
 import { useI18n } from "@/lib/i18n/LanguageProvider";
+import { DEFAULT_EURO_SEASON, EURO_SEASONS } from "@/features/euroleague/config";
 import { fetchBasketballPlayerLog, fetchBasketballPlayerSeason, fetchEuroPlayerSeason, fetchEuroPlayerLog } from "../clientQueries";
 import { TeamCrest, StatTile } from "./ui";
 import { fmt, positionLabel, normalizePositionCode, formatHeight, playerPhotoUrl } from "../lib";
 import type { BktPlayerLogRow, BktPlayerSeasonRow } from "../types";
 
+// "2026-2027" -> "2025-2026"; yalnız desteklenen sezonlar (yoksa null).
+function prevSeasonOf(label: string): string | null {
+  const y = Number(label.slice(0, 4));
+  const prev = `${y - 1}-${y}`;
+  return (EURO_SEASONS as readonly string[]).includes(prev) ? prev : null;
+}
+
 // competition verilirse (E/U) EL/EC drawer'ı (el_player_* view'ları); yoksa BSL.
-export default function BasketballPlayerDrawer({ slug, competition, onClose }: { slug: string; competition?: "E" | "U"; onClose: () => void }) {
+// seasonLabel = Tools sezon seçicisi (?season). Oyuncunun o sezonda henüz maçı yoksa
+// (yeni sezon başı, sezon kadrosu modu) önceki sezona düşer; gösterilen sezon başlıkta yazar.
+export default function BasketballPlayerDrawer({ slug, competition, seasonLabel = DEFAULT_EURO_SEASON, onClose }: { slug: string; competition?: "E" | "U"; seasonLabel?: string; onClose: () => void }) {
   const { t, locale } = useI18n();
   const [season, setSeason] = useState<BktPlayerSeasonRow | null>(null);
   const [log, setLog] = useState<BktPlayerLogRow[]>([]);
+  const [shownSeason, setShownSeason] = useState(seasonLabel);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let alive = true;
-    const seasonP = competition ? fetchEuroPlayerSeason(slug, competition) : fetchBasketballPlayerSeason(slug);
-    const logP = competition ? fetchEuroPlayerLog(slug, competition) : fetchBasketballPlayerLog(slug, 60);
-    Promise.all([seasonP, logP]).then(([s, l]) => {
+    const load = (sl: string) => Promise.all([
+      competition ? fetchEuroPlayerSeason(slug, competition, sl) : fetchBasketballPlayerSeason(slug, sl),
+      competition ? fetchEuroPlayerLog(slug, competition, sl) : fetchBasketballPlayerLog(slug, sl, 60),
+    ]);
+    (async () => {
+      let sl = seasonLabel;
+      let [s, l] = await load(sl);
+      const prev = prevSeasonOf(sl);
+      if (!s && l.length === 0 && prev) {
+        // önceki sezon yalnız verisi varsa gösterilir; o da boşsa "veri yok" seçili sezonun yanında kalır
+        const [ps, pl] = await load(prev);
+        if (ps || pl.length > 0) {
+          sl = prev; s = ps; l = pl;
+        }
+      }
       if (!alive) return;
-      setSeason(s); setLog(l); setLoading(false);
-    });
+      setSeason(s); setLog(l); setShownSeason(sl); setLoading(false);
+    })();
     return () => { alive = false; };
-  }, [slug, competition]);
+  }, [slug, competition, seasonLabel]);
 
   const photoUrl = playerPhotoUrl({ sofascore_player_id: season?.sofascore_player_id, image_url: season?.image_url });
 
@@ -52,7 +75,10 @@ export default function BasketballPlayerDrawer({ slug, competition, onClose }: {
               </p>
             </div>
           </div>
-          <button onClick={onClose} className="rounded-md border border-line px-3 py-1 text-[12px] text-ink-2 hover:text-ink">{t("basketball.close")}</button>
+          <div className="flex shrink-0 items-center gap-2">
+            {!loading ? <span className="rounded-md border border-line px-2 py-0.5 text-[11px] tabular-nums text-ink-3">{shownSeason}</span> : null}
+            <button onClick={onClose} className="rounded-md border border-line px-3 py-1 text-[12px] text-ink-2 hover:text-ink">{t("basketball.close")}</button>
+          </div>
         </div>
 
         {loading ? (

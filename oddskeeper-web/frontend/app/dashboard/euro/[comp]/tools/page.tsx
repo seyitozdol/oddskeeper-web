@@ -7,15 +7,31 @@ import {
 } from "@/features/euroleague/toolsServer";
 import BasketballParticipantTools from "@/features/basketball/components/BasketballParticipantTools";
 import SeasonToggle from "@/components/SeasonToggle";
+import { createClient } from "@/lib/supabase/server";
 import { getT } from "@/lib/i18n/server";
 import { getNavAccess } from "@/lib/nav-access-server";
 
 // EL/EC Match-Player Tools — BSL araçlarının EL/EC portu (aynı bileşen, el_* tools view'ları).
 // pm sayı (PM Pts Model odds tab'ı) hariç; Config/Player List/Fixtures/Model/Input tam.
-// Sezon seçici (?season); default 2025-2026 (verili sezon; 2026-27 oynanınca dolar).
-const DEFAULT_TOOLS_SEASON = "2025-2026";
-const normalizeToolsSeason = (s: string | undefined) =>
-  (EURO_SEASONS as readonly string[]).includes(s ?? "") ? (s as string) : DEFAULT_TOOLS_SEASON;
+// Sezon seçici (?season) her zaman kazanır. Parametre yoksa default veriden seçilir:
+// en yeni sezonda en çok maçı olan takım MIN_TOOLS_GAMES maça ulaştıysa o sezon,
+// yoksa bir önceki sezon (yeni sezonun ilk haftalarında araçlar boş kalmasın).
+const MIN_TOOLS_GAMES = 5;
+
+async function defaultToolsSeason(code: "E" | "U"): Promise<string> {
+  const ordered = [...EURO_SEASONS].sort((a, b) => b.localeCompare(a));
+  const [newest, previous] = ordered;
+  if (!previous) return newest;
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .schema("analytics").from("el_team_home_away_split_v1").select("games")
+    .eq("competition", code).eq("season_label", newest)
+    .order("games", { ascending: false })
+    .limit(1)
+    .maybeSingle<{ games: number | null }>();
+  if (error) console.error("defaultToolsSeason", error.message);
+  return Number(data?.games ?? 0) >= MIN_TOOLS_GAMES ? newest : previous;
+}
 
 export default async function EuroToolsPage({
   params, searchParams,
@@ -27,7 +43,9 @@ export default async function EuroToolsPage({
   const cfg = resolveEuroComp(comp);
   if (!cfg) notFound();
   const code = cfg.code; // 'E' | 'U'
-  const seasonLabel = normalizeToolsSeason(season);
+  const seasonLabel = (EURO_SEASONS as readonly string[]).includes(season ?? "")
+    ? (season as string)
+    : await defaultToolsSeason(code);
 
   const [splits, forms, windows, teamLogs, players, roles] = await Promise.all([
     getEuroToolsSplits(code, seasonLabel),
@@ -54,7 +72,7 @@ export default async function EuroToolsPage({
         </div>
       </div>
       <BasketballParticipantTools splits={splits} forms={forms} windows={windows} teamLogs={teamLogs}
-        players={players} roles={roles} league={cfg.key} toolsBase={`/dashboard/euro/${cfg.key}`} isAdmin={access.isAdmin} />
+        players={players} roles={roles} league={cfg.key} season={seasonLabel} toolsBase={`/dashboard/euro/${cfg.key}`} isAdmin={access.isAdmin} />
     </section>
   );
 }

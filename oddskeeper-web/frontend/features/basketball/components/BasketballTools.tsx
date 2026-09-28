@@ -55,6 +55,7 @@ type Props = {
   rosterMode?: BktRosterMode | null;   // sezon kadrosu modu: üyelik team_rosters'tan (yeni sezon başı)
   modelConfig?: PmModelConfig[];   // lider rozet toggle'ları (leader_*)
   competition?: "E" | "U";   // EL/EC ise drawer euro veriye bağlanır
+  season?: string;   // Tools sezon seçicisi (?season); oyuncu drawer'ı bu sezonu gösterir
   historyLeague?: string;   // export gecmisi ligi (basketball | euroleague | eurocup)
   historyReloadKey?: number;   // export sonrasi dropdown'i tazelemek icin
   onAdd: (rows: BktInputRow[], snap?: HistorySnapEntry) => void;
@@ -115,7 +116,7 @@ function NumInput({ value, onChange, step = 0.1, w = "w-16", warn = false }: { v
   );
 }
 
-export default function BasketballTools({ pmFixtures, splits, forms, windows, teamLogs, playerIds, config, inputRows, roles = [], rosterMode = null, modelConfig = [], competition, historyLeague = "basketball", historyReloadKey = 0, onAdd }: Props) {
+export default function BasketballTools({ pmFixtures, splits, forms, windows, teamLogs, playerIds, config, inputRows, roles = [], rosterMode = null, modelConfig = [], competition, season, historyLeague = "basketball", historyReloadKey = 0, onAdd }: Props) {
   const { t, locale } = useI18n();
   // Model ağırlıkları (Config > Model). Player: son10/son5/sezon karışımı (saf).
   // Team: Excel TeamProps F karışımı sezon/son10/son5 (sonra sayı uplift'i). Config'ten değişince canlı.
@@ -636,7 +637,7 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
               teamTarget={(slug, mk) => teamTrader(slug, mk, slug === homeSlug ? effHome : effAway)}
               onAdd={(rows) => addWithHistory(rows, "player")} historySlot={historyDropdown} historyNotice={historyNotice}
               playerIds={playerIds} playerCfg={playerCfg} playerMarkets={playerMarkets}
-              existingKeys={existingKeys} existingPlayerMkt={existingPlayerMkt} onReset={resetPlayer} competition={competition} fixExtId={fixExtId}
+              existingKeys={existingKeys} existingPlayerMkt={existingPlayerMkt} onReset={resetPlayer} competition={competition} season={season} fixExtId={fixExtId}
               roleBy={roleBy} euroTeamSlugs={euroTeamSlugs} leaderBy={leaderBy} rosterMode={rosterMode} locale={locale} t={t} />
           )}
         </>
@@ -789,7 +790,7 @@ function TeamRecent({ name, logs, locale, t }: { name: string; logs: BktTeamLogR
 }
 
 /* ---------- Player distribution panel ---------- */
-function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effAway, winBy, isTicked, setTick, playerValue, setVal, playerModel, comboValue, isOverridden, teamTarget, onAdd, historySlot, historyNotice, playerIds, playerCfg, playerMarkets, existingKeys, existingPlayerMkt, onReset, competition, fixExtId, roleBy, euroTeamSlugs, leaderBy, rosterMode, locale, t }: {
+function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effAway, winBy, isTicked, setTick, playerValue, setVal, playerModel, comboValue, isOverridden, teamTarget, onAdd, historySlot, historyNotice, playerIds, playerCfg, playerMarkets, existingKeys, existingPlayerMkt, onReset, competition, season, fixExtId, roleBy, euroTeamSlugs, leaderBy, rosterMode, locale, t }: {
   homeSlug: string; awaySlug: string; homeName: string; awayName: string; effHome: number; effAway: number;
   winBy: Map<string, Map<string, BktPlayerWindowRow[]>>;
   isTicked: (s: string, mk: string, w: BktPlayerWindowRow) => boolean;
@@ -810,6 +811,7 @@ function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effA
   existingPlayerMkt: Set<string>;
   onReset: () => void;
   competition?: "E" | "U";
+  season?: string;
   fixExtId: string;
   roleBy: Map<string, BktPlayerRoleRow>;
   euroTeamSlugs: Set<string>;
@@ -1034,7 +1036,7 @@ function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effA
       </div>
 
       <p className="mt-3 text-[11px] text-ink-3">{t("basketball.selectPlayerHint")}</p>
-      {selPlayer ? <BasketballPlayerDrawer key={selPlayer} slug={selPlayer} competition={competition} onClose={() => setSelPlayer(null)} /> : null}
+      {selPlayer ? <BasketballPlayerDrawer key={selPlayer} slug={selPlayer} competition={competition} seasonLabel={season} onClose={() => setSelPlayer(null)} /> : null}
 
       {/* Göz → Config kurallarına göre üretilen line'lar + oranlar */}
       {preview ? (

@@ -34,6 +34,7 @@ type Props = {
   roles?: BktPlayerRoleRow[];   // BSL oyuncu rol+pozisyon (Player Dist etiketi); EL/EC'de yok
   rosterMode?: BktRosterMode | null;   // BSL sezon kadrosu modu (yeni sezon başı); yoksa maç-güdümlü
   league?: string;          // 'basketball' (BSL) | 'euroleague' | 'eurocup'
+  season?: string;          // Tools sezon seçicisi (?season); oyuncu drawer'ına iner
   toolsBase?: string;       // takım/oyuncu profil linkleri için kök (örn /dashboard/euro/euroleague)
   isAdmin?: boolean;        // Fixtures sekmesinde "oranları şimdi yenile" (Bets10 yakalama) butonu
 };
@@ -44,7 +45,7 @@ type InputType = "player" | "team";
 const btnSave = "rounded-md border border-accent bg-accent px-3 py-1.5 text-[12px] font-semibold text-on-accent hover:opacity-90";
 const btnGhost = "rounded-md border border-line px-3 py-1.5 text-[12px] font-semibold text-ink-2 hover:text-ink";
 
-export default function BasketballParticipantTools({ splits, forms, windows, teamLogs, players, roles = [], rosterMode = null, league = "basketball", toolsBase, isAdmin = false }: Props) {
+export default function BasketballParticipantTools({ splits, forms, windows, teamLogs, players, roles = [], rosterMode = null, league = "basketball", season, toolsBase, isAdmin = false }: Props) {
   const { t, locale } = useI18n();
   // Profil linkleri: BSL /dashboard/basketball/{player|team}/<slug>; EL/EC toolsBase/{player|team}/<code>.
   const profileBase = toolsBase ?? "/dashboard/basketball";
@@ -116,7 +117,7 @@ export default function BasketballParticipantTools({ splits, forms, windows, tea
       <div className={tab === "model" ? "" : "hidden"}>
         <BasketballTools pmFixtures={fixtures} splits={splits} forms={forms} windows={windows} teamLogs={teamLogs}
           playerIds={playerIds} config={config} inputRows={inputRows} roles={roles} rosterMode={rosterMode} modelConfig={modelConfig}
-          competition={league === "euroleague" ? "E" : league === "eurocup" ? "U" : undefined}
+          competition={league === "euroleague" ? "E" : league === "eurocup" ? "U" : undefined} season={season}
           historyLeague={league} historyReloadKey={historyReloadKey}
           onAdd={handleAdd} />
       </div>
