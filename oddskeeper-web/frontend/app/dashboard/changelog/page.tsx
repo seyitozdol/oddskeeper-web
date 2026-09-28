@@ -21,6 +21,20 @@ const TAG_FIX: L = { en: "Fix", tr: "Düzeltme" };
 
 const ENTRIES: Entry[] = [
   {
+    date: { en: "28 September", tr: "28 Eylül" },
+    title: {
+      en: "Upcoming Events: every BSL match gets its stars",
+      tr: "Upcoming Events: her BSL maçı yıldızını alıyor",
+    },
+    tag: TAG_FIX,
+    items: [
+      {
+        en: "BSL matches now get their two league stars again, so they no longer disappear when \"Hide Low Profile\" is on. Before, only games with Fenerbahçe, Efes, Beşiktaş and the other starred teams stayed visible (for example Körfez - Esenler was hidden).",
+        tr: "BSL maçları lig yıldızlarını (2 yıldız) yeniden alıyor; \"Low Profile Gizle\" açıkken artık kaybolmuyorlar. Önceden yalnız Fenerbahçe, Efes, Beşiktaş gibi yıldızlı takımların maçları görünüyordu (örneğin Körfez - Esenler gizleniyordu).",
+      },
+    ],
+  },
+  {
     date: { en: "23 September", tr: "23 Eylül" },
     title: {
       en: "BSL: upcoming fixtures on the hub and FG% for the away team",

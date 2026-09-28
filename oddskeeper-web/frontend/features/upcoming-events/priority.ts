@@ -154,7 +154,9 @@ function basketballTournamentStars(tournamentName: string): number {
   const n = normalize(tournamentName);
   if (n.includes("euroleague")) return 1;
   if (n.includes("eurocup")) return 1;
-  if (n.includes("superlig")) return 2; // Basketbol Süper Ligi (BSL)
+  // Basketbol Süper Ligi (BSL); SofaScore adı "Turkish Basketball Super League"
+  // (normalize: "superleague", "superlig" içermez; yıldızsız kalıp Low Profile'a düşüyordu).
+  if (n.includes("superlig") || n.includes("superleague")) return 2;
   if (n.includes("basketbolligi") || n.includes("tbl")) return 1; // Türkiye Basketbol Ligi
   return 0;
 }
