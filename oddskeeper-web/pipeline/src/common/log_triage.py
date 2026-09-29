@@ -79,6 +79,11 @@ RULES = [
     # --- WARN: bilinen gecici siniflar ---
     ("odds_bos_kosu", re.compile(r"\[HATA\] ikinci deneme de verisiz"), "warn",
      "Bets10 bos kosu; gunde 4 kosu, sonraki telafi eder"),
+    # capture_odds_vps yonlendirme bekcisi: ust sayfaya dusus (lig yok/bos) OLAGAN, log'da
+    # UYARI tasimaz ve buraya hic gelmez; yalniz beklenmeyen hedef (bakim, ulke engeli,
+    # baska lig) isaretlenir
+    ("odds_beklenmeyen_yonlendirme", re.compile(r"YONLENDI -> .*UYARI"), "warn",
+     "Bets10 sayfasi beklenmeyen adrese yonlendi (sayfa atlandi, kapsam eksik olabilir)"),
     ("http_403_challenge", re.compile(r"HTTP 403|challenge"), "warn",
      "kaynak 403/challenge (gecici bot korumasi)"),
     ("http_5xx", re.compile(r"HTTP 50\d"), "warn",

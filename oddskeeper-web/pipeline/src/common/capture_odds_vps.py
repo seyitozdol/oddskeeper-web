@@ -31,9 +31,16 @@ BU ASAMA (SPIKE): parser YOK. Amac ham agi kaydedip oranin XHR JSON'da mi yoksa
 WS binary'de mi geldigini + VPS IP'sinin (ya da proxy'nin) engellenip
 engellenmedigini gormek. Cikti data/odds/ altina; sonra parse_bets10_network.py.
 
+YONLENDIRME BEKCISI (2026-09-29): Bets10, ligi olmayan ya da o an acik maci
+bulunmayan sayfayi UST sayfaya (bolge ya da spor koku) yonlendiriyor. Yerlesilen
+YOL istenenden farkliysa sayfa atlanir ve o sayfada toplanan hicbir yanit dump'a
+girmez (ayrinti: wait_or_redirect). Dump'taki her yanit geldigi sayfanin
+etiketini "page" alaninda tasir.
+
 Kullanim (VPS):
   xvfb-run -a python src/common/capture_odds_vps.py bets10 --chromium-path /usr/bin/chromium
   # +opsiyon: --proxy (PROXY_URL uzerinden)  --pages <etiket>  --per-league N
+  # slug dogrulama: --try-path etiket=/tr/spor-bahisleri/<spor>/<bolge>/<lig>
 """
 from __future__ import annotations
 
@@ -71,10 +78,10 @@ TAB = "?tab=liveAndUpcoming"
 # basketbol BSL + TBL, kadin/erkek milli takim maclari. Her competition Bets10'da
 # ayri bir sayfa. DIKKAT: events-table/v2 sayfa acilinca yalnizca EN YAKIN mac
 # gununu ceker (competition'in TUMUNU DEGIL); ileri haftalar icin widen_url ile
-# genis-pencere tekrar cagrisi yapilir. Yanlis/bos sayfalar sessizce atlanir.
-# Slug deseni: /spor-bahisleri/<spor>/<bolge>/<lig>.
-# NOT (2026-07-30): basketbol (BSL ~Ekim) + milli takimlar su an SEZON DISI, sayfalari
-# bos doner; sezon baslayinca otomatik dolar. Futbol competition'lari aktif.
+# genis-pencere tekrar cagrisi yapilir. Ligi olmayan ya da acik maci bulunmayan
+# sayfa ust sayfaya yonlenir; yonlendirme bekcisi o sayfayi log satiriyla atlar.
+# Slug deseni: /spor-bahisleri/<spor>/<bolge>/<lig>. Yeni sayfa eklerken slug'i
+# tahmin etme: dump'taki event slug'larindan al, --try-path ile canli dogrula.
 BETS10_PAGES = [
     # --- futbol domestic (Turkiye) ---
     ("futbol-turkiye-1lig", "/tr/spor-bahisleri/futbol/turkiye/turkiye-1-lig"),
@@ -86,10 +93,20 @@ BETS10_PAGES = [
     ("futbol-sampiyonlar-ligi", "/tr/spor-bahisleri/futbol/sampiyonlar-ligi/sampiyonlar-ligi"),
     ("futbol-avrupa-ligi", "/tr/spor-bahisleri/futbol/uefa-avrupa-ligi/avrupa-ligi"),
     ("futbol-konferans-ligi", "/tr/spor-bahisleri/futbol/konferans-ligi/konferans-ligi"),
+    # Kulup hazirlik maci yokken futbol kokune yonlenir (bekci atlar); mac acilinca
+    # sayfa calisir (competitionIds=6049), bu yuzden listede KALIR.
     ("futbol-kulup-maclari", "/tr/spor-bahisleri/futbol/dostluk-maclari/kulup-maclari"),
-    # --- basketbol (SEZON DISI; slug tahmini, sezonda dogrulanacak) ---
-    ("basketbol-super-lig", "/tr/spor-bahisleri/basketbol/turkiye/turkiye-basketbol-super-ligi"),
-    ("basketbol-tbl", "/tr/spor-bahisleri/basketbol/turkiye/turkiye-basketbol-ligi"),
+    # --- basketbol ---
+    # BSL + TBL: Turkiye BOLGE sayfasi (2026-09-29). Eski iki lig girdisinin slug'lari
+    # (turkiye-basketbol-super-ligi, turkiye-basketbol-ligi) tahmindi ve ikisi de HER
+    # kosuda bu bolge sayfasina yonleniyordu; BSL/TBL oranlarinin tamami zaten buradan
+    # geliyordu (70 dump'ta olculdu, events-table competitionIds=2904,5618,95). Bekci o
+    # girdileri atlayip BSL/TBL kapsamini dusurecegi icin bolge sayfasi dogrudan
+    # isteniyor (iki sayfa yuklemesi yerine bir). Acik mac yokken ?tab=outrights'a gecer:
+    # yol ayni kalir, events-table gelmez, hicbir sey yakalanmaz. KBSL (kadin) maclari da
+    # bu sayfada (eskiden de geliyordu). Lig sayfalarinin gercek slug'lari (Bets10 event
+    # slug'larindan): turkiye-bsl (95), turkiye-tbl (5618), turkiye-kbsl (2904).
+    ("basketbol-turkiye", "/tr/spor-bahisleri/basketbol/turkiye"),
     ("basketbol-euroleague", "/tr/spor-bahisleri/basketbol/euroleague/euroleague"),
     # EuroCup (2026-09-29; Tofas-Chemnitz'te B10 rozeti yoktu, sayfa listede hic olmadigi icin).
     # Slug Bets10'un kendi lig katalogundan dogrulandi (dump'ta "slug":"basketbol/eurocup/eurocup").
@@ -109,6 +126,7 @@ SITES: dict[str, dict] = {
         "domain_tries": 12,
         "probe_path": "/tr/spor-bahisleri/futbol",
         "pages": [(lbl, path + TAB) for lbl, path in BETS10_PAGES],
+        "redirect_guard": True,
     },
     # bet365 dogrudan otomasyonla oran vermiyor (anti-bot); bet365 oranlari
     # API-Football uzerinden aliniyor (fetch_apifootball_odds.py).
@@ -128,6 +146,22 @@ MAX_TOTAL_MB = 60         # dump ust siniri, kacak onlemi
 HORIZON_DAYS = 45         # simdiden itibaren kac gun ileri istenecek (~6 hafta;
                           # API tek istekte >=60 gun 200 donuyor). SofaScore tracker'da
                           # kaydi olan maclar eslesir; ufku genis tutmak zararsiz.
+
+# YONLENDIRME BEKCISI (2026-09-29). Bets10, ligi olmayan ya da o an acik maci
+# bulunmayan sayfayi UST sayfaya yonlendiriyor:
+#   futbol/dostluk-maclari/kulup-maclari -> /futbol?tab=liveAndUpcoming
+#   basketbol/turkiye/<yanlis slug>      -> /basketbol/turkiye?tab=liveAndUpcoming|outrights
+# Bekci yokken yakalayici hedef sayfanin gosterdigini SESSIZCE kaydediyordu: futbol
+# kokunun events-table'i (competitionIds=21535,2390,...) eFutbol / Hindistan /
+# Kolombiya gibi alakasiz ligleri dondurur, genis-pencere tekrari da bunlari 45 gune
+# yayar (cop site_event_odds satirlari + bosa giden ucretli proxy trafigi). Biten
+# Dunya Kupasi eleme sayfasi da ayni siniftandi (2026-09-23).
+# Karsilastirma yalniz YOL uzerinden: alan adi mesru olarak degisir (10021bets10 ->
+# 10033bets10), sorgu da sayfa kimligi degil (?tab=liveAndUpcoming -> ?tab=outrights
+# ayni sayfanin bos hali). 70 dump'ta olculdu: yerinde kalan sayfalarin yerlestigi
+# yol istenenle birebir ayni, yonlenenlerin hepsi kendi ust sayfasina dusmus.
+REDIRECT_POLL_MS = 1000     # yerlesilen adres bu aralikla yoklanir
+REDIRECT_CONFIRM_MS = 3000  # yol bu kadar sure farkli kalirsa yonlendirme kesinlesir
 
 
 def proxy_config(session_id: str, country: str | None) -> dict | None:
@@ -193,7 +227,8 @@ def resolve_domain(page, cfg: dict) -> str:
     raise SystemExit("calisan adres bulunamadi")
 
 
-def make_recorder(store: dict, record_ws: bool = False):
+def make_recorder(store: dict, cur: dict, record_ws: bool = False):
+    """cur["label"] = o an gezilen sayfanin etiketi; her yanit onunla damgalanir."""
     total = {"bytes": 0}
 
     def cap(text_or_bytes):
@@ -234,13 +269,16 @@ def make_recorder(store: dict, record_ws: bool = False):
         url = resp.url
         if not any(h in url for h in KEEP_URL_HINTS):
             return
+        # Etiket govde okunmadan ONCE alinir: resp.text() beklerken dongu sonraki
+        # sayfaya gecmis olabilir, yanit yine GELDIGI sayfaya yazilmali.
+        label = cur["label"]
         try:
             body = resp.text()
         except Exception:
             return
         entry = cap(body)
         if entry:
-            entry.update({"url": url, "status": resp.status, "kind": "xhr"})
+            entry.update({"url": url, "status": resp.status, "kind": "xhr", "page": label})
             store["responses"].append(entry)
 
     return on_ws, on_response
@@ -324,6 +362,49 @@ def set_query(url: str, **params) -> str:
     return urlunsplit((sp.scheme, sp.netloc, sp.path, urlencode(q), sp.fragment))
 
 
+def page_path(url: str) -> str:
+    """Adresin karsilastirma icin normalize YOLU (alan adi ve sorgu atilir)."""
+    return unquote(urlsplit(url).path).rstrip("/").lower()
+
+
+def is_parent_page(landed: str, want: str) -> bool:
+    """Yerlesilen yol, istenen sayfanin UST sayfasi mi (bolge ya da spor koku)?
+
+    Bilinen zararsiz sinif budur: lig yok ya da o an acik maci yok. Bunun disindaki
+    hedefler (bakim / ulke engeli sayfasi, site ana sayfasi, baska bir lig)
+    BEKLENMEYEN yonlendirmedir; sayfa yine atlanir ama kosu "saglikli ama bos"
+    sayilmaz (main'deki verisiz-kosu tekrari devreye girer).
+    """
+    root = "/".join(want.split("/")[:3])  # /tr/spor-bahisleri
+    return landed.startswith(root + "/") and want.startswith(landed + "/")
+
+
+def wait_or_redirect(page, want: str, wait_ms: int) -> str | None:
+    """Liste sayfasini bekler; sayfa baska bir YOLA yonlendiyse beklemeyi keser.
+
+    Donus: yerlesilen yol (yonlendiyse) ya da None (sayfa yerinde, bekleme tamam).
+    Yonlendirme istemci tarafinda oluyor (SPA route-data yanitindan sonra adresi
+    degistiriyor), bu yuzden goto'dan hemen sonra degil bekleme BOYUNCA yoklanir.
+    Yol REDIRECT_CONFIRM_MS boyunca farkli kalmadan karar verilmez: gecici bir ara
+    adres saglam sayfayi dusurmesin. Erken kesmenin kazanci: hedef sayfa (spor
+    koku) 22 sn boyunca ucretli proxy uzerinden yuklenmeye devam etmez.
+    """
+    waited = 0
+    off_ms = 0  # yolun kesintisiz farkli kaldigi sure
+    while waited < wait_ms:
+        step = min(REDIRECT_POLL_MS, wait_ms - waited)
+        page.wait_for_timeout(step)
+        waited += step
+        if page_path(page.url) == want:
+            off_ms = 0
+            continue
+        off_ms += step
+        if off_ms >= REDIRECT_CONFIRM_MS:
+            break
+    landed = page_path(page.url)
+    return None if landed == want else landed
+
+
 # events-table/v2 SAYFA BASINA ~20 EVENT dondurur (eventSortBy=StartDate,
 # pageNumber ile sayfalanir). Genis pencere tek sayfada yalnizca en yakin 20
 # maci verir; ileri turlar (or. 3. hafta Besiktas-Corum) sonraki sayfalarda kalir
@@ -336,13 +417,18 @@ def capture(site: str, headed: bool, out_dir: Path, only, per_league: int,
             detail_wait_ms: int, list_wait_ms: int,
             use_proxy: bool, chromium_path: str | None, country: str | None,
             horizon_days: int = HORIZON_DAYS,
-            record_ws: bool = False) -> tuple[Path, int]:
-    """Dump yolunu ve yakalanan events-table yaniti sayisini dondurur.
+            record_ws: bool = False,
+            extra_pages: list[tuple[str, str]] | None = None) -> tuple[Path, int, bool]:
+    """Dump yolunu, yakalanan events-table yaniti sayisini ve "bos ama saglikli"
+    bayragini dondurur.
 
     events-table sayisi 0 = kosu VERISIZ (SPA sportsbook katmani hic yuklenmedi;
     2026-08-19 10:04 arizasi). Cagiran taraf bununla tekrar karari verebilir.
+    Bayrak True = gezilen HER sayfa kendi ust sayfasina yonlendi (o liglerde acik
+    mac yok); dump'in bos olmasi beklenen sonuc, ariza degil.
     """
     cfg = SITES[site]
+    guard = cfg.get("redirect_guard", False)
     session_id = secrets.token_hex(6)  # sticky: kosu boyunca sabit
     # Varsayilan DIREKT (VPS IP). --proxy verilirse PROXY_URL uzerinden.
     proxy = proxy_config(session_id, country) if use_proxy else None
@@ -354,11 +440,17 @@ def capture(site: str, headed: bool, out_dir: Path, only, per_league: int,
         "wsConnections": 0, "wsFrames": 0,
         "startedAt": datetime.now(timezone.utc).isoformat(),
     }
-    on_ws, on_response = make_recorder(store, record_ws)
+    # O an gezilen sayfa: dinleyiciler her yaniti/istegi bu etiketle damgalar.
+    # None = hicbir sayfaya ait degil (adres cozme yoklamasi, yarim kalan gezinme).
+    cur: dict = {"label": None}
+    on_ws, on_response = make_recorder(store, cur, record_ws)
 
     pages = cfg["pages"]
-    if only:
-        pages = [p for p in pages if p[0] in only]
+    if only or extra_pages:
+        pages = [p for p in pages if p[0] in (only or ())]
+    # --try-path: listede olmayan sayfa (slug dogrulama); sorgusu yoksa ayni sekme
+    # eklenir. Liste sayfalarindan ONCE gezilir.
+    pages = [(lbl, p if "?" in p else p + TAB) for lbl, p in (extra_pages or [])] + pages
 
     launch_kw: dict = {"headless": not headed}
     if proxy:
@@ -386,21 +478,44 @@ def capture(site: str, headed: bool, out_dir: Path, only, per_league: int,
 
         def on_request(req):
             if "events-table" in req.url:
-                et_reqs.append({"url": req.url, "headers": dict(req.headers)})
+                et_reqs.append({"url": req.url, "headers": dict(req.headers),
+                                "page": cur["label"]})
 
         page.on("request", on_request)
 
         base = resolve_domain(page, cfg)
 
+        kept: set[str] = set()      # yerinde kalan sayfalar; dump'a yalniz bunlarin yaniti girer
+        redirected: list[str] = []  # bekcinin atladigi sayfalar
+        parent_hits = 0             # bunlardan kendi UST sayfasina dusenler (lig yok/bos)
         for label, path in pages:
             visited: set[str] = set()
-            et_before = len(et_reqs)
             try:
                 page.goto(base + path, timeout=45000, wait_until="commit")
             except Exception as ex:
+                cur["label"] = None  # yarim kalan gezinmenin yanitlari hicbir sayfaya yazilmaz
                 print(f"[atlandi] {label}: {type(ex).__name__}", flush=True)
                 continue
-            page.wait_for_timeout(list_wait_ms)
+            # Etiket commit'ten SONRA degisir: commit'e kadar gelen her sey hala onceki
+            # belgeye aittir (yonlenen sayfanin kuyrugu bir sonraki sayfaya sizmasin).
+            cur["label"] = label
+            landed = None
+            if guard:
+                landed = wait_or_redirect(page, page_path(path), list_wait_ms)
+            else:
+                page.wait_for_timeout(list_wait_ms)
+            if landed is not None:
+                # Sayfa kept'e GIRMEZ: burada toplanan (ve kuyruktan sonradan dusecek)
+                # yanitlarin hicbiri dump'a yazilmaz; genis-pencere ve detay da atlanir.
+                parent = is_parent_page(landed, page_path(path))
+                parent_hits += parent
+                redirected.append(label)
+                store["pages"].append({"label": label, "url": page.url,
+                                       "requested": path, "skipped": "redirect"})
+                note = "" if parent else " (UYARI: ust sayfa degil, beklenmeyen hedef)"
+                print(f"[{label}] YONLENDI -> {landed}; sayfa atlandi{note}", flush=True)
+                continue
+            kept.add(label)
             store["pages"].append({"label": label, "url": page.url})
             print(f"[{label}] ws={store['wsFrames']} xhr={len(store['responses'])}", flush=True)
 
@@ -410,7 +525,7 @@ def capture(site: str, headed: bool, out_dir: Path, only, per_league: int,
             # store["responses"]'a eklenir; parse_bets10_network ayni sekilde ayristirir.
             widened = 0
             seen_keys: set[str] = set()
-            for r in et_reqs[et_before:]:
+            for r in [x for x in et_reqs if x["page"] == label]:
                 key = widen_key(r["url"])
                 if key in seen_keys:
                     continue
@@ -432,7 +547,7 @@ def capture(site: str, headed: bool, out_dir: Path, only, per_league: int,
                     if n == 0:
                         break
                     store["responses"].append({
-                        "json": body, "url": url, "status": 200,
+                        "json": body, "url": url, "status": 200, "page": label,
                         "kind": "xhr", "at": datetime.now(timezone.utc).isoformat(),
                     })
                     widened += 1
@@ -457,6 +572,15 @@ def capture(site: str, headed: bool, out_dir: Path, only, per_league: int,
 
         browser.close()
 
+    # Dump'a yalniz YERINDE KALAN sayfalarin yanitlari girer. Atilanlar: yonlenen
+    # sayfalar, yarim kalan gezinmeler ve adres cozme yoklamasi (o da futbol kokunu
+    # acar; events-table istegi ilk sayfanin genis-penceresine siziyordu, 2026-09-29
+    # 10:00 kosusunda 1. Lig sayfasina 39 eFutbol maci boyle girdi).
+    dropped: list[dict] = []
+    if guard:
+        dropped = [r for r in store["responses"] if r.get("page") not in kept]
+        store["responses"] = [r for r in store["responses"] if r.get("page") in kept]
+
     store["dumpedAt"] = datetime.now(timezone.utc).isoformat()
     out_dir.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H-%M-%S")
@@ -469,7 +593,14 @@ def capture(site: str, headed: bool, out_dir: Path, only, per_league: int,
     print(f"ws: {store['wsConnections']} baglanti / {store['wsFrames']} frame "
           f"(kayitli {len(store['sockets'])}) | xhr: {len(store['responses'])} "
           f"(json {xhr_json}, events-table {et_count})", flush=True)
-    return path, et_count
+    if redirected:
+        print(f"yonlenen sayfa: {len(redirected)}/{len(pages)} ({', '.join(redirected)})", flush=True)
+    if dropped:
+        drop_et = sum(1 for r in dropped if "events-table" in (r.get("url") or ""))
+        print(f"dump'a alinmayan yanit: {len(dropped)} (events-table {drop_et}; "
+              f"adres cozme + yonlenen sayfalar)", flush=True)
+    idle = bool(pages) and parent_hits == len(pages)
+    return path, et_count, idle
 
 
 def main() -> None:
@@ -492,13 +623,32 @@ def main() -> None:
     ap.add_argument("--record-ws", action="store_true",
                     help="WS frame payload'larini da dump'a yaz (varsayilan kapali; "
                          "hicbir parser okumuyor, yalniz gecici inceleme icin)")
+    ap.add_argument("--try-path", action="append", default=[], metavar="ETIKET=YOL",
+                    help="listede olmayan bir sayfayi dene (slug dogrulama), ör. "
+                         "bsl=/tr/spor-bahisleri/basketbol/turkiye/turkiye-bsl; "
+                         "tekrarlanabilir. --pages verilmezse YALNIZ bu sayfalar gezilir")
     args = ap.parse_args()
 
-    def run() -> tuple[Path, int]:
+    # Bilinmeyen etiket tarayici ACILMADAN reddedilir: yoksa sayfa listesi bos kalir,
+    # kosu adres cozme + verisiz-kosu tekrari icin bosuna ucretli proxy harcar.
+    known = {lbl for lbl, _ in SITES[args.site]["pages"]}
+    unknown = [p for p in (args.pages or []) if p not in known]
+    if unknown:
+        ap.error(f"bilinmeyen sayfa etiketi: {', '.join(unknown)} "
+                 f"(gecerli: {', '.join(sorted(known))})")
+    extra: list[tuple[str, str]] = []
+    for item in args.try_path:
+        lbl, sep, p = item.partition("=")
+        if not lbl or not sep or not p.startswith("/") or lbl in known:
+            ap.error(f"--try-path ETIKET=/yol biciminde ve etiketi listede olmayan "
+                     f"bir sayfa olmali: {item!r}")
+        extra.append((lbl, p))
+
+    def run() -> tuple[Path, int, bool]:
         return capture(args.site, args.headed, Path(args.out), args.pages,
                        args.per_league, args.detail_wait_ms, args.list_wait_ms,
                        args.proxy, args.chromium_path, args.cc, args.horizon_days,
-                       args.record_ws)
+                       args.record_ws, extra)
 
     # ADRES COZME TEKRARI (2026-08-20 sabah arizasi): kotu exit IP / geçici TR
     # havuzu arizasi resolve_domain'i de dusurur ("calisan adres bulunamadi");
@@ -506,23 +656,30 @@ def main() -> None:
     # bitiyordu. Ayni ilke: yeni proxy oturumuyla BIR kez daha dene, yine
     # olmazsa SystemExit yayilir (wrapper rc!=0 -> ntfy).
     try:
-        _, et = run()
+        _, et, idle = run()
     except SystemExit as e:
         if "calisan adres" not in str(e):
             raise
         print("[TEKRAR] adres cozulemedi; yeni proxy oturumuyla ikinci deneme", flush=True)
-        _, et = run()
+        _, et, idle = run()
     # VERISIZ KOSU TEKRARI (2026-08-19 10:04 arizasi): sticky oturumun denk
     # geldigi exit IP kotuyse SPA sportsbook katmani hic yuklenmiyor (ws=0,
     # events-table=0) ve 6 saatlik pencere bos geciyor. Yeni session id = yeni
     # exit IP ile BIR kez daha denenir; yine bossa rc=3 (log/wrapper sinyali).
     # Loader her zaman EN YENI dump'i yukledigi icin tekrar dump'i onceliklidir.
-    if et == 0:
+    # YONLENEN SAYFA bu sayimi bozmaz: baska sayfalar veri getirdiyse et>0. Gezilen
+    # HER sayfa kendi ust sayfasina yonlendiyse (idle) kosu ariza degildir: SPA
+    # calisiyor (yonlendirmeyi yapan o), o liglerde acik mac yok; yeni proxy oturumu
+    # sonucu degistirmez, tekrar yalnizca ucretli trafik harcar.
+    if et == 0 and not idle:
         print("[TEKRAR] events-table bos; yeni proxy oturumuyla ikinci deneme", flush=True)
-        _, et = run()
-        if et == 0:
+        _, et, idle = run()
+        if et == 0 and not idle:
             print("[HATA] ikinci deneme de verisiz; kosu bos bitti", flush=True)
             raise SystemExit(3)
+    if et == 0:
+        print("[BILGI] gezilen sayfalarin tumu ust sayfaya yonlendi (acik mac yok); "
+              "veri beklenmiyordu, tekrar denenmedi", flush=True)
 
 
 if __name__ == "__main__":
