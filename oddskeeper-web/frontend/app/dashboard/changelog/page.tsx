@@ -21,6 +21,19 @@ const TAG_FIX: L = { en: "Fix", tr: "Düzeltme" };
 
 const ENTRIES: Entry[] = [
   {
+    date: { en: "29 September", tr: "29 Eylül" },
+    title: {
+      en: "Upcoming Events: handball is now low profile",
+      tr: "Upcoming Events: hentbol artık low profile",
+    },
+    items: [
+      {
+        en: "Handball matches (men's and women's Süper Lig) no longer get a priority star; they are in the low profile group now. They are hidden when \"Hide Low Profile\" is on and listed as before when it is off. With it on, the Handball tab shows 0.",
+        tr: "Hentbol maçları (Erkekler ve Kadınlar Süper Ligi) artık öncelik yıldızı almıyor, low profile grubundalar. \"Low Profile Gizle\" açıkken gizleniyorlar, kapalıyken eskisi gibi listeleniyorlar. Açıkken Hentbol sekmesi 0 gösterir.",
+      },
+    ],
+  },
+  {
     date: { en: "28 September", tr: "28 Eylül" },
     title: {
       en: "EuroLeague and EuroCup: box scores load on their own",
