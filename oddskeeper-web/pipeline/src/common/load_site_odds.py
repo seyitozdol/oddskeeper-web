@@ -274,7 +274,8 @@ def _within_window(site_start, ev_start) -> bool:
 
 
 def resolve(site_events: list[tuple[str, str]], our_events: list[dict],
-            site_starts: dict | None = None, site_sports: dict | None = None) -> dict:
+            site_starts: dict | None = None, site_sports: dict | None = None,
+            site_genders: dict | None = None) -> dict:
     """(home, away) -> {event_id, score}. Belirsiz eslesmeler atlanir.
 
     Iki gecis: once DUZ yon (mevcut davranis; iki bacakli Avrupa eslemelerinde
@@ -291,15 +292,28 @@ def resolve(site_events: list[tuple[str, str]], our_events: list[dict],
     Erokspor' futbol 1.Lig 'Manisa FK - Esenler Erokspor'a 0.9 ile baglanmisti;
     TBL/BSL'de futbol kulubuyle ayni adli takim cok (Konyaspor, Goztepe,
     Ankaragucu, Bursaspor, Trabzonspor...). Sport bilgisi yoksa kisit yok.
+    site_genders: {(home, away): 'F'|'M'} verilirse adaylar cinsiyete gore
+    BOLUNUR: 'F' (kadin ligi satiri) yalniz gender='F' event'lere, diger deger
+    yalniz F OLMAYAN event'lere (gender bos dahil) aday olur. 2026-09-29: Bets10
+    basketbol Turkiye bolge sayfasi KBSL (kadin) maclarini da getiriyor; iki
+    kaynak da kadin takimini adinda guvenilir isaretlemedigi icin KBSL
+    'Besiktas - Fenerbahce W' ayni haftanin ERKEK Besiktas - Fenerbahce macina
+    baglanip onun rozetini/oranini ezebilirdi. Anahtar yoksa kisit yok (eski
+    davranis; bet365/OddsPortal/BMBets cagrilari cinsiyet vermez).
     """
     starts = {k: _parse_site_start(v) for k, v in (site_starts or {}).items()}
     sports = site_sports or {}
+    genders = site_genders or {}
 
     def cands(key):
         evs = our_events
         sp = sports.get(key)
         if sp:
             evs = [ev for ev in evs if (ev.get("sport") or sp) == sp]
+        gd = genders.get(key)
+        if gd:
+            women = gd == "F"
+            evs = [ev for ev in evs if (ev.get("gender") == "F") == women]
         st = starts.get(key)
         if st is not None:
             evs = [ev for ev in evs if _within_window(st, ev.get("start_ts"))]
@@ -433,21 +447,23 @@ def main() -> None:
     conn = psycopg2.connect(os.environ["DATABASE_URL"])
     cur = conn.cursor()
 
-    # KADIN TAKIM AYRIMI: SofaScore kadin takimini ADINDA isaretlemiyor (kadin
+    # KADIN / ERKEK AYRIMI: SofaScore kadin takimini ADINDA isaretlemiyor (kadin
     # Fenerbahce = 'Fenerbahce Istanbul', 'Women'/'Kadin' YOK); ayrim yalniz
     # gender kolonunda + turnuva adinda. Ad-tabanli eslesme erkek/kadin ayni
     # ikiliyi (ayni gun erkek+kadin derbisi) ayirt edemez -> U19'daki gibi margin
-    # cakismasi DOGRU erkek eslesmesini de eleyebilir. Bizim TUM oran kaynaklarimiz
-    # (Bets10 sayfalari, API-Football ligleri 2/3/848/667, OddsPortal ligleri)
-    # ERKEK musabakasi oldugundan gender='F' event'ler adayliktan cikarilir.
-    # (Kadin oran kaynagi eklenirse bu varsayim gozden gecirilmeli.)
+    # cakismasi DOGRU erkek eslesmesini de eleyebilir. Bu yuzden adaylar tek
+    # sorguda cekilir ama cinsiyete gore BOLUNUR (resolve site_genders): kadin
+    # ligi satiri (parser gender='F'; 2026-09-29 Bets10 KBSL) yalniz gender='F'
+    # event'lere, digerleri yalniz F olmayanlara aday olur. Cinsiyet alani
+    # uretmeyen parser'larin (DOM snapshot) satirlari ERKEK sayilir: 2026-09-29'a
+    # kadar butun adaylar "kaynaklarin tumu erkek musabakasi" varsayimiyla boyle
+    # suzuluyordu, o satirlar icin davranis ayni kalir.
     cur.execute(
         """
-        select event_id, home_team_name, away_team_name, sport, start_ts
+        select event_id, home_team_name, away_team_name, sport, start_ts, gender
         from tracker.upcoming_events
         where status_type in ('notstarted','inprogress')
           and start_ts > now() - interval '6 hours'
-          and gender is distinct from 'F'
         """
     )
     our = [
@@ -457,31 +473,43 @@ def main() -> None:
             "away_team_name": r[2],
             "sport": r[3],
             "start_ts": r[4],
+            "gender": r[5],
         }
         for r in cur.fetchall()
     ]
+    our_men = [ev for ev in our if ev["gender"] != "F"]
 
     site_pairs = sorted({(r["home"], r["away"]) for r in rows})
-    # Tarih penceresi + spor kisiti icin site macinin baslangici (Bets10
-    # start_text ISO) ve sporu (parse_bets10_network categoryName -> sport).
-    site_starts, site_sports = {}, {}
+    # Tarih penceresi + spor + cinsiyet kisiti icin site macinin baslangici
+    # (Bets10 start_text ISO), sporu (parse_bets10_network categoryName -> sport)
+    # ve cinsiyeti (kadin ligi isareti; yoksa erkek).
+    site_starts, site_sports, site_genders = {}, {}, {}
     for r in rows:
         key = (r["home"], r["away"])
         if r.get("start_text") and key not in site_starts:
             site_starts[key] = r["start_text"]
         if r.get("sport") and key not in site_sports:
             site_sports[key] = r["sport"]
-    matches = resolve(site_pairs, our, site_starts, site_sports)
+        if key not in site_genders:
+            site_genders[key] = "F" if r.get("gender") == "F" else "M"
+    matches = resolve(site_pairs, our, site_starts, site_sports, site_genders)
 
+    # Slug eslesmesi yalniz DOM snapshot satirlarinda var; onlar erkek sayilir.
     matched_ids = {m["event_id"] for m in matches.values()}
-    listed_matches = resolve_listed(listed_rows, our, exclude=matched_ids)
+    listed_matches = resolve_listed(listed_rows, our_men, exclude=matched_ids)
 
+    women_pairs = {p for p in site_pairs if site_genders[p] == "F"}
     print(f"site: {site}")
     print(f"dump'tan {len(rows)} oranli satir, {len(site_pairs)} mac")
-    print(f"bizim takipteki mac sayisi: {len(our)}")
+    print(f"bizim takipteki mac sayisi: {len(our_men)}")
+    if women_pairs:
+        # Yalniz dump'ta kadin ligi maci varsa basilir; erkek satirlari ayni kalir.
+        print(f"kadin: dump'ta {len(women_pairs)} mac, "
+              f"takipte {len(our) - len(our_men)} mac")
     print(f"ORANI ESLESEN: {len(matches)}\n")
     for (h, a), m in sorted(matches.items()):
-        print(f"  [{m['score']}] {h} - {a}   ->   {m['our']}")
+        tag = "   (kadin)" if (h, a) in women_pairs else ""
+        print(f"  [{m['score']}] {h} - {a}   ->   {m['our']}{tag}")
     if listed_matches:
         print(f"\nSITEDE VAR AMA ORAN YAKALANAMADI: {len(listed_matches)}")
         for slug, m in sorted(listed_matches.items()):

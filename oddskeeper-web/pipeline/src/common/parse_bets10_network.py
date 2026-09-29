@@ -18,6 +18,7 @@ from __future__ import annotations
 import json
 import re
 import sys
+import unicodedata
 
 # marketTemplateId -> okunabilir market adi
 MARKET_NAME = {
@@ -65,6 +66,37 @@ def is_virtual(competition: str | None, home: str | None, away: str | None) -> b
     return is_esports(competition) or (_has_tag(home) and _has_tag(away))
 
 
+# KADIN MUSABAKASI (2026-09-29). Bets10 event'inde cinsiyet ALANI yok; bilgi LIG
+# kimliginde tasinir. Ingilizce lig anahtarlari (competitionTrackingLabel,
+# regionTrackingLabel, neutralPath) 'women' icerir: 'turkey-kbsl-women',
+# "uefa-women's-europa-cup", 'football/international-women/...'. Turkce lig adi
+# (competitionName) cogunlukla 'Kadinlar' tasir ama hep degil: 'Turkiye - KBSL'.
+# Hicbir isaret tasimayan kadin ligleri de var ('USA NWSL', 'Japonya Nadeshiko
+# 1. Lig'); onlar lig adindan taninir (74 dump'ta gorulenler).
+# TAKIM ADINA BAKILMAZ: 'Fenerbahce W' ekli ama ayni ligde 'Besiktas', 'Botas',
+# 'Ormanspor' eksiz, yani ek guvenilir degil. Belirtecler TAM token olarak aranir
+# (fold sonrasi), alt dize olarak degil.
+_WOMEN_TOKENS = {"women", "womens", "woman", "kadin", "kadinlar", "kbsl", "nwsl", "nadeshiko"}
+
+
+def _fold_tokens(text: str) -> set[str]:
+    """Aksanlari atar, kucuk harfe cevirir, harf/rakam disindan boler."""
+    s = unicodedata.normalize("NFKD", text.replace("ı", "i"))
+    s = "".join(c for c in s if not unicodedata.combining(c)).lower()
+    return set("".join(c if c.isalnum() else " " for c in s).split())
+
+
+def is_women(ev: dict) -> bool:
+    """Kadin musabakasi mi? Lig adina ve lig anahtarlarina bakar."""
+    # neutralPath'in son parcasi mac slug'i (takim adlari); lig kismi alinir.
+    league_path = "/".join((ev.get("neutralPath") or "").split("/")[:-1])
+    text = " ".join(
+        str(ev.get(k) or "")
+        for k in ("competitionName", "competitionTrackingLabel", "regionTrackingLabel")
+    )
+    return bool(_fold_tokens(f"{text} {league_path}") & _WOMEN_TOKENS)
+
+
 def rows_from_events_table(body: dict, captured_at: str | None, label: str | None) -> list[dict]:
     data = body.get("data") or {}
     events = {}
@@ -81,6 +113,8 @@ def rows_from_events_table(body: dict, captured_at: str | None, label: str | Non
             "competition": ev.get("competitionName"),
             "start": ev.get("startDate"),
             "sport": SPORT_MAP.get(ev.get("categoryName"), "football"),
+            # 'F' = kadin ligi; None = isaret yok (load_site_odds erkek sayar).
+            "gender": "F" if is_women(ev) else None,
         }
     markets = {}
     for m in data.get("markets") or []:
@@ -123,6 +157,7 @@ def rows_from_events_table(body: dict, captured_at: str | None, label: str | Non
             "snapshot_label": label,
             "site_event_id": mk["eventId"],
             "sport": ev.get("sport", "football"),
+            "gender": ev.get("gender"),
             "listed_only": False,
         })
     return out
