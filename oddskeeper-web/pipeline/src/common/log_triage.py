@@ -71,6 +71,9 @@ RULES = [
     # duser: bu yuzden KRITIK, yoksa "kendiliginden gecen tur" altinda kaybolur
     ("el_mac_takildi", re.compile(r"saat sonra (API hala oynanmadi|box-score hala eksik)"), "crit",
      "EL/EC maci tip-off'tan 24 saat sonra hala yuklenemedi (elle kontrol)"),
+    # fetch_sofascore_team_events: satir DB'ye yazilamadi (kisit ihlali vb.); gecici ag hatasi degil
+    ("fikstur_yazilamadi", re.compile(r"^\[team-events\] HATA: .* yazilamadi"), "crit",
+     "fikstur satiri DB'ye yazilamadi (elle kontrol)"),
     ("api_hiz_siniri", re.compile(r"API hiz siniri"), "warn",
      "EuroLeague API hiz siniri/engel (gecici; sonraki tur telafi eder)"),
     # --- WARN: bilinen gecici siniflar ---

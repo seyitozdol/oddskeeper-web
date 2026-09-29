@@ -10,9 +10,17 @@ ayni event id lig loader'iyla cakisirsa on conflict yalniz tarih/durum tazeler.
 
 Takim listesi DB'den: guncel sezon Super Lig sofascore fiksturundeki 18 takim.
 
+Tur bilgisi olmayan mac (hazirlik maci; SofaScore roundInfo vermez) round_number=0
+ile yazilir: kolon NOT NULL. 2026-09-28'de Konyaspor-Filistin hazirlik maci NULL
+round yuzunden NotNullViolation verdi, script coktu ve siradaki 7 takim hic
+islenmedi. Bu yuzden her mac kendi savepoint'inde yazilir: tek bozuk satir
+"[team-events] HATA:" basar ve atlanir, kalan maclar/takimlar islenir; en az bir
+satir yazilamadiysa rc=1 (wrapper "TEAM EVENTS FAILED", gunluk ozet gorur).
+
 Cron: run_sofascore.sh icinde (3 saatte bir). Elle:
   python src/football/fetch_sofascore_team_events.py
 """
+import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -97,7 +105,7 @@ def main() -> None:
     teams = cur.fetchall()
     print(f"TSL takim: {len(teams)}", flush=True)
 
-    total = 0
+    total = failed = 0
     for team_id, team_name in teams:
         events = {}
         for page in (0, 1):
@@ -121,36 +129,50 @@ def main() -> None:
             comp = ((tour.get("uniqueTournament") or {}).get("name")
                     or tour.get("name") or "?")
             dt = datetime.fromtimestamp(ts, tz=timezone.utc)
-            rnd = (ev.get("roundInfo") or {}).get("round")
+            # tur bilgisi yok (hazirlik maci) -> 0; kolon NOT NULL
+            rnd = (ev.get("roundInfo") or {}).get("round") or 0
             h, a = ev["homeTeam"], ev["awayTeam"]
-            cur.execute(
-                """insert into football.fixtures (
-                     fixture_id, competition, season_label, round_number,
-                     fixture_date, fixture_datetime, kickoff_time_known,
-                     home_team_slug, away_team_slug,
-                     home_team_source_id, away_team_source_id,
-                     home_team_name, away_team_name,
-                     fixture_status, source, source_fixture_id, created_at, updated_at
-                   ) values (%s,%s,%s,%s,%s,%s,true,%s,%s,%s,%s,%s,%s,%s,'sofascore',%s,now(),now())
-                   on conflict (fixture_id) do update set
-                     round_number = excluded.round_number,
-                     fixture_date = excluded.fixture_date,
-                     fixture_datetime = excluded.fixture_datetime,
-                     fixture_status = excluded.fixture_status,
-                     updated_at = now()""",
-                (str(ev["id"]), comp, season_label_for(dt), rnd, dt.date(), dt,
-                 slugify(h.get("name", "")), slugify(a.get("name", "")),
-                 str(h["id"]), str(a["id"]), h.get("name"), a.get("name"),
-                 status, str(ev["id"])),
-            )
+            cur.execute("savepoint ev")
+            try:
+                cur.execute(
+                    """insert into football.fixtures (
+                         fixture_id, competition, season_label, round_number,
+                         fixture_date, fixture_datetime, kickoff_time_known,
+                         home_team_slug, away_team_slug,
+                         home_team_source_id, away_team_source_id,
+                         home_team_name, away_team_name,
+                         fixture_status, source, source_fixture_id, created_at, updated_at
+                       ) values (%s,%s,%s,%s,%s,%s,true,%s,%s,%s,%s,%s,%s,%s,'sofascore',%s,now(),now())
+                       on conflict (fixture_id) do update set
+                         round_number = excluded.round_number,
+                         fixture_date = excluded.fixture_date,
+                         fixture_datetime = excluded.fixture_datetime,
+                         fixture_status = excluded.fixture_status,
+                         updated_at = now()""",
+                    (str(ev["id"]), comp, season_label_for(dt), rnd, dt.date(), dt,
+                     slugify(h.get("name", "")), slugify(a.get("name", "")),
+                     str(h["id"]), str(a["id"]), h.get("name"), a.get("name"),
+                     status, str(ev["id"])),
+                )
+            except psycopg2.Error as e:
+                # tek bozuk satir kosuyu dusurmesin: geri al, bildir, devam et
+                cur.execute("rollback to savepoint ev")
+                failed += 1
+                why = (e.pgerror or str(e)).strip().splitlines()[0]
+                print(f"[team-events] HATA: {team_name} mac {ev['id']} ({comp}: "
+                      f"{h.get('name')} - {a.get('name')}) yazilamadi: {why}", flush=True)
+                continue
+            cur.execute("release savepoint ev")
             n += 1
         conn.commit()
         total += n
         print(f"  {team_name}: {n} yaklasan mac", flush=True)
         time.sleep(0.5)
 
-    print(f"toplam upsert: {total}", flush=True)
+    print(f"toplam upsert: {total}" + (f", yazilamayan: {failed}" if failed else ""), flush=True)
     conn.close()
+    if failed:
+        sys.exit(1)
 
 
 if __name__ == "__main__":
