@@ -211,7 +211,8 @@ export async function FixturePanel({ rows = [] }: FixturePanelProps) {
                 </td>
 
                 <td className="px-3 py-1.5 whitespace-nowrap text-ink-2">
-                  {row.round_number}
+                  {/* 0 = tur bilgisi yok (hazırlık maçı) */}
+                  {row.round_number > 0 ? row.round_number : "-"}
                 </td>
 
                 <td className="px-3 py-1.5 whitespace-nowrap">

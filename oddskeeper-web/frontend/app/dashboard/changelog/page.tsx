@@ -23,6 +23,24 @@ const ENTRIES: Entry[] = [
   {
     date: { en: "29 September", tr: "29 Eylül" },
     title: {
+      en: "Upcoming Events: Bets10 odds for EuroCup matches",
+      tr: "Upcoming Events: EuroCup maçlarında Bets10 oranı",
+    },
+    tag: TAG_FIX,
+    items: [
+      {
+        en: "EuroCup basketball matches (Tofaş, Bahçeşehir Koleji, Türk Telekom) now show the Bets10 badge with a link to the match. The EuroCup page was missing from the Bets10 capture list, so these matches never got odds. The same odds also fill the Bets10 suggestions in the EuroCup Match-Player Tools fixture list.",
+        tr: "EuroCup basketbol maçlarında (Tofaş, Bahçeşehir Koleji, Türk Telekom) artık Bets10 rozeti ve maç linki görünüyor. EuroCup sayfası Bets10 yakalama listesinde eksikti, bu yüzden bu maçlara oran gelmiyordu. Aynı oranlar EuroCup Match-Player Tools fikstür listesindeki Bets10 önerilerini de dolduruyor.",
+      },
+      {
+        en: "Team pages, Fixture tab: friendly matches without a round number (for example Konyaspor - Palestine) are now listed, with a dash in the round column. One such match had been blocking the fixture refresh of seven Süper Lig teams since 28 September.",
+        tr: "Takım sayfası, Fikstür sekmesi: tur numarası olmayan hazırlık maçları da (örneğin Konyaspor - Filistin) artık listeleniyor, tur sütununda tire görünür. Böyle bir maç 28 Eylül'den beri yedi Süper Lig takımının fikstür güncellemesini engelliyordu.",
+      },
+    ],
+  },
+  {
+    date: { en: "29 September", tr: "29 Eylül" },
+    title: {
       en: "Upcoming Events: handball is now low profile",
       tr: "Upcoming Events: hentbol artık low profile",
     },
