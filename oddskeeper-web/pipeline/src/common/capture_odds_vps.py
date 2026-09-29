@@ -91,6 +91,9 @@ BETS10_PAGES = [
     ("basketbol-super-lig", "/tr/spor-bahisleri/basketbol/turkiye/turkiye-basketbol-super-ligi"),
     ("basketbol-tbl", "/tr/spor-bahisleri/basketbol/turkiye/turkiye-basketbol-ligi"),
     ("basketbol-euroleague", "/tr/spor-bahisleri/basketbol/euroleague/euroleague"),
+    # EuroCup (2026-09-29; Tofas-Chemnitz'te B10 rozeti yoktu, sayfa listede hic olmadigi icin).
+    # Slug Bets10'un kendi lig katalogundan dogrulandi (dump'ta "slug":"basketbol/eurocup/eurocup").
+    ("basketbol-eurocup", "/tr/spor-bahisleri/basketbol/eurocup/eurocup"),
     # --- milli takimlar ---
     # UEFA Uluslar Ligi (2026-09-23; Turkiye-Fransa kullanici fark etti). Slug dump'taki
     # event slug'larindan dogrulandi: futbol/uluslar-ligi/uefa-uluslar-ligi/<mac>.
