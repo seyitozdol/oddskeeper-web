@@ -26,6 +26,9 @@ export const PLAYER_MARKETS: PlayerMarket[] = [
   { key: "pra",       label: "Sayı+Rib+Asist", tpl: "PPTSRBAST", std: 8,    distributable: false },
   { key: "fgmadepct", label: "İsabet %",       tpl: "PFGLSM",    std: 7,    distributable: false },
   { key: "ftpct",     label: "Serbest %",      tpl: "PTFTRWM",   std: 11.3, distributable: false },
+  // Yes/No marketleri (line yok): sayı / ribaund / asist beklentilerinden simüle edilir (doubles.ts).
+  { key: "dd",        label: "Double-Double",  tpl: "PDBDB",     std: 0,    distributable: false },
+  { key: "td",        label: "Triple-Double",  tpl: "PTDB",      std: 0,    distributable: false },
 ];
 
 export function playerStd(key: string): number {
@@ -87,6 +90,8 @@ export const METRIC_LABELS: Record<string, { tr: string; en: string }> = {
   pra: { tr: "Sayı+Rib+Asist", en: "Pts+Reb+Ast" },
   fgmadepct: { tr: "İsabet %", en: "FG %" },
   ftpct: { tr: "Serbest %", en: "FT %" },
+  dd: { tr: "Double-Double", en: "Double-Double" },
+  td: { tr: "Triple-Double", en: "Triple-Double" },
 };
 export const SIDE_LABELS: Record<string, { tr: string; en: string }> = {
   home: { tr: "Ev", en: "Home" }, away: { tr: "Dep", en: "Away" }, total: { tr: "Toplam", en: "Total" },
@@ -149,7 +154,7 @@ export function configLabel(
 }
 
 // Kombine + yüzde marketleri takım toplamından DAĞITILMAZ (oyuncunun kendi ort.)
-const NON_DISTRIBUTABLE = new Set(["pr", "pa", "pra", "fgmadepct", "ftpct"]);
+const NON_DISTRIBUTABLE = new Set(["pr", "pa", "pra", "fgmadepct", "ftpct", "dd", "td"]);
 export function isDistributable(baseMetric: string | null | undefined): boolean {
   return !NON_DISTRIBUTABLE.has(baseMetric ?? "");
 }

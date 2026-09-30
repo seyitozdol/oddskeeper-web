@@ -7,6 +7,7 @@ import type { ModelHistoryRecord } from "@/lib/model-history";
 import { useJustAdded } from "@/lib/use-just-added";
 import { buildLadder, buildConfiguredLines, moneyline, type LineConfig } from "../odds";
 import { H2H_DEFAULTS, H2H_METRICS, H2H_TEMPLATES, h2hPrice, type H2HConfig, type H2HMetric } from "../h2h";
+import { DOUBLE_DEFAULT_SIMS, DOUBLE_STATS, doubleProbs, isDoubleBase, type DoubleProbs } from "../doubles";
 import { PLAYER_MARKETS, TEAM_MARKETS, teamStd, playerStd, metricLabel, metricInfo, isDistributable } from "../marketConfig";
 import { formatMatchDate, normalizePositionCode, positionLabel, roleLabelKey, roleBadgeClass, LEADER_METRICS, playerPhotoUrl, teamLogoPath } from "../lib";
 import { TeamCrest } from "./ui";
@@ -362,6 +363,8 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
   const isTicked = (slug: string, mk: string, w: BktPlayerWindowRow) => {
     const k = `${slug}:${mk}:${w.player_slug}`;
     if (ticks[k] != null) return ticks[k];
+    // double-double / triple-double: varsayılan KAPALI (trader sunacağı oyuncuyu kendi tikler)
+    if (isDoubleBase(playerMarketBy.get(mk)?.base)) return false;
     // prime oyuncu: yeterli dakika + yeterli maç örneği (küçük-örnek transferleri ele)
     return w.avg_minutes >= 12 && w.games >= 10 && w.season_avg >= (mk === "points" ? 4 : 1);
   };
@@ -404,7 +407,8 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
       const teamSlug = side === "home" ? homeSlug : awaySlug;
       if (r.teamSlug !== teamSlug) continue; // başka bir eşleşmeden kalan satır
       const k = `${side}:${r.playerSlug}`;
-      if (!m.has(k)) m.set(k, { slug: r.playerSlug, name: r.playerName, side, extId: playerIds[r.playerSlug] ?? "", pos: normalizePositionCode(roleBy.get(`${teamSlug}:${r.playerSlug}`)?.position) ?? null, values: {} });
+      const role = roleBy.get(`${teamSlug}:${r.playerSlug}`);
+      if (!m.has(k)) m.set(k, { slug: r.playerSlug, name: r.playerName, side, extId: playerIds[r.playerSlug] ?? "", pos: normalizePositionCode(role?.position) ?? null, photo: playerPhotoUrl(role), values: {} });
       m.get(k)!.values[r.metricKey as H2HMetric] = r.value;
     }
     const all = [...m.values()].sort((a, b) => (b.values.points ?? 0) - (a.values.points ?? 0) || a.name.localeCompare(b.name, "tr"));
@@ -429,6 +433,26 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
     }).filter((x): x is H2HMarket => x != null);
   }, [config, playerMarkets]);
   const h2hExisting = useMemo(() => new Set(h2hRows.map(h2hRowKey)), [h2hRows]);
+
+  // ── Double-double / triple-double: sayı, ribaund, asist beklentilerinden simüle edilir ──
+  // Bir istatistiğin beklentisi: Input'a GÖNDERİLMİŞ değer (nihai); gönderilmediyse o markette
+  // elle yazılan değer; o da yoksa oyuncunun Model değeri.
+  const doubleSims = Math.max(0, Math.round(mc("dd_sims", DOUBLE_DEFAULT_SIMS)));
+  const statMean = (slug: string, base: string, playerSlug: string): { value: number; sent: boolean } | null => {
+    const sent = sentValueBy.get(`${playerSlug}|${base}`);
+    if (sent != null) return { value: sent, sent: true };
+    const mkKey = playerMarkets.find((m) => m.base === base)?.key ?? base;
+    const ov = playerVal[`${slug}:${mkKey}:${playerSlug}`];
+    if (ov != null) return { value: ov, sent: false };
+    const w = winBy.get(slug)?.get(base)?.find((x) => x.player_slug === playerSlug);
+    return w ? { value: playerModel(w), sent: false } : null;
+  };
+  const doubleFor = (slug: string, playerSlug: string): DoubleProbs =>
+    doubleProbs(
+      DOUBLE_STATS.map((b) => statMean(slug, b, playerSlug)?.value ?? 0),
+      DOUBLE_STATS.map((b) => playerMarkets.find((m) => m.base === b)?.std ?? playerStd(b)),
+      doubleSims
+    );
 
   // Kombine market (pr/pa/pra) için gönderilmiş bileşenlerin toplamı; eksik bileşen → null.
   const comboValue = (mk: string, w: BktPlayerWindowRow): number | null => {
@@ -681,7 +705,7 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
             <PlayerDistPanel homeSlug={homeSlug} awaySlug={awaySlug} homeName={home.team_name} awayName={away.team_name}
               effHome={effHome} effAway={effAway} winBy={winBy} isTicked={isTicked} setTick={(k, v) => setTicks((p) => ({ ...p, [k]: v }))}
               playerValue={playerValue} setVal={(k, v) => setPlayerVal((p) => ({ ...p, [k]: v }))} playerModel={playerModel}
-              comboValue={comboValue} isOverridden={(k) => playerVal[k] != null}
+              comboValue={comboValue} isOverridden={(k) => playerVal[k] != null} statMean={statMean} doubleFor={doubleFor}
               teamTarget={(slug, mk) => teamTrader(slug, mk, slug === homeSlug ? effHome : effAway)}
               onAdd={(rows) => addWithHistory(rows, "player")} historySlot={historyDropdown} historyNotice={historyNotice}
               playerIds={playerIds} playerCfg={playerCfg} playerMarkets={playerMarkets}
@@ -838,10 +862,11 @@ function TeamRecent({ name, logs, locale, t }: { name: string; logs: BktTeamLogR
 }
 
 /* ---------- H2H (oyuncu - oyuncu) paneli ---------- */
-// Bir ev + bir deplasman oyuncusu eşleşir; sayı / ribaund / asist için iki tarafın oranı
-// h2hPrice ile hesaplanır. Beklentiler yalnız Input'a gönderilmiş değerlerden gelir.
-type H2HPlayer = { slug: string; name: string; side: "home" | "away"; extId: string; pos: string | null; values: Partial<Record<H2HMetric, number>> };
-type H2HPair = { home: string; away: string };
+// Eşleşmeler MARKET bazındadır: sayı, ribaund ve asist ayrı alt sekmeler; aynı oyuncu her
+// markette farklı bir rakiple eşleşebilir. Bir ev + bir deplasman oyuncusu eşleşir, iki
+// tarafın oranı h2hPrice ile hesaplanır. Beklentiler yalnız Input'a gönderilmiş değerlerden gelir.
+type H2HPlayer = { slug: string; name: string; side: "home" | "away"; extId: string; pos: string | null; photo: string | null; values: Partial<Record<H2HMetric, number>> };
+type H2HPair = { metric: H2HMetric; home: string; away: string };
 type H2HMarket = { metric: H2HMetric; template: string; std: number; payback: number | null };
 // Input mükerrer anahtarı: aynı maç + şablon + oyuncu çifti = aynı satır.
 const h2hRowKey = (r: BktH2HInputRow) => `${r.fixtureExtId}|${r.template}|${r.homeId}|${r.awayId}`;
@@ -855,77 +880,77 @@ function H2HPanel({ homeName, awayName, players, pairs, setPairs, cfg, markets, 
   onAdd?: (rows: BktH2HInputRow[]) => void;
   locale: "tr" | "en"; t: (k: string) => string;
 }) {
+  const [metricSel, setMetricSel] = useState<H2HMetric>("points");
   const [selHome, setSelHome] = useState("");
   const [selAway, setSelAway] = useState("");
   const [status, setStatus] = useState("");
   const [justAdded, flashAdded] = useJustAdded();
+  // Seçili market Config'te kapatıldıysa ilk açık markete düş.
+  const mk = markets.find((m) => m.metric === metricSel) ?? markets[0];
+  const metric: H2HMetric = mk?.metric ?? "points";
   const homeBy = new Map(players.home.map((p) => [p.slug, p]));
   const awayBy = new Map(players.away.map((p) => [p.slug, p]));
-  const has = (h: string, a: string) => pairs.some((p) => p.home === h && p.away === a);
+  // Bu markette değeri gönderilmiş oyuncular, değere göre büyükten küçüğe.
+  const listFor = (arr: H2HPlayer[], m: H2HMetric) =>
+    arr.filter((p) => p.values[m] != null).sort((a, b) => (b.values[m] as number) - (a.values[m] as number));
+  const homeList = listFor(players.home, metric), awayList = listFor(players.away, metric);
+  const has = (m: H2HMetric, h: string, a: string) => pairs.some((p) => p.metric === m && p.home === h && p.away === a);
   // Seçim boşsa ya da oyuncu listeden düştüyse ilk oyuncu.
-  const curHome = homeBy.has(selHome) ? selHome : players.home[0]?.slug ?? "";
-  const curAway = awayBy.has(selAway) ? selAway : players.away[0]?.slug ?? "";
-  const addPair = () => { if (curHome && curAway && !has(curHome, curAway)) setPairs([...pairs, { home: curHome, away: curAway }]); };
-  // Aynı pozisyondaki oyuncuları sayı beklentisine göre sırayla eşleştirir (G-G, F-F, C-C ...).
+  const curHome = homeList.some((p) => p.slug === selHome) ? selHome : homeList[0]?.slug ?? "";
+  const curAway = awayList.some((p) => p.slug === selAway) ? selAway : awayList[0]?.slug ?? "";
+  const addPair = () => { if (curHome && curAway && !has(metric, curHome, curAway)) setPairs([...pairs, { metric, home: curHome, away: curAway }]); };
+  // Aynı pozisyondaki oyuncuları bu marketteki beklentiye göre sırayla eşleştirir (G-G, F-F, C-C ...).
   const autoPair = () => {
     const next = [...pairs];
-    const positions = [...new Set(players.home.map((p) => p.pos).filter((x): x is string => !!x))];
+    const positions = [...new Set(homeList.map((p) => p.pos).filter((x): x is string => !!x))];
     for (const pos of positions) {
-      const hs = players.home.filter((p) => p.pos === pos), as = players.away.filter((p) => p.pos === pos);
+      const hs = homeList.filter((p) => p.pos === pos), as = awayList.filter((p) => p.pos === pos);
       for (let i = 0; i < Math.min(hs.length, as.length); i++) {
-        if (!next.some((p) => p.home === hs[i].slug && p.away === as[i].slug)) next.push({ home: hs[i].slug, away: as[i].slug });
+        if (!next.some((p) => p.metric === metric && p.home === hs[i].slug && p.away === as[i].slug)) next.push({ metric, home: hs[i].slug, away: as[i].slug });
       }
     }
     setPairs(next);
   };
-  const optLabel = (p: H2HPlayer) => {
-    const v = H2H_METRICS.filter((m) => p.values[m] != null).map((m) => `${metricLabel(m, locale)} ${fmt(p.values[m])}`).join(" · ");
-    return `${p.name}${p.pos ? ` (${p.pos})` : ""} · ${v}`;
-  };
-  const visible = pairs.filter((p) => homeBy.has(p.home) && awayBy.has(p.away));
-  const ready = players.home.length > 0 && players.away.length > 0;
+  const optLabel = (p: H2HPlayer) => `${p.name}${p.pos ? ` (${p.pos})` : ""} · ${fmt(p.values[metric])}`;
+  // Geçerli eşleşme: iki oyuncunun da o markette gönderilmiş değeri var ve market açık.
+  const valid = pairs.filter((p) => markets.some((m) => m.metric === p.metric)
+    && homeBy.get(p.home)?.values[p.metric] != null && awayBy.get(p.away)?.values[p.metric] != null);
+  const shown = valid.filter((p) => p.metric === metric);
+  const countOf = (m: H2HMetric) => valid.filter((p) => p.metric === m).length;
   // Market bazında payback: Config satırındaki değer, boşsa H2H varsayılanı.
-  const priceOf = (mk: H2HMarket, a: H2HPlayer, b: H2HPlayer) => {
-    const va = a.values[mk.metric], vb = b.values[mk.metric];
-    return va != null && vb != null ? h2hPrice(va, mk.std, vb, mk.std, { ...cfg, payback: mk.payback ?? cfg.payback }) : null;
-  };
-  const rowFor = (mk: H2HMarket, a: H2HPlayer, b: H2HPlayer, r: { oddsA: number; oddsB: number }): BktH2HInputRow => ({
-    fixtureExtId: fixExtId, template: mk.template, metricKey: mk.metric,
-    homeId: a.extId, awayId: b.extId, homePrice: r.oddsA, awayPrice: r.oddsB, homeName: a.name, awayName: b.name,
-  });
-  // Ekle: görünen eşleşmelerin fiyatlanmış marketleri Input'a (H2H) gider. Atlananlar:
-  // Input'ta zaten olan, şablonu olmayan, oranı çıkmayan (0 oran gönderilmez), dış id'si olmayan oyuncu.
+  const priceOf = (m: H2HMarket, a: H2HPlayer, b: H2HPlayer) =>
+    h2hPrice(a.values[m.metric] as number, m.std, b.values[m.metric] as number, m.std, { ...cfg, payback: m.payback ?? cfg.payback });
+  const keyOf = (m: H2HMarket, a: H2HPlayer, b: H2HPlayer) => `${fixExtId}|${m.template}|${a.extId}|${b.extId}`;
+  // Ekle: TÜM marketlerdeki eşleşmeler Input'a (H2H) gider. Atlananlar: Input'ta zaten olan,
+  // şablonu olmayan, oranı çıkmayan (0 oran gönderilmez), dış id'si olmayan oyuncu.
   const addAll = () => {
     const rows: BktH2HInputRow[] = [];
     let sent = 0, dup = 0, noTpl = 0, zero = 0, noId = 0;
-    for (const pair of visible) {
+    for (const pair of valid) {
+      const m = markets.find((x) => x.metric === pair.metric)!;
       const a = homeBy.get(pair.home)!, b = awayBy.get(pair.away)!;
-      for (const mk of markets) {
-        const r = priceOf(mk, a, b);
-        if (!r) continue;                                              // değer gönderilmemiş → sessiz
-        if (!mk.template) { noTpl++; continue; }
-        if (!a.extId || !b.extId) { noId++; continue; }
-        if (r.oddsA == null || r.oddsB == null) { zero++; continue; }
-        const row = rowFor(mk, a, b, { oddsA: r.oddsA, oddsB: r.oddsB });
-        if (existing.has(h2hRowKey(row))) { dup++; continue; }
-        rows.push(row); sent++;
-      }
+      const r = priceOf(m, a, b);
+      if (!m.template) { noTpl++; continue; }
+      if (!a.extId || !b.extId) { noId++; continue; }
+      if (r.oddsA == null || r.oddsB == null) { zero++; continue; }
+      if (existing.has(keyOf(m, a, b))) { dup++; continue; }
+      rows.push({
+        fixtureExtId: fixExtId, template: m.template, metricKey: m.metric,
+        homeId: a.extId, awayId: b.extId, homePrice: r.oddsA, awayPrice: r.oddsB, homeName: a.name, awayName: b.name,
+      });
+      sent++;
     }
     if (rows.length) { onAdd?.(rows); flashAdded(rows.length); }
     const msg = addStatusMsg(t, sent, dup, noTpl, zero);
     setStatus(noId ? `${msg} · ${t("basketball.h2hStatNoId").replace("{n}", String(noId))}` : msg);
   };
-  const inInput = (mk: H2HMarket, a: H2HPlayer, b: H2HPlayer) =>
-    existing.has(`${fixExtId}|${mk.template}|${a.extId}|${b.extId}`);
-  const sel = "max-w-[22rem] rounded-md border border-line bg-field px-2 py-1.5 text-[13px] text-ink outline-none focus:border-line-strong";
+  const ready = homeList.length > 0 && awayList.length > 0;
+  const sel = "max-w-[20rem] rounded-md border border-line bg-field px-2 py-1.5 text-[13px] text-ink outline-none focus:border-line-strong";
   const posBadge = (pos: string | null) => pos ? <span className="rounded bg-veil px-1.5 py-0.5 text-[10px] font-semibold text-ink-2">{pos}</span> : null;
   const noIdBadge = (p: H2HPlayer) => p.extId ? null : <span title={t("basketball.h2hNoIdInfo")} className="cursor-help rounded bg-warn/15 px-1.5 py-0.5 text-[10px] font-semibold text-warn">{t("basketball.h2hNoId")}</span>;
   const odd = (v: number | null) => (v == null ? "-" : v.toFixed(2));
-  const valueCell = (v: number | undefined, prob: number | null) => (
-    v == null
-      ? <span title={t("basketball.h2hNoValue")} className="cursor-help text-ink-3">-</span>
-      : <>{fmt(v)}{prob != null ? <span className="ml-1.5 text-[10px] text-ink-3">{(prob * 100).toFixed(1)}%</span> : null}</>
-  );
+  const pct = (v: number) => `${(v * 100).toFixed(1)}%`;
+  const th = "px-2 py-1.5 text-[9px] uppercase tracking-[0.1em] text-ink-3";
 
   return (
     <div className="space-y-4">
@@ -935,79 +960,97 @@ function H2HPanel({ homeName, awayName, players, pairs, setPairs, cfg, markets, 
           Payback {cfg.payback} · {cfg.sims > 0 ? t("basketball.h2hSims").replace("{n}", String(cfg.sims)) : t("basketball.h2hExact")} · {cfg.tieVoid ? t("basketball.h2hTieVoid") : t("basketball.h2hTieLose")}
         </span>
         {status ? <span className="rounded-md bg-veil px-2 py-1 font-semibold text-ink-2">{status}</span> : null}
-        <button onClick={addAll} disabled={visible.length === 0} className={`ml-auto rounded-lg px-5 py-2.5 text-[14px] font-semibold text-on-accent shadow-sm hover:opacity-90 disabled:opacity-50 ${justAdded != null ? "bg-pos" : "bg-accent"}`}>
+        <button onClick={addAll} disabled={valid.length === 0} className={`ml-auto rounded-lg px-5 py-2.5 text-[14px] font-semibold text-on-accent shadow-sm hover:opacity-90 disabled:opacity-50 ${justAdded != null ? "bg-pos" : "bg-accent"}`}>
           {justAdded != null ? `Added ${justAdded}!` : t("basketball.addToInput")}
         </button>
       </div>
 
-      {!ready ? (
-        <p className="rounded-lg border border-line bg-card-2/40 px-3 py-4 text-[13px] text-ink-3">{t("basketball.h2hNoPlayers")}</p>
+      {/* market alt sekmeleri: her marketin eşleşmeleri ayrı */}
+      <div className="flex flex-wrap items-center gap-2 rounded-lg border border-line bg-card-2/40 px-2.5 py-2">
+        <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-3">{t("basketball.pickMarket")}</span>
+        <div className="flex flex-wrap gap-1.5">
+          {markets.map((m) => (
+            <button key={m.metric} onClick={() => setMetricSel(m.metric)} className={`rounded-full px-3 py-1 text-[11px] font-semibold transition-colors ${m.metric === metric ? "bg-accent-soft text-accent-ink ring-1 ring-accent/40" : "bg-veil text-ink-3 hover:text-ink"}`}>
+              {metricLabel(m.metric, locale)}{countOf(m.metric) ? ` (${countOf(m.metric)})` : ""}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {!mk ? null : !ready ? (
+        <p className="rounded-lg border border-line bg-card-2/40 px-3 py-4 text-[13px] text-ink-3">{t("basketball.h2hNoPlayers").replace("{market}", metricLabel(metric, locale))}</p>
       ) : (
         <div className="flex flex-wrap items-end gap-3 rounded-lg border border-line bg-card-2/40 px-3 py-2.5">
           <label className="flex flex-col gap-1">
             <span className="text-[10px] uppercase tracking-[0.14em] text-ink-3">{homeName}</span>
             <select value={curHome} onChange={(e) => setSelHome(e.target.value)} className={sel}>
-              {players.home.map((p) => <option key={p.slug} value={p.slug}>{optLabel(p)}</option>)}
+              {homeList.map((p) => <option key={p.slug} value={p.slug}>{optLabel(p)}</option>)}
             </select>
           </label>
           <span className="pb-2 text-ink-3">vs</span>
           <label className="flex flex-col gap-1">
             <span className="text-[10px] uppercase tracking-[0.14em] text-ink-3">{awayName}</span>
             <select value={curAway} onChange={(e) => setSelAway(e.target.value)} className={sel}>
-              {players.away.map((p) => <option key={p.slug} value={p.slug}>{optLabel(p)}</option>)}
+              {awayList.map((p) => <option key={p.slug} value={p.slug}>{optLabel(p)}</option>)}
             </select>
           </label>
-          <button onClick={addPair} disabled={has(curHome, curAway)} className="rounded-md border border-accent bg-accent px-3 py-1.5 text-[12px] font-semibold text-on-accent hover:opacity-90 disabled:opacity-50">{t("basketball.h2hAddPair")}</button>
+          <button onClick={addPair} disabled={has(metric, curHome, curAway)} className="rounded-md border border-accent bg-accent px-3 py-1.5 text-[12px] font-semibold text-on-accent hover:opacity-90 disabled:opacity-50">{t("basketball.h2hAddPair")}</button>
           <button onClick={autoPair} title={t("basketball.h2hAutoPairHint")} className="rounded-md border border-line px-3 py-1.5 text-[12px] font-semibold text-ink-2 hover:text-ink">{t("basketball.h2hAutoPair")}</button>
-          {pairs.length > 0 ? <button onClick={() => setPairs([])} className="ml-auto rounded-md border border-line px-3 py-1.5 text-[12px] font-semibold text-ink-2 hover:text-ink">{t("basketball.clear")}</button> : null}
+          {shown.length > 0 ? <button onClick={() => setPairs(pairs.filter((p) => p.metric !== metric))} className="ml-auto rounded-md border border-line px-3 py-1.5 text-[12px] font-semibold text-ink-2 hover:text-ink">{t("basketball.clear")}</button> : null}
         </div>
       )}
 
-      {visible.length > 0 ? (
-        <div className="grid gap-4 xl:grid-cols-2">
-          {visible.map((pair) => {
-            const a = homeBy.get(pair.home)!, b = awayBy.get(pair.away)!;
-            return (
-              <div key={`${pair.home}|${pair.away}`} className="overflow-x-auto rounded-lg border border-line bg-card">
-                <div className="flex items-center gap-2 border-b border-line px-3 py-2 text-[13px]">
-                  <span className="font-semibold text-ink">{a.name}</span>{posBadge(a.pos)}{noIdBadge(a)}
-                  <span className="text-ink-3">vs</span>
-                  <span className="font-semibold text-ink">{b.name}</span>{posBadge(b.pos)}{noIdBadge(b)}
-                  <button onClick={() => setPairs(pairs.filter((p) => !(p.home === pair.home && p.away === pair.away)))} title={t("basketball.remove")} className="ml-auto text-[14px] text-neg hover:opacity-70">×</button>
-                </div>
-                <table className="min-w-full border-collapse text-[12px]">
-                  <thead><tr className="text-[9px] uppercase tracking-[0.1em] text-ink-3">
-                    <th className="px-3 py-1.5 text-left">{t("basketball.colMarket")}</th>
-                    <th className="px-2 py-1.5 text-right">{a.name}</th>
-                    <th className="px-2 py-1.5 text-right">{t("basketball.h2hOdds")}</th>
-                    <th className="px-2 py-1.5 text-right">{b.name}</th>
-                    <th className="px-2 py-1.5 text-right">{t("basketball.h2hOdds")}</th>
-                    <th className="px-3 py-1.5 text-right" title={t("basketball.h2hTieInfo")}>{t("basketball.h2hTie")}</th>
-                  </tr></thead>
-                  <tbody>
-                    {markets.map((mk) => {
-                      const r = priceOf(mk, a, b);
-                      return (
-                        <tr key={mk.metric} className="border-t border-line">
-                          <td className="px-3 py-1.5 text-ink whitespace-nowrap">
-                            {metricLabel(mk.metric, locale)}
-                            {inInput(mk, a, b) ? <span title={t("basketball.alreadyAdded")} className="ml-1 text-[10px] font-bold text-warn">⚠</span> : null}
-                          </td>
-                          <td className="px-2 py-1.5 text-right tabular-nums text-ink-2">{valueCell(a.values[mk.metric], r ? r.pA : null)}</td>
-                          <td className="px-2 py-1.5 text-right tabular-nums font-semibold text-accent-ink">{r ? odd(r.oddsA) : "-"}</td>
-                          <td className="px-2 py-1.5 text-right tabular-nums text-ink-2">{valueCell(b.values[mk.metric], r ? r.pB : null)}</td>
-                          <td className="px-2 py-1.5 text-right tabular-nums font-semibold text-accent-ink">{r ? odd(r.oddsB) : "-"}</td>
-                          <td className="px-3 py-1.5 text-right tabular-nums text-ink-3">{r ? `${(r.pTie * 100).toFixed(1)}%` : "-"}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            );
-          })}
+      {mk && shown.length > 0 ? (
+        <div className="overflow-x-auto rounded-lg border border-line bg-card">
+          <table className="min-w-full border-collapse text-[13px]">
+            <thead><tr className="border-b border-line">
+              <th className={`${th} text-left`}>{homeName}</th>
+              <th className={`${th} text-right`}>{metricLabel(metric, locale)}</th>
+              <th className={`${th} text-right`}>{t("basketball.colProb")}</th>
+              <th className={`${th} text-right`}>{t("basketball.h2hOdds")}</th>
+              <th className={`${th} text-center`}></th>
+              <th className={`${th} text-left`}>{t("basketball.h2hOdds")}</th>
+              <th className={`${th} text-left`}>{t("basketball.colProb")}</th>
+              <th className={`${th} text-left`}>{metricLabel(metric, locale)}</th>
+              <th className={`${th} text-left`}>{awayName}</th>
+              <th className={`${th} text-right`} title={t("basketball.h2hTieInfo")}>{t("basketball.h2hTie")}</th>
+              <th className={th}></th>
+            </tr></thead>
+            <tbody>
+              {shown.map((pair) => {
+                const a = homeBy.get(pair.home)!, b = awayBy.get(pair.away)!;
+                const r = priceOf(mk, a, b);
+                return (
+                  <tr key={`${pair.home}|${pair.away}`} className="border-t border-line">
+                    <td className="px-2 py-1.5 whitespace-nowrap">
+                      <span className="inline-flex items-center gap-2">
+                        <PlayerAvatar src={a.photo} name={a.name} size={30} />
+                        <span className="font-semibold text-ink">{a.name}</span>{posBadge(a.pos)}{noIdBadge(a)}
+                        {existing.has(keyOf(mk, a, b)) ? <span title={t("basketball.alreadyAdded")} className="text-[11px] font-bold text-warn">⚠</span> : null}
+                      </span>
+                    </td>
+                    <td className="px-2 py-1.5 text-right tabular-nums text-ink-2">{fmt(a.values[metric])}</td>
+                    <td className="px-2 py-1.5 text-right tabular-nums text-ink-3">{pct(r.pA)}</td>
+                    <td className="px-2 py-1.5 text-right tabular-nums text-[14px] font-semibold text-accent-ink">{odd(r.oddsA)}</td>
+                    <td className="px-2 py-1.5 text-center text-[11px] text-ink-3">vs</td>
+                    <td className="px-2 py-1.5 text-left tabular-nums text-[14px] font-semibold text-accent-ink">{odd(r.oddsB)}</td>
+                    <td className="px-2 py-1.5 text-left tabular-nums text-ink-3">{pct(r.pB)}</td>
+                    <td className="px-2 py-1.5 text-left tabular-nums text-ink-2">{fmt(b.values[metric])}</td>
+                    <td className="px-2 py-1.5 whitespace-nowrap">
+                      <span className="inline-flex items-center gap-2">
+                        <PlayerAvatar src={b.photo} name={b.name} size={30} />
+                        <span className="font-semibold text-ink">{b.name}</span>{posBadge(b.pos)}{noIdBadge(b)}
+                      </span>
+                    </td>
+                    <td className="px-2 py-1.5 text-right tabular-nums text-ink-3">{pct(r.pTie)}</td>
+                    <td className="px-2 py-1.5 text-right"><button onClick={() => setPairs(pairs.filter((p) => !(p.metric === pair.metric && p.home === pair.home && p.away === pair.away)))} title={t("basketball.remove")} className="text-[14px] text-neg hover:opacity-70">×</button></td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
-      ) : ready ? (
+      ) : mk && ready ? (
         <p className="text-[12px] text-ink-3">{t("basketball.h2hNoPairs")}</p>
       ) : null}
     </div>
@@ -1015,7 +1058,7 @@ function H2HPanel({ homeName, awayName, players, pairs, setPairs, cfg, markets, 
 }
 
 /* ---------- Player distribution panel ---------- */
-function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effAway, winBy, isTicked, setTick, playerValue, setVal, playerModel, comboValue, isOverridden, teamTarget, onAdd, historySlot, historyNotice, playerIds, playerCfg, playerMarkets, existingKeys, existingPlayerMkt, onReset, competition, season, fixExtId, roleBy, euroTeamSlugs, leaderBy, rosterMode, locale, t }: {
+function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effAway, winBy, isTicked, setTick, playerValue, setVal, playerModel, comboValue, isOverridden, statMean, doubleFor, teamTarget, onAdd, historySlot, historyNotice, playerIds, playerCfg, playerMarkets, existingKeys, existingPlayerMkt, onReset, competition, season, fixExtId, roleBy, euroTeamSlugs, leaderBy, rosterMode, locale, t }: {
   homeSlug: string; awaySlug: string; homeName: string; awayName: string; effHome: number; effAway: number;
   winBy: Map<string, Map<string, BktPlayerWindowRow[]>>;
   isTicked: (s: string, mk: string, w: BktPlayerWindowRow) => boolean;
@@ -1025,6 +1068,8 @@ function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effA
   playerModel: (w: BktPlayerWindowRow) => number;
   comboValue: (mk: string, w: BktPlayerWindowRow) => number | null;
   isOverridden: (k: string) => boolean;
+  statMean: (slug: string, base: string, playerSlug: string) => { value: number; sent: boolean } | null;
+  doubleFor: (slug: string, playerSlug: string) => DoubleProbs;
   teamTarget: (s: string, mk: string) => number;
   onAdd: (rows: BktInputRow[]) => void;
   historySlot?: ReactNode;
@@ -1056,7 +1101,9 @@ function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effA
   const slug = side === "home" ? homeSlug : awaySlug;
   const eff = side === "home" ? effHome : effAway;
   const met = playerMarkets.find((m) => m.key === mk) ?? playerMarkets[0];
-  const allList = winBy.get(slug)?.get(met?.base ?? mk) ?? [];
+  // Double-double / triple-double: line'sız Yes/No marketi; oyuncu listesi sayı penceresinden gelir.
+  const isDouble = isDoubleBase(met?.base);
+  const allList = winBy.get(slug)?.get(isDouble ? "points" : (met?.base ?? mk)) ?? [];
   if (!met) return null;
   const roleOf = (w: BktPlayerWindowRow) => roleBy.get(`${slug}:${w.player_slug}`);
   const ROLE_ORDER: Record<string, number> = { starter: 0, rotation: 1, limited: 2, garbage: 3, departed: 4 };
@@ -1101,12 +1148,41 @@ function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effA
   // Oyuncu bu market için Input'ta zaten var mı (uyarı).
   const alreadyIn = (w: BktPlayerWindowRow) => existingPlayerMkt.has(`${tplCur}|${participantOf(w)}`);
 
+  // Double marketleri: olasılık → Yes oranı (payback / olasılık; Config'teki payback, oran
+  // tavanı ve yuvarlama kuralı geçerli). Olasılık 0 ise oran yok (0 oran gönderilmez).
+  const doublePrice = (prob: number): number | null => {
+    if (!(prob > 0)) return null;
+    const raw = (cfgCur?.payback ?? PROP_PAYBACK) / prob;
+    const r = cfgCur?.round_odds && raw >= 2 ? Math.round(raw * 10) / 10 : Math.round(raw * 100) / 100;
+    return Math.max(1.01, Math.min(cfgCur && cfgCur.odds_cap > 0 ? cfgCur.odds_cap : 999, r));
+  };
+  const doubleRow = (w: BktPlayerWindowRow) => {
+    const p = doubleFor(slug, w.player_slug);
+    const prob = met.base === "td" ? p.td : p.dd;
+    return { w, stats: DOUBLE_STATS.map((b) => statMean(slug, b, w.player_slug)), prob, odds: doublePrice(prob) };
+  };
+
   // Ekle: tikli oyuncuların çizgilerini Input'a gönder — Input'ta ZATEN olan satırlar atlanır (mükerrer engel)
   const addCurrent = () => {
     const rows: BktInputRow[] = [];
     const sideNum = side === "home" ? 1 : 2;
     const teamNm = side === "home" ? homeName : awayName;
     let sent = 0, dup = 0, noTpl = 0, zero = 0;
+    if (isDouble) {
+      // Yes/No: tek satır, line yok; Yes = oran, No kapalı (export'ta 1 yazılır).
+      for (const w of allList) {
+        if (!isTicked(slug, mk, w)) continue;
+        if (!(tplCur ?? met.tpl)) { noTpl++; continue; }
+        if (alreadyIn(w)) { dup++; continue; }
+        const odds = doubleRow(w).odds;
+        if (odds == null) { zero++; continue; }
+        rows.push({ kind: "player", fixtureExtId: fixExtId, template: tplCur ?? met.tpl, participant: participantOf(w), side: sideNum, line: 0, noLine: true, over: odds, under: null, sel1Name: "Yes", sel2Name: "No", marketLabel: met.label, playerName: w.player_name, teamName: teamNm, teamSlug: slug });
+        sent++;
+      }
+      if (rows.length) { onAdd(rows); flashPlayerAdded(rows.length); }
+      setPlayerStatus(addStatusMsg(t, sent, dup, noTpl, zero));
+      return;
+    }
     for (const w of allList) {
       if (!isTicked(slug, mk, w)) continue;
       if (!(tplCur ?? met.tpl)) { noTpl++; continue; }                  // şablon yok
@@ -1140,7 +1216,7 @@ function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effA
               </span>
             ) : null}
           </div>
-          <span className="ml-auto text-[12px] text-ink-3">
+          <span className={`ml-auto text-[12px] text-ink-3 ${isDouble ? "hidden" : ""}`}>
             {met.distributable ? (
               <>
                 {t("basketball.distTarget")}: <span className="font-semibold text-accent-ink">{fmt(target)}</span>
@@ -1152,7 +1228,8 @@ function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effA
             {" · Std "}{met.std}
           </span>
           {/* Dağıt toggle (belirgin) + info (i) */}
-          <label className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-[13px] font-semibold transition ${distribute ? "border-accent/50 bg-accent-soft text-accent-ink" : "border-line bg-card-2 text-ink-2 hover:text-ink"}`}>
+          {isDouble ? <span className="ml-auto max-w-xl text-[11px] text-ink-3">{t("basketball.doubleHint")}</span> : null}
+          <label className={`${isDouble ? "hidden" : "flex"} cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-[13px] font-semibold transition ${distribute ? "border-accent/50 bg-accent-soft text-accent-ink" : "border-line bg-card-2 text-ink-2 hover:text-ink"}`}>
             <input type="checkbox" checked={distribute} onChange={(e) => setDistribute(e.target.checked)} className="h-4 w-4 accent-[var(--accent)]" />
             {t("basketball.distribute")}
             <span title={t("basketball.distributeInfo")} className="inline-flex h-4 w-4 cursor-help items-center justify-center rounded-full border border-current text-[10px] font-bold leading-none">i</span>
@@ -1176,6 +1253,62 @@ function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effA
         </div>
       </div>
 
+      {isDouble ? (
+      <div className="overflow-x-auto">
+        <table className="min-w-full border-collapse text-[13px]">
+          <thead><tr className="border-b border-line text-[10px] uppercase tracking-[0.12em] text-ink-3">
+            <th className="px-2 py-1.5 text-center"><input type="checkbox" title={t("basketball.tickAll")} checked={players.length > 0 && players.every((w) => isTicked(slug, mk, w))} onChange={(e) => players.forEach((w) => setTick(`${slug}:${mk}:${w.player_slug}`, e.target.checked))} className="accent-[var(--accent)]" /></th>
+            <th className="px-2 py-1.5 text-left">{t("basketball.player")}</th>
+            <th className="px-2 py-1.5 text-center" title={t("basketball.posInfo")}>{t("basketball.position")}</th>
+            <th className="px-2 py-1.5 text-left" title={t("basketball.roleInfo")}>{t("basketball.colRole")}</th>
+            <th className="px-2 py-1.5 text-right" title={t("basketball.minInfo")}>{t("basketball.colAvgMin")}</th>
+            <th className="px-2 py-1.5 text-right">{t("basketball.colMatches")}</th>
+            {DOUBLE_STATS.map((b) => <th key={b} className="px-2 py-1.5 text-right" title={t("basketball.doubleStatInfo")}>{metricLabel(b, locale)}</th>)}
+            <th className="px-2 py-1.5 text-right">{t("basketball.colProb")}</th>
+            <th className="px-2 py-1.5 text-right">Yes</th>
+          </tr></thead>
+          <tbody>
+            {players.map(doubleRow).sort((a, b) => b.prob - a.prob).map(({ w, stats, prob, odds }) => {
+              const on = isTicked(slug, mk, w);
+              const k = `${slug}:${mk}:${w.player_slug}`;
+              return (
+                <tr key={w.player_slug} className={`border-t border-line ${on ? "" : "opacity-60"}`}>
+                  <td className="px-2 py-1 text-center"><input type="checkbox" checked={on} onChange={(e) => setTick(k, e.target.checked)} className="accent-[var(--accent)]" /></td>
+                  <td className="px-2 py-1 whitespace-nowrap">
+                    <span className="inline-flex items-center gap-2 align-middle">
+                      <PlayerAvatar src={playerPhotoUrl(roleOf(w))} name={w.player_name} size={28} />
+                      <span className="text-ink">{w.player_name}</span>
+                    </span>
+                    {alreadyIn(w) ? <span title={t("basketball.alreadyAdded")} className="ml-1.5 text-[11px] font-bold text-warn">⚠</span> : null}
+                  </td>
+                  <td className="px-2 py-1 text-center">
+                    {normalizePositionCode(roleOf(w)?.position) ? (
+                      <span title={positionLabel(roleOf(w)?.position, locale)} className="inline-block rounded bg-veil px-1.5 py-0.5 text-[10px] font-semibold text-ink-2">{normalizePositionCode(roleOf(w)?.position)}</span>
+                    ) : <span className="text-ink-3">-</span>}
+                  </td>
+                  <td className="px-2 py-1 whitespace-nowrap">
+                    {roleLabelKey(roleOf(w)?.role) ? (
+                      <span className={`inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold ${roleBadgeClass(roleOf(w)?.role)}`}>{t(roleLabelKey(roleOf(w)?.role) as string)}</span>
+                    ) : <span className="text-ink-3">-</span>}
+                  </td>
+                  <td className="px-2 py-1 text-right tabular-nums text-ink-3">{fmt(w.avg_minutes)}</td>
+                  <td className="px-2 py-1 text-right tabular-nums text-ink-3">{w.games}</td>
+                  {stats.map((s, i) => (
+                    <td key={DOUBLE_STATS[i]} className="px-2 py-1 text-right tabular-nums">
+                      {s == null ? <span className="text-ink-3">-</span> : s.sent
+                        ? <span title={t("basketball.doubleFromInput")} className="cursor-help font-semibold text-ink">{fmt(s.value)}</span>
+                        : <span title={t("basketball.doubleFromModel")} className="cursor-help text-ink-3">{fmt(s.value)}</span>}
+                    </td>
+                  ))}
+                  <td className="px-2 py-1 text-right tabular-nums text-ink-2">{(prob * 100).toFixed(1)}%</td>
+                  <td className="px-2 py-1 text-right tabular-nums font-semibold text-accent-ink">{odds == null ? "-" : odds.toFixed(2)}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      ) : (
       <div className="overflow-x-auto">
         <table className="min-w-full border-collapse text-[13px]">
           <thead><tr className="border-b border-line text-[10px] uppercase tracking-[0.12em] text-ink-3">
@@ -1259,8 +1392,9 @@ function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effA
           </tbody>
         </table>
       </div>
+      )}
 
-      <p className="mt-3 text-[11px] text-ink-3">{t("basketball.selectPlayerHint")}</p>
+      {isDouble ? null : <p className="mt-3 text-[11px] text-ink-3">{t("basketball.selectPlayerHint")}</p>}
       {selPlayer ? <BasketballPlayerDrawer key={selPlayer} slug={selPlayer} competition={competition} seasonLabel={season} onClose={() => setSelPlayer(null)} /> : null}
 
       {/* Göz → Config kurallarına göre üretilen line'lar + oranlar */}

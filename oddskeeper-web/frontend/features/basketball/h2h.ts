@@ -71,6 +71,25 @@ function draws(half: number): { z1: Float64Array; z2: Float64Array } {
   return out;
 }
 
+// Tek akis: verilen tohumla n standart normal (double-double simulasyonu da kullanir).
+const normalCache = new Map<string, Float64Array>();
+export function seededNormals(n: number, seed: number): Float64Array {
+  const key = `${seed}:${n}`;
+  const hit = normalCache.get(key);
+  if (hit) return hit;
+  const next = rng(seed);
+  const out = new Float64Array(n);
+  for (let i = 0; i < n; i += 2) {
+    const u = Math.max(next(), 1e-12);
+    const v = next();
+    const r = Math.sqrt(-2 * Math.log(u));
+    out[i] = r * Math.cos(2 * Math.PI * v);
+    if (i + 1 < n) out[i + 1] = r * Math.sin(2 * Math.PI * v);
+  }
+  normalCache.set(key, out);
+  return out;
+}
+
 const stat = (mean: number, std: number, z: number) => Math.max(0, Math.round(mean + std * z));
 
 // N mac simulasyonu. N tek ise bir fazlasi oynanir (yarilar esit olsun).

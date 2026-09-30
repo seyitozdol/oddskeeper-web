@@ -23,14 +23,36 @@ const ENTRIES: Entry[] = [
   {
     date: { en: "30 September", tr: "30 Eylül" },
     title: {
+      en: "Basketball: Double-Double and Triple-Double markets",
+      tr: "Basketbol: Double-Double ve Triple-Double marketleri",
+    },
+    tag: TAG_NEW,
+    items: [
+      {
+        en: "Player Distribution has two new markets at the end of the list: Double-Double and Triple-Double (BSL, EuroLeague and EuroCup). They count only points, rebounds and assists: a double-double is 10 or more in at least two of them, a triple-double in all three.",
+        tr: "Oyuncu Dağıtımı'nda market listesinin sonunda iki yeni market var: Double-Double ve Triple-Double (BSL, EuroLeague ve EuroCup). Yalnızca sayı, ribaund ve asist sayılır: double-double bunların en az ikisinde, triple-double üçünde de 10 ve üzeri demektir.",
+      },
+      {
+        en: "Each player's three expectations are simulated match by match; the share of matches that reach the mark is the probability and the Yes price is payback divided by it. Values you sent to Input are used first (shown bold); for a stat you did not send, the player's model value is used (grey). Players are listed by probability and none is ticked by default: tick the ones you want to offer and press \"Add to Input\".",
+        tr: "Her oyuncunun üç beklentisi maç maç simüle edilir; eşiğe ulaşılan maçların oranı olasılıktır, Yes oranı da payback bölü bu olasılıktır. Önce Input'a gönderdiğin değerler kullanılır (koyu görünür); göndermediğin istatistikte oyuncunun model değeri kullanılır (gri). Oyuncular olasılığa göre sıralanır ve hiçbiri tikli gelmez: sunmak istediklerini tikleyip \"Add to Input\"a bas.",
+      },
+      {
+        en: "Templates and payback are on the Double-Double and Triple-Double rows in Config > Market Templates; the number of simulated matches is in Config > Model.",
+        tr: "Şablon ve payback Config > Market Templates'teki Double-Double ve Triple-Double satırlarında; simüle edilen maç sayısı Config > Model altında.",
+      },
+    ],
+  },
+  {
+    date: { en: "30 September", tr: "30 Eylül" },
+    title: {
       en: "Basketball: H2H tab in Match-Player Tools",
       tr: "Basketbol: Match-Player Tools'ta H2H sekmesi",
     },
     tag: TAG_NEW,
     items: [
       {
-        en: "Match-Player Tools has a new \"H2H\" tab next to Team Metrics and Player Distribution (BSL, EuroLeague and EuroCup). Pick one player from each team and it prices which of the two finishes higher, for points, rebounds and assists.",
-        tr: "Match-Player Tools'ta Takım Metrikleri ve Oyuncu Dağıtımı'nın yanında yeni bir \"H2H\" sekmesi var (BSL, EuroLeague ve EuroCup). Her takımdan birer oyuncu seç; sayı, ribaund ve asist için ikisinden hangisinin daha yüksek bitireceğini fiyatlar.",
+        en: "Match-Player Tools has a new \"H2H\" tab next to Team Metrics and Player Distribution (BSL, EuroLeague and EuroCup). Pick one player from each team and it prices which of the two finishes higher. Points, rebounds and assists each have their own sub-tab, so a player can face a different opponent in each market.",
+        tr: "Match-Player Tools'ta Takım Metrikleri ve Oyuncu Dağıtımı'nın yanında yeni bir \"H2H\" sekmesi var (BSL, EuroLeague ve EuroCup). Her takımdan birer oyuncu seç; ikisinden hangisinin daha yüksek bitireceğini fiyatlar. Sayı, ribaund ve asistin ayrı alt sekmeleri var; bir oyuncu her markette farklı bir rakiple eşleşebilir.",
       },
       {
         en: "It uses the values you sent to Input from Player Distribution for that match, so send both players' numbers first. Each pair is simulated match by match: the share of matches a player finishes higher is his probability, and the odds are payback divided by that. \"Pair by position\" matches G with G, F with F and C with C in one click.",

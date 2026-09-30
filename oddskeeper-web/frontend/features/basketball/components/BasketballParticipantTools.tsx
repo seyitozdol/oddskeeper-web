@@ -13,6 +13,7 @@ import { postModelHistory, exportFileName, type ModelHistoryDraft } from "@/lib/
 import { confirmPermanentSave } from "@/lib/confirm-save";
 import { configLabel, METRIC_LABELS, metricLabel } from "../marketConfig";
 import { H2H_DEFAULTS, H2H_MAX_SIMS } from "../h2h";
+import { DOUBLE_DEFAULT_SIMS } from "../doubles";
 import type { BktH2HInputRow } from "../types";
 import { ALL_ROLES, roleBadgeClass, roleLabelKey, roleDescKey, formatMatchDate } from "../lib";
 import {
@@ -615,6 +616,16 @@ function ModelWeightsConfig({ modelConfig, reload, t }: {
   const hPayback = hv("h2h_payback", H2H_DEFAULTS.payback);
   const hSims = hv("h2h_sims", H2H_DEFAULTS.sims);
   const hValid = hPayback > 0 && hPayback <= 1 && hSims >= 0 && hSims <= H2H_MAX_SIMS;
+  // Double-double / triple-double: simülasyon maç sayısı (model_config dd_sims).
+  const dSims = hEdits.dd_sims ?? dbVal("dd_sims", DOUBLE_DEFAULT_SIMS);
+  const saveDouble = async () => {
+    if (!(await confirmPermanentSave())) return;
+    setSavingH(true);
+    const ok = await saveModelConfig([{ key: "dd_sims", value: Math.round(dSims) }]);
+    setSavingH(false);
+    if (ok) { setHEdits((s) => { const n = { ...s }; delete n.dd_sims; return n; }); reload(); }
+  };
+  const h2hDirty = Object.keys(hEdits).some((k) => k.startsWith("h2h_"));
   const saveH2h = async () => {
     if (!(await confirmPermanentSave())) return;
     setSavingH(true);
@@ -624,7 +635,7 @@ function ModelWeightsConfig({ modelConfig, reload, t }: {
       { key: "h2h_tie_void", value: hv("h2h_tie_void", H2H_TIE_DEFAULT) === 1 ? 1 : 0 },
     ]);
     setSavingH(false);
-    if (ok) { setHEdits({}); reload(); }
+    if (ok) { setHEdits((s) => Object.fromEntries(Object.entries(s).filter(([k]) => !k.startsWith("h2h_")))); reload(); }
   };
 
   const saveTeam = async () => {
@@ -704,7 +715,7 @@ function ModelWeightsConfig({ modelConfig, reload, t }: {
       {/* H2H */}
       <div className={box}>
         <div className="mb-2 flex items-center gap-3">
-          <button onClick={saveH2h} disabled={savingH || !hValid || Object.keys(hEdits).length === 0} className={saveBtn}>{t("basketball.save")}</button>
+          <button onClick={saveH2h} disabled={savingH || !hValid || !h2hDirty} className={saveBtn}>{t("basketball.save")}</button>
           <span className="text-[13px] font-semibold text-ink">{t("basketball.h2hCfgTitle")}</span>
         </div>
         <p className="mb-3 max-w-2xl text-[11px] text-ink-3">{t("basketball.h2hCfgHint")}</p>
@@ -729,6 +740,24 @@ function ModelWeightsConfig({ modelConfig, reload, t }: {
             className="accent-[var(--accent)]" />
           {t("basketball.h2hCfgTieVoid")}
         </label>
+      </div>
+
+      {/* Double-double / triple-double */}
+      <div className={box}>
+        <div className="mb-2 flex items-center gap-3">
+          <button onClick={saveDouble} disabled={savingH || hEdits.dd_sims == null || dSims < 0 || dSims > H2H_MAX_SIMS} className={saveBtn}>{t("basketball.save")}</button>
+          <span className="text-[13px] font-semibold text-ink">{t("basketball.doubleCfgTitle")}</span>
+        </div>
+        <p className="mb-3 max-w-2xl text-[11px] text-ink-3">{t("basketball.doubleCfgHint")}</p>
+        <div className="flex flex-wrap items-end gap-4">
+          <div className="flex flex-col gap-1">
+            <span className="text-[10px] uppercase tracking-[0.12em] text-ink-3">{t("basketball.h2hCfgSims")}</span>
+            <input type="number" min={0} max={H2H_MAX_SIMS} step={1000} value={dSims}
+              onChange={(e) => setHEdits((s) => ({ ...s, dd_sims: e.target.value === "" ? 0 : Math.max(0, parseInt(e.target.value, 10) || 0) }))}
+              className="w-24 rounded border border-line bg-field px-2 py-1 text-right text-[13px] text-ink outline-none focus:border-line-strong" />
+          </div>
+          <span className="pb-1.5 text-[11px] text-ink-3">{t("basketball.h2hCfgSimsNote")}</span>
+        </div>
       </div>
     </div>
   );
@@ -1036,7 +1065,7 @@ function InputTab({ allRows, setRows, h2hRows, setH2hRows, initialType, onExport
     const headers = isTeam ? TEAM_IN_HEADERS : PLAYER_IN_HEADERS;
     const aoa = [headers, ...rows.map((r) => isTeam
       ? [r.fixtureExtId, r.template, r.line, "", "Over", r.over, "Under", exportUnder(r)]
-      : [r.fixtureExtId, r.template, r.participant, r.side, r.line, "", "Over", r.over, "Under", exportUnder(r)])];
+      : [r.fixtureExtId, r.template, r.participant, r.side, r.noLine ? "" : r.line, "", r.sel1Name ?? "Over", r.over, r.sel2Name ?? "Under", exportUnder(r)])];
     const ws = XLSX.utils.aoa_to_sheet(aoa);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "input");
@@ -1093,7 +1122,7 @@ function InputTab({ allRows, setRows, h2hRows, setH2hRows, initialType, onExport
                   <td className="px-2 py-0.5 text-ink-3">{r.fixtureExtId || "—"}</td>
                   <td className="px-2 py-0.5 text-ink-2">{r.template || "—"}</td>
                   {!isTeam && <><td className="px-2 py-0.5 text-ink-3">{r.participant}</td><td className="px-2 py-0.5 text-right tabular-nums text-ink-3">{r.side}</td></>}
-                  <td className="px-2 py-0.5 text-right tabular-nums text-ink">{r.line.toFixed(1)}</td>
+                  <td className="px-2 py-0.5 text-right tabular-nums text-ink">{r.noLine ? "—" : r.line.toFixed(1)}</td>
                   <td className="px-2 py-0.5 text-right tabular-nums text-ink">{r.over.toFixed(2)}</td>
                   <td className="px-2 py-0.5 text-right tabular-nums text-ink-2">{exportUnder(r).toFixed(2)}</td>
                   <td className="px-2 py-0.5 text-ink whitespace-nowrap">{rowName(r)}</td>

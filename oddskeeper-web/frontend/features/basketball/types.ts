@@ -211,6 +211,11 @@ export type BktInputRow = {
   metricKey?: string;   // base metric: points | rebounds | assists | ...
   value?: number;
   teamSlug?: string;    // oyuncunun bu maçtaki takımı (H2H: ev / deplasman ayrımı)
+  // Line'sız Yes/No marketi (double-double / triple-double): Line kolonu boş yazılır,
+  // seçenek adları Over/Under yerine sel1Name / sel2Name.
+  noLine?: boolean;
+  sel1Name?: string;
+  sel2Name?: string;
 };
 
 // H2H (oyuncu - oyuncu) Input satiri. Secenek 1 = ev oyuncusu (sort 1), secenek 2 =
