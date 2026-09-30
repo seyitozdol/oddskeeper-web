@@ -14,7 +14,7 @@ import {
   type ModelHistoryDraft,
   type ModelHistoryRecord,
 } from "@/lib/model-history";
-import { uploadViaMmiBridge } from "@/lib/mmi-bridge";
+import AddToMmiButton, { type MmiFile } from "@/components/AddToMmiButton";
 import ConfigTab from "./matchStatsModel/ConfigTab";
 import GSheetTab from "./matchStatsModel/GSheetTab";
 import FixtureIdTab from "./matchStatsModel/FixtureIdTab";
@@ -411,8 +411,6 @@ export default function ResmiMatchStatsModel({
   const [templatesByMarket, setTemplatesByMarket] = useState<Record<string, string[]>>({});
   const [importList, setImportList] = useState<ImportRow[]>([]);
   const [importNotice, setImportNotice] = useState("");
-  const [mmiBusy, setMmiBusy] = useState(false);
-  const [mmiNotice, setMmiNotice] = useState<{ ok: boolean; text: string } | null>(null);
 
   // Export gecmisi: Add to Input aninda mac+market bazinda snapshot toplanir,
   // SADECE export'ta sunucuya yazilir. reloadKey export sonrasi dropdown'i
@@ -876,27 +874,11 @@ export default function ResmiMatchStatsModel({
     await recordExport();
   }
 
-  // Dosyayi diske yazmadan tarayicidaki kopru betigine verir (lib/mmi-bridge). Yalniz
-  // basarili yuklemede export gecmisine islenir: SU diff tabani gercekten gidene uysun.
-  async function addToMmi() {
-    if (importList.length === 0 || mmiBusy) return;
-    setMmiBusy(true);
-    setMmiNotice(null);
-    try {
-      const buf = XLSX.write(buildExportWorkbook(), { type: "array", bookType: "xlsx" }) as ArrayBuffer;
-      const res = await uploadViaMmiBridge(`${exportFileName(matchLabel)}.xlsx`, buf);
-      if (!res) {
-        setMmiNotice({ ok: false, text: t("msm.mmiNoBridge") });
-      } else if (res.ok) {
-        setMmiNotice({ ok: true, text: t("msm.mmiSent") });
-        await recordExport();
-      } else if (!res.cancelled) {
-        const detail = [res.status ? `(${res.status})` : "", res.body].filter(Boolean).join(" ");
-        setMmiNotice({ ok: false, text: `${t("msm.mmiFailed")} ${detail}`.trim() });
-      }
-    } finally {
-      setMmiBusy(false);
-    }
+  function buildMmiFile(): MmiFile {
+    return {
+      filename: `${exportFileName(matchLabel)}.xlsx`,
+      data: XLSX.write(buildExportWorkbook(), { type: "array", bookType: "xlsx" }) as ArrayBuffer,
+    };
   }
 
   // Geçmiş dropdown'undan bir kaydı geri yükle. Fixture hâlâ listede olmalı.
@@ -1039,19 +1021,12 @@ export default function ResmiMatchStatsModel({
               {suRows.length > 0 && <span className="text-neg"> · +{suRows.length} SU</span>}
             </span>
             <div className="ml-auto flex items-center gap-2">
-              {mmiNotice && (
-                <span title={mmiNotice.text} className={`max-w-[420px] truncate text-[11px] ${mmiNotice.ok ? "text-pos" : "text-neg"}`}>
-                  {mmiNotice.text}
-                </span>
-              )}
               <button onClick={exportXlsx} disabled={importList.length === 0}
                 className="rounded-md bg-accent px-3 py-1.5 text-xs font-semibold text-on-accent hover:opacity-90 disabled:opacity-50">
                 {t("msm.exportXlsx")}
               </button>
-              <button onClick={addToMmi} disabled={importList.length === 0 || mmiBusy}
-                className="rounded-md bg-accent px-3 py-1.5 text-xs font-semibold text-on-accent hover:opacity-90 disabled:opacity-50">
-                {mmiBusy ? t("msm.mmiSending") : t("msm.addToMmi")}
-              </button>
+              <AddToMmiButton build={buildMmiFile} onSent={recordExport} disabled={importList.length === 0}
+                className="rounded-md bg-accent px-3 py-1.5 text-xs font-semibold text-on-accent hover:opacity-90 disabled:opacity-50" />
               <button onClick={() => setImportList([])} disabled={importList.length === 0}
                 className="rounded-md border border-line bg-field px-3 py-1.5 text-xs text-ink-2 hover:bg-veil disabled:opacity-50">
                 {t("msm.clear")}

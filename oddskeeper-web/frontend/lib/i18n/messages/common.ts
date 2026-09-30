@@ -3,6 +3,11 @@ import { defineMessages } from "../defineMessages";
 export const common = defineMessages({
   en: {
     loading: "Loading...",
+    addToMmi: "Add to MMI",
+    mmiSending: "Sending...",
+    mmiSent: "Sent to MMI",
+    mmiFailed: "MMI upload failed",
+    mmiNoBridge: "MMI bridge script not found in this browser. Install it, reload the page and try again.",
     error: "Something went wrong.",
     retry: "Retry",
     noData: "No data available.",
@@ -65,6 +70,11 @@ export const common = defineMessages({
   },
   tr: {
     loading: "Yükleniyor...",
+    addToMmi: "MMI'ya ekle",
+    mmiSending: "Gönderiliyor...",
+    mmiSent: "MMI'ya gönderildi",
+    mmiFailed: "MMI'ya yüklenemedi",
+    mmiNoBridge: "Bu tarayıcıda MMI köprü betiği bulunamadı. Betiği kur, sayfayı yenile ve tekrar dene.",
     error: "Bir şeyler ters gitti.",
     retry: "Tekrar dene",
     noData: "Veri bulunamadı.",

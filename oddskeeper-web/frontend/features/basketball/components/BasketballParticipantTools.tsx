@@ -8,6 +8,7 @@ import BasketballTools, { type HistorySnapEntry } from "./BasketballTools";
 import RetentionConfig from "@/features/model-history/RetentionConfig";
 import RefreshNowButton from "@/features/upcoming-events/components/RefreshNowButton";
 import { TenText } from "@/components/TenBadge";
+import AddToMmiButton, { type MmiFile } from "@/components/AddToMmiButton";
 import { postModelHistory, exportFileName, type ModelHistoryDraft } from "@/lib/model-history";
 import { confirmPermanentSave } from "@/lib/confirm-save";
 import { configLabel, METRIC_LABELS, metricLabel } from "../marketConfig";
@@ -877,7 +878,8 @@ function InputTab({ allRows, setRows, initialType, onExported, t }: {
   const isTeam = type === "team";
   const rows = allRows.filter((r) => r.kind === type);
   const rowName = (r: BktInputRow) => (r.kind === "team" ? r.teamName : r.playerName);
-  const exportXlsx = async () => {
+  // Export ve Add to MMI ayni dosyayi uretir.
+  const buildExportFile = async () => {
     const XLSX = await import("xlsx");
     const headers = isTeam ? TEAM_IN_HEADERS : PLAYER_IN_HEADERS;
     const aoa = [headers, ...rows.map((r) => isTeam
@@ -886,9 +888,17 @@ function InputTab({ allRows, setRows, initialType, onExported, t }: {
     const ws = XLSX.utils.aoa_to_sheet(aoa);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "input");
-    XLSX.writeFile(wb, `${exportFileName(`basketbol_input_${type}`)}.xlsx`);
+    return { XLSX, wb, filename: `${exportFileName(`basketbol_input_${type}`)}.xlsx` };
+  };
+  const exportXlsx = async () => {
+    const { XLSX, wb, filename } = await buildExportFile();
+    XLSX.writeFile(wb, filename);
     // Export gecmisi: sadece yazdirilan tip kaydedilir.
     onExported?.(type);
+  };
+  const buildMmiFile = async (): Promise<MmiFile> => {
+    const { XLSX, wb, filename } = await buildExportFile();
+    return { filename, data: XLSX.write(wb, { type: "array", bookType: "xlsx" }) as ArrayBuffer };
   };
   // Temizle sadece aktif tipteki satırları siler; sil belirli satırı allRows'tan çıkarır.
   const clear = () => setRows(allRows.filter((r) => r.kind !== type));
@@ -904,6 +914,7 @@ function InputTab({ allRows, setRows, initialType, onExported, t }: {
           </button>
         ))}
         <button onClick={exportXlsx} disabled={rows.length === 0} className={`ml-3 ${btnSave} disabled:opacity-50`}>{t("basketball.printXlsx")}</button>
+        <AddToMmiButton build={buildMmiFile} onSent={() => onExported?.(type)} disabled={rows.length === 0} align="left" className={`${btnSave} disabled:opacity-50`} />
         <button onClick={clear} disabled={rows.length === 0} className={`${btnGhost} disabled:opacity-50`}>{t("basketball.clear")}</button>
       </div>
       {rows.length === 0 ? (

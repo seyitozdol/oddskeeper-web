@@ -5,6 +5,7 @@ import { useI18n } from "@/lib/i18n/LanguageProvider";
 import { getCountryFlagUrl } from "@/lib/country-flags";
 import { TenText } from "@/components/TenBadge";
 import { exportFileName } from "@/lib/model-history";
+import AddToMmiButton, { type MmiFile } from "@/components/AddToMmiButton";
 import {
   fetchAllCurrentPlayers,
   fetchFixtureInputs,
@@ -598,8 +599,8 @@ export function InputTab({
   const rowCount = segment === "dynamic" ? dynamicRows.length : staticRows.length;
   const maxSelections = Math.max(1, ...dynamicRows.map((r) => r.selections.length));
 
-  async function handleExport() {
-    if (rowCount === 0) return;
+  // Export ve Add to MMI ayni dosyayi uretir.
+  async function buildExportFile() {
     const XLSX = await import("xlsx");
     const aoa =
       segment === "dynamic"
@@ -612,9 +613,20 @@ export function InputTab({
       segment === "dynamic"
         ? dynamicRows[dynamicRows.length - 1].fixtureLabel
         : staticRows[staticRows.length - 1].fixtureLabel;
-    XLSX.writeFile(wb, `${exportFileName(sanitizeFileLabel(lastLabel))}.xlsx`);
+    return { XLSX, wb, filename: `${exportFileName(sanitizeFileLabel(lastLabel))}.xlsx` };
+  }
+
+  async function handleExport() {
+    if (rowCount === 0) return;
+    const { XLSX, wb, filename } = await buildExportFile();
+    XLSX.writeFile(wb, filename);
     // Export gecmisi: sadece yazdirilan segment kaydedilir.
     onExported?.(segment);
+  }
+
+  async function buildMmiFile(): Promise<MmiFile> {
+    const { XLSX, wb, filename } = await buildExportFile();
+    return { filename, data: XLSX.write(wb, { type: "array", bookType: "xlsx" }) as ArrayBuffer };
   }
 
   const thClass = "px-2 py-2 whitespace-nowrap";
@@ -649,6 +661,12 @@ export function InputTab({
           >
             {t("playerMarket.printLabel")}
           </button>
+          <AddToMmiButton
+            build={buildMmiFile}
+            onSent={() => onExported?.(segment)}
+            disabled={rowCount === 0}
+            className="rounded-lg border border-accent bg-accent px-4 py-1.5 text-[13px] font-semibold text-on-accent transition hover:opacity-90 disabled:opacity-50"
+          />
           <button
             type="button"
             onClick={() => onClear(segment)}

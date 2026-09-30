@@ -23,14 +23,18 @@ const ENTRIES: Entry[] = [
   {
     date: { en: "30 September", tr: "30 Eylül" },
     title: {
-      en: "Match Stats Model: send the Input list straight to MMI",
-      tr: "Match Stats Model: Input listesini doğrudan MMI'ya gönder",
+      en: "Model Input tabs: send the list straight to MMI",
+      tr: "Model Input sekmeleri: listeyi doğrudan MMI'ya gönder",
     },
     tag: TAG_NEW,
     items: [
       {
-        en: "The Input tab has a new \"Add to MMI\" button next to \"Export .xlsx\". It sends the same file straight to the MMI upload, with no file saved and no file picked. Your browser asks for confirmation first, then shows the answer from MMI.",
-        tr: "Input sekmesinde \"Export .xlsx\" düğmesinin yanında yeni bir \"MMI'ya ekle\" düğmesi var. Aynı dosyayı, diske kaydetmeden ve dosya seçmeden doğrudan MMI yüklemesine gönderir. Tarayıcı önce onay sorar, sonra MMI'dan gelen cevabı gösterir.",
+        en: "The Input tab has a new \"Add to MMI\" button next to the export button. It sends the same file straight to the MMI upload, with no file saved and no file picked. Your browser asks for confirmation first, then shows the answer from MMI.",
+        tr: "Input sekmesinde export düğmesinin yanında yeni bir \"MMI'ya ekle\" düğmesi var. Aynı dosyayı, diske kaydetmeden ve dosya seçmeden doğrudan MMI yüklemesine gönderir. Tarayıcı önce onay sorar, sonra MMI'dan gelen cevabı gösterir.",
+      },
+      {
+        en: "Available in football Match Stats Model, football Player Market (Süper Lig, 1. Lig and European cups) and basketball Match-Player Tools (BSL, EuroLeague and EuroCup, both Player and Team lists). It sends the list you are looking at: the selected Dynamic or Static list in Player Market, the selected Player or Team list in basketball.",
+        tr: "Futbol Match Stats Model, futbol Player Market (Süper Lig, 1. Lig ve Avrupa kupaları) ve basketbol Match-Player Tools (BSL, EuroLeague ve EuroCup; hem Player hem Team listesi) ekranlarında var. O an baktığın listeyi gönderir: Player Market'te seçili Dynamic ya da Static listeyi, basketbolda seçili Player ya da Team listesini.",
       },
       {
         en: "It needs the MMI bridge script installed in your browser and the MMI site open and signed in on another tab. Without the script the button only shows a short note. A successful send is saved to the export history, the same as an export.",
