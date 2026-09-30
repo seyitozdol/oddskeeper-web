@@ -23,6 +23,32 @@ const ENTRIES: Entry[] = [
   {
     date: { en: "30 September", tr: "30 Eylül" },
     title: {
+      en: "Extras: the Extra Markets sheet, now on the site",
+      tr: "Extras: Extra Markets dosyası artık sitede",
+    },
+    tag: TAG_NEW_TOOL,
+    items: [
+      {
+        en: "Süper Lig, 1. Lig and Cup have a new \"Extras\" tab to the right of Player Stats Model. It does what the Extra Markets Excel did: pick the matches, choose a profile per match, enter the No Goal price, and get the Dynamic and Static import lists (Woodwork, VAR, Sending Off, Penalty, Own Goal, substitute markets, extra time, Type of First / Last Goal).",
+        tr: "Süper Lig, 1. Lig ve Kupa sayfalarında Player Stats Model'in sağında yeni bir \"Extras\" sekmesi var. Extra Markets Excel'inin yaptığını yapar: maçları seç, maç başına profil belirle, No Goal oranını gir; Dynamic ve Static import listeleri hazır olur (Woodwork, VAR, Sending Off, Penalty, Own Goal, oyuncu değişikliği marketleri, uzatma süresi, Type of First / Last Goal).",
+      },
+      {
+        en: "Fixture IDs come from the matches on their own: the one saved in Match Stats Model > Fixture, or the automatic suggestion when nothing is saved. The profile is suggested too (Derbi, 3 Buyuk, Anadolu, 1. Lig) and can be changed per match. A match without a Fixture ID is marked and left out.",
+        tr: "Fixture ID'ler maçlardan kendiliğinden gelir: Match Stats Model > Fikstür sekmesinde kayıtlı olan, kayıt yoksa otomatik öneri. Profil de önerilir (Derbi, 3 Buyuk, Anadolu, 1. Lig) ve maç bazında değiştirilebilir. Fixture ID'si olmayan maç işaretlenir ve listeye girmez.",
+      },
+      {
+        en: "The Input tab shows both lists with \"Export .xlsx\" and \"Add to MMI\" on each, so the two files go to MMI separately. The Profiles tab holds the price table from the Excel; it is shared by the three leagues and anyone can edit and save it.",
+        tr: "Input sekmesi iki listeyi de gösterir; her birinde \"Export .xlsx\" ve \"MMI'ya ekle\" vardır, yani iki dosya MMI'ya ayrı ayrı gider. Profiller sekmesinde Excel'deki fiyat tablosu durur; üç lig için ortaktır, herkes düzenleyip kaydedebilir.",
+      },
+      {
+        en: "Cup, Match Stats Model: adding a manual fixture and saving Fixture IDs work again. Both had been failing on the Cup page since 19 August.",
+        tr: "Kupa, Match Stats Model: manuel fikstür ekleme ve Fixture ID kaydetme yeniden çalışıyor. İkisi de 19 Ağustos'tan beri Kupa sayfasında çalışmıyordu.",
+      },
+    ],
+  },
+  {
+    date: { en: "30 September", tr: "30 Eylül" },
+    title: {
       en: "Model Input tabs: send the list straight to MMI",
       tr: "Model Input sekmeleri: listeyi doğrudan MMI'ya gönder",
     },

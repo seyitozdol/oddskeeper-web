@@ -14,7 +14,9 @@ import { createAdminClient } from "@/lib/supabase/admin";
 // RPC GOVDELERI DEGISMEDI: is kurallari (upsert/patch/silme) SQL tarafinda
 // kaliyor, burasi yalniz kapi. Boylece davranis riski sifir.
 
-const LEAGUES = new Set(["tsl", "tff1", "eurocl", "euel", "euecl"]);
+// "cup": Kupa MSM'i manuel fikstürle calisir (fixture id + manuel mac yazimi). Liste
+// 2026-08-19'da route'a tasinirken kupa unutulmustu, kupa yazmalari 400 donuyordu.
+const LEAGUES = new Set(["tsl", "tff1", "cup", "eurocl", "euel", "euecl"]);
 
 type Body = { action?: unknown; payload?: unknown };
 

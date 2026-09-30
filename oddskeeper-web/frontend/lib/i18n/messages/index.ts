@@ -5,6 +5,7 @@ import { auth } from "./auth";
 import { basketball } from "./basketball";
 import { common } from "./common";
 import { dashboardHome } from "./dashboardHome";
+import { extras } from "./extras";
 import { landing } from "./landing";
 import { matchDetail } from "./matchDetail";
 import { metrics } from "./metrics";
@@ -32,6 +33,7 @@ const MESSAGES: Record<
   basketball,
   common,
   dashboardHome,
+  extras,
   landing,
   matchDetail,
   metrics,

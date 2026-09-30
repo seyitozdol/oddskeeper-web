@@ -29,6 +29,7 @@ import ResmiPlayers from "./ResmiPlayers";
 import ResmiPlayerRankings from "./ResmiPlayerRankings";
 import ResmiTeamRankings from "./ResmiTeamRankings";
 import ResmiMatchStatsModel from "./ResmiMatchStatsModel";
+import ExtraMarkets, { type ExtrasLeague } from "@/features/extra-markets/ExtraMarkets";
 // Player Stats Model: eski "Player Participant Tools" aracı lig kaynağına göre
 // gömülür. TSL futbol logolarını, 1. Lig tff1 logolarını kullanır.
 import TslPlayerMarket from "@/app/dashboard/player-market-prediction/PlayerMarketPredictionPage";
@@ -135,6 +136,8 @@ export default async function ResmiExperience({
     );
   }
   else if (section === "playerStatsModel") content = await renderPlayerStatsModel(config);
+  // Extras yalniz TSL / 1. Lig / Kupa sekme listelerinde var (constants.ts).
+  else if (section === "extras") content = <ExtraMarkets league={config.source as ExtrasLeague} />;
   else content = <ResmiPlayers data={await loadResmiPlayers(config, season)} />;
 
   return (

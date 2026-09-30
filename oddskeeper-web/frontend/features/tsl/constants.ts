@@ -52,6 +52,9 @@ export const RESMI_SECTIONS = [
   // (TSL / 1. Lig) gömer.
   "matchStatsModel",
   "playerStatsModel",
+  // Extra Markets araci (Excel "Extra Markets" makrosunun web hali). Yalniz yerel
+  // ligler: TSL, 1. Lig ve Kupa; Avrupa kupalarinda yok.
+  "extras",
 ] as const;
 
 // Türkiye Kupası sekmeleri (kullanıcı sırası). "league" yok; ilk sekme
@@ -67,6 +70,7 @@ export const CUP_SECTIONS = [
   "teamRankings",
   "matchStatsModel",
   "playerStatsModel",
+  "extras",
 ] as const;
 
 // Avrupa kupasi (CL/EL/ConL) sekmeleri. Sofascore-keyed, tff1 deseni. v1'de
