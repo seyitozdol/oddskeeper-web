@@ -67,7 +67,7 @@ import type { TeamNote } from "@/lib/team-notes";
 import { getTeamLogoPath } from "@/features/player-detail/utils/getTeamLogoPath";
 
 const BIG4 = new Set(["besiktas", "galatasaray", "fenerbahce", "trabzonspor"]);
-const TABS = ["model", "config", "fixtures", "input", "gsheet"] as const;
+const TABS = ["model", "config", "fixtures", "input"] as const;
 
 // Fixture siralamasi: manuel HER ZAMAN en ustte, sonra kickoff'a gore EN YAKIN
 // ustte (round yerine baslama saati). datetime'siz maclar sona.
@@ -317,10 +317,12 @@ export default function ResmiMatchStatsModel({
   const [tab, setTab] = useState<Tab>("model");
   // Avrupa kupası MSM'i (sahip kararı 2026-08-21): sağ maç-logu paneli ve
   // son-x-hafta/Etki penceresi yok; veri yalnız geçen sezon + bu sezon
-  // (weighting s1+s4); gsheet sekmesi kupada yok (view kupaları dışlar).
+  // (weighting s1+s4); gsheet kupada yok (view kupaları dışlar).
   const isEuro = isEuroMsmLeague(LEAGUE);
-  // İzni olmayan kullanıcıya GSheet sekmesi hiç gösterilmez.
-  const visibleTabs = TABS.filter((tb) => tb !== "gsheet" || (canGSheet && !isEuro));
+  // GSheet, Fixture sekmesinin alt sekmesi. İzni olmayan kullanıcıya hiç gösterilmez
+  // (o zaman Fixture sekmesi alt sekmesiz, eskisi gibi açılır).
+  const showGSheet = canGSheet && !isEuro;
+  const [fixtureSub, setFixtureSub] = useState<"ids" | "gsheet">("ids");
   const [configFocus, setConfigFocus] = useState<string | null>(null);
   // Model'deki dişli → Config sekmesine geç + ilgili bölüme kaydır.
   const goConfig = (section: string) => {
@@ -955,7 +957,7 @@ export default function ResmiMatchStatsModel({
     <div className="space-y-4">
       {/* Alt sekmeler + (Model'de) Add to Input / Reset sağda */}
       <div className="flex items-center gap-1 border-b border-line">
-        {visibleTabs.map((tb) => (
+        {TABS.map((tb) => (
           <button
             key={tb}
             onClick={() => setTab(tb)}
@@ -1012,7 +1014,29 @@ export default function ResmiMatchStatsModel({
           }
         />
       ) : tab === "fixtures" ? (
-        <FixtureIdTab league={LEAGUE} isAdmin={isAdmin} onSaved={() => fetchFixtureInputs(LEAGUE).then(setFixtureInputs)} onManualChanged={loadFixtures} />
+        <div className="space-y-3">
+          {showGSheet && (
+            <div className="flex items-center gap-1">
+              {(["ids", "gsheet"] as const).map((sub) => (
+                <button
+                  key={sub}
+                  type="button"
+                  onClick={() => setFixtureSub(sub)}
+                  className={`rounded-lg px-4 py-1.5 text-[13px] transition ${
+                    fixtureSub === sub ? "bg-veil font-semibold text-ink" : "text-ink-3 hover:text-ink-2"
+                  }`}
+                >
+                  {sub === "ids" ? t("msm.subtab_fixtureId") : t("msm.tab_gsheet")}
+                </button>
+              ))}
+            </div>
+          )}
+          {/* Fixture ID formu GSheet'e gecince de bagli kalir: kaydedilmemis girisler kaybolmasin. */}
+          <div className={showGSheet && fixtureSub === "gsheet" ? "hidden" : ""}>
+            <FixtureIdTab league={LEAGUE} isAdmin={isAdmin} onSaved={() => fetchFixtureInputs(LEAGUE).then(setFixtureInputs)} onManualChanged={loadFixtures} />
+          </div>
+          {showGSheet && fixtureSub === "gsheet" && <GSheetTab league={LEAGUE} />}
+        </div>
       ) : tab === "input" ? (
         <div className="space-y-4">
           <div className="flex flex-wrap items-center gap-2 rounded-xl border border-line bg-card p-3 text-sm">
@@ -1094,8 +1118,6 @@ export default function ResmiMatchStatsModel({
             </table>
           </div>
         </div>
-      ) : tab === "gsheet" && canGSheet ? (
-        <GSheetTab league={LEAGUE} />
       ) : tab !== "model" ? (
         <div className="rounded-xl border border-line bg-card px-5 py-16 text-center text-sm text-ink-3">
           {t("msm.comingSoon")}
