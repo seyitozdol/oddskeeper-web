@@ -23,6 +23,24 @@ const ENTRIES: Entry[] = [
   {
     date: { en: "30 September", tr: "30 Eylül" },
     title: {
+      en: "BSL: matches a player sat out no longer lower his averages",
+      tr: "BSL: oyuncunun oynamadığı maçlar artık ortalamasını düşürmüyor",
+    },
+    tag: TAG_FIX,
+    items: [
+      {
+        en: "Last season's BSL data listed players who were in the squad but never took the floor, with 0 minutes and 0 in every stat. Those lines were counted as played matches and pulled averages down. 769 such lines for 143 players are now left out. Example: Ante Zizic goes from 30 matches and 11.0 points to 29 matches and 11.4; Marek Blazevic from 14.0 to 15.0.",
+        tr: "Geçen sezonun BSL verisinde kadroda olup hiç sahaya çıkmayan oyuncular 0 dakika ve tüm istatistikleri 0 olan satırlarla yer alıyordu. Bu satırlar oynanmış maç sayılıp ortalamaları düşürüyordu. 143 oyuncuya ait 769 satır artık hesaba girmiyor. Örnek: Ante Zizic 30 maç 11,0 sayıdan 29 maç 11,4 sayıya, Marek Blazevic 14,0'dan 15,0'a çıktı.",
+      },
+      {
+        en: "It affects everything built on player averages: Match-Player Tools, player profiles, match logs and rankings. Matches played and minutes per game are now counted over played matches only, so the role of 17 players changed (for example Limited to Rotation). EuroLeague, EuroCup and this season's BSL data did not have the problem.",
+        tr: "Oyuncu ortalamalarına dayanan her yeri etkiler: Match-Player Tools, oyuncu profilleri, maç logları ve sıralamalar. Oynanan maç sayısı ve maç başına dakika artık yalnızca oynanan maçlardan hesaplanıyor; bu yüzden 17 oyuncunun rolü değişti (örneğin Sınırlı'dan Rotasyon'a). EuroLeague, EuroCup ve bu sezonun BSL verisinde bu sorun yoktu.",
+      },
+    ],
+  },
+  {
+    date: { en: "30 September", tr: "30 Eylül" },
+    title: {
       en: "Basketball: Double-Double and Triple-Double markets",
       tr: "Basketbol: Double-Double ve Triple-Double marketleri",
     },
@@ -37,8 +55,12 @@ const ENTRIES: Entry[] = [
         tr: "Her oyuncunun üç beklentisi maç maç simüle edilir; eşiğe ulaşılan maçların oranı olasılıktır, Yes oranı da payback bölü bu olasılıktır. Önce Input'a gönderdiğin değerler kullanılır (koyu görünür); göndermediğin istatistikte oyuncunun model değeri kullanılır (gri). Oyuncular olasılığa göre sıralanır ve hiçbiri tikli gelmez: sunmak istediklerini tikleyip \"Add to Input\"a bas.",
       },
       {
-        en: "Templates and payback are on the Double-Double and Triple-Double rows in Config > Market Templates; the number of simulated matches is in Config > Model.",
-        tr: "Şablon ve payback Config > Market Templates'teki Double-Double ve Triple-Double satırlarında; simüle edilen maç sayısı Config > Model altında.",
+        en: "The small pencil next to each price lets you type your own odds; your price is shown in a different colour, the player is ticked for you, and the arrow next to it returns to the model price. Triple-double prices from the model are capped at 200; the cap does not apply to a price you type.",
+        tr: "Her oranın yanındaki küçük kalemle kendi oranını yazabilirsin; yazdığın oran farklı renkte görünür, oyuncu kendiliğinden tiklenir, yanındaki ok model oranına döndürür. Modelden gelen triple-double oranlarının tavanı 200'dür; elle yazdığın orana tavan uygulanmaz.",
+      },
+      {
+        en: "Templates, payback and the odds cap are on the Double-Double and Triple-Double rows in Config > Market Templates; the number of simulated matches is in Config > Model.",
+        tr: "Şablon, payback ve oran tavanı Config > Market Templates'teki Double-Double ve Triple-Double satırlarında; simüle edilen maç sayısı Config > Model altında.",
       },
     ],
   },

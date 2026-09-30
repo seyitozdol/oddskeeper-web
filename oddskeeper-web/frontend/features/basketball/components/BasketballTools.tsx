@@ -42,6 +42,7 @@ type BktSnapshot = {
   teamTicks: Record<string, boolean>;
   playerVal: Record<string, number>;
   ticks: Record<string, boolean>;
+  doubleOdds?: Record<string, number>;   // double / triple-double elle girilen oranlar
 };
 
 type Props = {
@@ -438,6 +439,10 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
   // Bir istatistiğin beklentisi: Input'a GÖNDERİLMİŞ değer (nihai); gönderilmediyse o markette
   // elle yazılan değer; o da yoksa oyuncunun Model değeri.
   const doubleSims = Math.max(0, Math.round(mc("dd_sims", DOUBLE_DEFAULT_SIMS)));
+  // Elle girilen Yes oranı: "takım:market:oyuncu" → oran. Model oranının önüne geçer.
+  const [doubleOdds, setDoubleOdds] = useState<Record<string, number>>({});
+  const setDoubleOdd = (k: string, v: number | null) =>
+    setDoubleOdds((p) => { const n = { ...p }; if (v == null) delete n[k]; else n[k] = v; return n; });
   const statMean = (slug: string, base: string, playerSlug: string): { value: number; sent: boolean } | null => {
     const sent = sentValueBy.get(`${playerSlug}|${base}`);
     if (sent != null) return { value: sent, sent: true };
@@ -489,7 +494,7 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
     base === "points" ? effHome + effAway : totalOverride[base] ?? (teamTrader(homeSlug, base, effHome) + teamTrader(awaySlug, base, effAway));
   // Sıfırla: elle girilen maç-sayısı + trader/total değerlerini temizle (model'e döner).
   const resetTeam = () => { setPtsOv({ h: null, a: null }); setTraderMetric({}); setTotalOverride({}); };
-  const resetPlayer = () => setPlayerVal({});
+  const resetPlayer = () => { setPlayerVal({}); setDoubleOdds({}); };
   // Tümünü tikle/kaldır (panel bazında: slug ya da "total"); panelin gösterdiği metrikler.
   // points tick'lenemez (her zaman dahil, trader'ı üstteki maç projeksiyonu).
   const setTeamAll = (prefix: string, markets: { key: string }[], on: boolean) =>
@@ -503,7 +508,7 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
   // ── Export gecmisi: snapshot topla + Add'e ekle; ayrica restore ──
   const historyMatchLabel = home && away ? `${home.team_name} - ${away.team_name}` : `${homeSlug} - ${awaySlug}`;
   const buildSnapshot = (): BktSnapshot => ({
-    fixSel, homeSlug, awaySlug, tab: tab === "h2h" ? "player" : tab, ptsOv, traderMetric, totalOverride, teamTicks, playerVal, ticks,
+    fixSel, homeSlug, awaySlug, tab: tab === "h2h" ? "player" : tab, ptsOv, traderMetric, totalOverride, teamTicks, playerVal, ticks, doubleOdds,
   });
   const addWithHistory = (rows: BktInputRow[], kind: "team" | "player") => {
     onAdd(rows, {
@@ -534,6 +539,7 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
     setTeamTicks(s.teamTicks ?? {});
     setPlayerVal(s.playerVal ?? {});
     setTicks(s.ticks ?? {});
+    setDoubleOdds(s.doubleOdds ?? {});
     setHistoryNotice(t("modelHistory.restored"));
     setTimeout(() => setHistoryNotice(""), 3000);
   };
@@ -705,7 +711,7 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
             <PlayerDistPanel homeSlug={homeSlug} awaySlug={awaySlug} homeName={home.team_name} awayName={away.team_name}
               effHome={effHome} effAway={effAway} winBy={winBy} isTicked={isTicked} setTick={(k, v) => setTicks((p) => ({ ...p, [k]: v }))}
               playerValue={playerValue} setVal={(k, v) => setPlayerVal((p) => ({ ...p, [k]: v }))} playerModel={playerModel}
-              comboValue={comboValue} isOverridden={(k) => playerVal[k] != null} statMean={statMean} doubleFor={doubleFor}
+              comboValue={comboValue} isOverridden={(k) => playerVal[k] != null} statMean={statMean} doubleFor={doubleFor} doubleOdds={doubleOdds} setDoubleOdd={setDoubleOdd}
               teamTarget={(slug, mk) => teamTrader(slug, mk, slug === homeSlug ? effHome : effAway)}
               onAdd={(rows) => addWithHistory(rows, "player")} historySlot={historyDropdown} historyNotice={historyNotice}
               playerIds={playerIds} playerCfg={playerCfg} playerMarkets={playerMarkets}
@@ -715,6 +721,38 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
         </>
       ) : (<p className="text-sm text-ink-3">{t("basketball.matchPickTeams")}</p>)}
     </div>
+  );
+}
+
+// Oran hücresi: model oranı + küçük kalem düğmesi. Kalem → kendi oranını yaz (Enter / dışarı
+// tıkla = kaydet, Esc = vazgeç). Boş ya da 1'den büyük olmayan giriş model oranına döndürür
+// (0 / geçersiz oran hiçbir yere gitmez). Elle oran sarı görünür, ↺ modele döndürür.
+function OddsCell({ value, manual, onChange, t }: {
+  value: number | null; manual: boolean; onChange: (v: number | null) => void; t: (k: string) => string;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [buf, setBuf] = useState("");
+  const commit = () => {
+    const v = parseFloat(buf.replace(",", "."));
+    onChange(buf.trim() === "" || Number.isNaN(v) || !(v > 1) ? null : Math.round(v * 100) / 100);
+    setEditing(false);
+  };
+  if (editing) {
+    return (
+      <input autoFocus type="number" step="0.01" min="1.01" value={buf}
+        onChange={(e) => setBuf(e.target.value)} onBlur={commit}
+        onKeyDown={(e) => { if (e.key === "Enter") commit(); else if (e.key === "Escape") setEditing(false); }}
+        className="w-20 rounded-md border border-accent/60 bg-field px-2 py-1 text-right text-[13px] tabular-nums text-ink outline-none" />
+    );
+  }
+  return (
+    <span className="inline-flex items-center justify-end gap-1.5">
+      <span title={manual ? t("basketball.doubleManual") : undefined} className={`tabular-nums font-semibold ${manual ? "cursor-help text-warn" : "text-accent-ink"}`}>{value == null ? "-" : value.toFixed(2)}</span>
+      <button onClick={() => { setBuf(value == null ? "" : String(value)); setEditing(true); }} title={t("basketball.doubleEdit")} className="text-ink-3 hover:text-accent-ink">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
+      </button>
+      {manual ? <button onClick={() => onChange(null)} title={t("basketball.doubleRevert")} className="text-[12px] leading-none text-ink-3 hover:text-ink">↺</button> : null}
+    </span>
   );
 }
 
@@ -1058,7 +1096,7 @@ function H2HPanel({ homeName, awayName, players, pairs, setPairs, cfg, markets, 
 }
 
 /* ---------- Player distribution panel ---------- */
-function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effAway, winBy, isTicked, setTick, playerValue, setVal, playerModel, comboValue, isOverridden, statMean, doubleFor, teamTarget, onAdd, historySlot, historyNotice, playerIds, playerCfg, playerMarkets, existingKeys, existingPlayerMkt, onReset, competition, season, fixExtId, roleBy, euroTeamSlugs, leaderBy, rosterMode, locale, t }: {
+function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effAway, winBy, isTicked, setTick, playerValue, setVal, playerModel, comboValue, isOverridden, statMean, doubleFor, doubleOdds, setDoubleOdd, teamTarget, onAdd, historySlot, historyNotice, playerIds, playerCfg, playerMarkets, existingKeys, existingPlayerMkt, onReset, competition, season, fixExtId, roleBy, euroTeamSlugs, leaderBy, rosterMode, locale, t }: {
   homeSlug: string; awaySlug: string; homeName: string; awayName: string; effHome: number; effAway: number;
   winBy: Map<string, Map<string, BktPlayerWindowRow[]>>;
   isTicked: (s: string, mk: string, w: BktPlayerWindowRow) => boolean;
@@ -1070,6 +1108,8 @@ function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effA
   isOverridden: (k: string) => boolean;
   statMean: (slug: string, base: string, playerSlug: string) => { value: number; sent: boolean } | null;
   doubleFor: (slug: string, playerSlug: string) => DoubleProbs;
+  doubleOdds: Record<string, number>;
+  setDoubleOdd: (k: string, v: number | null) => void;
   teamTarget: (s: string, mk: string) => number;
   onAdd: (rows: BktInputRow[]) => void;
   historySlot?: ReactNode;
@@ -1154,12 +1194,15 @@ function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effA
     if (!(prob > 0)) return null;
     const raw = (cfgCur?.payback ?? PROP_PAYBACK) / prob;
     const r = cfgCur?.round_odds && raw >= 2 ? Math.round(raw * 10) / 10 : Math.round(raw * 100) / 100;
-    return Math.max(1.01, Math.min(cfgCur && cfgCur.odds_cap > 0 ? cfgCur.odds_cap : 999, r));
+    const cap = cfgCur && cfgCur.odds_cap > 0 ? cfgCur.odds_cap : met.base === "td" ? 200 : 999;
+    return Math.max(1.01, Math.min(cap, r));
   };
   const doubleRow = (w: BktPlayerWindowRow) => {
     const p = doubleFor(slug, w.player_slug);
     const prob = met.base === "td" ? p.td : p.dd;
-    return { w, stats: DOUBLE_STATS.map((b) => statMean(slug, b, w.player_slug)), prob, odds: doublePrice(prob) };
+    // Elle girilen oran varsa o geçerli (tavan uygulanmaz; trader'ın kararı).
+    const manual = doubleOdds[`${slug}:${mk}:${w.player_slug}`];
+    return { w, stats: DOUBLE_STATS.map((b) => statMean(slug, b, w.player_slug)), prob, odds: manual ?? doublePrice(prob), manual: manual != null };
   };
 
   // Ekle: tikli oyuncuların çizgilerini Input'a gönder — Input'ta ZATEN olan satırlar atlanır (mükerrer engel)
@@ -1268,7 +1311,7 @@ function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effA
             <th className="px-2 py-1.5 text-right">Yes</th>
           </tr></thead>
           <tbody>
-            {players.map(doubleRow).sort((a, b) => b.prob - a.prob).map(({ w, stats, prob, odds }) => {
+            {players.map(doubleRow).sort((a, b) => b.prob - a.prob).map(({ w, stats, prob, odds, manual }) => {
               const on = isTicked(slug, mk, w);
               const k = `${slug}:${mk}:${w.player_slug}`;
               return (
@@ -1301,7 +1344,11 @@ function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effA
                     </td>
                   ))}
                   <td className="px-2 py-1 text-right tabular-nums text-ink-2">{(prob * 100).toFixed(1)}%</td>
-                  <td className="px-2 py-1 text-right tabular-nums font-semibold text-accent-ink">{odds == null ? "-" : odds.toFixed(2)}</td>
+                  <td className="px-2 py-1 text-right">
+                    {/* elle oran girilince oyuncu tiklenir: girilen oranın gönderilmesi beklenir */}
+                    <OddsCell value={odds} manual={manual} t={t}
+                      onChange={(v) => { setDoubleOdd(k, v); if (v != null && !on) setTick(k, true); }} />
+                  </td>
                 </tr>
               );
             })}
