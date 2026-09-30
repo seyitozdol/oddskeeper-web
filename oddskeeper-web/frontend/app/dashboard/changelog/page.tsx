@@ -23,6 +23,24 @@ const ENTRIES: Entry[] = [
   {
     date: { en: "30 September", tr: "30 Eylül" },
     title: {
+      en: "Basketball: line rules explained in Config > Market Templates",
+      tr: "Basketbol: Config > Market Templates'te çizgi kuralları açıklandı",
+    },
+    tag: TAG_NEW,
+    items: [
+      {
+        en: "Hover the Skip after, Skip step, Max and Cap column headers in Match-Player Tools > Config > Market Templates to see what each field does (the underlined headers). The same applies to EuroLeague and EuroCup.",
+        tr: "Match-Player Tools > Config > Market Templates'te Skip sonra, Skip adım, Max ve Cap kolon başlıklarının (altı noktalı başlıklar) üzerine gelince alanın ne yaptığı görünür. EuroLeague ve EuroCup'ta da aynı.",
+      },
+      {
+        en: "Below the table there is now a \"Line rules\" box with the full explanation and a worked example: how the main line is picked, how many lines sit around it, where skipping starts, and how Max and Cap limit the result.",
+        tr: "Tablonun altında artık ayrıntılı açıklamayı ve bir örneği içeren \"Çizgi kuralları\" kutusu var: ana çizgi nasıl seçilir, etrafına kaç çizgi dizilir, atlama nerede başlar, Max ve Cap sonucu nasıl sınırlar.",
+      },
+    ],
+  },
+  {
+    date: { en: "30 September", tr: "30 Eylül" },
+    title: {
       en: "BSL: matches a player sat out no longer lower his averages",
       tr: "BSL: oyuncunun oynamadığı maçlar artık ortalamasını düşürmüyor",
     },
@@ -61,6 +79,14 @@ const ENTRIES: Entry[] = [
       {
         en: "The small pencil next to each price lets you type your own odds; your price is shown in a different colour, the player is ticked for you, and the arrow next to it returns to the model price. Triple-double prices from the model are capped at 200; the cap does not apply to a price you type.",
         tr: "Her oranın yanındaki küçük kalemle kendi oranını yazabilirsin; yazdığın oran farklı renkte görünür, oyuncu kendiliğinden tiklenir, yanındaki ok model oranına döndürür. Modelden gelen triple-double oranlarının tavanı 200'dür; elle yazdığın orana tavan uygulanmaz.",
+      },
+      {
+        en: "New \"Past\" column: next to the model probability you see how often the player actually did it, over the same matches as the GP column (for example 5/30, 17%). Use it to judge the model price and type your own when they are far apart.",
+        tr: "Yeni \"Geçmiş\" sütunu: model olasılığının yanında oyuncunun gerçekte kaç kez yaptığını görürsün; GP sütunundaki maçların aynısı üzerinden (örneğin 5/30, %17). Model oranını buna göre değerlendir, fark büyükse kendi oranını yaz.",
+      },
+      {
+        en: "The simulation now draws points, rebounds and assists together instead of independently, because a player who gets more minutes tends to post more of all three. The link is measured from league data (points-rebounds 0.30, points-assists 0.18, rebounds-assists 0.17) and can be changed in Config > Model. This raises double-double probabilities, most for players close to 10 in two stats.",
+        tr: "Simülasyon artık sayı, ribaund ve asisti birbirinden bağımsız değil birlikte çekiyor; çünkü çok süre alan oyuncu üçünde de daha yüksek bitirir. Bağ lig verisinden ölçüldü (sayı-ribaund 0,30, sayı-asist 0,18, ribaund-asist 0,17) ve Config > Model'den değiştirilebilir. Bu, double-double olasılıklarını yükseltir; en çok da iki istatistikte 10'a yakın olan oyuncularda.",
       },
       {
         en: "Templates, payback and the odds cap are on the Double-Double and Triple-Double rows in Config > Market Templates; the number of simulated matches is in Config > Model.",

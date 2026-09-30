@@ -5,7 +5,7 @@
 import { createClient } from "@/lib/supabase/server";
 import type {
   BktHomeAwaySplitRow, BktTeamMetricFormRow, BktPlayerWindowRow,
-  BktTeamLogRow, BktPlayerListRow, BktPlayerRoleRow,
+  BktTeamLogRow, BktPlayerListRow, BktPlayerRoleRow, BktPlayerDoubleRow,
 } from "@/features/basketball/types";
 
 const PAGE = 1000;
@@ -73,6 +73,19 @@ export async function getEuroToolsRoles(comp: "E" | "U", season: string): Promis
     .eq("competition", comp).eq("season_label", season)
     .returns<BktPlayerRoleRow[]>();
   if (error) { console.error("getEuroToolsRoles", error.message); return []; }
+  return data ?? [];
+}
+
+// Double-double / triple-double gecmisi (lig + sezon; ~350 satir).
+export async function getEuroToolsDoubles(comp: "E" | "U", season: string): Promise<BktPlayerDoubleRow[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .schema("analytics").from("el_player_double_v1")
+    .select("team_slug,player_slug,games,dd,td")
+    .eq("competition", comp).eq("season_label", season)
+    .limit(1000)
+    .returns<BktPlayerDoubleRow[]>();
+  if (error) { console.error("getEuroToolsDoubles", error.message); return []; }
   return data ?? [];
 }
 

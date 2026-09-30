@@ -218,6 +218,16 @@ export type BktInputRow = {
   sel2Name?: string;
 };
 
+// Oyuncunun gecmisteki double-double / triple-double sayisi (yalniz sayi / ribaund / asist).
+// Mac kumesi Tools'taki GP kolonuyla ayni (analytics.*_player_double*_v1).
+export type BktPlayerDoubleRow = {
+  team_slug: string;
+  player_slug: string;
+  games: number;
+  dd: number;
+  td: number;
+};
+
 // H2H (oyuncu - oyuncu) Input satiri. Secenek 1 = ev oyuncusu (sort 1), secenek 2 =
 // deplasman oyuncusu (sort 2); kimlik = oyuncunun dis (participant) id'si.
 export type BktH2HInputRow = {

@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { resolveEuroComp, EURO_SEASONS } from "@/features/euroleague/config";
 import {
   getEuroToolsSplits, getEuroToolsForms, getEuroToolsWindows,
-  getEuroToolsTeamLogs, getEuroToolsPlayerList, getEuroToolsRoles,
+  getEuroToolsTeamLogs, getEuroToolsPlayerList, getEuroToolsRoles, getEuroToolsDoubles,
 } from "@/features/euroleague/toolsServer";
 import BasketballParticipantTools from "@/features/basketball/components/BasketballParticipantTools";
 import SeasonToggle from "@/components/SeasonToggle";
@@ -47,13 +47,14 @@ export default async function EuroToolsPage({
     ? (season as string)
     : await defaultToolsSeason(code);
 
-  const [splits, forms, windows, teamLogs, players, roles] = await Promise.all([
+  const [splits, forms, windows, teamLogs, players, roles, doubles] = await Promise.all([
     getEuroToolsSplits(code, seasonLabel),
     getEuroToolsForms(code, seasonLabel),
     getEuroToolsWindows(code, seasonLabel),
     getEuroToolsTeamLogs(code, seasonLabel),
     getEuroToolsPlayerList(code, seasonLabel),
     getEuroToolsRoles(code, seasonLabel),
+    getEuroToolsDoubles(code, seasonLabel),
   ]);
 
   return (
@@ -72,7 +73,7 @@ export default async function EuroToolsPage({
         </div>
       </div>
       <BasketballParticipantTools splits={splits} forms={forms} windows={windows} teamLogs={teamLogs}
-        players={players} roles={roles} league={cfg.key} season={seasonLabel} toolsBase={`/dashboard/euro/${cfg.key}`} isAdmin={access.isAdmin} />
+        players={players} roles={roles} doubles={doubles} league={cfg.key} season={seasonLabel} toolsBase={`/dashboard/euro/${cfg.key}`} isAdmin={access.isAdmin} />
     </section>
   );
 }

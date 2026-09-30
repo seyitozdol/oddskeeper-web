@@ -15,7 +15,7 @@ export default async function BasketballToolsPage({ searchParams }: { searchPara
   const { season } = await searchParams;
   const seasonLabel = normalizeSeason(season);
   const [data, t, access] = await Promise.all([getBasketballToolsData(seasonLabel), getT(), getNavAccess()]);
-  const { splits, forms, windows, teamLogs, players, roles, rosterMode } = data;
+  const { splits, forms, windows, teamLogs, players, roles, doubles, rosterMode } = data;
 
   return (
     <section className="w-full px-4 pb-14 lg:px-8">
@@ -30,7 +30,7 @@ export default async function BasketballToolsPage({ searchParams }: { searchPara
         </div>
       </div>
 
-      <BasketballParticipantTools splits={splits} forms={forms} windows={windows} teamLogs={teamLogs} players={players} roles={roles} rosterMode={rosterMode} season={seasonLabel} isAdmin={access.isAdmin} />
+      <BasketballParticipantTools splits={splits} forms={forms} windows={windows} teamLogs={teamLogs} players={players} roles={roles} doubles={doubles} rosterMode={rosterMode} season={seasonLabel} isAdmin={access.isAdmin} />
     </section>
   );
 }

@@ -14,6 +14,7 @@ import type {
   BktTeamMetricFormRow,
   BktPlayerShareRow,
   BktPlayerWindowRow,
+  BktPlayerDoubleRow,
   BktPlayerRoleRow,
   BktFixtureRow,
   BktGameRow,
@@ -156,6 +157,23 @@ export async function getBasketballPlayerWindows(season: string = SEASON): Promi
     rows.push(...(data ?? []));
     if (!data || data.length < PAGE_SIZE) return rows;
   }
+}
+
+// Double-double / triple-double gecmisi (sezon + takim + oyuncu; ~330 satir / sezon).
+export async function getBasketballPlayerDoubles(season: string = SEASON): Promise<BktPlayerDoubleRow[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .schema("analytics")
+    .from("bb_player_double_v1")
+    .select("team_slug,player_slug,games,dd,td")
+    .eq("season_label", season)
+    .limit(1000)
+    .returns<BktPlayerDoubleRow[]>();
+  if (error) {
+    console.error("getBasketballPlayerDoubles error:", error.message);
+    return [];
+  }
+  return data ?? [];
 }
 
 export async function getBasketballPlayerRoles(season: string = SEASON): Promise<BktPlayerRoleRow[]> {

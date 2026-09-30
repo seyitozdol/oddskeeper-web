@@ -13,8 +13,8 @@ import { postModelHistory, exportFileName, type ModelHistoryDraft } from "@/lib/
 import { confirmPermanentSave } from "@/lib/confirm-save";
 import { configLabel, METRIC_LABELS, metricLabel } from "../marketConfig";
 import { H2H_DEFAULTS, H2H_MAX_SIMS } from "../h2h";
-import { DOUBLE_DEFAULT_SIMS } from "../doubles";
-import type { BktH2HInputRow } from "../types";
+import { DOUBLE_DEFAULT_CORR, DOUBLE_DEFAULT_SIMS, DOUBLE_MAX_CORR } from "../doubles";
+import type { BktH2HInputRow, BktPlayerDoubleRow } from "../types";
 import { ALL_ROLES, roleBadgeClass, roleLabelKey, roleDescKey, formatMatchDate } from "../lib";
 import {
   fetchPmFixtures, insertFixture, updateFixture, deleteFixture, PmFixture,
@@ -36,6 +36,7 @@ type Props = {
   teamLogs: BktTeamLogRow[];
   players: BktPlayerListRow[];
   roles?: BktPlayerRoleRow[];   // BSL oyuncu rol+pozisyon (Player Dist etiketi); EL/EC'de yok
+  doubles?: BktPlayerDoubleRow[];   // geçmiş double-double / triple-double sayıları
   rosterMode?: BktRosterMode | null;   // BSL sezon kadrosu modu (yeni sezon başı); yoksa maç-güdümlü
   league?: string;          // 'basketball' (BSL) | 'euroleague' | 'eurocup'
   season?: string;          // Tools sezon seçicisi (?season); oyuncu drawer'ına iner
@@ -49,7 +50,7 @@ type InputType = "player" | "team";
 const btnSave = "rounded-md border border-accent bg-accent px-3 py-1.5 text-[12px] font-semibold text-on-accent hover:opacity-90";
 const btnGhost = "rounded-md border border-line px-3 py-1.5 text-[12px] font-semibold text-ink-2 hover:text-ink";
 
-export default function BasketballParticipantTools({ splits, forms, windows, teamLogs, players, roles = [], rosterMode = null, league = "basketball", season, toolsBase, isAdmin = false }: Props) {
+export default function BasketballParticipantTools({ splits, forms, windows, teamLogs, players, roles = [], doubles = [], rosterMode = null, league = "basketball", season, toolsBase, isAdmin = false }: Props) {
   const { t, locale } = useI18n();
   // Profil linkleri: BSL /dashboard/basketball/{player|team}/<slug>; EL/EC toolsBase/{player|team}/<code>.
   const profileBase = toolsBase ?? "/dashboard/basketball";
@@ -122,7 +123,7 @@ export default function BasketballParticipantTools({ splits, forms, windows, tea
       {/* Model her zaman mount kalır → sekme değişince fixture/takım seçimi kaybolmaz */}
       <div className={tab === "model" ? "" : "hidden"}>
         <BasketballTools pmFixtures={fixtures} splits={splits} forms={forms} windows={windows} teamLogs={teamLogs}
-          playerIds={playerIds} config={config} inputRows={inputRows} roles={roles} rosterMode={rosterMode} modelConfig={modelConfig}
+          playerIds={playerIds} config={config} inputRows={inputRows} roles={roles} doubles={doubles} rosterMode={rosterMode} modelConfig={modelConfig}
           competition={league === "euroleague" ? "E" : league === "eurocup" ? "U" : undefined} season={season}
           historyLeague={league} historyReloadKey={historyReloadKey}
           onAdd={handleAdd} h2hRows={h2hRows} onAddH2h={(rows) => setH2hRows((p) => [...p, ...rows])} />
@@ -618,12 +619,20 @@ function ModelWeightsConfig({ modelConfig, reload, t }: {
   const hValid = hPayback > 0 && hPayback <= 1 && hSims >= 0 && hSims <= H2H_MAX_SIMS;
   // Double-double / triple-double: simülasyon maç sayısı (model_config dd_sims).
   const dSims = hEdits.dd_sims ?? dbVal("dd_sims", DOUBLE_DEFAULT_SIMS);
+  // Korelasyonlar: sayı-ribaund, sayı-asist, ribaund-asist (model_config dd_corr_*).
+  const CORR_KEYS = ["dd_corr_pr", "dd_corr_pa", "dd_corr_ra"] as const;
+  const dCorr = CORR_KEYS.map((k, i) => hEdits[k] ?? dbVal(k, DOUBLE_DEFAULT_CORR[i]));
+  const doubleDirty = Object.keys(hEdits).some((k) => k.startsWith("dd_"));
+  const doubleValid = dSims >= 0 && dSims <= H2H_MAX_SIMS && dCorr.every((c) => Math.abs(c) <= DOUBLE_MAX_CORR);
   const saveDouble = async () => {
     if (!(await confirmPermanentSave())) return;
     setSavingH(true);
-    const ok = await saveModelConfig([{ key: "dd_sims", value: Math.round(dSims) }]);
+    const ok = await saveModelConfig([
+      { key: "dd_sims", value: Math.round(dSims) },
+      ...CORR_KEYS.map((k, i) => ({ key: k, value: dCorr[i] })),
+    ]);
     setSavingH(false);
-    if (ok) { setHEdits((s) => { const n = { ...s }; delete n.dd_sims; return n; }); reload(); }
+    if (ok) { setHEdits((s) => Object.fromEntries(Object.entries(s).filter(([k]) => !k.startsWith("dd_")))); reload(); }
   };
   const h2hDirty = Object.keys(hEdits).some((k) => k.startsWith("h2h_"));
   const saveH2h = async () => {
@@ -745,7 +754,7 @@ function ModelWeightsConfig({ modelConfig, reload, t }: {
       {/* Double-double / triple-double */}
       <div className={box}>
         <div className="mb-2 flex items-center gap-3">
-          <button onClick={saveDouble} disabled={savingH || hEdits.dd_sims == null || dSims < 0 || dSims > H2H_MAX_SIMS} className={saveBtn}>{t("basketball.save")}</button>
+          <button onClick={saveDouble} disabled={savingH || !doubleDirty || !doubleValid} className={saveBtn}>{t("basketball.save")}</button>
           <span className="text-[13px] font-semibold text-ink">{t("basketball.doubleCfgTitle")}</span>
         </div>
         <p className="mb-3 max-w-2xl text-[11px] text-ink-3">{t("basketball.doubleCfgHint")}</p>
@@ -758,10 +767,25 @@ function ModelWeightsConfig({ modelConfig, reload, t }: {
           </div>
           <span className="pb-1.5 text-[11px] text-ink-3">{t("basketball.h2hCfgSimsNote")}</span>
         </div>
+        <div className="mt-3 flex flex-wrap items-end gap-4">
+          {CORR_KEYS.map((k, i) => (
+            <div key={k} className="flex flex-col gap-1">
+              <span className="text-[10px] uppercase tracking-[0.12em] text-ink-3">{t(`basketball.doubleCfg_${k}`)}</span>
+              <input type="number" min={-DOUBLE_MAX_CORR} max={DOUBLE_MAX_CORR} step={0.01} value={dCorr[i]}
+                onChange={(e) => { const v = parseFloat(e.target.value); setHEdits((s) => ({ ...s, [k]: Number.isNaN(v) ? 0 : v })); }}
+                className={`w-20 rounded border bg-field px-2 py-1 text-right text-[13px] text-ink outline-none focus:border-line-strong ${Math.abs(dCorr[i]) > DOUBLE_MAX_CORR ? "border-neg" : "border-line"}`} />
+            </div>
+          ))}
+          <span className="max-w-md pb-1.5 text-[11px] text-ink-3">{t("basketball.doubleCfgCorrNote")}</span>
+        </div>
       </div>
     </div>
   );
 }
+
+// Market Templates tablosunda açıklaması olan line kuralı kolonları (başlık ipucu
+// `<key>Info`, sayfa altındaki uzun açıklama `<key>Detail`); sıra tablo sırasıyla aynı.
+const LINE_RULE_KEYS = ["cfgSkipAfter", "cfgSkipStep", "cfgMaxLines", "cfgCap"] as const;
 
 /* ---------- Config: alt sekmeler — Player Roles / Model / Market Templates ---------- */
 function ConfigTab({ config, reload, modelConfig, reloadModelConfig, inputType, setInputType, league, locale, t }: {
@@ -850,10 +874,11 @@ function ConfigTab({ config, reload, modelConfig, reloadModelConfig, inputType, 
           <th className={`${th} text-right`}>{t("basketball.colStd")}</th>
           <th className={`${th} text-right`}>{t("basketball.cfgLines")}</th>
           <th className={`${th} text-right`}>{t("basketball.cfgUnder")}</th>
-          <th className={`${th} text-right`}>{t("basketball.cfgSkipAfter")}</th>
-          <th className={`${th} text-right`}>{t("basketball.cfgSkipStep")}</th>
-          <th className={`${th} text-right`}>{t("basketball.cfgMaxLines")}</th>
-          <th className={`${th} text-right`}>{t("basketball.cfgCap")}</th>
+          {LINE_RULE_KEYS.map((k) => (
+            <th key={k} className={`${th} text-right`}>
+              <span title={t(`basketball.${k}Info`)} className="cursor-help border-b border-dotted border-ink-3/40">{t(`basketball.${k}`)}</span>
+            </th>
+          ))}
           <th className={`${th} text-right`}>{t("basketball.cfgPayback")}</th>
           <th className={`${th} text-center`}>{t("basketball.cfgRound")}</th>
           <th className={`${th} text-center`}></th>
@@ -969,6 +994,22 @@ function ConfigTab({ config, reload, modelConfig, reloadModelConfig, inputType, 
           </div>
 
           <Section grp={inputType} />
+
+          {/* line kuralları: başlıklardaki ipuçlarının uzun hali */}
+          <div className="mt-4 max-w-3xl rounded-lg border border-line bg-card-2/40 px-4 py-3 text-[12px] leading-relaxed">
+            <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-3">{t("basketball.cfgNotesTitle")}</div>
+            <p className="mb-2 text-ink-3">{t("basketball.cfgNotesIntro")}</p>
+            <dl className="space-y-2">
+              {LINE_RULE_KEYS.map((k) => (
+                <div key={k}>
+                  <dt className="font-semibold text-ink">{t(`basketball.${k}`)}</dt>
+                  <dd className="text-ink-2">{t(`basketball.${k}Detail`)}</dd>
+                </div>
+              ))}
+            </dl>
+            <p className="mt-2 text-ink-2">{t("basketball.cfgNotesExample")}</p>
+            {inputType === "player" ? <p className="mt-2 text-ink-3">{t("basketball.cfgNotesDoubles")}</p> : null}
+          </div>
           </>)}
         </div>
       )}

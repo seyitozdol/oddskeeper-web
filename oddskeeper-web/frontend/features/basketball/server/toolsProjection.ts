@@ -10,6 +10,7 @@
 import { createClient } from "@/lib/supabase/server";
 import type {
   BktHomeAwaySplitRow,
+  BktPlayerDoubleRow,
   BktPlayerListRow,
   BktPlayerRoleRow,
   BktPlayerWindowRow,
@@ -20,6 +21,7 @@ import type {
 import {
   getBasketballAllTeamMatchLogs,
   getBasketballHomeAwaySplits,
+  getBasketballPlayerDoubles,
   getBasketballPlayerList,
   getBasketballPlayerRoles,
   getBasketballPlayerWindows,
@@ -38,6 +40,7 @@ export type BasketballToolsData = {
   teamLogs: BktTeamLogRow[];
   players: BktPlayerListRow[];
   roles: BktPlayerRoleRow[];
+  doubles: BktPlayerDoubleRow[];
   rosterMode: BktRosterMode | null;
 };
 
@@ -85,24 +88,43 @@ async function getRosterRoles(season: string): Promise<BktPlayerRoleRow[]> {
   return data ?? [];
 }
 
+// Kadro modunda gecmis double sayilari: oyuncunun o sezona kadarki tum maclari (GP ile ayni kume).
+async function getRosterDoubles(season: string): Promise<BktPlayerDoubleRow[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .schema("analytics")
+    .from("bb_player_double_roster_v1")
+    .select("team_slug,player_slug,games,dd,td")
+    .eq("season_label", season)
+    .limit(1000)
+    .returns<BktPlayerDoubleRow[]>();
+  if (error) {
+    console.error("getRosterDoubles error:", error.message);
+    return [];
+  }
+  return data ?? [];
+}
+
 export async function getBasketballToolsData(season: string): Promise<BasketballToolsData> {
   const windows = await getRosterWindows(season);
   if (windows.length === 0) {
-    const [splits, forms, legacyWindows, teamLogs, players, roles] = await Promise.all([
+    const [splits, forms, legacyWindows, teamLogs, players, roles, doubles] = await Promise.all([
       getBasketballHomeAwaySplits(season),
       getBasketballTeamMetricForms(season),
       getBasketballPlayerWindows(season),
       getBasketballAllTeamMatchLogs(season),
       getBasketballPlayerList(season),
       getBasketballPlayerRoles(season),
+      getBasketballPlayerDoubles(season),
     ]);
-    return { splits, forms, windows: legacyWindows, teamLogs, players, roles, rosterMode: null };
+    return { splits, forms, windows: legacyWindows, teamLogs, players, roles, doubles, rosterMode: null };
   }
 
   const prev = previousSeason(season);
-  const [participants, roles, splitsCur, splitsPrev, formsCur, formsPrev, logsCur, logsPrev] = await Promise.all([
+  const [participants, roles, doubles, splitsCur, splitsPrev, formsCur, formsPrev, logsCur, logsPrev] = await Promise.all([
     getBasketballStandings(season),
     getRosterRoles(season),
+    getRosterDoubles(season),
     getBasketballHomeAwaySplits(season),
     getBasketballHomeAwaySplits(prev),
     getBasketballTeamMetricForms(season),
@@ -140,5 +162,5 @@ export async function getBasketballToolsData(season: string): Promise<Basketball
     .map((r) => ({ player_slug: r.player_slug, player_name: r.player_name, team_slug: r.team_slug, team_name: teamName.get(r.team_slug) ?? r.team_slug, games: r.games }))
     .sort((a, b) => (a.team_name ?? "").localeCompare(b.team_name ?? "", "tr") || a.player_name.localeCompare(b.player_name, "tr"));
 
-  return { splits, forms, windows, teamLogs, players, roles, rosterMode: { season, prevSeason: prev, teamSource } };
+  return { splits, forms, windows, teamLogs, players, roles, doubles, rosterMode: { season, prevSeason: prev, teamSource } };
 }

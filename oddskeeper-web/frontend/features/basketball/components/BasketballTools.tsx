@@ -7,7 +7,7 @@ import type { ModelHistoryRecord } from "@/lib/model-history";
 import { useJustAdded } from "@/lib/use-just-added";
 import { buildLadder, buildConfiguredLines, moneyline, type LineConfig } from "../odds";
 import { H2H_DEFAULTS, H2H_METRICS, H2H_TEMPLATES, h2hPrice, type H2HConfig, type H2HMetric } from "../h2h";
-import { DOUBLE_DEFAULT_SIMS, DOUBLE_STATS, doubleProbs, isDoubleBase, type DoubleProbs } from "../doubles";
+import { DOUBLE_DEFAULT_CORR, DOUBLE_DEFAULT_SIMS, DOUBLE_STATS, doubleProbs, isDoubleBase, type DoubleProbs } from "../doubles";
 import { PLAYER_MARKETS, TEAM_MARKETS, teamStd, playerStd, metricLabel, metricInfo, isDistributable } from "../marketConfig";
 import { formatMatchDate, normalizePositionCode, positionLabel, roleLabelKey, roleBadgeClass, LEADER_METRICS, playerPhotoUrl, teamLogoPath } from "../lib";
 import { TeamCrest } from "./ui";
@@ -16,7 +16,7 @@ import BasketballPlayerDrawer from "./BasketballPlayerDrawer";
 import type { PmFixture, PmMarketConfig, PmModelConfig } from "../pmQueries";
 import type {
   BktHomeAwaySplitRow, BktTeamMetricFormRow, BktPlayerWindowRow,
-  BktTeamLogRow, BktInputRow, BktH2HInputRow, BktPlayerRoleRow, BktRosterMode,
+  BktTeamLogRow, BktInputRow, BktH2HInputRow, BktPlayerRoleRow, BktPlayerDoubleRow, BktRosterMode,
 } from "../types";
 
 // Export gecmisi: container'a lift edilen snapshot girisi (Add aninda uretilir).
@@ -55,6 +55,7 @@ type Props = {
   config: PmMarketConfig[];
   inputRows: BktInputRow[];
   roles?: BktPlayerRoleRow[];   // BSL oyuncu rol+pozisyon (Player Dist etiketi)
+  doubles?: BktPlayerDoubleRow[];   // geçmiş double-double / triple-double sayıları (GP ile aynı maç kümesi)
   rosterMode?: BktRosterMode | null;   // sezon kadrosu modu: üyelik team_rosters'tan (yeni sezon başı)
   modelConfig?: PmModelConfig[];   // lider rozet toggle'ları (leader_*)
   competition?: "E" | "U";   // EL/EC ise drawer euro veriye bağlanır
@@ -121,7 +122,7 @@ function NumInput({ value, onChange, step = 0.1, w = "w-16", warn = false }: { v
   );
 }
 
-export default function BasketballTools({ pmFixtures, splits, forms, windows, teamLogs, playerIds, config, inputRows, roles = [], rosterMode = null, modelConfig = [], competition, season, historyLeague = "basketball", historyReloadKey = 0, onAdd, h2hRows = [], onAddH2h }: Props) {
+export default function BasketballTools({ pmFixtures, splits, forms, windows, teamLogs, playerIds, config, inputRows, roles = [], doubles = [], rosterMode = null, modelConfig = [], competition, season, historyLeague = "basketball", historyReloadKey = 0, onAdd, h2hRows = [], onAddH2h }: Props) {
   const { t, locale } = useI18n();
   // Model ağırlıkları (Config > Model). Player: son10/son5/sezon karışımı (saf).
   // Team: Excel TeamProps F karışımı sezon/son10/son5 (sonra sayı uplift'i). Config'ten değişince canlı.
@@ -452,12 +453,17 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
     const w = winBy.get(slug)?.get(base)?.find((x) => x.player_slug === playerSlug);
     return w ? { value: playerModel(w), sent: false } : null;
   };
+  // Üç istatistik birlikte çekilir: sayı-ribaund, sayı-asist, ribaund-asist korelasyonları.
+  const doubleCorr = [mc("dd_corr_pr", DOUBLE_DEFAULT_CORR[0]), mc("dd_corr_pa", DOUBLE_DEFAULT_CORR[1]), mc("dd_corr_ra", DOUBLE_DEFAULT_CORR[2])];
   const doubleFor = (slug: string, playerSlug: string): DoubleProbs =>
     doubleProbs(
       DOUBLE_STATS.map((b) => statMean(slug, b, playerSlug)?.value ?? 0),
       DOUBLE_STATS.map((b) => playerMarkets.find((m) => m.base === b)?.std ?? playerStd(b)),
-      doubleSims
+      doubleSims,
+      doubleCorr
     );
+  // Geçmiş: "takım:oyuncu" → gerçekte kaç maçta yaptı.
+  const doubleHistBy = useMemo(() => new Map(doubles.map((d) => [`${d.team_slug}:${d.player_slug}`, d])), [doubles]);
 
   // Kombine market (pr/pa/pra) için gönderilmiş bileşenlerin toplamı; eksik bileşen → null.
   const comboValue = (mk: string, w: BktPlayerWindowRow): number | null => {
@@ -711,7 +717,7 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
             <PlayerDistPanel homeSlug={homeSlug} awaySlug={awaySlug} homeName={home.team_name} awayName={away.team_name}
               effHome={effHome} effAway={effAway} winBy={winBy} isTicked={isTicked} setTick={(k, v) => setTicks((p) => ({ ...p, [k]: v }))}
               playerValue={playerValue} setVal={(k, v) => setPlayerVal((p) => ({ ...p, [k]: v }))} playerModel={playerModel}
-              comboValue={comboValue} isOverridden={(k) => playerVal[k] != null} statMean={statMean} doubleFor={doubleFor} doubleOdds={doubleOdds} setDoubleOdd={setDoubleOdd}
+              comboValue={comboValue} isOverridden={(k) => playerVal[k] != null} statMean={statMean} doubleFor={doubleFor} doubleHist={(s, p) => doubleHistBy.get(`${s}:${p}`)} doubleOdds={doubleOdds} setDoubleOdd={setDoubleOdd}
               teamTarget={(slug, mk) => teamTrader(slug, mk, slug === homeSlug ? effHome : effAway)}
               onAdd={(rows) => addWithHistory(rows, "player")} historySlot={historyDropdown} historyNotice={historyNotice}
               playerIds={playerIds} playerCfg={playerCfg} playerMarkets={playerMarkets}
@@ -1096,7 +1102,7 @@ function H2HPanel({ homeName, awayName, players, pairs, setPairs, cfg, markets, 
 }
 
 /* ---------- Player distribution panel ---------- */
-function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effAway, winBy, isTicked, setTick, playerValue, setVal, playerModel, comboValue, isOverridden, statMean, doubleFor, doubleOdds, setDoubleOdd, teamTarget, onAdd, historySlot, historyNotice, playerIds, playerCfg, playerMarkets, existingKeys, existingPlayerMkt, onReset, competition, season, fixExtId, roleBy, euroTeamSlugs, leaderBy, rosterMode, locale, t }: {
+function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effAway, winBy, isTicked, setTick, playerValue, setVal, playerModel, comboValue, isOverridden, statMean, doubleFor, doubleHist, doubleOdds, setDoubleOdd, teamTarget, onAdd, historySlot, historyNotice, playerIds, playerCfg, playerMarkets, existingKeys, existingPlayerMkt, onReset, competition, season, fixExtId, roleBy, euroTeamSlugs, leaderBy, rosterMode, locale, t }: {
   homeSlug: string; awaySlug: string; homeName: string; awayName: string; effHome: number; effAway: number;
   winBy: Map<string, Map<string, BktPlayerWindowRow[]>>;
   isTicked: (s: string, mk: string, w: BktPlayerWindowRow) => boolean;
@@ -1108,6 +1114,7 @@ function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effA
   isOverridden: (k: string) => boolean;
   statMean: (slug: string, base: string, playerSlug: string) => { value: number; sent: boolean } | null;
   doubleFor: (slug: string, playerSlug: string) => DoubleProbs;
+  doubleHist: (slug: string, playerSlug: string) => BktPlayerDoubleRow | undefined;
   doubleOdds: Record<string, number>;
   setDoubleOdd: (k: string, v: number | null) => void;
   teamTarget: (s: string, mk: string) => number;
@@ -1308,6 +1315,7 @@ function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effA
             <th className="px-2 py-1.5 text-right">{t("basketball.colMatches")}</th>
             {DOUBLE_STATS.map((b) => <th key={b} className="px-2 py-1.5 text-right" title={t("basketball.doubleStatInfo")}>{metricLabel(b, locale)}</th>)}
             <th className="px-2 py-1.5 text-right">{t("basketball.colProb")}</th>
+            <th className="px-2 py-1.5 text-right" title={t("basketball.doubleHistInfo")}>{t("basketball.doubleHist")}</th>
             <th className="px-2 py-1.5 text-right">Yes</th>
           </tr></thead>
           <tbody>
@@ -1344,6 +1352,14 @@ function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effA
                     </td>
                   ))}
                   <td className="px-2 py-1 text-right tabular-nums text-ink-2">{(prob * 100).toFixed(1)}%</td>
+                  <td className="px-2 py-1 text-right tabular-nums text-ink-3 whitespace-nowrap" title={t("basketball.doubleHistInfo")}>
+                    {(() => {
+                      const h = doubleHist(slug, w.player_slug);
+                      if (!h || !(h.games > 0)) return "-";
+                      const n = met.base === "td" ? h.td : h.dd;
+                      return <>{n}/{h.games} <span className={n > 0 ? "text-ink-2" : ""}>{((n / h.games) * 100).toFixed(0)}%</span></>;
+                    })()}
+                  </td>
                   <td className="px-2 py-1 text-right">
                     {/* elle oran girilince oyuncu tiklenir: girilen oranın gönderilmesi beklenir */}
                     <OddsCell value={odds} manual={manual} t={t}
