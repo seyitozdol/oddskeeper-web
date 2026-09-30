@@ -6,6 +6,9 @@
 export type ExtraMarketType = "Dynamic" | "Static";
 
 export interface ExtraMarket {
+  // Profiller tablosundaki tik: false ise market hicbir mac icin yazilmaz. Alan eski
+  // kayitlarda yok; yoksa acik sayilir.
+  enabled?: boolean;
   template: string;
   name: string;
   type: ExtraMarketType;
@@ -13,7 +16,7 @@ export interface ExtraMarket {
   line: number | string;
   // Dynamic: Under fiyati hesaplansin mi (Excel "Line Under" = Y). Kapaliysa Under = 1.
   under: boolean;
-  // profil adi -> Over / Yes fiyati. Bos (null) ise o profilde market yazilmaz.
+  // profil adi -> Over / Yes fiyati. Bos (null) ya da 0 ise o profilde market yazilmaz.
   prices: Record<string, number | null>;
 }
 
@@ -166,6 +169,14 @@ export const STATIC_HEADERS = [
 
 const same = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
 const isNum = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
+// Gonderilebilir oran: sayi ve 0'dan buyuk. 0 (ya da bos) oran HICBIR sekilde dosyaya
+// girmez (sahip karari 2026-09-30): 0 yazmak "bu profilde bu market yok" demektir.
+const isPrice = (v: unknown): v is number => isNum(v) && v > 0;
+// Son emniyet: satirdaki oran hucrelerinden biri 0 ya da negatifse satir atilir.
+const allPricesPositive = (row: ExtraCell[], priceCols: number[]) =>
+  priceCols.every((c) => row[c] == null || isPrice(row[c]));
+const DYNAMIC_PRICE_COLS = [5, 7];
+const STATIC_PRICE_COLS = Array.from({ length: STATIC_MAX_SELECTIONS }, (_, i) => 4 + i * 2);
 
 function staticRow(fixtureId: string, template: string, sels: Array<[string, number]>): ExtraCell[] {
   const row: ExtraCell[] = [fixtureId, template, null];
@@ -198,13 +209,13 @@ export function buildExtraMarketRows(
 
     for (const m of config.markets) {
       const tpl = m.template.trim();
-      if (!tpl) continue;
+      if (!tpl || m.enabled === false) continue;
       const code = tpl.toUpperCase();
 
       if (code === "1HFATN" || code === "2HFATN") {
         if (skipExtra) continue;
         const sels = (code === "1HFATN" ? config.extraTime1h : config.extraTime2h)
-          .filter((s) => s.name.trim() && isNum(s.price))
+          .filter((s) => s.name.trim() && isPrice(s.price))
           .map((s): [string, number] => [s.name, s.price as number]);
         if (sels.length) stat.push(staticRow(fixtureId, tpl, sels));
         continue;
@@ -212,12 +223,12 @@ export function buildExtraMarketRows(
 
       if (code === "TFG" || code === "TLG") {
         if (skipExtra) continue;
-        if (!(isNum(f.noGoal) && f.noGoal > 0)) {
+        if (!isPrice(f.noGoal)) {
           warnings.push({ kind: "noGoalMissing", label: f.label, template: tpl });
           continue;
         }
         const prices = goalTypePrices(f.noGoal, config.goalType);
-        if (!prices) {
+        if (!prices || !prices.every(isPrice)) {
           warnings.push({ kind: "noGoalTooLow", label: f.label, template: tpl });
           continue;
         }
@@ -226,7 +237,7 @@ export function buildExtraMarketRows(
       }
 
       const price = m.prices[profile];
-      if (!isNum(price)) continue;
+      if (!isPrice(price)) continue;
       if (m.type === "Dynamic") {
         dynamic.push([fixtureId, tpl, m.line, null, "Over", price, "Under", m.under ? underPrice(price, config.payback) : 1]);
       } else {
@@ -234,7 +245,11 @@ export function buildExtraMarketRows(
       }
     }
   }
-  return { dynamic, static: stat, warnings };
+  return {
+    dynamic: dynamic.filter((r) => allPricesPositive(r, DYNAMIC_PRICE_COLS)),
+    static: stat.filter((r) => allPricesPositive(r, STATIC_PRICE_COLS)),
+    warnings,
+  };
 }
 
 // Acilista onerilen profil (kullanici mac bazinda degistirir, secim kaydedilir).

@@ -41,6 +41,10 @@ const ENTRIES: Entry[] = [
         tr: "Input sekmesi iki listeyi de gösterir; her birinde \"Export .xlsx\" ve \"MMI'ya ekle\" vardır, yani iki dosya MMI'ya ayrı ayrı gider. Profiller sekmesinde Excel'deki fiyat tablosu durur; üç lig için ortaktır, herkes düzenleyip kaydedebilir.",
       },
       {
+        en: "Profiles: each market row has a tick on the left. Untick it and that market is not sent for any match. A price of 0 also switches a market off, only for that profile; a 0 price is never sent.",
+        tr: "Profiller: her market satırının solunda bir tik var. Tik kaldırılırsa o market hiçbir maç için gönderilmez. 0 oran da marketi kapatır, yalnızca o profil için; 0 oran hiçbir zaman gönderilmez.",
+      },
+      {
         en: "Cup, Match Stats Model: adding a manual fixture and saving Fixture IDs work again. Both had been failing on the Cup page since 19 August.",
         tr: "Kupa, Match Stats Model: manuel fikstür ekleme ve Fixture ID kaydetme yeniden çalışıyor. İkisi de 19 Ağustos'tan beri Kupa sayfasında çalışmıyordu.",
       },

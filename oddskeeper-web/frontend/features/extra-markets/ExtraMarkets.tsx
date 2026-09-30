@@ -510,7 +510,9 @@ function ProfilesTab({
             if (v != null) onPatch({ payback: v });
           }}
         />
-        <span className="text-xs text-ink-3">{t("extras.sharedNote")}</span>
+        <span className="text-xs text-ink-3">
+          {t("extras.sharedNote")} {t("extras.zeroNote")}
+        </span>
         <div className="ml-auto flex items-center gap-2">
           {dirty && !status && <span className="text-xs text-warn">{t("extras.unsaved")}</span>}
           {statusNote}
@@ -527,6 +529,7 @@ function ProfilesTab({
         <table className="text-left text-[12px]">
           <thead className="bg-card-2 text-[10px] uppercase tracking-wide text-ink-3">
             <tr>
+              <th className={th} title={t("extras.sendHint")}></th>
               <th className={th}>{t("extras.colTemplate")}</th>
               <th className={th}>{t("extras.colMarket")}</th>
               <th className={th}>{t("extras.colType")}</th>
@@ -542,8 +545,12 @@ function ProfilesTab({
           <tbody>
             {config.markets.map((m, i) => {
               const special = isSpecialTemplate(m.template);
+              const on = m.enabled !== false;
               return (
-                <tr key={i} className="border-t border-line/60 hover:bg-veil">
+                <tr key={i} className={`border-t border-line/60 hover:bg-veil ${on ? "" : "opacity-50"}`}>
+                  <td className={`${td} text-center`} title={t("extras.sendHint")}>
+                    <input type="checkbox" checked={on} onChange={(e) => patchMarket(i, { enabled: e.target.checked })} />
+                  </td>
                   <td className={`${td} whitespace-nowrap font-medium text-ink`}>{m.template}</td>
                   <td className={`${td} whitespace-nowrap text-ink-2`}>{m.name}</td>
                   <td className={`${td} text-ink-3`}>{m.type}</td>
@@ -598,7 +605,7 @@ function ProfilesTab({
               );
             })}
             <tr className="border-t border-line bg-card-2/40">
-              <td className={`${td} whitespace-nowrap text-[11px] font-medium text-ink-2`} colSpan={5} title={t("extras.extrasRowHint")}>
+              <td className={`${td} whitespace-nowrap text-[11px] font-medium text-ink-2`} colSpan={6} title={t("extras.extrasRowHint")}>
                 {t("extras.extrasRow")}
               </td>
               {config.profiles.map((p) => (
