@@ -36,7 +36,7 @@ ENV = dotenv_values(ROOT / ".env")
 DSN = (ENV.get("DATABASE_URL") or "").strip().strip('"')
 PROXY = (ENV.get("PROXY_URL") or "").strip()
 PROXIES = {"http": PROXY, "https": PROXY} if PROXY else None
-API = "https://api.sofascore.com/api/v1"
+API = "https://www.sofascore.com/api/v1"
 IMG = "https://img.sofascore.com/api/v1/player/{sid}/image"
 SLEEP = float(os.environ.get("SS_SLEEP", "0.5"))
 

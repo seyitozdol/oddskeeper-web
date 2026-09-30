@@ -33,7 +33,7 @@ ROOT = Path(__file__).resolve().parents[2]  # pipeline/
 ENV = dotenv_values(ROOT / ".env")
 PROXY = (ENV.get("PROXY_URL") or "").strip()
 PROXIES = {"http": PROXY, "https": PROXY} if PROXY else None
-API = "https://api.sofascore.com/api/v1"
+API = "https://www.sofascore.com/api/v1"
 HDR = {"Accept": "application/json"}
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))

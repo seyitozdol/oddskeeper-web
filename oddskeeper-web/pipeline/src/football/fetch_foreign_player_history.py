@@ -31,7 +31,7 @@ import psycopg2
 from curl_cffi import requests as cr
 from dotenv import load_dotenv
 
-API = "https://api.sofascore.com/api/v1"
+API = "https://www.sofascore.com/api/v1"
 SLEEP = 0.6
 
 # SofaScore sezon adi -> bizim season_label

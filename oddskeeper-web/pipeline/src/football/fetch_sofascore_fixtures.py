@@ -25,7 +25,7 @@ PROXY = (ENV.get("PROXY_URL") or "").strip()
 # Proxy OPSIYONEL: VPS'te PROXY_URL, lokalde proxysiz (curl_cffi impersonate direkt calisir).
 PROXIES = {"http": PROXY, "https": PROXY} if PROXY else None
 DSN = (ENV.get("DATABASE_URL") or "").strip().strip('"')
-API = "https://api.sofascore.com/api/v1"
+API = "https://www.sofascore.com/api/v1"
 
 COMP = sys.argv[1]
 UT = sys.argv[2]

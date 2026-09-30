@@ -27,7 +27,7 @@ from load_sofascore_shotmap import build_shot_rows, upsert  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]  # pipeline/
 ENV = dotenv_values(ROOT / ".env")
-API = "https://api.sofascore.com/api/v1"
+API = "https://www.sofascore.com/api/v1"
 MISSING_FILE = ROOT / "data" / "shotmap_missing.txt"
 
 

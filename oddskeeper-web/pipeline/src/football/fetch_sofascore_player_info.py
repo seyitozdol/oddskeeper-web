@@ -23,7 +23,7 @@ ENV = dotenv_values(ROOT / ".env")
 PROXY = (ENV.get("PROXY_URL") or "").strip()
 PROXIES = {"http": PROXY, "https": PROXY}
 DSN = (ENV.get("DATABASE_URL") or "").strip().strip('"')
-API = "https://api.sofascore.com/api/v1"
+API = "https://www.sofascore.com/api/v1"
 
 COMP = sys.argv[1] if len(sys.argv) > 1 else "Süper Lig"
 SLEEP = float(os.environ.get("SS_SLEEP", "0.4"))

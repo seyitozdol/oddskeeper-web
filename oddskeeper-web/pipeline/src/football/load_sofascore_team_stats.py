@@ -313,7 +313,7 @@ def _test():
     a = ap.parse_args()
     prox = (ENV.get("PROXY_URL") or "").strip()
     P = {"http": prox, "https": prox}
-    API = "https://api.sofascore.com/api/v1"
+    API = "https://www.sofascore.com/api/v1"
 
     def g(u):
         for _ in range(4):

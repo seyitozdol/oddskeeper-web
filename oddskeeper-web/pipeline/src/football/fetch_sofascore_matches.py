@@ -37,7 +37,7 @@ ENV = dotenv_values(ROOT / ".env")
 PROXY = (ENV.get("PROXY_URL") or "").strip()
 PROXIES = {"http": PROXY, "https": PROXY}
 HDR = {"Accept": "application/json"}
-API = "https://api.sofascore.com/api/v1"
+API = "https://www.sofascore.com/api/v1"
 
 # test edilmis yukleyici mantigini yeniden kullan (dosyaya dokunmadan)
 sys.path.insert(0, str(Path(__file__).resolve().parent))

@@ -24,7 +24,7 @@ import requests as rq
 from curl_cffi import requests as cr
 from dotenv import load_dotenv, dotenv_values
 
-SOFA = "https://api.sofascore.com/api/v1"
+SOFA = "https://www.sofascore.com/api/v1"
 
 
 def num_from(s, unit):

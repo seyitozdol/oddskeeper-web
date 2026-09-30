@@ -27,7 +27,7 @@ ENV = dotenv_values(ROOT / ".env")
 DB_URL = (ENV.get("DATABASE_URL") or "").strip().strip('"')
 PROXY = (ENV.get("PROXY_URL") or os.environ.get("PROXY_URL") or "").strip()
 PROXIES = {"http": PROXY, "https": PROXY} if PROXY else None
-API = "https://api.sofascore.com/api/v1"
+API = "https://www.sofascore.com/api/v1"
 SLEEP = float(os.environ.get("SOFA_SLEEP", "0.5"))
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))

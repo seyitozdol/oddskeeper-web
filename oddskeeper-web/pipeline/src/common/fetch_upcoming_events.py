@@ -7,7 +7,9 @@ kategori taranir:
     (Avrupa kupasi elemeleri, milli takimlar, kadin takimlari dahil).
 
 Dogrudan requests 403 yedigi icin curl_cffi ile Safari TLS taklidi yapilir (chrome parmak izi 2026-09-25 itibariyla "challenge" 403 aliyor)
-(api.sofascore.com tarayici disi TLS parmak izlerini engelliyor).
+(SofaScore tarayici disi TLS parmak izlerini engelliyor). 2026-09-29 19:30 UTC'den beri
+api.sofascore.com her parmak izine 403 "Forbidden" donuyor; istekler sitenin kendi
+kullandigi www.sofascore.com/api/v1 yolundan gider (ayni uclar, ayni JSON).
 
 SofaScore datacenter IP'lerini de engelledigi icin istekler PROXY_URL
 (residential, .env) uzerinden gider; VPS'te proxysiz calismaz. Bu, uretim
@@ -33,7 +35,7 @@ import psycopg2
 from curl_cffi import requests as creq
 from dotenv import load_dotenv
 
-API = "https://api.sofascore.com/api/v1"
+API = "https://www.sofascore.com/api/v1"
 REQUEST_GAP_SEC = 0.35
 DEFAULT_DAYS_AHEAD = 28
 
