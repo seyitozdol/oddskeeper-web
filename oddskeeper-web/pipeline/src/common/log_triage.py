@@ -92,6 +92,9 @@ RULES = [
      "SSL/proxy gecici arizasi"),
     ("fetch_bos_kosu", re.compile(r"FETCH FAILED"), "warn",
      "fetch kosusu bos gecti; 10dk sonraki kosu telafi eder"),
+    # fetch_upcoming_events bayat silme bekcisi: sweep'in yarisi ve fazlasi cekilemedi
+    ("upcoming_sweep_bos", re.compile(r"HATA: upcoming sweep cekilemedi"), "warn",
+     "Upcoming Events sweep'i cekilemedi (bayat silme atlandi; 3 saat sonraki kosu telafi eder)"),
     ("lig_fetch_hata", re.compile(r"^\[[^\]]+\] HATA: "), "warn",
      "lig fetch hatasi (gecici ag/kaynak)"),
     # --- CRIT: bilinen kritik siniflar (etiketli gorunsun diye) ---

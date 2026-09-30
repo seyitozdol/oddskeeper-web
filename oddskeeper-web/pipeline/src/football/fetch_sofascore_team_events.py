@@ -35,6 +35,7 @@ PROXY = (ENV.get("PROXY_URL") or "").strip()
 PROXIES = {"http": PROXY, "https": PROXY}
 DSN = (ENV.get("DATABASE_URL") or "").strip().strip('"')
 API = "https://www.sofascore.com/api/v1"
+FETCH_FAILS = 0  # 3 denemede de cekilemeyen istek sayisi (404 sayilmaz)
 
 STATUS_MAP = {
     "notstarted": "scheduled", "postponed": "postponed",
@@ -73,6 +74,8 @@ def get(url, tries=3):
         except Exception:  # noqa
             pass
         time.sleep(1.2)
+    global FETCH_FAILS
+    FETCH_FAILS += 1
     return None
 
 
@@ -171,6 +174,11 @@ def main() -> None:
 
     print(f"toplam upsert: {total}" + (f", yazilamayan: {failed}" if failed else ""), flush=True)
     conn.close()
+    # get() 403/ag hatasini None'a cevirir; kaynak kapaliyken kosu "0 mac, OK" gorunmesin
+    # (29-30 Eyl 2026 kesintisinde 6 kosu boyle sessiz gecti).
+    if teams and FETCH_FAILS * 2 >= len(teams):
+        print(f"[team-events] HATA: {FETCH_FAILS} istek cekilemedi ({len(teams)} takim)", flush=True)
+        sys.exit(1)
     if failed:
         sys.exit(1)
 

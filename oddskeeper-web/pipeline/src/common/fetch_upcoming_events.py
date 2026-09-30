@@ -43,6 +43,8 @@ DEFAULT_DAYS_AHEAD = 28
 # (PROXY_URL, .env) ardindan cekilir; bos kalirsa VPS'te 403 gelir.
 PROXIES: dict = {}
 _RAW_PROXY = ""
+# 3 denemede de cekilemeyen istek sayisi (404 sayilmaz); bayat silme bekcisi kullanir.
+FAILED_REQUESTS = 0
 
 
 def _sticky_proxy(raw: str, sessid: str) -> str:
@@ -152,6 +154,8 @@ def get_json(url: str) -> dict | None:
             log(f"istek hatasi ({attempt}. deneme): {url} -> {ex}")
         _new_session()  # bozuk exit'ten kac: sonraki deneme yeni sticky oturumda
         time.sleep(2.0)
+    global FAILED_REQUESTS
+    FAILED_REQUESTS += 1
     return None
 
 
@@ -231,7 +235,7 @@ def main() -> None:
     cur = conn.cursor()
 
     dates = [date.today() + timedelta(days=i) for i in range(days_ahead + 1)]
-    total, per_sport = 0, {}
+    total, per_sport, n_req = 0, {}, 0
 
     for sport, plan in CATEGORY_PLAN.items():
         rows: dict[int, dict] = {}
@@ -239,6 +243,7 @@ def main() -> None:
             for cat_id in cat_ids:
                 for d in dates:
                     data = get_json(f"{API}/category/{cat_id}/scheduled-events/{d.isoformat()}")
+                    n_req += 1
                     time.sleep(REQUEST_GAP_SEC)
                     if not data:
                         continue
@@ -258,15 +263,25 @@ def main() -> None:
     # Temizlik: eski maclar + kaynaktan kaldirilmis notstarted kayitlar.
     cur.execute("delete from tracker.upcoming_events where start_ts < now() - interval '3 days'")
     old_n = cur.rowcount
-    cur.execute(
-        "delete from tracker.upcoming_events "
-        "where status_type = 'notstarted' and last_seen_at < now() - interval '24 hours'"
-    )
-    stale_n = cur.rowcount
+    # Bayat silme bekcisi: sweep'in yarisi ve fazlasi cekilemediyse "24 saattir gorulmedi",
+    # "kaynaktan kalkti" demek DEGIL. 29-30 Eyl 2026 SofaScore kesintisinde (21 saat, her
+    # kosu 0 mac) 705 notstarted kaydin tamami bu sorguyla silinmek uzereydi.
+    sweep_ok = total > 0 and FAILED_REQUESTS * 2 < n_req
+    stale_n = 0
+    if sweep_ok:
+        cur.execute(
+            "delete from tracker.upcoming_events "
+            "where status_type = 'notstarted' and last_seen_at < now() - interval '24 hours'"
+        )
+        stale_n = cur.rowcount
     conn.commit()
     conn.close()
 
     log(f"bitti: toplam {total} mac ({per_sport}), silinen eski {old_n} + bayat {stale_n}")
+    if not sweep_ok:
+        log(f"HATA: upcoming sweep cekilemedi ({FAILED_REQUESTS}/{n_req} istek basarisiz, "
+            f"{total} mac); bayat silme atlandi")
+        sys.exit(1)
 
 
 if __name__ == "__main__":
