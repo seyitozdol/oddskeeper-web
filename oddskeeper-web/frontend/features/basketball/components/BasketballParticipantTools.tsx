@@ -13,6 +13,7 @@ import { postModelHistory, exportFileName, type ModelHistoryDraft } from "@/lib/
 import { confirmPermanentSave } from "@/lib/confirm-save";
 import { configLabel, METRIC_LABELS, metricLabel } from "../marketConfig";
 import { H2H_DEFAULTS, H2H_MAX_SIMS } from "../h2h";
+import type { BktH2HInputRow } from "../types";
 import { ALL_ROLES, roleBadgeClass, roleLabelKey, roleDescKey, formatMatchDate } from "../lib";
 import {
   fetchPmFixtures, insertFixture, updateFixture, deleteFixture, PmFixture,
@@ -58,6 +59,8 @@ export default function BasketballParticipantTools({ splits, forms, windows, tea
   const [modelConfig, setModelConfig] = useState<PmModelConfig[]>([]);
   const [inputType, setInputType] = useState<InputType>("player");
   const [inputRows, setInputRows] = useState<BktInputRow[]>([]);
+  // H2H satırları ayrı dosya biçimiyle gider (Input > H2H).
+  const [h2hRows, setH2hRows] = useState<BktH2HInputRow[]>([]);
   // Export gecmisi: Add aninda snapshot toplanir (key -> entry), export'ta yazilir.
   const [snapshotByKey, setSnapshotByKey] = useState<Record<string, HistorySnapEntry>>({});
   const [historyReloadKey, setHistoryReloadKey] = useState(0);
@@ -103,7 +106,7 @@ export default function BasketballParticipantTools({ splits, forms, windows, tea
     { id: "players", label: t("basketball.tabPlayerList") },
     { id: "fixtures", label: t("basketball.tabFixtures") },
     { id: "config", label: t("basketball.tabConfig") },
-    { id: "input", label: `${t("basketball.tabInput")}${inputRows.length ? ` (${inputRows.length})` : ""}` },
+    { id: "input", label: `${t("basketball.tabInput")}${inputRows.length + h2hRows.length ? ` (${inputRows.length + h2hRows.length})` : ""}` },
   ];
 
   return (
@@ -121,7 +124,7 @@ export default function BasketballParticipantTools({ splits, forms, windows, tea
           playerIds={playerIds} config={config} inputRows={inputRows} roles={roles} rosterMode={rosterMode} modelConfig={modelConfig}
           competition={league === "euroleague" ? "E" : league === "eurocup" ? "U" : undefined} season={season}
           historyLeague={league} historyReloadKey={historyReloadKey}
-          onAdd={handleAdd} />
+          onAdd={handleAdd} h2hRows={h2hRows} onAddH2h={(rows) => setH2hRows((p) => [...p, ...rows])} />
       </div>
       {tab === "players" && <PlayerListTab players={players} playerIds={playerIds} onSaved={setPlayerIds} league={league} profileBase={profileBase} t={t} />}
       {tab === "fixtures" && <FixturesTab fixtures={fixtures} teams={teams} reload={reloadFixtures} league={league} isAdmin={isAdmin} locale={locale} t={t} />}
@@ -131,7 +134,7 @@ export default function BasketballParticipantTools({ splits, forms, windows, tea
           <RetentionConfig sport="basketball" league={league} />
         </div>
       )}
-      {tab === "input" && <InputTab allRows={inputRows} setRows={setInputRows} initialType={inputType} onExported={handleExported} t={t} />}
+      {tab === "input" && <InputTab allRows={inputRows} setRows={setInputRows} h2hRows={h2hRows} setH2hRows={setH2hRows} initialType={inputType} onExported={handleExported} t={t} />}
     </div>
   );
 }
@@ -588,6 +591,8 @@ function PlayerRolesConfig({ modelConfig, reload, t }: {
 // Team Metrics "L10 WTD" = sezon*wall + son10*w10 + son5*w5 karışımı (Excel TeamProps F);
 // "Model" = sayı uplift'i × bu karışım. Player Dist "Model" = son10*w10 + son5*w5 +
 // sezon*wall (saf). BasketballTools bu anahtarları okur.
+const H2H_TIE_DEFAULT = H2H_DEFAULTS.tieVoid ? 1 : 0;
+
 function ModelWeightsConfig({ modelConfig, reload, t }: {
   modelConfig: PmModelConfig[]; reload: () => void; t: (k: string) => string;
 }) {
@@ -616,7 +621,7 @@ function ModelWeightsConfig({ modelConfig, reload, t }: {
     const ok = await saveModelConfig([
       { key: "h2h_payback", value: hPayback },
       { key: "h2h_sims", value: Math.round(hSims) },
-      { key: "h2h_tie_void", value: hv("h2h_tie_void", 0) === 1 ? 1 : 0 },
+      { key: "h2h_tie_void", value: hv("h2h_tie_void", H2H_TIE_DEFAULT) === 1 ? 1 : 0 },
     ]);
     setSavingH(false);
     if (ok) { setHEdits({}); reload(); }
@@ -719,7 +724,7 @@ function ModelWeightsConfig({ modelConfig, reload, t }: {
           <span className="pb-1.5 text-[11px] text-ink-3">{t("basketball.h2hCfgSimsNote")}</span>
         </div>
         <label className="mt-3 flex cursor-pointer items-center gap-2 text-[12px] text-ink-2">
-          <input type="checkbox" checked={hv("h2h_tie_void", 0) === 1}
+          <input type="checkbox" checked={hv("h2h_tie_void", H2H_TIE_DEFAULT) === 1}
             onChange={(e) => setHEdits((s) => ({ ...s, h2h_tie_void: e.target.checked ? 1 : 0 }))}
             className="accent-[var(--accent)]" />
           {t("basketball.h2hCfgTieVoid")}
@@ -737,6 +742,8 @@ function ConfigTab({ config, reload, modelConfig, reloadModelConfig, inputType, 
   league: string; locale: string; t: (k: string) => string;
 }) {
   const [sub, setSub] = useState<"roles" | "model" | "markets">("roles");
+  // Market Templates tipi: Player / Team (Input'un açılış tipiyle ortak) + H2H (yalnız burada).
+  const [grp, setGrp] = useState<"player" | "team" | "h2h">(inputType);
   const [edits, setEdits] = useState<Record<string, Partial<PmMarketConfig>>>({});
   const [saving, setSaving] = useState(false);
   const [nm, setNm] = useState<{ name: string; base: string; side: string; template: string; std: string }>({ name: "", base: "manual", side: "home", template: "", std: "" });
@@ -853,6 +860,35 @@ function ConfigTab({ config, reload, modelConfig, reloadModelConfig, inputType, 
     </div>
   );
 
+  // H2H marketleri: sabit üç satır (sayı / ribaund / asist); line kuralı yok, yalnız
+  // model tiki + import şablonu + std + payback (boş = varsayılan).
+  const h2hSection = () => (
+    <div className="overflow-x-auto">
+      <table className="border-collapse text-[11px]">
+        <thead><tr className="border-b border-line">
+          <th className={`${th} text-center`}>{t("basketball.colModelFlag")}</th>
+          <th className={`${th} text-left`}>{t("basketball.colMarket")}</th>
+          <th className={`${th} text-left`}>{t("basketball.marketTemplate")}</th>
+          <th className={`${th} text-right`}>{t("basketball.colStd")}</th>
+          <th className={`${th} text-right`}>{t("basketball.cfgPayback")}</th>
+        </tr></thead>
+        <tbody>
+          {bySection("h2h").map((c) => (
+            <tr key={rk(c)} className="border-t border-line hover:bg-veil">
+              <td className={`${td} text-center`}><input type="checkbox" checked={!!v(c, "in_model")} onChange={(e) => patch(c, { in_model: e.target.checked })} className="accent-[var(--accent)]" /></td>
+              <td className={`${td} text-ink whitespace-nowrap`}>H2H {metricLabel(c.base_metric ?? c.market_key, locale)}</td>
+              <td className={td}><input value={(v(c, "template_id") ?? "").toString()} onChange={(e) => patch(c, { template_id: e.target.value || null })}
+                className="w-24 rounded border border-line bg-field px-1 py-0 text-[11px] text-ink outline-none focus:border-line-strong" placeholder="—" /></td>
+              <td className={`${td} text-right`}>{numCell(c, "std", "w-14", true, t("basketball.cfgDefault"))}</td>
+              <td className={`${td} text-right`}>{numCell(c, "payback", "w-14", true, t("basketball.cfgDefault"))}</td>
+            </tr>
+          ))}
+          {bySection("h2h").length === 0 ? <tr><td colSpan={5} className="px-2 py-3 text-[12px] text-ink-3">—</td></tr> : null}
+        </tbody>
+      </table>
+    </div>
+  );
+
   const inp = "rounded border border-line bg-field px-2 py-1 text-[12px] text-ink outline-none focus:border-line-strong";
   const subBtn = (id: "roles" | "model" | "markets", label: string) => (
     <button onClick={() => setSub(id)} className={`rounded-lg px-4 py-1.5 text-[13px] ${sub === id ? "bg-veil font-semibold text-ink" : "text-ink-3 hover:text-ink-2"}`}>{label}</button>
@@ -874,15 +910,17 @@ function ConfigTab({ config, reload, modelConfig, reloadModelConfig, inputType, 
           <div className="mb-3 flex flex-wrap items-center gap-3">
             <label className="flex items-center gap-2 text-[12px] text-ink-2">
               <span className="text-[10px] uppercase tracking-[0.14em] text-ink-3">{t("basketball.colType")}</span>
-              <select value={inputType} onChange={(e) => setInputType(e.target.value as "player" | "team")} className={inp}>
+              <select value={grp} onChange={(e) => { const g = e.target.value as "player" | "team" | "h2h"; setGrp(g); if (g !== "h2h") setInputType(g); }} className={inp}>
                 <option value="player">Player</option>
                 <option value="team">Team</option>
+                <option value="h2h">H2H</option>
               </select>
             </label>
             <button onClick={save} disabled={saving || Object.keys(edits).length === 0} className={`${btnSave} disabled:opacity-50`}>{t("basketball.save")}</button>
-            <p className="text-[11px] text-ink-3">{t("basketball.cfgHint")}</p>
+            <p className="text-[11px] text-ink-3">{grp === "h2h" ? t("basketball.h2hCfgMarketsHint") : t("basketball.cfgHint")}</p>
           </div>
 
+          {grp === "h2h" ? h2hSection() : (<>
           {/* yeni market ekleme — isim elle; base "manual"=data yok (dağıtılmaz) */}
           <div className="mb-3 flex flex-wrap items-end gap-2 rounded-lg border border-line bg-card-2/40 px-3 py-2">
             <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-3">{t("basketball.cfgNewMarket")}</span>
@@ -902,6 +940,7 @@ function ConfigTab({ config, reload, modelConfig, reloadModelConfig, inputType, 
           </div>
 
           <Section grp={inputType} />
+          </>)}
         </div>
       )}
     </div>
@@ -918,12 +957,76 @@ const UNDER_CLOSED_PRICE = 1;
 const exportUnder = (r: BktInputRow) => r.under ?? UNDER_CLOSED_PRICE;
 const PLAYER_IN_HEADERS = ["Fixture ID", "Market Template", "Market Participant", "Market Participant Sort Order", "Line", "Market Status", "Selection_1_Name", "Selection_1_Price", "Selection_2_Name", "Selection_2_Price"];
 const TEAM_IN_HEADERS = ["Fixture ID", "Market Template", "Line", "Market Status", "Selection_1_Name", "Selection_1_Price", "Selection_2_Name", "Selection_2_Price"];
+// H2H: secenek 1 = ev oyuncusu (sort 1), secenek 2 = deplasman oyuncusu (sort 2).
+const H2H_IN_HEADERS = ["Fixture ID", "Market Template", "Market Status", "Selection_1_Price", "Selection_1_SubParticipantID", "Selection_1_ParticipantSortOrder", "Selection_2_Price", "Selection_2_SubParticipantID", "Selection_2_ParticipantSortOrder"];
 
-function InputTab({ allRows, setRows, initialType, onExported, t }: {
+function H2HInput({ rows, setRows, t }: { rows: BktH2HInputRow[]; setRows: (r: BktH2HInputRow[]) => void; t: (k: string) => string }) {
+  // Export ve Add to MMI ayni dosyayi uretir. 0 / eksik oran zaten eklenmez; burada da suzulur.
+  const sendable = rows.filter((r) => r.homePrice > 0 && r.awayPrice > 0);
+  const buildExportFile = async () => {
+    const XLSX = await import("xlsx");
+    const aoa = [H2H_IN_HEADERS, ...sendable.map((r) => [r.fixtureExtId, r.template, "", r.homePrice, r.homeId, 1, r.awayPrice, r.awayId, 2])];
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "input");
+    return { XLSX, wb, filename: `${exportFileName("basketbol_input_h2h")}.xlsx` };
+  };
+  const exportXlsx = async () => {
+    const { XLSX, wb, filename } = await buildExportFile();
+    XLSX.writeFile(wb, filename);
+  };
+  const buildMmiFile = async (): Promise<MmiFile> => {
+    const { XLSX, wb, filename } = await buildExportFile();
+    return { filename, data: XLSX.write(wb, { type: "array", bookType: "xlsx" }) as ArrayBuffer };
+  };
+  return (
+    <div>
+      <div className="mb-3 flex flex-wrap items-center gap-1.5">
+        <button onClick={exportXlsx} disabled={sendable.length === 0} className={`${btnSave} disabled:opacity-50`}>{t("basketball.printXlsx")}</button>
+        <AddToMmiButton build={buildMmiFile} disabled={sendable.length === 0} align="left" className={`${btnSave} disabled:opacity-50`} />
+        <button onClick={() => setRows([])} disabled={rows.length === 0} className={`${btnGhost} disabled:opacity-50`}>{t("basketball.clear")}</button>
+      </div>
+      {rows.length === 0 ? (
+        <p className="text-sm text-ink-3">{t("basketball.inputEmpty")}</p>
+      ) : (
+        <div className="max-h-[70vh] overflow-auto">
+          <table className="min-w-full border-collapse text-[12px]">
+            <thead className="sticky top-0 bg-card-2"><tr className="text-[9px] uppercase tracking-[0.1em] text-ink-3">
+              <th className="px-2 py-1 text-left">Fixture</th><th className="px-2 py-1 text-left">Template</th>
+              <th className="px-2 py-1 text-left">{t("basketball.player")} 1</th><th className="px-2 py-1 text-left">ID</th><th className="px-2 py-1 text-right">{t("basketball.h2hOdds")}</th>
+              <th className="px-2 py-1 text-left">{t("basketball.player")} 2</th><th className="px-2 py-1 text-left">ID</th><th className="px-2 py-1 text-right">{t("basketball.h2hOdds")}</th>
+              <th className="px-2 py-1"></th>
+            </tr></thead>
+            <tbody>
+              {rows.map((r, i) => (
+                <tr key={i} className="border-t border-line hover:bg-veil">
+                  <td className="px-2 py-0.5 text-ink-3">{r.fixtureExtId || "—"}</td>
+                  <td className="px-2 py-0.5 text-ink-2">{r.template}</td>
+                  <td className="px-2 py-0.5 text-ink whitespace-nowrap">{r.homeName}</td>
+                  <td className="px-2 py-0.5 text-ink-3">{r.homeId}</td>
+                  <td className="px-2 py-0.5 text-right tabular-nums text-ink">{r.homePrice.toFixed(2)}</td>
+                  <td className="px-2 py-0.5 text-ink whitespace-nowrap">{r.awayName}</td>
+                  <td className="px-2 py-0.5 text-ink-3">{r.awayId}</td>
+                  <td className="px-2 py-0.5 text-right tabular-nums text-ink">{r.awayPrice.toFixed(2)}</td>
+                  <td className="px-2 py-0.5 text-right"><button onClick={() => setRows(rows.filter((x) => x !== r))} className="text-neg hover:underline">×</button></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function InputTab({ allRows, setRows, h2hRows, setH2hRows, initialType, onExported, t }: {
   allRows: BktInputRow[]; setRows: (r: BktInputRow[]) => void;
+  h2hRows: BktH2HInputRow[]; setH2hRows: (r: BktH2HInputRow[]) => void;
   initialType: "player" | "team"; onExported?: (type: "player" | "team") => void; t: (k: string) => string;
 }) {
-  const [type, setType] = useState<"player" | "team">(initialType);
+  // H2H ayri dosya bicimi: secilince kendi paneli (H2HInput) acilir.
+  const [view, setView] = useState<"player" | "team" | "h2h">(initialType);
+  const type: "player" | "team" = view === "h2h" ? "player" : view;
   const isTeam = type === "team";
   const rows = allRows.filter((r) => r.kind === type);
   const rowName = (r: BktInputRow) => (r.kind === "team" ? r.teamName : r.playerName);
@@ -956,17 +1059,24 @@ function InputTab({ allRows, setRows, initialType, onExported, t }: {
   return (
     <div>
       <div className="mb-3 flex flex-wrap items-center gap-1.5">
-        {(["player", "team"] as const).map((k) => (
-          <button key={k} onClick={() => setType(k)}
-            className={`rounded-full px-4 py-1.5 text-xs font-semibold transition ${type === k ? "bg-accent text-on-accent" : "bg-card-2 text-ink-2 hover:text-ink"}`}>
-            {k === "team" ? "Team" : "Player"}{cnt(k) ? ` (${cnt(k)})` : ""}
-          </button>
-        ))}
-        <button onClick={exportXlsx} disabled={rows.length === 0} className={`ml-3 ${btnSave} disabled:opacity-50`}>{t("basketball.printXlsx")}</button>
-        <AddToMmiButton build={buildMmiFile} onSent={() => onExported?.(type)} disabled={rows.length === 0} align="left" className={`${btnSave} disabled:opacity-50`} />
-        <button onClick={clear} disabled={rows.length === 0} className={`${btnGhost} disabled:opacity-50`}>{t("basketball.clear")}</button>
+        {(["player", "team", "h2h"] as const).map((k) => {
+          const n = k === "h2h" ? h2hRows.length : cnt(k);
+          return (
+            <button key={k} onClick={() => setView(k)}
+              className={`rounded-full px-4 py-1.5 text-xs font-semibold transition ${view === k ? "bg-accent text-on-accent" : "bg-card-2 text-ink-2 hover:text-ink"}`}>
+              {k === "team" ? "Team" : k === "h2h" ? "H2H" : "Player"}{n ? ` (${n})` : ""}
+            </button>
+          );
+        })}
+        {view !== "h2h" ? (<>
+          <button onClick={exportXlsx} disabled={rows.length === 0} className={`ml-3 ${btnSave} disabled:opacity-50`}>{t("basketball.printXlsx")}</button>
+          <AddToMmiButton build={buildMmiFile} onSent={() => onExported?.(type)} disabled={rows.length === 0} align="left" className={`${btnSave} disabled:opacity-50`} />
+          <button onClick={clear} disabled={rows.length === 0} className={`${btnGhost} disabled:opacity-50`}>{t("basketball.clear")}</button>
+        </>) : null}
       </div>
-      {rows.length === 0 ? (
+      {view === "h2h" ? (
+        <H2HInput rows={h2hRows} setRows={setH2hRows} t={t} />
+      ) : rows.length === 0 ? (
         <p className="text-sm text-ink-3">{t("basketball.inputEmpty")}</p>
       ) : (
         <div className="max-h-[70vh] overflow-auto">

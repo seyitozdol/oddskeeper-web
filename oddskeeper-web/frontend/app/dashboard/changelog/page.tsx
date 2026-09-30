@@ -37,8 +37,12 @@ const ENTRIES: Entry[] = [
         tr: "O maç için Oyuncu Dağıtımı'ndan Input'a gönderdiğin değerleri kullanır; önce iki oyuncunun da rakamını gönder. Her eşleşme maç maç simüle edilir: bir oyuncunun daha yüksek bitirdiği maçların oranı onun olasılığıdır, oran da payback bölü bu olasılıktır. \"Pozisyona göre eşleştir\" tek tıkla G ile G, F ile F, C ile C oyuncularını eşleştirir.",
       },
       {
-        en: "Settings are in Config > Model > H2H: payback, number of simulated matches and what happens on a tie. The tab shows the odds for now; it does not send them to Input yet.",
-        tr: "Ayarlar Config > Model > H2H altında: payback, simüle edilen maç sayısı ve beraberlikte ne olacağı. Sekme şimdilik oranları gösterir; henüz Input'a göndermez.",
+        en: "\"Add to Input\" on the H2H tab sends the priced pairs to a new H2H list on the Input tab, with its own \"Export .xlsx\" and \"Add to MMI\". A tie returns the stake, so the odds are worked out over the matches that do not end level. A player without an external ID is marked and his pairs are not sent.",
+        tr: "H2H sekmesindeki \"Add to Input\", fiyatlanan eşleşmeleri Input sekmesindeki yeni H2H listesine gönderir; listenin kendi \"Export .xlsx\" ve \"MMI'ya ekle\" düğmeleri var. Beraberlikte bahis iade edildiği için oranlar berabere bitmeyen maçlar üzerinden hesaplanır. Dış ID'si olmayan oyuncu işaretlenir ve eşleşmeleri gönderilmez.",
+      },
+      {
+        en: "Settings: Config > Model > H2H has payback, number of simulated matches and the tie rule; Config > Market Templates > H2H has the import template, Std and payback per market.",
+        tr: "Ayarlar: Config > Model > H2H altında payback, simüle edilen maç sayısı ve beraberlik kuralı; Config > Market Templates > H2H altında market bazında import şablonu, Std ve payback.",
       },
     ],
   },

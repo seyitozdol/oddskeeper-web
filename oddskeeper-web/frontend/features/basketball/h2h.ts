@@ -24,7 +24,10 @@ export type H2HConfig = {
   tieVoid: boolean;
 };
 
-export const H2H_DEFAULTS: H2HConfig = { payback: 0.915, sims: 1000, tieVoid: false };
+// Beraberlikte bahis iade edilir (sahip karari 2026-09-30) -> varsayilan tieVoid.
+export const H2H_DEFAULTS: H2HConfig = { payback: 0.915, sims: 1000, tieVoid: true };
+// Import sablon kodlari (Config > Market Templates > H2H satirlari yoksa kullanilir).
+export const H2H_TEMPLATES: Record<H2HMetric, string> = { points: "H2HPTSN", rebounds: "H2HRBN", assists: "H2HAN" };
 export const H2H_MAX_SIMS = 200_000;
 const PRICE_CAP = 999;
 

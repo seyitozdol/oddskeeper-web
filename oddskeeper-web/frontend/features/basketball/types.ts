@@ -213,6 +213,20 @@ export type BktInputRow = {
   teamSlug?: string;    // oyuncunun bu maçtaki takımı (H2H: ev / deplasman ayrımı)
 };
 
+// H2H (oyuncu - oyuncu) Input satiri. Secenek 1 = ev oyuncusu (sort 1), secenek 2 =
+// deplasman oyuncusu (sort 2); kimlik = oyuncunun dis (participant) id'si.
+export type BktH2HInputRow = {
+  fixtureExtId: string;
+  template: string;
+  metricKey: string;      // points | rebounds | assists
+  homeId: string;
+  awayId: string;
+  homePrice: number;
+  awayPrice: number;
+  homeName: string;
+  awayName: string;
+};
+
 export type BktEuroSeasonRow = {
   bsl_player_slug: string;
   competition: string;        // E | U
