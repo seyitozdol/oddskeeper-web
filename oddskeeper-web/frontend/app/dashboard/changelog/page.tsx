@@ -21,6 +21,24 @@ const TAG_FIX: L = { en: "Fix", tr: "Düzeltme" };
 
 const ENTRIES: Entry[] = [
   {
+    date: { en: "30 September", tr: "30 Eylül" },
+    title: {
+      en: "Match Stats Model: send the Input list straight to MMI",
+      tr: "Match Stats Model: Input listesini doğrudan MMI'ya gönder",
+    },
+    tag: TAG_NEW,
+    items: [
+      {
+        en: "The Input tab has a new \"Add to MMI\" button next to \"Export .xlsx\". It sends the same file straight to the MMI upload, with no file saved and no file picked. Your browser asks for confirmation first, then shows the answer from MMI.",
+        tr: "Input sekmesinde \"Export .xlsx\" düğmesinin yanında yeni bir \"MMI'ya ekle\" düğmesi var. Aynı dosyayı, diske kaydetmeden ve dosya seçmeden doğrudan MMI yüklemesine gönderir. Tarayıcı önce onay sorar, sonra MMI'dan gelen cevabı gösterir.",
+      },
+      {
+        en: "It needs the MMI bridge script installed in your browser and the MMI site open and signed in on another tab. Without the script the button only shows a short note. A successful send is saved to the export history, the same as an export.",
+        tr: "Çalışması için tarayıcıda MMI köprü betiği kurulu, MMI sitesi de başka bir sekmede açık ve giriş yapılmış olmalı. Betik yoksa düğme yalnızca kısa bir not gösterir. Başarılı gönderim, export gibi export geçmişine kaydedilir.",
+      },
+    ],
+  },
+  {
     date: { en: "29 September", tr: "29 Eylül" },
     title: {
       en: "Upcoming Events: Bets10 odds for EuroCup matches",
