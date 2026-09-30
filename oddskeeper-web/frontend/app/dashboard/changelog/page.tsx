@@ -36,6 +36,10 @@ const ENTRIES: Entry[] = [
         en: "It affects everything built on player averages: Match-Player Tools, player profiles, match logs and rankings. Matches played and minutes per game are now counted over played matches only, so the role of 17 players changed (for example Limited to Rotation). EuroLeague, EuroCup and this season's BSL data did not have the problem.",
         tr: "Oyuncu ortalamalarına dayanan her yeri etkiler: Match-Player Tools, oyuncu profilleri, maç logları ve sıralamalar. Oynanan maç sayısı ve maç başına dakika artık yalnızca oynanan maçlardan hesaplanıyor; bu yüzden 17 oyuncunun rolü değişti (örneğin Sınırlı'dan Rotasyon'a). EuroLeague, EuroCup ve bu sezonun BSL verisinde bu sorun yoktu.",
       },
+      {
+        en: "Wrong match dates fixed: in 35 of last season's 262 BSL matches (from week 21 on) the day and month were swapped, so for example the play-off game of 2 June 2026 showed as 6 February. Match logs now show the right dates in the right order. Averages were not affected, because recent-form windows go by week.",
+        tr: "Hatalı maç tarihleri düzeltildi: geçen sezonun 262 BSL maçının 35'inde (21. haftadan itibaren) gün ile ay yer değiştirmişti; örneğin 2 Haziran 2026'daki play-off maçı 6 Şubat görünüyordu. Maç logları artık doğru tarihleri doğru sırayla gösteriyor. Ortalamalar etkilenmemişti, çünkü son maç pencereleri haftaya göre sıralanıyor.",
+      },
     ],
   },
   {
