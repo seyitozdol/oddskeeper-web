@@ -6,6 +6,7 @@ import HistoryDropdown from "@/features/model-history/HistoryDropdown";
 import type { ModelHistoryRecord } from "@/lib/model-history";
 import { useJustAdded } from "@/lib/use-just-added";
 import { buildLadder, buildConfiguredLines, moneyline, type LineConfig } from "../odds";
+import { H2H_DEFAULTS, H2H_METRICS, h2hPrice, type H2HConfig, type H2HMetric } from "../h2h";
 import { PLAYER_MARKETS, TEAM_MARKETS, teamStd, playerStd, metricLabel, metricInfo, isDistributable } from "../marketConfig";
 import { formatMatchDate, normalizePositionCode, positionLabel, roleLabelKey, roleBadgeClass, LEADER_METRICS, playerPhotoUrl, teamLogoPath } from "../lib";
 import { TeamCrest } from "./ui";
@@ -221,7 +222,7 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
 
   const [homeSlug, setHomeSlug] = useState(teams[0]?.team_slug ?? "");
   const [awaySlug, setAwaySlug] = useState(teams[1]?.team_slug ?? "");
-  const [tab, setTab] = useState<"team" | "player">("team");
+  const [tab, setTab] = useState<"team" | "player" | "h2h">("team");
   const [fixSel, setFixSel] = useState("");
   const fixExtId = pmFixtures.find((f) => String(f.id) === fixSel)?.external_id ?? "";
   // Fikstür dropdown'ı haftaya göre gruplu (optgroup); haftasız (kupa/manuel) satırlar üstte düz.
@@ -386,6 +387,32 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
     }
     return m;
   }, [inputRows, fixExtId]);
+  // ── H2H: beslemesi bu maç için Input'a GÖNDERİLMİŞ sayı / ribaund / asist değerleri ──
+  const h2hCfg: H2HConfig = {
+    payback: mc("h2h_payback", H2H_DEFAULTS.payback),
+    sims: Math.max(0, Math.round(mc("h2h_sims", H2H_DEFAULTS.sims))),
+    tieVoid: mc("h2h_tie_void", 0) === 1,
+  };
+  const h2hPlayers = useMemo(() => {
+    const m = new Map<string, H2HPlayer>();
+    for (const r of inputRows) {
+      if (r.kind !== "player" || r.fixtureExtId !== fixExtId || !r.playerSlug || !r.metricKey || r.value == null) continue;
+      if (!(H2H_METRICS as readonly string[]).includes(r.metricKey)) continue;
+      const side = r.side === 1 ? "home" : "away";
+      const teamSlug = side === "home" ? homeSlug : awaySlug;
+      if (r.teamSlug !== teamSlug) continue; // başka bir eşleşmeden kalan satır
+      const k = `${side}:${r.playerSlug}`;
+      if (!m.has(k)) m.set(k, { slug: r.playerSlug, name: r.playerName, side, pos: normalizePositionCode(roleBy.get(`${teamSlug}:${r.playerSlug}`)?.position) ?? null, values: {} });
+      m.get(k)!.values[r.metricKey as H2HMetric] = r.value;
+    }
+    const all = [...m.values()].sort((a, b) => (b.values.points ?? 0) - (a.values.points ?? 0) || a.name.localeCompare(b.name, "tr"));
+    return { home: all.filter((p) => p.side === "home"), away: all.filter((p) => p.side === "away") };
+  }, [inputRows, fixExtId, homeSlug, awaySlug, roleBy]);
+  // Eşleşmeler maç bazında tutulur (fikstür/takım değişince diğer maçınkiler karışmaz).
+  const h2hKey = `${fixExtId}|${homeSlug}|${awaySlug}`;
+  const [h2hPairsBy, setH2hPairsBy] = useState<Record<string, H2HPair[]>>({});
+  const h2hStd = (metric: H2HMetric) => playerMarkets.find((m) => m.base === metric)?.std ?? playerStd(metric);
+
   // Kombine market (pr/pa/pra) için gönderilmiş bileşenlerin toplamı; eksik bileşen → null.
   const comboValue = (mk: string, w: BktPlayerWindowRow): number | null => {
     const parts = COMBO_PARTS[playerMarketBy.get(mk)?.base ?? ""];
@@ -435,7 +462,7 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
   // ── Export gecmisi: snapshot topla + Add'e ekle; ayrica restore ──
   const historyMatchLabel = home && away ? `${home.team_name} - ${away.team_name}` : `${homeSlug} - ${awaySlug}`;
   const buildSnapshot = (): BktSnapshot => ({
-    fixSel, homeSlug, awaySlug, tab, ptsOv, traderMetric, totalOverride, teamTicks, playerVal, ticks,
+    fixSel, homeSlug, awaySlug, tab: tab === "h2h" ? "player" : tab, ptsOv, traderMetric, totalOverride, teamTicks, playerVal, ticks,
   });
   const addWithHistory = (rows: BktInputRow[], kind: "team" | "player") => {
     onAdd(rows, {
@@ -596,7 +623,7 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
         <>
           {/* tab bar */}
           <div className="flex gap-1.5">
-            {([["team", t("basketball.tabTeamMetrics")], ["player", t("basketball.tabPlayerDist")]] as const).map(([k, lbl]) => (
+            {([["team", t("basketball.tabTeamMetrics")], ["player", t("basketball.tabPlayerDist")], ["h2h", t("basketball.tabH2h")]] as const).map(([k, lbl]) => (
               <button key={k} onClick={() => setTab(k)} className={`rounded-full px-4 py-1.5 text-xs font-semibold ${tab === k ? "bg-accent text-on-accent" : "bg-card-2 text-ink-2 hover:text-ink"}`}>{lbl}</button>
             ))}
           </div>
@@ -629,6 +656,10 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
                 ))}
               </div>
             </div>
+          ) : tab === "h2h" ? (
+            <H2HPanel homeName={home.team_name} awayName={away.team_name} players={h2hPlayers}
+              pairs={h2hPairsBy[h2hKey] ?? []} setPairs={(next) => setH2hPairsBy((p) => ({ ...p, [h2hKey]: next }))}
+              cfg={h2hCfg} stdOf={h2hStd} locale={locale} t={t} />
           ) : (
             <PlayerDistPanel homeSlug={homeSlug} awaySlug={awaySlug} homeName={home.team_name} awayName={away.team_name}
               effHome={effHome} effAway={effAway} winBy={winBy} isTicked={isTicked} setTick={(k, v) => setTicks((p) => ({ ...p, [k]: v }))}
@@ -789,6 +820,137 @@ function TeamRecent({ name, logs, locale, t }: { name: string; logs: BktTeamLogR
   );
 }
 
+/* ---------- H2H (oyuncu - oyuncu) paneli ---------- */
+// Bir ev + bir deplasman oyuncusu eşleşir; sayı / ribaund / asist için iki tarafın oranı
+// h2hPrice ile hesaplanır. Beklentiler yalnız Input'a gönderilmiş değerlerden gelir.
+type H2HPlayer = { slug: string; name: string; side: "home" | "away"; pos: string | null; values: Partial<Record<H2HMetric, number>> };
+type H2HPair = { home: string; away: string };
+
+function H2HPanel({ homeName, awayName, players, pairs, setPairs, cfg, stdOf, locale, t }: {
+  homeName: string; awayName: string;
+  players: { home: H2HPlayer[]; away: H2HPlayer[] };
+  pairs: H2HPair[]; setPairs: (next: H2HPair[]) => void;
+  cfg: H2HConfig; stdOf: (m: H2HMetric) => number;
+  locale: "tr" | "en"; t: (k: string) => string;
+}) {
+  const [selHome, setSelHome] = useState("");
+  const [selAway, setSelAway] = useState("");
+  const homeBy = new Map(players.home.map((p) => [p.slug, p]));
+  const awayBy = new Map(players.away.map((p) => [p.slug, p]));
+  const has = (h: string, a: string) => pairs.some((p) => p.home === h && p.away === a);
+  // Seçim boşsa ya da oyuncu listeden düştüyse ilk oyuncu.
+  const curHome = homeBy.has(selHome) ? selHome : players.home[0]?.slug ?? "";
+  const curAway = awayBy.has(selAway) ? selAway : players.away[0]?.slug ?? "";
+  const addPair = () => { if (curHome && curAway && !has(curHome, curAway)) setPairs([...pairs, { home: curHome, away: curAway }]); };
+  // Aynı pozisyondaki oyuncuları sayı beklentisine göre sırayla eşleştirir (G-G, F-F, C-C ...).
+  const autoPair = () => {
+    const next = [...pairs];
+    const positions = [...new Set(players.home.map((p) => p.pos).filter((x): x is string => !!x))];
+    for (const pos of positions) {
+      const hs = players.home.filter((p) => p.pos === pos), as = players.away.filter((p) => p.pos === pos);
+      for (let i = 0; i < Math.min(hs.length, as.length); i++) {
+        if (!next.some((p) => p.home === hs[i].slug && p.away === as[i].slug)) next.push({ home: hs[i].slug, away: as[i].slug });
+      }
+    }
+    setPairs(next);
+  };
+  const optLabel = (p: H2HPlayer) => {
+    const v = H2H_METRICS.filter((m) => p.values[m] != null).map((m) => `${metricLabel(m, locale)} ${fmt(p.values[m])}`).join(" · ");
+    return `${p.name}${p.pos ? ` (${p.pos})` : ""} · ${v}`;
+  };
+  const visible = pairs.filter((p) => homeBy.has(p.home) && awayBy.has(p.away));
+  const ready = players.home.length > 0 && players.away.length > 0;
+  const sel = "max-w-[22rem] rounded-md border border-line bg-field px-2 py-1.5 text-[13px] text-ink outline-none focus:border-line-strong";
+  const posBadge = (pos: string | null) => pos ? <span className="rounded bg-veil px-1.5 py-0.5 text-[10px] font-semibold text-ink-2">{pos}</span> : null;
+  const odd = (v: number | null) => (v == null ? "-" : v.toFixed(2));
+  const valueCell = (v: number | undefined, prob: number | null) => (
+    v == null
+      ? <span title={t("basketball.h2hNoValue")} className="cursor-help text-ink-3">-</span>
+      : <>{fmt(v)}{prob != null ? <span className="ml-1.5 text-[10px] text-ink-3">{(prob * 100).toFixed(1)}%</span> : null}</>
+  );
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-ink-3">
+        <span>{t("basketball.h2hHint")}</span>
+        <span className="rounded-md bg-veil px-2 py-1 font-semibold text-ink-2">
+          Payback {cfg.payback} · {cfg.sims > 0 ? t("basketball.h2hSims").replace("{n}", String(cfg.sims)) : t("basketball.h2hExact")} · {cfg.tieVoid ? t("basketball.h2hTieVoid") : t("basketball.h2hTieLose")}
+        </span>
+      </div>
+
+      {!ready ? (
+        <p className="rounded-lg border border-line bg-card-2/40 px-3 py-4 text-[13px] text-ink-3">{t("basketball.h2hNoPlayers")}</p>
+      ) : (
+        <div className="flex flex-wrap items-end gap-3 rounded-lg border border-line bg-card-2/40 px-3 py-2.5">
+          <label className="flex flex-col gap-1">
+            <span className="text-[10px] uppercase tracking-[0.14em] text-ink-3">{homeName}</span>
+            <select value={curHome} onChange={(e) => setSelHome(e.target.value)} className={sel}>
+              {players.home.map((p) => <option key={p.slug} value={p.slug}>{optLabel(p)}</option>)}
+            </select>
+          </label>
+          <span className="pb-2 text-ink-3">vs</span>
+          <label className="flex flex-col gap-1">
+            <span className="text-[10px] uppercase tracking-[0.14em] text-ink-3">{awayName}</span>
+            <select value={curAway} onChange={(e) => setSelAway(e.target.value)} className={sel}>
+              {players.away.map((p) => <option key={p.slug} value={p.slug}>{optLabel(p)}</option>)}
+            </select>
+          </label>
+          <button onClick={addPair} disabled={has(curHome, curAway)} className="rounded-md border border-accent bg-accent px-3 py-1.5 text-[12px] font-semibold text-on-accent hover:opacity-90 disabled:opacity-50">{t("basketball.h2hAddPair")}</button>
+          <button onClick={autoPair} title={t("basketball.h2hAutoPairHint")} className="rounded-md border border-line px-3 py-1.5 text-[12px] font-semibold text-ink-2 hover:text-ink">{t("basketball.h2hAutoPair")}</button>
+          {pairs.length > 0 ? <button onClick={() => setPairs([])} className="ml-auto rounded-md border border-line px-3 py-1.5 text-[12px] font-semibold text-ink-2 hover:text-ink">{t("basketball.clear")}</button> : null}
+        </div>
+      )}
+
+      {visible.length > 0 ? (
+        <div className="grid gap-4 xl:grid-cols-2">
+          {visible.map((pair) => {
+            const a = homeBy.get(pair.home)!, b = awayBy.get(pair.away)!;
+            return (
+              <div key={`${pair.home}|${pair.away}`} className="overflow-x-auto rounded-lg border border-line bg-card">
+                <div className="flex items-center gap-2 border-b border-line px-3 py-2 text-[13px]">
+                  <span className="font-semibold text-ink">{a.name}</span>{posBadge(a.pos)}
+                  <span className="text-ink-3">vs</span>
+                  <span className="font-semibold text-ink">{b.name}</span>{posBadge(b.pos)}
+                  <button onClick={() => setPairs(pairs.filter((p) => !(p.home === pair.home && p.away === pair.away)))} title={t("basketball.remove")} className="ml-auto text-[14px] text-neg hover:opacity-70">×</button>
+                </div>
+                <table className="min-w-full border-collapse text-[12px]">
+                  <thead><tr className="text-[9px] uppercase tracking-[0.1em] text-ink-3">
+                    <th className="px-3 py-1.5 text-left">{t("basketball.colMarket")}</th>
+                    <th className="px-2 py-1.5 text-right">{a.name}</th>
+                    <th className="px-2 py-1.5 text-right">{t("basketball.h2hOdds")}</th>
+                    <th className="px-2 py-1.5 text-right">{b.name}</th>
+                    <th className="px-2 py-1.5 text-right">{t("basketball.h2hOdds")}</th>
+                    <th className="px-3 py-1.5 text-right" title={t("basketball.h2hTieInfo")}>{t("basketball.h2hTie")}</th>
+                  </tr></thead>
+                  <tbody>
+                    {H2H_METRICS.map((metric) => {
+                      const va = a.values[metric], vb = b.values[metric];
+                      const std = stdOf(metric);
+                      const r = va != null && vb != null ? h2hPrice(va, std, vb, std, cfg) : null;
+                      return (
+                        <tr key={metric} className="border-t border-line">
+                          <td className="px-3 py-1.5 text-ink whitespace-nowrap">{metricLabel(metric, locale)}</td>
+                          <td className="px-2 py-1.5 text-right tabular-nums text-ink-2">{valueCell(va, r ? r.pA : null)}</td>
+                          <td className="px-2 py-1.5 text-right tabular-nums font-semibold text-accent-ink">{r ? odd(r.oddsA) : "-"}</td>
+                          <td className="px-2 py-1.5 text-right tabular-nums text-ink-2">{valueCell(vb, r ? r.pB : null)}</td>
+                          <td className="px-2 py-1.5 text-right tabular-nums font-semibold text-accent-ink">{r ? odd(r.oddsB) : "-"}</td>
+                          <td className="px-3 py-1.5 text-right tabular-nums text-ink-3">{r ? `${(r.pTie * 100).toFixed(1)}%` : "-"}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            );
+          })}
+        </div>
+      ) : ready ? (
+        <p className="text-[12px] text-ink-3">{t("basketball.h2hNoPairs")}</p>
+      ) : null}
+    </div>
+  );
+}
+
 /* ---------- Player distribution panel ---------- */
 function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effAway, winBy, isTicked, setTick, playerValue, setVal, playerModel, comboValue, isOverridden, teamTarget, onAdd, historySlot, historyNotice, playerIds, playerCfg, playerMarkets, existingKeys, existingPlayerMkt, onReset, competition, season, fixExtId, roleBy, euroTeamSlugs, leaderBy, rosterMode, locale, t }: {
   homeSlug: string; awaySlug: string; homeName: string; awayName: string; effHome: number; effAway: number;
@@ -889,7 +1051,7 @@ function PlayerDistPanel({ homeSlug, awaySlug, homeName, awayName, effHome, effA
       const value = playerValue(slug, mk, w, allList, eff, distribute);
       if (!(value > 0)) { zero++; continue; } // 0/negatif
       for (const r of ladderFor(w)) {
-        rows.push({ kind: "player", fixtureExtId: fixExtId, template: tplCur ?? met.tpl, participant: participantOf(w), side: sideNum, line: r.line, over: r.overPrice, under: r.underPrice, marketLabel: met.label, playerName: w.player_name, teamName: teamNm, playerSlug: w.player_slug, metricKey: met.base, value });
+        rows.push({ kind: "player", fixtureExtId: fixExtId, template: tplCur ?? met.tpl, participant: participantOf(w), side: sideNum, line: r.line, over: r.overPrice, under: r.underPrice, marketLabel: met.label, playerName: w.player_name, teamName: teamNm, playerSlug: w.player_slug, metricKey: met.base, value, teamSlug: slug });
       }
       sent++;
     }

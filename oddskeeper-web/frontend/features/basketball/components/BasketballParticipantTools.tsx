@@ -12,6 +12,7 @@ import AddToMmiButton, { type MmiFile } from "@/components/AddToMmiButton";
 import { postModelHistory, exportFileName, type ModelHistoryDraft } from "@/lib/model-history";
 import { confirmPermanentSave } from "@/lib/confirm-save";
 import { configLabel, METRIC_LABELS, metricLabel } from "../marketConfig";
+import { H2H_DEFAULTS, H2H_MAX_SIMS } from "../h2h";
 import { ALL_ROLES, roleBadgeClass, roleLabelKey, roleDescKey, formatMatchDate } from "../lib";
 import {
   fetchPmFixtures, insertFixture, updateFixture, deleteFixture, PmFixture,
@@ -594,6 +595,8 @@ function ModelWeightsConfig({ modelConfig, reload, t }: {
   const [pEdits, setPEdits] = useState<Record<string, number>>({});
   const [savingT, setSavingT] = useState(false);
   const [savingP, setSavingP] = useState(false);
+  const [hEdits, setHEdits] = useState<Record<string, number>>({});
+  const [savingH, setSavingH] = useState(false);
   const dbVal = (k: string, d: number) => {
     const c = modelConfig.find((x) => x.key === k);
     return c ? c.value : d;
@@ -602,6 +605,22 @@ function ModelWeightsConfig({ modelConfig, reload, t }: {
   const pv = (k: string, d: number) => pEdits[k] ?? dbVal(k, d);
   const tTotal = tv("team_model_wall", 50) + tv("team_model_w10", 20) + tv("team_model_w5", 30);
   const pTotal = pv("player_model_w10", 20) + pv("player_model_w5", 30) + pv("player_model_wall", 50);
+  // H2H ayarları (model_config h2h_*): payback, simülasyon maç sayısı, beraberlik kuralı.
+  const hv = (k: string, d: number) => hEdits[k] ?? dbVal(k, d);
+  const hPayback = hv("h2h_payback", H2H_DEFAULTS.payback);
+  const hSims = hv("h2h_sims", H2H_DEFAULTS.sims);
+  const hValid = hPayback > 0 && hPayback <= 1 && hSims >= 0 && hSims <= H2H_MAX_SIMS;
+  const saveH2h = async () => {
+    if (!(await confirmPermanentSave())) return;
+    setSavingH(true);
+    const ok = await saveModelConfig([
+      { key: "h2h_payback", value: hPayback },
+      { key: "h2h_sims", value: Math.round(hSims) },
+      { key: "h2h_tie_void", value: hv("h2h_tie_void", 0) === 1 ? 1 : 0 },
+    ]);
+    setSavingH(false);
+    if (ok) { setHEdits({}); reload(); }
+  };
 
   const saveTeam = async () => {
     if (!(await confirmPermanentSave())) return;
@@ -675,6 +694,36 @@ function ModelWeightsConfig({ modelConfig, reload, t }: {
           {field(t("basketball.modelWSeason"), pv("player_model_wall", 50), (v) => setPEdits((s) => ({ ...s, player_model_wall: v })))}
           {totalCell(pTotal)}
         </div>
+      </div>
+
+      {/* H2H */}
+      <div className={box}>
+        <div className="mb-2 flex items-center gap-3">
+          <button onClick={saveH2h} disabled={savingH || !hValid || Object.keys(hEdits).length === 0} className={saveBtn}>{t("basketball.save")}</button>
+          <span className="text-[13px] font-semibold text-ink">{t("basketball.h2hCfgTitle")}</span>
+        </div>
+        <p className="mb-3 max-w-2xl text-[11px] text-ink-3">{t("basketball.h2hCfgHint")}</p>
+        <div className="flex flex-wrap items-end gap-4">
+          <div className="flex flex-col gap-1">
+            <span className="text-[10px] uppercase tracking-[0.12em] text-ink-3">{t("basketball.h2hCfgPayback")}</span>
+            <input type="number" min={0.5} max={1} step={0.005} value={hPayback}
+              onChange={(e) => { const v = parseFloat(e.target.value); if (!Number.isNaN(v)) setHEdits((s) => ({ ...s, h2h_payback: v })); }}
+              className="w-20 rounded border border-line bg-field px-2 py-1 text-right text-[13px] text-ink outline-none focus:border-line-strong" />
+          </div>
+          <div className="flex flex-col gap-1">
+            <span className="text-[10px] uppercase tracking-[0.12em] text-ink-3" title={t("basketball.h2hCfgSimsNote")}>{t("basketball.h2hCfgSims")}</span>
+            <input type="number" min={0} max={H2H_MAX_SIMS} step={100} value={hSims}
+              onChange={(e) => setHEdits((s) => ({ ...s, h2h_sims: e.target.value === "" ? 0 : Math.max(0, parseInt(e.target.value, 10) || 0) }))}
+              className="w-24 rounded border border-line bg-field px-2 py-1 text-right text-[13px] text-ink outline-none focus:border-line-strong" />
+          </div>
+          <span className="pb-1.5 text-[11px] text-ink-3">{t("basketball.h2hCfgSimsNote")}</span>
+        </div>
+        <label className="mt-3 flex cursor-pointer items-center gap-2 text-[12px] text-ink-2">
+          <input type="checkbox" checked={hv("h2h_tie_void", 0) === 1}
+            onChange={(e) => setHEdits((s) => ({ ...s, h2h_tie_void: e.target.checked ? 1 : 0 }))}
+            className="accent-[var(--accent)]" />
+          {t("basketball.h2hCfgTieVoid")}
+        </label>
       </div>
     </div>
   );

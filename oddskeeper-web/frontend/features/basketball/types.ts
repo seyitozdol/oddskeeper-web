@@ -210,6 +210,7 @@ export type BktInputRow = {
   playerSlug?: string;
   metricKey?: string;   // base metric: points | rebounds | assists | ...
   value?: number;
+  teamSlug?: string;    // oyuncunun bu maçtaki takımı (H2H: ev / deplasman ayrımı)
 };
 
 export type BktEuroSeasonRow = {

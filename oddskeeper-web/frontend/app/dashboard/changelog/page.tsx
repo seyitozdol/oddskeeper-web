@@ -23,6 +23,28 @@ const ENTRIES: Entry[] = [
   {
     date: { en: "30 September", tr: "30 Eylül" },
     title: {
+      en: "Basketball: H2H tab in Match-Player Tools",
+      tr: "Basketbol: Match-Player Tools'ta H2H sekmesi",
+    },
+    tag: TAG_NEW,
+    items: [
+      {
+        en: "Match-Player Tools has a new \"H2H\" tab next to Team Metrics and Player Distribution (BSL, EuroLeague and EuroCup). Pick one player from each team and it prices which of the two finishes higher, for points, rebounds and assists.",
+        tr: "Match-Player Tools'ta Takım Metrikleri ve Oyuncu Dağıtımı'nın yanında yeni bir \"H2H\" sekmesi var (BSL, EuroLeague ve EuroCup). Her takımdan birer oyuncu seç; sayı, ribaund ve asist için ikisinden hangisinin daha yüksek bitireceğini fiyatlar.",
+      },
+      {
+        en: "It uses the values you sent to Input from Player Distribution for that match, so send both players' numbers first. Each pair is simulated match by match: the share of matches a player finishes higher is his probability, and the odds are payback divided by that. \"Pair by position\" matches G with G, F with F and C with C in one click.",
+        tr: "O maç için Oyuncu Dağıtımı'ndan Input'a gönderdiğin değerleri kullanır; önce iki oyuncunun da rakamını gönder. Her eşleşme maç maç simüle edilir: bir oyuncunun daha yüksek bitirdiği maçların oranı onun olasılığıdır, oran da payback bölü bu olasılıktır. \"Pozisyona göre eşleştir\" tek tıkla G ile G, F ile F, C ile C oyuncularını eşleştirir.",
+      },
+      {
+        en: "Settings are in Config > Model > H2H: payback, number of simulated matches and what happens on a tie. The tab shows the odds for now; it does not send them to Input yet.",
+        tr: "Ayarlar Config > Model > H2H altında: payback, simüle edilen maç sayısı ve beraberlikte ne olacağı. Sekme şimdilik oranları gösterir; henüz Input'a göndermez.",
+      },
+    ],
+  },
+  {
+    date: { en: "30 September", tr: "30 Eylül" },
+    title: {
       en: "Extras: the Extra Markets sheet, now on the site",
       tr: "Extras: Extra Markets dosyası artık sitede",
     },
