@@ -23,6 +23,19 @@ const ENTRIES: Entry[] = [
   {
     date: { en: "1 October", tr: "1 Ekim" },
     title: {
+      en: "Basketball Match-Player Tools: finished weeks no longer listed in the fixture selector",
+      tr: "Basketbol Match-Player Tools: biten haftalar fikstür seçicide listelenmiyor",
+    },
+    items: [
+      {
+        en: "The Fixture dropdown on the Model tab now shows only weeks that still have matches to play. A week drops out the day after its last match. The Fixtures tab is unchanged, so older rows can still be reviewed or deleted there.",
+        tr: "Model sekmesindeki Fixture listesi artık yalnızca oynanacak maçı kalan haftaları gösteriyor. Bir hafta, son maçının ertesi günü listeden düşer. Fixtures sekmesi aynı kaldı; eski satırlar oradan incelenip silinebilir.",
+      },
+    ],
+  },
+  {
+    date: { en: "1 October", tr: "1 Ekim" },
+    title: {
       en: "Player profile: national team and past seasons in Detailed Stats, with comparison",
       tr: "Oyuncu profili: Detailed Stats'ta milli takım ve geçmiş sezonlar, kıyaslamayla",
     },

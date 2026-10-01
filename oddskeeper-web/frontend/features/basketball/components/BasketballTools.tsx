@@ -231,6 +231,8 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
   const [fixSel, setFixSel] = useState("");
   const fixExtId = pmFixtures.find((f) => String(f.id) === fixSel)?.external_id ?? "";
   // Fikstür dropdown'ı haftaya göre gruplu (optgroup); haftasız (kupa/manuel) satırlar üstte düz.
+  // Tamamlanan haftalar listelenmez: hafta "bitti" = tarihli maçlarının hepsi geçmişte.
+  // Tarihsiz hafta, kendisinden sonraki bir hafta bittiyse bitmiş sayılır. Seçili fikstür her zaman kalır.
   const fixtureGroups = useMemo(() => {
     const by = new Map<number, PmFixture[]>();
     const none: PmFixture[] = [];
@@ -239,8 +241,22 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
       if (!by.has(f.week)) by.set(f.week, []);
       by.get(f.week)!.push(f);
     }
-    return { none, weeks: [...by.keys()].sort((x, y) => x - y).map((w) => ({ week: w, rows: by.get(w)! })) };
-  }, [pmFixtures]);
+    const today = new Date().toISOString().slice(0, 10);
+    const weeks = [...by.keys()].sort((x, y) => x - y);
+    const datedDone = weeks.filter((w) => {
+      const dated = by.get(w)!.filter((f) => !!f.match_date);
+      return dated.length > 0 && dated.every((f) => f.match_date! < today);
+    });
+    const lastDone = datedDone.length ? datedDone[datedDone.length - 1] : null;
+    const done = new Set(datedDone);
+    for (const w of weeks) if (lastDone != null && w < lastDone && by.get(w)!.every((f) => !f.match_date)) done.add(w);
+    return {
+      none,
+      weeks: weeks
+        .map((w) => ({ week: w, rows: done.has(w) ? by.get(w)!.filter((f) => String(f.id) === fixSel) : by.get(w)! }))
+        .filter((g) => g.rows.length > 0),
+    };
+  }, [pmFixtures, fixSel]);
   const fixtureOption = (f: PmFixture) => (
     <option key={f.id} value={f.id}>{(f.home_team_name || f.home_team_slug)} — {(f.away_team_name || f.away_team_slug)}{f.external_id ? ` [${f.external_id}]` : ""}</option>
   );
