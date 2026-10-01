@@ -365,17 +365,23 @@ def known_match_ids(cur) -> set:
 
 
 def teams_with_history(cur) -> set:
-    """Gecmisi yuklenmis sayilan takimlar: en az 4 maci olanlar (yalniz Turkiye'ye
-    karsi oynadigi maclarla gorunen eski rakip 'gecmisi var' sayilmaz)."""
-    cur.execute(
-        """select tid from (
-             select home_team_source_id tid from football.matches
-               where source='sofascore' and competition in (select competition from ref.national_competitions)
-             union all
-             select away_team_source_id from football.matches
-               where source='sofascore' and competition in (select competition from ref.national_competitions)
-           ) x group by tid having count(*) >= 4""")
+    """Resmi mac gecmisi YUKLENMIS takimlar (football.national_history_teams).
+    Mac sayisindan cikarilmaz: eski bir rakibin yalniz Turkiye'ye (ya da gecmisi
+    yuklu baska bir takima) karsi oynadigi maclar 'gecmisi var' anlamina gelmez."""
+    cur.execute("select team_source_id from football.national_history_teams")
     return {r[0] for r in cur.fetchall()}
+
+
+def mark_history(cur, team_id, name, since_ts: float) -> None:
+    cur.execute(
+        """insert into football.national_history_teams (team_source_id, team_name, since_date)
+           values (%s, %s, to_timestamp(%s)::date)
+           on conflict (team_source_id) do update set
+             team_name = excluded.team_name,
+             since_date = least(football.national_history_teams.since_date, excluded.since_date),
+             updated_at = now()""",
+        (str(team_id), name, since_ts),
+    )
 
 
 def upcoming_opponents(next_events: list, comps: dict) -> dict:
@@ -427,14 +433,19 @@ def mode_backfill(cur, comps, since_ts, sleep, force):
     print(f"[Turkiye] yuklenecek mac: {len(todo)}", flush=True)
     changed = process_events(todo, comps, sleep)
     skip |= {str(e["id"]) for e in todo}
+    if not FETCH_FAIL:
+        mark_history(cur, FOCUS_TEAM_ID, "Türkiye", since_ts)
 
     opps = upcoming_opponents(nxt, comps)
     for tid, name in opps.items():
         evs = history_for(tid, since_ts, comps, skip)
         print(f"[rakip {name} {tid}] yuklenecek mac: {len(evs)}", flush=True)
         upsert_meta(cur, evs, comps)
+        fails_before = FETCH_FAIL
         changed += process_events(evs, comps, sleep)
         skip |= {str(e["id"]) for e in evs}
+        if FETCH_FAIL == fails_before:
+            mark_history(cur, tid, name, since_ts)
     return changed, len(opps)
 
 
@@ -452,6 +463,11 @@ def mode_fixtures(cur, comps, since_ts, sleep):
     known = known_match_ids(cur)
     have = teams_with_history(cur)
     changed, new_teams = 0, 0
+    recent_cut = time.time() - 3 * 86400
+    # Son 72 saatte biten (kacmis / duzeltilmis) maclar: takimlar ortak mac
+    # oynadigi icin id ile tekillestirilir, her mac bir kez islenir.
+    recent = {e["id"]: e for e in last
+              if allowed(e, comps) and (e.get("startTimestamp") or 0) >= recent_cut}
     opps = upcoming_opponents(nxt, comps)
     for tid, name in opps.items():
         # rakibin yaklasan fiksturleri de yazilir: --sync adaylarini DB'den bulur.
@@ -462,18 +478,18 @@ def mode_fixtures(cur, comps, since_ts, sleep):
             evs = history_for(tid, since_ts, comps, known)
             print(f"[YENI rakip {name} {tid}] gecmis yukleniyor: {len(evs)} mac", flush=True)
             upsert_meta(cur, evs, comps)
+            fails_before = FETCH_FAIL
             changed += process_events(evs, comps, sleep)
             known |= {str(e["id"]) for e in evs}
+            if FETCH_FAIL == fails_before:
+                mark_history(cur, tid, name, since_ts)
             new_teams += 1
         else:
-            # son 72 saatte biten ama kacmis / duzeltilmis maclar
-            recent = [e for e in team_events(tid, "last", time.time() - 3 * 86400)
-                      if allowed(e, comps) and (e.get("startTimestamp") or 0) >= time.time() - 3 * 86400]
-            upsert_meta(cur, recent, comps)
-            changed += process_events(recent, comps, sleep)
-    recent_focus = [e for e in last if allowed(e, comps)
-                    and (e.get("startTimestamp") or 0) >= time.time() - 3 * 86400]
-    changed += process_events(recent_focus, comps, sleep)
+            for e in team_events(tid, "last", recent_cut):
+                if allowed(e, comps) and (e.get("startTimestamp") or 0) >= recent_cut:
+                    recent[e["id"]] = e
+    upsert_meta(cur, list(recent.values()), comps)
+    changed += process_events(list(recent.values()), comps, sleep)
     return changed, new_teams
 
 

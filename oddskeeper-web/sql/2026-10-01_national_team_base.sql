@@ -8,6 +8,7 @@
 --   football.national_editions     : turnuva baskisi (ut + sezon id) ve gorunen ad.
 --   football.national_event_meta   : event (mac/fikstur) -> baski + grup.
 --   football.national_standings    : baskinin grup tablosu (SofaScore standings).
+--   football.national_history_teams: resmi mac gecmisi yuklenmis takimlar.
 --
 -- SEZON ETIKETI KURALI (football.matches.season_label): kulup ligleriyle ayni,
 -- tarih bazli (sinir 24 Haziran). Tek istisna yaz turnuvalari (EURO, Dunya
@@ -75,6 +76,18 @@ create table if not exists football.national_standings (
   updated_at timestamptz not null default now(),
   primary key (season_id, tournament_id, team_source_id)
 );
+
+-- Resmi mac gecmisi yuklenmis takimlar (Turkiye + rakipleri). Akis yeni bir
+-- rakibin gecmisini yukleyip yuklemeyecegine buradan karar verir.
+create table if not exists football.national_history_teams (
+  team_source_id text primary key,
+  team_name text,
+  since_date date not null,
+  updated_at timestamptz not null default now()
+);
+alter table football.national_history_teams enable row level security;
+revoke all on football.national_history_teams from anon, authenticated;
+grant select, insert, update, delete on football.national_history_teams to service_role;
 
 -- RLS: tablolar PostgREST'e analytics view'lari uzerinden acilir; dogrudan
 -- erisim yalniz service_role (pipeline). Anon'a hicbir sey yok (anon lockdown).
