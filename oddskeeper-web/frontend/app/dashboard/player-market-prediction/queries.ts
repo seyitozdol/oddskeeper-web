@@ -22,6 +22,9 @@ export type UpcomingFixture = {
   home_team_slug: string;
   away_team_slug: string;
   label: string;
+  // MSM'de olusturulan manuel fikstur (bkz. player-market-prediction/manual-fixtures.ts).
+  manual?: boolean;
+  manualExtId?: string | null;
 };
 
 // Bir mac bitti mi? Kickoff + ~2.5s (2x45 + devre arasi + uzatma + tampon). Round/

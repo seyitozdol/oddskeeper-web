@@ -829,6 +829,23 @@ export function FixtureIdTab({ fixtures }: { fixtures: UpcomingFixture[] }) {
             </thead>
             <tbody>
               {fixtures.map((f) => {
+                // Manuel fikstur: fixture id MSM Fixture sekmesinde girilir, burada salt okunur.
+                if (f.manual) {
+                  return (
+                    <tr key={f.fixture_id} className="border-t border-line transition hover:bg-veil">
+                      <td className="px-2 py-1.5 text-ink whitespace-nowrap">
+                        {f.label}
+                        <span className="ml-1.5 rounded bg-veil px-1 py-0.5 text-[9px] font-semibold uppercase text-ink-3">
+                          {t("msm.manualBadge")}
+                        </span>
+                      </td>
+                      <td className="px-2 py-1.5 whitespace-nowrap">
+                        <span className="font-mono text-[11px] text-ink-2">{f.manualExtId || "-"}</span>
+                        <span className="ml-2 text-[10px] text-ink-3">{t("playerMarket.manualIdHint")}</span>
+                      </td>
+                    </tr>
+                  );
+                }
                 const suggestion = links[f.fixture_id];
                 return (
                 <tr key={f.fixture_id} className="border-t border-line transition hover:bg-veil">

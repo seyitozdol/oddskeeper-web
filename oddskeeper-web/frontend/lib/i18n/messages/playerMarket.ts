@@ -100,6 +100,8 @@ export const playerMarket = defineMessages({
     addLabel: "Add",
 
     selectFixturePrompt: "Start by selecting a fixture.",
+    manualNoSquad: "Manual fixture: there is no squad in this competition for {teams}, so no players are listed for that side.",
+    manualIdHint: "set in Match Stats Model, Fixture tab",
 
     accessRestrictedTitle: "Access Restricted",
     accessRestrictedDescription:
@@ -208,6 +210,8 @@ export const playerMarket = defineMessages({
     addLabel: "Ekle",
 
     selectFixturePrompt: "Fikstür seçerek başlayın.",
+    manualNoSquad: "Manuel fikstür: {teams} için bu ligde kadro yok, o tarafın oyuncuları listelenemiyor.",
+    manualIdHint: "Match Stats Model, Fixture sekmesinden gelir",
 
     accessRestrictedTitle: "Erişim Kısıtlı",
     accessRestrictedDescription:

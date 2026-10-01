@@ -40,6 +40,7 @@ import {
   type DistWeights,
   type StatusConfig,
 } from "./queries";
+import { fetchManualPsmFixtures } from "./manual-fixtures";
 import { DEFAULT_STATUS_CONFIG } from "./compute";
 import { previousSeasonLabel, currentSeasonLabel, latestSeasonLabel } from "@/lib/season";
 import {
@@ -757,7 +758,10 @@ export default function PlayerMarketPredictionPage({
   // gelmemis yeni sezonda bile dogru anah­tar kullanilir. Yine de takvim veri
   // sezonunun gerisinde kalmasin diye en yeni veri sezonuyla max alinir.
   useEffect(() => {
-    fetchUpcomingFixtures().then(setFixtures);
+    // MSM'de olusturulan manuel fiksturler listenin basinda (bkz. manual-fixtures.ts).
+    Promise.all([fetchManualPsmFixtures(HISTORY_LEAGUE), fetchUpcomingFixtures()]).then(
+      ([manual, upcoming]) => setFixtures([...manual, ...upcoming])
+    );
     fetchLatestMetricSeason().then((dataSeason) =>
       setCurrentSeason(latestSeasonLabel(currentSeasonLabel(), dataSeason))
     );
@@ -1040,7 +1044,12 @@ export default function PlayerMarketPredictionPage({
     // Slug birebir bulunamazsa '--' sonrasi kalici anahtarla esler (isim degisimi).
     const lookupPlayerId = playerIdLookup(playerIds);
     const fixtureKey = selectedFixture.fixture_id;
-    const fixtureIdValue = fixtureInputs[fixtureKey] ?? "";
+    // Manuel fikstur: fixture id MSM Fixture sekmesinden gelir (guncel deger icin yeniden okunur).
+    const manualExtId = selectedFixture.manual
+      ? ((await fetchManualPsmFixtures(HISTORY_LEAGUE)).find((f) => f.fixture_id === fixtureKey)?.manualExtId ??
+        selectedFixture.manualExtId)
+      : null;
+    const fixtureIdValue = fixtureInputs[fixtureKey] ?? manualExtId ?? "";
     const stored = storedMarkets.find((m) => m.market_key === selectedMarketKey);
     const marketTemplate = stored?.template_id ?? "";
     const marketType: MarketType = stored?.market_type ?? "static";
@@ -1365,7 +1374,7 @@ export default function PlayerMarketPredictionPage({
                 )
                 .map((f) => (
                   <option key={f.fixture_id} value={f.fixture_id}>
-                    {f.round_number ? `R${f.round_number} · ` : ""}
+                    {f.manual ? "M · " : f.round_number ? `R${f.round_number} · ` : ""}
                     {f.label}
                   </option>
                 ))}
@@ -1493,6 +1502,21 @@ export default function PlayerMarketPredictionPage({
       {loading && (
         <div className="rounded-xl border border-line bg-card px-5 py-8 text-center text-sm text-ink-3">
           {t("common.loading")}
+        </div>
+      )}
+
+      {/* Manuel fikstur: bu ligde kadrosu olmayan taraf icin not */}
+      {!loading && currentSeason && selectedFixture?.manual && (homePlayers.length === 0 || awayPlayers.length === 0) && (
+        <div className="rounded-xl border border-warn/40 bg-warn/10 px-5 py-3 text-[12px] text-ink-2">
+          {t("playerMarket.manualNoSquad").replace(
+            "{teams}",
+            [
+              homePlayers.length === 0 ? selectedFixture.home_team_name : null,
+              awayPlayers.length === 0 ? selectedFixture.away_team_name : null,
+            ]
+              .filter(Boolean)
+              .join(", ")
+          )}
         </div>
       )}
 

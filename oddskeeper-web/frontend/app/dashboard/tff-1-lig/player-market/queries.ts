@@ -28,6 +28,9 @@ export type UpcomingFixture = {
   home_source_team_id: string;
   away_source_team_id: string;
   label: string;
+  // MSM'de olusturulan manuel fikstur (bkz. player-market-prediction/manual-fixtures.ts).
+  manual?: boolean;
+  manualExtId?: string | null;
 };
 
 // Bir mac bitti mi? Kickoff + ~2.5s. Round/hafta beklemeden MAC BAZLI arsivleme:

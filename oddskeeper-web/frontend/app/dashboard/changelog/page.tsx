@@ -23,6 +23,28 @@ const ENTRIES: Entry[] = [
   {
     date: { en: "1 October", tr: "1 Ekim" },
     title: {
+      en: "Football: manual fixtures now appear in Player Stats Model",
+      tr: "Futbol: manuel fikstürler artık Player Stats Model'de de görünüyor",
+    },
+    tag: TAG_NEW,
+    items: [
+      {
+        en: "A manual fixture created on the Fixture tab of Match Stats Model is now listed in Player Stats Model as well, at the top of the fixture selector with an M prefix. This works in Süper Lig, 1. Lig, Champions League, Europa League, Conference League and the national team.",
+        tr: "Match Stats Model'in Fixture sekmesinde oluşturulan manuel fikstür artık Player Stats Model'de de listeleniyor; fikstür seçicinin en üstünde, M önekiyle. Süper Lig, 1. Lig, Şampiyonlar Ligi, Avrupa Ligi, Konferans Ligi ve milli takımda geçerli.",
+      },
+      {
+        en: "The squads come from the teams picked from the suggestions while creating the fixture. A team typed as free text, or one that is not in that competition, has no squad there, so that side stays empty and a note says so.",
+        tr: "Kadrolar, fikstür oluşturulurken önerilerden seçilen takımlardan gelir. Serbest metin yazılan ya da o ligde olmayan takımın orada kadrosu yoktur; o taraf boş kalır ve ekranda not olarak yazar.",
+      },
+      {
+        en: "The fixture id is the one entered in Match Stats Model. It is shown read-only on the Fixture ID tab of Player Stats Model and used in the Input rows, so it is typed once.",
+        tr: "Fixture id, Match Stats Model'de girilen değerdir. Player Stats Model'in Fixture ID sekmesinde salt okunur görünür ve Input satırlarında kullanılır; tek yerde yazılır.",
+      },
+    ],
+  },
+  {
+    date: { en: "1 October", tr: "1 Ekim" },
+    title: {
       en: "Basketball: season weights for the points model",
       tr: "Basketbol: sayı modelinde sezon ağırlığı",
     },
