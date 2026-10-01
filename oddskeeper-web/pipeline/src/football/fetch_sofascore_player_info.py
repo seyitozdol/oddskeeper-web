@@ -88,7 +88,10 @@ def main():
              where d.source = 'sofascore' and m.competition = any(%s))
            select slp.pid from slp
            left join football.sofascore_player_info i on i.sofascore_player_id = slp.pid
+           -- satir hic yok YA DA yalniz foto satiri var (backfill_sofascore_player_photos
+           -- bio'suz satir acar; eskiden bu oyuncu "bio'su var" sayilip hic cekilmiyordu)
            where i.sofascore_player_id is null
+              or (i.birth_date is null and i.country is null and i.player_slug is null)
            order by slp.pid""",
         (COMPS,),
     )
