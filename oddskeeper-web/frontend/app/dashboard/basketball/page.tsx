@@ -1,5 +1,6 @@
-import { getBasketballStandings, getBasketballPlayerLeaderboard, getBasketballTeamPointsModel, getBasketballGames, getBasketballFixtures } from "@/features/basketball/server/getBasketballStats";
+import { getBasketballStandings, getBasketballPlayerLeaderboard, getBasketballHomeAwaySplits, getBasketballSeasonWeights, getBasketballGames, getBasketballFixtures } from "@/features/basketball/server/getBasketballStats";
 import BasketballExplorer from "@/features/basketball/components/BasketballExplorer";
+import { previousSeason } from "@/features/basketball/seasonBlend";
 import { normalizeSeason, EURO_SEASONS } from "@/features/euroleague/config";
 import SeasonToggle from "@/components/SeasonToggle";
 import { getT } from "@/lib/i18n/server";
@@ -11,10 +12,14 @@ export default async function BasketballPage({
 }) {
   const { tab, season } = await searchParams;
   const seasonLabel = normalizeSeason(season);
-  const [standings, leaderboard, teamPoints, games, fixtures, t] = await Promise.all([
+  // PM Pts Model: iki sezonun split'i + Config'teki sezon ağırlığı (Match-Player Tools ile aynı girdi).
+  const prevSeason = previousSeason(seasonLabel);
+  const [standings, leaderboard, splitsCur, splitsPrev, seasonWeights, games, fixtures, t] = await Promise.all([
     getBasketballStandings(seasonLabel),
     getBasketballPlayerLeaderboard(seasonLabel),
-    getBasketballTeamPointsModel(),
+    getBasketballHomeAwaySplits(seasonLabel),
+    getBasketballHomeAwaySplits(prevSeason),
+    getBasketballSeasonWeights(),
     getBasketballGames(seasonLabel),
     getBasketballFixtures(seasonLabel),
     getT(),
@@ -35,7 +40,7 @@ export default async function BasketballPage({
         <SeasonToggle seasons={EURO_SEASONS} current={seasonLabel} />
       </div>
 
-      <BasketballExplorer standings={standings} leaderboard={leaderboard} teamPoints={teamPoints} games={games} fixtures={fixtures} initialTab={initialTab} season={seasonLabel} />
+      <BasketballExplorer standings={standings} leaderboard={leaderboard} pointsModel={{ cur: splitsCur, prev: splitsPrev, weights: seasonWeights, prevSeason }} games={games} fixtures={fixtures} initialTab={initialTab} season={seasonLabel} />
     </section>
   );
 }

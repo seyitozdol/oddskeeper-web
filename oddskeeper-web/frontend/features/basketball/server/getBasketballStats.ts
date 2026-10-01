@@ -3,6 +3,7 @@
 // loglar ve boş dizi/null döner (sayfa her zaman render olsun).
 
 import { createClient } from "@/lib/supabase/server";
+import { SEASON_W_CUR_KEY, SEASON_W_DEFAULT, SEASON_W_PREV_KEY, type SeasonWeights } from "../seasonBlend";
 import type {
   BktTeamSeasonRow,
   BktPlayerSeasonRow,
@@ -66,20 +67,25 @@ export async function getBasketballPlayerLeaderboard(season: string = SEASON): P
   return data ?? [];
 }
 
-export async function getBasketballTeamPointsModel(): Promise<BktMarketModelRow[]> {
+// Sayı modelinin sezon ağırlığı (Config > Model): geçen sezon % / bu sezon %.
+// Anahtar yoksa ya da okunamazsa varsayılan (bkz. seasonBlend.ts).
+export async function getBasketballSeasonWeights(): Promise<SeasonWeights> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .schema("analytics")
-    .from("bb_team_market_model_v1")
-    .select("season_label,team_slug,team_name,market_key,market_label,games,mean,std,max_val")
-    .eq("season_label", SEASON)
-    .eq("market_key", "points")
-    .returns<BktMarketModelRow[]>();
+    .from("bb_model_config")
+    .select("key,value")
+    .in("key", [SEASON_W_PREV_KEY, SEASON_W_CUR_KEY])
+    .returns<{ key: string; value: number }[]>();
   if (error) {
-    console.error("getBasketballTeamPointsModel error:", error.message);
-    return [];
+    console.error("getBasketballSeasonWeights error:", error.message);
+    return SEASON_W_DEFAULT;
   }
-  return data ?? [];
+  const by = new Map((data ?? []).map((r) => [r.key, Number(r.value)]));
+  return {
+    prev: by.get(SEASON_W_PREV_KEY) ?? SEASON_W_DEFAULT.prev,
+    cur: by.get(SEASON_W_CUR_KEY) ?? SEASON_W_DEFAULT.cur,
+  };
 }
 
 // ---- Katılım Araçları veri katmanı ----

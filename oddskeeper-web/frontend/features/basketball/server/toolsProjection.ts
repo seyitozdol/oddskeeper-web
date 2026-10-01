@@ -5,9 +5,11 @@
 // Sezon için basketball.team_rosters doluysa (analytics.bb_player_metric_window_roster_v1):
 //   - oyuncular  = o sezonun kadrosu; rakamlar oyuncunun geçmiş + güncel maçlarından
 //   - takım metrikleri = takımın o sezonda yeterli maçı varsa o sezon, yoksa önceki sezon
+//   - maç sayıları (sayı modeli) = iki sezonun Config'teki ağırlıklı karışımı
 // Kadro yoksa (geçmiş sezon) eski maç-güdümlü yol aynen çalışır.
 
 import { createClient } from "@/lib/supabase/server";
+import { previousSeason } from "../seasonBlend";
 import type {
   BktHomeAwaySplitRow,
   BktPlayerDoubleRow,
@@ -43,11 +45,6 @@ export type BasketballToolsData = {
   doubles: BktPlayerDoubleRow[];
   rosterMode: BktRosterMode | null;
 };
-
-function previousSeason(season: string): string {
-  const start = Number(season.slice(0, 4));
-  return `${start - 1}-${start}`;
-}
 
 async function getRosterWindows(season: string): Promise<BktPlayerWindowRow[]> {
   const supabase = await createClient();
@@ -162,5 +159,7 @@ export async function getBasketballToolsData(season: string): Promise<Basketball
     .map((r) => ({ player_slug: r.player_slug, player_name: r.player_name, team_slug: r.team_slug, team_name: teamName.get(r.team_slug) ?? r.team_slug, games: r.games }))
     .sort((a, b) => (a.team_name ?? "").localeCompare(b.team_name ?? "", "tr") || a.player_name.localeCompare(b.player_name, "tr"));
 
-  return { splits, forms, windows, teamLogs, players, roles, doubles, rosterMode: { season, prevSeason: prev, teamSource } };
+  // Maç sayıları (sayı modeli) 5 maç kuralına bağlı değil: iki sezonun split'i de gider,
+  // karışım Config'teki sezon ağırlığıyla istemcide yapılır (seasonBlend.ts).
+  return { splits, forms, windows, teamLogs, players, roles, doubles, rosterMode: { season, prevSeason: prev, teamSource, pointsSplits: { cur: splitsCur, prev: splitsPrev } } };
 }

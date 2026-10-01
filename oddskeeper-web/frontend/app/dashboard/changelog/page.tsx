@@ -23,6 +23,28 @@ const ENTRIES: Entry[] = [
   {
     date: { en: "1 October", tr: "1 Ekim" },
     title: {
+      en: "Basketball: season weights for the points model",
+      tr: "Basketbol: sayı modelinde sezon ağırlığı",
+    },
+    tag: TAG_NEW,
+    items: [
+      {
+        en: "Config, Model now has a Season weights box: Last season % and This season %. The expected points use each team's scoring and conceding averages blended with these weights. Setting This season to 100 uses current season data only. A team with data for one season only (a promoted team, for example) is calculated from that season.",
+        tr: "Config, Model altında artık Sezon ağırlığı kutusu var: Geçen sezon % ve Bu sezon %. Beklenen sayı, takımın attığı ve yediği sayı ortalamalarının bu ağırlıklarla karışımından hesaplanır. Bu sezon 100 yapılırsa yalnızca güncel sezon verisi kullanılır. Tek sezonluk verisi olan takım (örneğin yeni çıkan takım) o sezonla hesaplanır.",
+      },
+      {
+        en: "PM Pts Model and the match numbers in Match-Player Tools now use the same inputs, so the same match gives the same Total Points and Money Line on both screens. Early in the season PM Pts Model used to rely on a single match per team and could show extreme prices.",
+        tr: "PM Pts Model ile Match-Player Tools maç sayıları artık aynı girdiyi kullanıyor; aynı maç iki ekranda aynı Total Points ve Money Line değerini verir. Sezon başında PM Pts Model takım başına tek maça dayanıyor ve uç oranlar gösterebiliyordu.",
+      },
+      {
+        en: "The weights in use are shown above the points on both screens.",
+        tr: "Kullanılan ağırlıklar iki ekranda da sayıların üstünde yazıyor.",
+      },
+    ],
+  },
+  {
+    date: { en: "1 October", tr: "1 Ekim" },
+    title: {
       en: "Basketball Match-Player Tools: finished weeks no longer listed in the fixture selector",
       tr: "Basketbol Match-Player Tools: biten haftalar fikstür seçicide listelenmiyor",
     },

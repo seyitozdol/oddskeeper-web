@@ -3,11 +3,21 @@
 import { useMemo, useState } from "react";
 import { useI18n } from "@/lib/i18n/LanguageProvider";
 import { matchTotalsLadder, moneyline, normalCdf } from "../odds";
-import type { BktTeamSeasonRow, BktMarketModelRow } from "../types";
+import { blendSeasonSplits, leagueAvgPpg, seasonPercents, type SeasonWeights } from "../seasonBlend";
+import type { BktTeamSeasonRow, BktHomeAwaySplitRow } from "../types";
+
+// İki sezonun split'i + Config'teki sezon ağırlığı (Match-Player Tools maç sayılarıyla aynı girdi).
+export type PointsModelData = {
+  cur: BktHomeAwaySplitRow[];
+  prev: BktHomeAwaySplitRow[];
+  weights: SeasonWeights;
+  prevSeason: string;
+};
 
 type Props = {
   standings: BktTeamSeasonRow[];
-  teamPoints: BktMarketModelRow[]; // market_key='points' per team
+  pointsModel: PointsModelData;
+  season: string;
 };
 
 function price(payback: number, prob: number): number {
@@ -15,22 +25,19 @@ function price(payback: number, prob: number): number {
   return Math.min(999, Math.round((payback / prob) * 100) / 100);
 }
 
-export default function MatchOdds({ standings, teamPoints }: Props) {
+export default function MatchOdds({ standings, pointsModel, season }: Props) {
   const { t } = useI18n();
+  // Takım girdileri: geçen sezon / bu sezon ağırlıklı karışım (Config > Model). Geçen sezonu
+  // olmayan takım (ya da geçmiş sezon görünümü) yalnız kendi sezonuyla hesaplanır.
   const teams = useMemo(
-    () => [...standings].sort((a, b) => a.team_name.localeCompare(b.team_name, "tr")),
-    [standings]
+    () => blendSeasonSplits(standings, pointsModel.cur, pointsModel.prev, pointsModel.weights)
+      .sort((a, b) => a.team_name.localeCompare(b.team_name, "tr")),
+    [standings, pointsModel]
   );
-  const stdBySlug = useMemo(() => {
-    const m = new Map<string, number>();
-    for (const r of teamPoints) if (r.team_slug) m.set(r.team_slug, Number(r.std));
-    return m;
-  }, [teamPoints]);
+  const hasPrev = pointsModel.prev.length > 0;
+  const seasonPct = seasonPercents(pointsModel.weights);
 
-  const lgAvg = useMemo(() => {
-    const vals = standings.map((s) => Number(s.ppg ?? 0)).filter((v) => v > 0);
-    return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 80;
-  }, [standings]);
+  const lgAvg = useMemo(() => leagueAvgPpg(teams), [teams]);
 
   const [homeSlug, setHomeSlug] = useState(teams[0]?.team_slug ?? "");
   const [awaySlug, setAwaySlug] = useState(teams[1]?.team_slug ?? "");
@@ -42,10 +49,12 @@ export default function MatchOdds({ standings, teamPoints }: Props) {
   const calc = useMemo(() => {
     if (!home || !away || home.team_slug === away.team_slug) return null;
     // Rakibe göre ayarlı beklenen sayı (log5): off × opp_def / lig_ort
-    const muHome = (Number(home.ppg) * Number(away.oppg)) / lgAvg;
-    const muAway = (Number(away.ppg) * Number(home.oppg)) / lgAvg;
-    const stdHome = stdBySlug.get(home.team_slug) ?? 11;
-    const stdAway = stdBySlug.get(away.team_slug) ?? 11;
+    // 1 ondalığa yuvarlanır: Match-Player Tools maç sayılarıyla birebir aynı değer.
+    const muHome = Math.round(((Number(home.ppg) * Number(away.oppg)) / lgAvg) * 10) / 10;
+    const muAway = Math.round(((Number(away.ppg) * Number(home.oppg)) / lgAvg) * 10) / 10;
+    // Std: ev sahibinin iç saha, deplasmanın dış saha sayı std'si (Match-Player Tools ile aynı).
+    const stdHome = home.home_pf_std ?? 11;
+    const stdAway = away.away_pf_std ?? 11;
     const { total, totalMean } = matchTotalsLadder(muHome, stdHome, muAway, stdAway, payback);
     const ml = moneyline(muHome, stdHome, muAway, stdAway, 0.915);
     const diffMean = muHome - muAway;
@@ -64,7 +73,7 @@ export default function MatchOdds({ standings, teamPoints }: Props) {
     });
     if (handicap[best]) handicap[best].isMid = true;
     return { muHome, muAway, totalMean, total, ml, handicap };
-  }, [home, away, lgAvg, stdBySlug, payback]);
+  }, [home, away, lgAvg, payback]);
 
   return (
     <div>
@@ -93,6 +102,28 @@ export default function MatchOdds({ standings, teamPoints }: Props) {
         <p className="text-sm text-ink-3">{t("basketball.matchPickTeams")}</p>
       ) : (
         <div className="space-y-6">
+          {hasPrev ? (
+            /* sayı modelinin sezon ağırlığı (Config > Model) + tek sezonu olan takım notu */
+            <div className="-mb-4 text-[11px] leading-relaxed text-ink-3">
+              <span title={t("basketball.seasonWHint")}>
+                {t("basketball.seasonWLine")}:{" "}
+                <span className="font-semibold text-ink-2">{pointsModel.prevSeason} {t("basketball.pctFmt").replace("{n}", String(seasonPct.prev))}</span>
+                {" · "}
+                <span className="font-semibold text-ink-2">{season} {t("basketball.pctFmt").replace("{n}", String(seasonPct.cur))}</span>
+              </span>
+              {[home, away].map((tm) => {
+                if (!tm) return null;
+                const one = tm.blend === "current" && seasonPct.cur < 100 ? { key: "seasonWOnlyCur", has: season, miss: pointsModel.prevSeason }
+                  : tm.blend === "previous" && seasonPct.prev < 100 ? { key: "seasonWOnlyPrev", has: pointsModel.prevSeason, miss: season }
+                  : null;
+                return one ? (
+                  <span key={tm.team_slug} className="block">
+                    {t(`basketball.${one.key}`).replace("{team}", tm.team_name).replace("{has}", one.has).replace("{miss}", one.miss)}
+                  </span>
+                ) : null;
+              })}
+            </div>
+          ) : null}
           {/* beklenen skor */}
           <div className="flex flex-wrap gap-6 rounded-lg border border-line bg-veil px-4 py-3 text-sm">
             <div><span className="text-ink-3">{t("basketball.matchExpected")}: </span>

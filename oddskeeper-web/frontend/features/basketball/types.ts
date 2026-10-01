@@ -350,6 +350,8 @@ export type BktRosterMode = {
   season: string;
   prevSeason: string;
   teamSource: Record<string, { season: string | null; gamesCurrent: number }>;
+  // Sayi modelinin sezon agirligi icin iki sezonun ham split'leri (bkz. seasonBlend.ts).
+  pointsSplits?: { cur: BktHomeAwaySplitRow[]; prev: BktHomeAwaySplitRow[] };
 };
 
 // Hub Results&Fixtures: yaklaşan maçlar (bb_fixtures_v1 = SofaScore upcoming_events; slug basketball.teams

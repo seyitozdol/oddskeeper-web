@@ -14,6 +14,7 @@ import { confirmPermanentSave } from "@/lib/confirm-save";
 import { configLabel, METRIC_LABELS, metricLabel } from "../marketConfig";
 import { H2H_DEFAULTS, H2H_MAX_SIMS } from "../h2h";
 import { DOUBLE_DEFAULT_CORR, DOUBLE_DEFAULT_SIMS, DOUBLE_MAX_CORR } from "../doubles";
+import { SEASON_W_CUR_KEY, SEASON_W_DEFAULT, SEASON_W_PREV_KEY, seasonPercents } from "../seasonBlend";
 import type { BktH2HInputRow, BktPlayerDoubleRow } from "../types";
 import { ALL_ROLES, roleBadgeClass, roleLabelKey, roleDescKey, formatMatchDate } from "../lib";
 import {
@@ -647,6 +648,24 @@ function ModelWeightsConfig({ modelConfig, reload, t }: {
     if (ok) { setHEdits((s) => Object.fromEntries(Object.entries(s).filter(([k]) => !k.startsWith("h2h_")))); reload(); }
   };
 
+  // Sayı modelinin sezon ağırlığı: geçen sezon % + bu sezon % (toplam hep 100; biri yazılınca
+  // diğeri tamamlanır). PM Pts Model + Match-Player Tools maç sayıları okur (seasonBlend.ts).
+  const [sEdit, setSEdit] = useState<number | null>(null);   // düzenlenen "bu sezon %"
+  const [savingS, setSavingS] = useState(false);
+  const sDb = seasonPercents({ prev: dbVal(SEASON_W_PREV_KEY, SEASON_W_DEFAULT.prev), cur: dbVal(SEASON_W_CUR_KEY, SEASON_W_DEFAULT.cur) });
+  const sCur = sEdit ?? sDb.cur;
+  const setSeasonCur = (v: number) => setSEdit(Math.min(100, Math.max(0, v)));
+  const saveSeason = async () => {
+    if (!(await confirmPermanentSave())) return;
+    setSavingS(true);
+    const ok = await saveModelConfig([
+      { key: SEASON_W_PREV_KEY, value: 100 - sCur },
+      { key: SEASON_W_CUR_KEY, value: sCur },
+    ]);
+    setSavingS(false);
+    if (ok) { setSEdit(null); reload(); }
+  };
+
   const saveTeam = async () => {
     if (!(await confirmPermanentSave())) return;
     setSavingT(true);
@@ -689,6 +708,20 @@ function ModelWeightsConfig({ modelConfig, reload, t }: {
 
   return (
     <div className="space-y-4">
+      {/* Sezon ağırlığı (sayı modeli) */}
+      <div className={box}>
+        <div className="mb-2 flex items-center gap-3">
+          <button onClick={saveSeason} disabled={savingS || sEdit == null || sEdit === sDb.cur} className={saveBtn}>{t("basketball.save")}</button>
+          <span className="text-[13px] font-semibold text-ink">{t("basketball.seasonWTitle")}</span>
+        </div>
+        <p className="mb-3 max-w-2xl text-[11px] text-ink-3">{t("basketball.seasonWHint")}</p>
+        <div className="flex flex-wrap items-end gap-4">
+          {field(t("basketball.seasonWPrev"), 100 - sCur, (v) => setSeasonCur(100 - v))}
+          {field(t("basketball.seasonWCur"), sCur, setSeasonCur)}
+          {totalCell(100)}
+        </div>
+      </div>
+
       {/* Team Models */}
       <div className={box}>
         <div className="mb-2 flex items-center gap-3">

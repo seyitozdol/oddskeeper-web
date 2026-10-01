@@ -7,15 +7,15 @@ import { fmt, formatMatchDate, formatMatchTime, normalizePositionCode, positionL
 import { TeamCrest } from "./ui";
 import PlayerAvatar from "./PlayerAvatar";
 import { CountryFlags } from "./CountryFlag";
-import MatchOdds from "./MatchOdds";
-import type { BktTeamSeasonRow, BktLeaderboardRow, BktMarketModelRow, BktGameRow, BktFixtureRow } from "../types";
+import MatchOdds, { type PointsModelData } from "./MatchOdds";
+import type { BktTeamSeasonRow, BktLeaderboardRow, BktGameRow, BktFixtureRow } from "../types";
 
 type Tab = "league" | "players" | "teams" | "results" | "playerRankings" | "teamRankings" | "match";
 
 type Props = {
   standings: BktTeamSeasonRow[];
   leaderboard: BktLeaderboardRow[];
-  teamPoints: BktMarketModelRow[];
+  pointsModel: PointsModelData;
   games: BktGameRow[];
   fixtures: BktFixtureRow[];
   initialTab?: Tab;
@@ -30,7 +30,7 @@ function Th({ children, right }: { children: React.ReactNode; right?: boolean })
   );
 }
 
-export default function BasketballExplorer({ standings, leaderboard, teamPoints, games, fixtures, initialTab = "league", season }: Props) {
+export default function BasketballExplorer({ standings, leaderboard, pointsModel, games, fixtures, initialTab = "league", season }: Props) {
   const { t } = useI18n();
   const [tab, setTab] = useState<Tab>(initialTab);
 
@@ -72,7 +72,7 @@ export default function BasketballExplorer({ standings, leaderboard, teamPoints,
       {tab === "results" && <ResultsSection games={games} fixtures={fixtures} season={season} />}
       {tab === "playerRankings" && <PlayerLeaders rows={leaderboard} season={season} />}
       {tab === "teamRankings" && <TeamLeaders rows={standings} season={season} />}
-      {tab === "match" && <MatchOdds standings={standings} teamPoints={teamPoints} />}
+      {tab === "match" && <MatchOdds standings={standings} pointsModel={pointsModel} season={season} />}
     </div>
   );
 }

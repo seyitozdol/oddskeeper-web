@@ -9,6 +9,7 @@ import { buildLadder, buildConfiguredLines, moneyline, type LineConfig } from ".
 import { H2H_DEFAULTS, H2H_METRICS, H2H_TEMPLATES, h2hPrice, type H2HConfig, type H2HMetric } from "../h2h";
 import { DOUBLE_DEFAULT_CORR, DOUBLE_DEFAULT_SIMS, DOUBLE_STATS, doubleProbs, isDoubleBase, type DoubleProbs } from "../doubles";
 import { PLAYER_MARKETS, TEAM_MARKETS, teamStd, playerStd, metricLabel, metricInfo, isDistributable } from "../marketConfig";
+import { SEASON_W_CUR_KEY, SEASON_W_DEFAULT, SEASON_W_PREV_KEY, blendSeasonSplits, leagueAvgPpg, seasonPercents } from "../seasonBlend";
 import { formatMatchDate, normalizePositionCode, positionLabel, roleLabelKey, roleBadgeClass, LEADER_METRICS, playerPhotoUrl, teamLogoPath } from "../lib";
 import { TeamCrest } from "./ui";
 import PlayerAvatar from "./PlayerAvatar";
@@ -132,6 +133,17 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
   }, [modelConfig]);
   const pW = { w10: mc("player_model_w10", 20), w5: mc("player_model_w5", 30), wall: mc("player_model_wall", 50) };
   const tW = { wall: mc("team_model_wall", 50), w10: mc("team_model_w10", 20), w5: mc("team_model_w5", 30) };
+  // Sayı modelinin sezon ağırlığı (Config > Model): geçen sezon % / bu sezon %. Yalnız sezon
+  // kadrosu modunda (iki sezonun split'i geldiğinde) uygulanır; yoksa splits aynen kullanılır.
+  const wPrev = mc(SEASON_W_PREV_KEY, SEASON_W_DEFAULT.prev);
+  const wCur = mc(SEASON_W_CUR_KEY, SEASON_W_DEFAULT.cur);
+  const pointsSplits = rosterMode?.pointsSplits;
+  const blended = useMemo(
+    () => (pointsSplits ? blendSeasonSplits(splits, pointsSplits.cur, pointsSplits.prev, { prev: wPrev, cur: wCur }) : null),
+    [splits, pointsSplits, wPrev, wCur],
+  );
+  const modelSplits: BktHomeAwaySplitRow[] = blended ?? splits;
+  const seasonPct = seasonPercents({ prev: wPrev, cur: wCur });
   // rol+pozisyon aramas: "team_slug:player_slug" → satır (Player Dist etiketi).
   const roleBy = useMemo(() => new Map(roles.map((r) => [`${r.team_slug}:${r.player_slug}`, r])), [roles]);
   const euroTeamSlugs = useMemo(() => new Set(roles.filter((r) => r.euro_team).map((r) => r.team_slug)), [roles]);
@@ -201,7 +213,7 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
   // varsayılan açık; points tick'lenemez → her zaman açık (eski snapshot'lardaki false da yok sayılır)
   const isTeamTicked = (metricKey: string) => (metricKey.endsWith(":points") ? true : teamTicks[metricKey] !== false);
   const teams = useMemo(() => [...splits].sort((a, b) => a.team_name.localeCompare(b.team_name, "tr")), [splits]);
-  const splitBy = useMemo(() => new Map(splits.map((s) => [s.team_slug, s])), [splits]);
+  const splitBy = useMemo(() => new Map(modelSplits.map((s) => [s.team_slug, s])), [modelSplits]);
   const formBy = useMemo(() => {
     const m = new Map<string, Map<string, BktTeamMetricFormRow>>();
     for (const f of forms) { if (!m.has(f.team_slug)) m.set(f.team_slug, new Map()); m.get(f.team_slug)!.set(f.market_key, f); }
@@ -223,7 +235,7 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
     for (const l of teamLogs) { if (!m.has(l.team_slug)) m.set(l.team_slug, []); m.get(l.team_slug)!.push(l); }
     return m;
   }, [teamLogs]);
-  const lgAvg = useMemo(() => { const v = splits.map((s) => s.ppg).filter((x) => x > 0); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : 80; }, [splits]);
+  const lgAvg = useMemo(() => leagueAvgPpg(modelSplits), [modelSplits]);
 
   const [homeSlug, setHomeSlug] = useState(teams[0]?.team_slug ?? "");
   const [awaySlug, setAwaySlug] = useState(teams[1]?.team_slug ?? "");
@@ -673,6 +685,29 @@ export default function BasketballTools({ pmFixtures, splits, forms, windows, te
         </label>
       </div>
 
+        {home && away && homeSlug !== awaySlug && blended && rosterMode ? (
+          /* sayı modelinin sezon ağırlığı (Config > Model) + tek sezonu olan takım notu */
+          <div className="relative text-[11px] leading-relaxed text-ink-3">
+            <span title={t("basketball.seasonWHint")}>
+              {t("basketball.seasonWLine")}:{" "}
+              <span className="font-semibold text-ink-2">{rosterMode.prevSeason} {t("basketball.pctFmt").replace("{n}", String(seasonPct.prev))}</span>
+              {" · "}
+              <span className="font-semibold text-ink-2">{rosterMode.season} {t("basketball.pctFmt").replace("{n}", String(seasonPct.cur))}</span>
+            </span>
+            {[homeSlug, awaySlug].map((sl) => {
+              const src = blended.find((b) => b.team_slug === sl)?.blend;
+              const name = splitBy.get(sl)?.team_name ?? sl;
+              const one = src === "current" && seasonPct.cur < 100 ? { key: "seasonWOnlyCur", has: rosterMode.season, miss: rosterMode.prevSeason }
+                : src === "previous" && seasonPct.prev < 100 ? { key: "seasonWOnlyPrev", has: rosterMode.prevSeason, miss: rosterMode.season }
+                : null;
+              return one ? (
+                <span key={sl} className="block">
+                  {t(`basketball.${one.key}`).replace("{team}", name).replace("{has}", one.has).replace("{miss}", one.miss)}
+                </span>
+              ) : null;
+            })}
+          </div>
+        ) : null}
         {home && away && homeSlug !== awaySlug ? (
           /* maç sayıları özeti — arka filigran hafif görünsün diye bg yarı saydam */
           <div className="relative flex flex-wrap items-center gap-4 rounded-lg border border-line bg-veil/85 px-4 py-3 text-sm">
