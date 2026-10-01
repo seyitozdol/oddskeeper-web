@@ -22,7 +22,14 @@ sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 # eurocup view'lari team_mapping'e bagli degil (source_team_id + competition ile
 # calisir), bu yuzden yabanci rakibe mapping satiri acilmaz. Yeni bir yabanci
 # turnuva/kaynak eklenirse bu listede olmadigi icin check yine alarm verir.
-EUROCUP_COMPS = "('UEFA Şampiyonlar Ligi','UEFA Avrupa Ligi','UEFA Konferans Ligi')"
+# Milli takim maclari (2026-10-01) ayni sinif: natl_*/trnat_* view'lari da
+# sofascore takim id'siyle calisir, milli takimlara mapping satiri acilmaz.
+# Liste ref.national_competitions'tan okunur (yeni milli turnuva = o tabloya satir).
+EUROCUP_COMPS = (
+    "(select 'UEFA Şampiyonlar Ligi' union all select 'UEFA Avrupa Ligi' "
+    "union all select 'UEFA Konferans Ligi' "
+    "union all select competition from ref.national_competitions)"
+)
 
 # (ad, severity, sql) — sql tek sayi (gap_count) dondurur; 0 = saglikli.
 CHECKS = [
