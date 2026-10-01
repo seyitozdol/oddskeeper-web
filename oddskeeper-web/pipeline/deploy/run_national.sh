@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # VPS wrapper: Turkiye A Milli Futbol Takimi (header "TR") veri akisi. Kaynak SofaScore
-# (takim id 4700, proxy uzerinden). run_euro_match_scrape.sh kalibi: her 10 dk'da bir calisir.
+# (takim id 4700, proxy uzerinden). run_euro_match_scrape.sh kalibi, ama 30 dk'da bir calisir (sahip karari 2026-10-01).
 #
 #   --sync      (varsayilan) mac-sonrasi: fikstur tablosunda baslama saati 2.5-8 saat once olan
 #               ilgi maclari (Turkiye + yaklasan rakipleri). Aday yoksa HTTP istegi YOK.
@@ -14,7 +14,7 @@
 # Izinli turnuvalar ref.national_competitions'ta (hazirlik maclari yok). Yeni turnuva = o tabloya
 # satir; bu dosya degismez. /opt/oddskeeper/run_national.sh olarak kopyala. Detay: deploy/DEPLOY.md
 #
-# Cron (CEST): 3-59/10 * * * *  /opt/oddskeeper/run_national.sh
+# Cron (CEST): 3,33 * * * *  /opt/oddskeeper/run_national.sh   (06:03 ve 18:03 turlari --fixtures)
 set -uo pipefail
 export PYTHONUTF8=1
 
