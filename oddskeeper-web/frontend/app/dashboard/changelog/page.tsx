@@ -23,6 +23,36 @@ const ENTRIES: Entry[] = [
   {
     date: { en: "1 October", tr: "1 Ekim" },
     title: {
+      en: "Player profile: national team and past seasons in Detailed Stats, with comparison",
+      tr: "Oyuncu profili: Detailed Stats'ta milli takım ve geçmiş sezonlar, kıyaslamayla",
+    },
+    tag: TAG_NEW,
+    items: [
+      {
+        en: "Detailed Stats used to show only the current Süper Lig season. It now covers every match the player has in the system: league, European cups and national team, across all seasons. Pick competitions and seasons with the chips at the top; several can be selected at once, and the Club and National team chips select a whole group in one click.",
+        tr: "Detailed Stats eskiden yalnızca güncel Süper Lig sezonunu gösteriyordu. Artık oyuncunun sistemdeki tüm maçlarını kapsıyor: lig, Avrupa kupaları ve milli takım, tüm sezonlarıyla. Üstteki çiplerle turnuva ve sezon seçilir; aynı anda birden fazlası seçilebilir, Kulüp ve Milli takım çipleri tek tıkla bütün grubu seçer.",
+      },
+      {
+        en: "Compare puts the numbers side by side: Club vs national, By competition or By season, on a Total, Per match or Per 90 basis. The better value in each row is highlighted. Example: a player's Süper Lig season next to his national team matches, or this season next to last season.",
+        tr: "Kıyasla seçeneği sayıları yan yana koyar: Kulüp / milli, Turnuvaya göre ya da Sezona göre; Toplam, Maç başına ya da 90 dakikada bazında. Her satırda daha iyi değer vurgulanır. Örnek: bir oyuncunun Süper Lig sezonu ile milli takım maçları, ya da bu sezon ile geçen sezon yan yana.",
+      },
+      {
+        en: "League average, rank and difference from average still appear when a single Süper Lig season is selected, as before.",
+        tr: "Lig ortalaması, sıra ve ortalamadan fark, tek bir Süper Lig sezonu seçildiğinde eskisi gibi görünür.",
+      },
+      {
+        en: "Match Log has the same competition and season chips, also with multiple selection.",
+        tr: "Match Log'da da aynı turnuva ve sezon çipleri var, yine çoklu seçimle.",
+      },
+      {
+        en: "Fixed: with English selected, some metric names in Detailed Stats stayed in Turkish (for example Big Chances Missed, Duels Lost, Progressive Carries). Competition names and match badges now follow the selected language too.",
+        tr: "Düzeltme: İngilizce seçiliyken Detailed Stats'ta bazı metrik adları Türkçe kalıyordu (örneğin Kaçan Net Fırsat, Kaybedilen İkili Mücadele, İlerleyici Taşıma). Turnuva adları ve maç rozetleri de artık seçili dile uyuyor.",
+      },
+    ],
+  },
+  {
+    date: { en: "1 October", tr: "1 Ekim" },
+    title: {
       en: "New: Türkiye national football team page (TR in the header)",
       tr: "Yeni: Türkiye A Milli Futbol Takımı sayfası (header'da TR)",
     },

@@ -6,6 +6,10 @@ import PlayerAdvancedOverviewPanel from "@/features/player-detail/panels/PlayerA
 import { PlayerShowcasePanel } from "@/features/player-detail/panels/PlayerShowcasePanel";
 import { getPlayerAdvancedOverview } from "@/features/player-detail/server/getPlayerAdvancedOverview";
 import { getPlayerDetailedMetrics } from "@/features/player-detail/server/getPlayerDetailedMetrics";
+import {
+  getPlayerMatchMetrics,
+  getPlayerMetricCatalog,
+} from "@/features/player-detail/server/getPlayerMatchMetrics";
 import { getPlayerMatchLog } from "@/features/player-detail/server/getPlayerMatchLog";
 import { getPlayerProfile } from "@/features/player-detail/server/getPlayerProfile";
 import { getPlayerCurrentInfo } from "@/features/player-detail/server/getPlayerCurrentInfo";
@@ -153,17 +157,30 @@ export default async function FootballPlayerDetailPage({
   const playerSourceId = profile.player_source_id ?? null;
   const seasonLabel = profile.season_label ?? null;
 
-  const [advancedOverview, detailedMetricRows] = await Promise.all([
-    (activeTab === "advanced" || isOverview) && playerSourceId
-      ? getPlayerAdvancedOverview(playerSourceId)
-      : Promise.resolve(null),
+  // Detailed Stats: lig baglami icin TUM sezonlarin mat satirlari + oyuncunun
+  // tum maclari (lig, kupa, milli takim) metrik bazinda; kapsam secimi ve kiyas
+  // panelde yapilir. Genel bakis yalniz profil sezonunu kullanir.
+  const isDetailed = activeTab === "detailed-stats";
+  const [advancedOverview, detailedMetricRows, matchMetrics, metricCatalog] =
+    await Promise.all([
+      (activeTab === "advanced" || isOverview) && playerSourceId
+        ? getPlayerAdvancedOverview(playerSourceId)
+        : Promise.resolve(null),
 
-    activeTab === "detailed-stats" || isOverview
-      ? getPlayerDetailedMetrics(playerSlug, {
-          seasonLabel: seasonLabel ?? undefined,
-        })
-      : Promise.resolve([]),
-  ]);
+      isDetailed
+        ? getPlayerDetailedMetrics(playerSlug, { allSeasons: true })
+        : isOverview
+          ? getPlayerDetailedMetrics(playerSlug, {
+              seasonLabel: seasonLabel ?? undefined,
+            })
+          : Promise.resolve([]),
+
+      isDetailed && playerSourceId
+        ? getPlayerMatchMetrics(String(playerSourceId))
+        : Promise.resolve([]),
+
+      isDetailed ? getPlayerMetricCatalog() : Promise.resolve([]),
+    ]);
 
   const t = await getT();
 
@@ -227,7 +244,11 @@ export default async function FootballPlayerDetailPage({
         {activeTab === "detailed-stats" ? (
           <DetailedPlayerStatsPanel
             rows={detailedMetricRows}
+            matches={matchMetrics}
+            catalog={metricCatalog}
             playerSlug={playerSlug}
+            defaultCompetition={profile.competition}
+            defaultSeason={seasonLabel}
           />
         ) : activeTab === "advanced" ? (
           <PlayerAdvancedOverviewPanel overview={advancedOverview} />

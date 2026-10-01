@@ -102,6 +102,9 @@ export const getPlayerDetailedMetrics = cache(
     options?: {
       seasonLabel?: string | null;
       competition?: string | null;
+      // true: sezon suzgeci yok (oyuncunun tum sezonlari; Detailed Stats lig
+      // baglami hangi sezon secilirse o sezonun satirlarini kullanir).
+      allSeasons?: boolean;
     }
   ): Promise<PlayerDetailedMetricRow[]> => {
     const profileRow = await getPlayerProfile(playerSlug);
@@ -156,8 +159,9 @@ export const getPlayerDetailedMetrics = cache(
       .order("display_priority", { ascending: true, nullsFirst: false })
       .order("metric_label", { ascending: true });
 
-    const effectiveSeasonLabel =
-      options?.seasonLabel ?? profileRow.season_label ?? null;
+    const effectiveSeasonLabel = options?.allSeasons
+      ? null
+      : options?.seasonLabel ?? profileRow.season_label ?? null;
     const effectiveCompetition =
       options?.competition ?? profileRow.competition ?? null;
 

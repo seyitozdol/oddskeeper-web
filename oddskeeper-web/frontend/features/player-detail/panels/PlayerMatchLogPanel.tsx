@@ -9,6 +9,13 @@ import { PlayerResultBadge } from "../components/PlayerResultBadge";
 import TeamLink from "@/components/links/TeamLink";
 import MatchLink from "@/components/links/MatchLink";
 import { useI18n } from "@/lib/i18n/LanguageProvider";
+import { CUP_INFO, competitionLabel } from "../competitions";
+import {
+  EMPTY_SCOPE,
+  ScopeFilter,
+  matchesScope,
+  type ScopeSelection,
+} from "../components/ScopeFilter";
 
 type PlayerMatchLogPanelProps = {
   rows?: PlayerMatchLogRow[];
@@ -33,21 +40,8 @@ function normalizeLineupStatus(value?: string | null) {
   return "other";
 }
 
-// Tek profil tüm rekabetleri kapsar: lig dışı (kupa) maçlar rakip adının
-// yanında kısa rozetle işaretlenir ve maç linki kupanın kendi detay
-// sayfasına gider (football maç sayfası opta-id uzayındadır).
-const CUP_INFO: Record<string, { short: string; matchBase: string }> = {
-  "UEFA Şampiyonlar Ligi": { short: "CL", matchBase: "/dashboard/euro-cups/cl/match" },
-  "UEFA Avrupa Ligi": { short: "EL", matchBase: "/dashboard/euro-cups/el/match" },
-  "UEFA Konferans Ligi": { short: "Konf", matchBase: "/dashboard/euro-cups/conf/match" },
-  // Milli takim maclari (ref.national_competitions etiketleri). Yeni milli
-  // turnuva eklenince buraya da gir; girilmezse satir rozetsiz ve linksiz kalir.
-  "UEFA Uluslar Ligi": { short: "UNL", matchBase: "/dashboard/national/tr/match" },
-  "FIFA Dünya Kupası": { short: "DK", matchBase: "/dashboard/national/tr/match" },
-  "Dünya Kupası Elemeleri": { short: "DK El.", matchBase: "/dashboard/national/tr/match" },
-  "EURO": { short: "EURO", matchBase: "/dashboard/national/tr/match" },
-  "EURO Elemeleri": { short: "EURO El.", matchBase: "/dashboard/national/tr/match" },
-};
+// Rekabet rozetleri, mac detay rotalari ve chip sirasi: ../competitions.ts
+// (Detailed Stats ile ortak).
 
 function toNumber(value: number | string | null | undefined) {
   if (value === null || value === undefined || value === "") return 0;
@@ -109,45 +103,26 @@ function getSortValue(row: PlayerMatchLogRow, sortKey: SortKey) {
   return toNumber(row.expected_goals);
 }
 
-// Rekabet chip sirasi: lig(ler) once, kupalar sonra.
-const COMP_ORDER = [
-  "Süper Lig",
-  "Trendyol 1. Lig",
-  "Türkiye Kupası",
-  "UEFA Şampiyonlar Ligi",
-  "UEFA Avrupa Ligi",
-  "UEFA Konferans Ligi",
-  "UEFA Uluslar Ligi",
-  "FIFA Dünya Kupası",
-  "Dünya Kupası Elemeleri",
-  "EURO",
-  "EURO Elemeleri",
-];
-
 export function PlayerMatchLogPanel({ rows = [] }: PlayerMatchLogPanelProps) {
   const { t } = useI18n();
   const [lineupFilter, setLineupFilter] = useState<LineupFilter>("all");
-  // Tek profil tum rekabetleri listeler; rekabet chip'iyle suzulur (varsayilan tumu).
-  const [compFilter, setCompFilter] = useState<string>("all");
+  // Tek profil tum rekabetleri listeler; rekabet + sezon chip'leriyle suzulur
+  // (ikisi de coklu secim; varsayilan tumu).
+  const [scope, setScope] = useState<ScopeSelection>(EMPTY_SCOPE);
   const [sortKey, setSortKey] = useState<SortKey>("match_datetime");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
 
-  const competitions = useMemo(() => {
-    const present = new Set(
-      rows.map((r) => r.competition).filter((c): c is string => Boolean(c))
-    );
-    return [
-      ...COMP_ORDER.filter((c) => present.has(c)),
-      ...[...present].filter((c) => !COMP_ORDER.includes(c)).sort(),
-    ];
-  }, [rows]);
+  const scopeItems = useMemo(
+    () => rows.map((r) => ({ competition: r.competition, season: r.season_label })),
+    [rows]
+  );
 
   const compRows = useMemo(
     () =>
-      compFilter === "all"
-        ? rows
-        : rows.filter((r) => r.competition === compFilter),
-    [rows, compFilter]
+      rows.filter((r) =>
+        matchesScope({ competition: r.competition, season: r.season_label }, scope)
+      ),
+    [rows, scope]
   );
 
   function handleSort(key: SortKey) {
@@ -226,35 +201,7 @@ export function PlayerMatchLogPanel({ rows = [] }: PlayerMatchLogPanelProps) {
 
   return (
     <div className="space-y-4">
-      {competitions.length > 1 ? (
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setCompFilter("all")}
-            className={`rounded-xl border px-3 py-2 text-sm transition ${
-              compFilter === "all"
-                ? "border-line-strong bg-card-2 text-ink"
-                : "border-line bg-veil text-ink-2 hover:bg-veil"
-            }`}
-          >
-            {t("playerDetail.allWithCount", { count: rows.length })}
-          </button>
-          {competitions.map((c) => (
-            <button
-              key={c}
-              type="button"
-              onClick={() => setCompFilter(c)}
-              className={`rounded-xl border px-3 py-2 text-sm transition ${
-                compFilter === c
-                  ? "border-line-strong bg-card-2 text-ink"
-                  : "border-line bg-veil text-ink-2 hover:bg-veil"
-              }`}
-            >
-              {c} ({rows.filter((r) => r.competition === c).length})
-            </button>
-          ))}
-        </div>
-      ) : null}
+      <ScopeFilter items={scopeItems} value={scope} onChange={setScope} />
       <div className="flex flex-wrap items-center gap-2">
         <button
           type="button"
@@ -407,9 +354,9 @@ export function PlayerMatchLogPanel({ rows = [] }: PlayerMatchLogPanelProps) {
                       {cup ? (
                         <span
                           className="shrink-0 rounded bg-accent-soft px-1 py-0.5 text-[9px] font-semibold text-accent-ink"
-                          title={row.competition ?? undefined}
+                          title={row.competition ? competitionLabel(t, row.competition) : undefined}
                         >
-                          {cup.short}
+                          {t(cup.shortKey)}
                         </span>
                       ) : null}
                     </span>
@@ -447,7 +394,11 @@ export function PlayerMatchLogPanel({ rows = [] }: PlayerMatchLogPanelProps) {
                   </td>
 
                   <td className="px-3 py-1.5 whitespace-nowrap text-ink-2">
-                    {row.lineup_status ?? "—"}
+                    {normalizeLineupStatus(row.lineup_status) === "starter"
+                      ? t("playerDetail.starterRoleLabel")
+                      : normalizeLineupStatus(row.lineup_status) === "substitute"
+                        ? t("playerDetail.subRoleLabel")
+                        : row.lineup_status ?? "—"}
                   </td>
 
                   <td className="px-3 py-1.5 whitespace-nowrap text-ink-2">
