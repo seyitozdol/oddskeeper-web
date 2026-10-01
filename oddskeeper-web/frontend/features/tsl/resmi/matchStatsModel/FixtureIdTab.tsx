@@ -153,7 +153,15 @@ export default function FixtureIdTab({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [league]);
   useEffect(() => {
-    fetchFixtures(league, round).then(setFixtures);
+    // Hafta hizla degisince (acilista 1 -> ilk aktif hafta) gec donen eski yanit
+    // yenisinin ustune yazmasin.
+    let alive = true;
+    fetchFixtures(league, round).then((rows) => {
+      if (alive) setFixtures(rows);
+    });
+    return () => {
+      alive = false;
+    };
   }, [league, round]);
 
   // Round dropdown sirasi: aktif haftalar (kucukten buyuge) ustte, tamamlanan

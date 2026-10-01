@@ -59,6 +59,7 @@ import {
   type FixtureInput,
   type MatchLogRow,
   isEuroMsmLeague,
+  NATIONAL_MSM_LEAGUE,
 } from "./matchStatsModel/queries";
 import type { MarketConfig, ModelConfig } from "@/features/match-stats-model/engine";
 import TeamCrest from "@/features/tsl/shared/TeamCrest";
@@ -321,7 +322,8 @@ export default function ResmiMatchStatsModel({
   const isEuro = isEuroMsmLeague(LEAGUE);
   // GSheet, Fixture sekmesinin alt sekmesi. İzni olmayan kullanıcıya hiç gösterilmez
   // (o zaman Fixture sekmesi alt sekmesiz, eskisi gibi açılır).
-  const showGSheet = canGSheet && !isEuro;
+  // Milli takımda da yok: msm_gsheet_v1 milli maçları dışlar (sızıntı bekçisi).
+  const showGSheet = canGSheet && !isEuro && LEAGUE !== NATIONAL_MSM_LEAGUE;
   const [fixtureSub, setFixtureSub] = useState<"ids" | "gsheet">("ids");
   const [configFocus, setConfigFocus] = useState<string | null>(null);
   // Model'deki dişli → Config sekmesine geç + ilgili bölüme kaydır.
@@ -1500,11 +1502,14 @@ export default function ResmiMatchStatsModel({
                       <TeamCrest logo={logoFor(slug)} name={name} size="xs" />
                       {name} · {market}
                     </span>
-                    <label className="ml-auto flex items-center gap-1 text-[11px] text-ink-2">
-                      <input type="checkbox" checked={b4} onChange={(e) => setB4(e.target.checked)} className="h-3 w-3 accent-[var(--color-accent)]" />
-                      {t("msm.big4")}
-                    </label>
-                    <label className="flex items-center gap-1 text-[11px] text-ink-2">
+                    {/* Big4 istisnasi kulup liglerine ozel; milli takimda yok. */}
+                    {LEAGUE !== NATIONAL_MSM_LEAGUE ? (
+                      <label className="ml-auto flex items-center gap-1 text-[11px] text-ink-2">
+                        <input type="checkbox" checked={b4} onChange={(e) => setB4(e.target.checked)} className="h-3 w-3 accent-[var(--color-accent)]" />
+                        {t("msm.big4")}
+                      </label>
+                    ) : null}
+                    <label className={`flex items-center gap-1 text-[11px] text-ink-2 ${LEAGUE === NATIONAL_MSM_LEAGUE ? "ml-auto" : ""}`}>
                       <input type="checkbox" checked={rc} onChange={(e) => setRc(e.target.checked)} className="h-3 w-3 accent-[var(--color-accent)]" />
                       {t("msm.redc")}
                     </label>

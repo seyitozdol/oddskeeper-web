@@ -128,6 +128,16 @@ chmod +x /opt/oddskeeper/run_upcoming_events.sh /opt/oddskeeper/run_odds_capture
 #    turnuva bitince bu iki satırı kaldır.
 30 22 * * *   /opt/oddskeeper/run_eurovolley.sh
 15 8 * * *    /opt/oddskeeper/run_eurovolley.sh
+
+# 10) Türkiye A Milli Futbol Takımı (header "TR", SofaScore takım id 4700, 2026-10-01):
+#    maç-sonrası akış + fikstür/grup tablosu. 6c kalıbı, 3 dk kaydırmalı. Her tur --sync:
+#    adaylar DB'den (fikstürde başlama saati 2.5-8 saat önce; aday yoksa HTTP isteği yok).
+#    06 ve 18 turlarında --fixtures: Türkiye fikstürü, grup tablosu, YENİ rakibin 2023'ten
+#    beri resmi maç geçmişi (MSM/PSM rakip verisi ister), son 72 saatin düzeltme geçişi.
+#    Hazırlık maçları alınmaz; izinli turnuvalar ref.national_competitions tablosunda.
+#    Değişen maç olunca: kimlik haritası + logo + bio/foto + refresh_orchestrator.py natl.
+#    Log: logs/national.log (yalnız bir şey olunca). ntfy: "milli takim akisi FAILED".
+3-59/10 * * * *  /opt/oddskeeper/run_national.sh
 ```
 `public.pipeline_triggers` tablosu gerekir (sql/2026-07-31_pipeline_triggers.sql).
 Wrapper'ları kopyala: `cp oddskeeper-web/pipeline/deploy/run_*.sh /opt/oddskeeper/ && chmod +x /opt/oddskeeper/run_*.sh`

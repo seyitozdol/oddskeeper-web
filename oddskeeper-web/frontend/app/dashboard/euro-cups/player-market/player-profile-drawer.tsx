@@ -5,7 +5,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { useI18n } from "@/lib/i18n/LanguageProvider";
 import { getCountryFlagUrl } from "@/lib/country-flags";
-import { competitionOf, type EuroCupLeague } from "./queries";
+import { competitionOf, datasetOf, type EuroCupLeague } from "./queries";
 
 // Avrupa kupalari kopyasi: app/dashboard/tff-1-lig/player-market/
 // player-profile-drawer.tsx ile ayni acilis sekli (sabit overlay + sagdan
@@ -23,11 +23,12 @@ import { competitionOf, type EuroCupLeague } from "./queries";
 //     redirect eden /dashboard/euro-cups/{cl,el,conf}/player/[id]).
 // Sira/percentile verisi kupada yok; o bolumler gosterilmez.
 
-// League -> euro-cups URL segmenti (tam profil linki icin).
-const LEAGUE_PATH_SEGMENT: Record<EuroCupLeague, string> = {
-  eurocl: "cl",
-  euel: "el",
-  euecl: "conf",
+// League -> oyuncu route'u koku (tam profil linki icin; hepsi football profiline yonlenir).
+const LEAGUE_PLAYER_BASE: Record<EuroCupLeague, string> = {
+  eurocl: "/dashboard/euro-cups/cl/player",
+  euel: "/dashboard/euro-cups/el/player",
+  euecl: "/dashboard/euro-cups/conf/player",
+  trnat: "/dashboard/national/tr/player",
 };
 
 type ProfileInfo = {
@@ -155,14 +156,14 @@ export default function PlayerProfileDrawer({
       const [infoRes, seasonsRes] = await Promise.all([
         supabase
           .schema("analytics")
-          .from("eurocup_pm_squad_mat")
+          .from(datasetOf(league).squad)
           .select("player_id, player_name, birth_date, country, position, photo_url, market_value_eur")
           .eq("competition", competition)
           .eq("player_id", playerId)
           .limit(1),
         supabase
           .schema("analytics")
-          .from("eurocup_pm_player_season_mat")
+          .from(datasetOf(league).season)
           .select(seasonSelect)
           .eq("competition", competition)
           .eq("player_id", playerId)
@@ -217,7 +218,7 @@ export default function PlayerProfileDrawer({
         const field = metricKey.slice(6);
         const { data: shotRows } = await supabase
           .schema("analytics")
-          .from("eurocup_shot_zones_season_v1") // 1000-cap: tekil oyuncu sezon satirlari
+          .from(datasetOf(league).shotSeason) // 1000-cap: tekil oyuncu sezon satirlari
           .select(`season_label, matches, ${field}`)
           .eq("competition", competition)
           .eq("sofascore_player_id", playerId);
@@ -270,7 +271,7 @@ export default function PlayerProfileDrawer({
     ? POSITION_SHORT[info.position] ?? info.position
     : null;
   const mvLabel = fmtMarketValue(marketValue);
-  const detailHref = `/dashboard/euro-cups/${LEAGUE_PATH_SEGMENT[league]}/player/${encodeURIComponent(playerId)}`;
+  const detailHref = `${LEAGUE_PLAYER_BASE[league]}/${encodeURIComponent(playerId)}`;
 
   return (
     <div className="fixed inset-0 z-[90]">

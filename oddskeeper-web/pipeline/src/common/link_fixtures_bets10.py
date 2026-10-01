@@ -13,6 +13,10 @@ okur ve Fixture ID sekmesinde "Bets10'dan doldur" önerisi olarak gösterir.
          korumaları) yeniden kullanılır; turnuva 'Trendyol Süper Lig' ile filtrelenir.
   TFF1 : analytics.tff1_fixtures_v1 SofaScore-native; fixture_id == SofaScore
          event_id (aynı id uzayı, doğrulandı) -> KESİN eşleşme, bulanıklık yok.
+  TRNAT: Türkiye A Milli (erkek futbol). analytics.trnat_fixtures_v1 fixture_id ==
+         SofaScore event_id -> KESİN. Kimlik = SofaScore takım id 4700 + sport
+         'football'; ad ("Türkiye") HİÇ kullanılmaz, o yüzden basketbol/voleybol
+         milli takımları ve kadın/genç futbol milli takımları karışamaz.
 
 Basketbol (BSL / EuroLeague / EuroCup): fikstur kaynagi yok, bag EVENT bazli
 -> tracker.bb_fixture_bets10_link (bkz. dosya sonundaki BASKETBOL bolumu).
@@ -38,6 +42,8 @@ from load_site_odds import (  # noqa: E402
 # upcoming_events_v1 tournament_name -> lig anahtarı (senior; U19 PAF Ligi hariç).
 TSL_TOURNAMENT = "Trendyol Süper Lig"
 TFF1_TOURNAMENT = "1. Lig"
+# Türkiye A Milli (erkek futbol) SofaScore takım id'si. Kadın A Milli 38104, U21 4892.
+TRNAT_TEAM_ID = 4700
 
 
 def load_bets10_events(cur) -> dict[int, dict]:
@@ -158,6 +164,50 @@ def resolve_tff1(cur, bets10: dict[int, dict]) -> list[dict]:
         e = bets10.get(int(fid))
         if e and e["tournament"] == TFF1_TOURNAMENT:
             out.append(_row("tff1", fid, e, 1.0))
+    return out
+
+
+def resolve_trnat(cur, bets10: dict[int, dict]) -> list[dict]:
+    """Türkiye A Milli: trnat_fixtures_v1.fixture_id == SofaScore event_id (kesin).
+
+    Event'in SofaScore kaydı futbol + erkek + takım id 4700 olmalı (join şartı);
+    "Türkiye" adını taşıyan başka spor/cinsiyet/yaş grubu maçları buraya giremez.
+    """
+    cur.execute(
+        """
+        select f.fixture_id, u.home_team_id
+        from analytics.trnat_fixtures_v1 f
+        join tracker.upcoming_events u on u.event_id = f.fixture_id
+        where u.sport = 'football'
+          and coalesce(u.gender, 'M') <> 'F'
+          and %s in (u.home_team_id, u.away_team_id)
+          and coalesce(lower(f.fixture_status),'scheduled') in
+              ('scheduled','postponed','notstarted')
+        """,
+        (TRNAT_TEAM_ID,),
+    )
+    out = []
+    for fid, home_id in cur.fetchall():
+        e = bets10.get(int(fid))
+        if not e:
+            continue
+        row = _row("trnat", fid, e, 1.0)
+        # 1X2 yönü: Türkiye seçimi adından kesin tanınır, diğeri rakiptir. Rakip
+        # ekzonim sözlüğünde olmasa da (yeni ülke) ev/deplasman oranı yer değiştirmez.
+        tr = opp = None
+        for sel, odds in e["sels"]:
+            if odds is None or fold(sel) in ("beraberlik", "draw"):
+                continue
+            if fold(sel) in ("turkiye", "turkey"):
+                tr = odds
+            else:
+                opp = odds
+        if tr is not None and opp is not None:
+            if home_id == TRNAT_TEAM_ID:
+                row["home_odds"], row["away_odds"] = tr, opp
+            else:
+                row["home_odds"], row["away_odds"] = opp, tr
+        out.append(row)
     return out
 
 
@@ -468,14 +518,15 @@ def main() -> None:
     bets10 = {k: e for k, e in bets10.items()
               if e["start_ts"] is None or e["start_ts"] > now}
 
-    rows = resolve_tsl(cur, bets10) + resolve_tff1(cur, bets10)
+    rows = resolve_tsl(cur, bets10) + resolve_tff1(cur, bets10) + resolve_trnat(cur, bets10)
     if started:
         print(f"baslamis mac (donduruldu, guncellenmeyecek): {started}")
 
     print(f"B10 futbol maçı (oranlı): {len(bets10)}")
     print(f"eşleşen fikstür: {len(rows)} "
           f"(tsl {sum(1 for r in rows if r['league']=='tsl')}, "
-          f"tff1 {sum(1 for r in rows if r['league']=='tff1')})\n")
+          f"tff1 {sum(1 for r in rows if r['league']=='tff1')}, "
+          f"trnat {sum(1 for r in rows if r['league']=='trnat')})\n")
     for r in sorted(rows, key=lambda r: (r["league"], r["fixture_id"])):
         print(f"  {r['league']} fix={r['fixture_id']} eid={r['event_id']} "
               f"b10={r['bets10_event_id']} "

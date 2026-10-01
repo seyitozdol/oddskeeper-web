@@ -7,6 +7,7 @@ import {
   getCupMatch,
   getCupMatchPlayers,
   getCupMatchBars,
+  type CupMatchScope,
 } from "@/features/tsl/server/cupMatch";
 import { getFootballSlugsByIds } from "@/features/tsl/server/cupPlayerProfile";
 import { getPlayerDetailHref } from "@/lib/routes";
@@ -49,20 +50,23 @@ function toPlayerRow(
 }
 
 // Avrupa kupasi mac detayi — TSL sablonu (ustte grafikler, altta oyuncu statslari).
+// scope="national": ayni sablon milli takim maclari icin (natl_* view'lari).
 export default async function CupMatchDetail({
   matchId,
   returnTo,
   backBase,
+  scope = "eurocup",
 }: {
   matchId: string;
   returnTo?: string;
   backBase: string;
+  scope?: CupMatchScope;
 }) {
   const [t, locale] = await Promise.all([getT(), getLocale()]);
 
-  const match = await getCupMatch(matchId);
+  const match = await getCupMatch(matchId, scope);
   if (!match) notFound();
-  const players = await getCupMatchPlayers(matchId, match.homeId, match.awayId);
+  const players = await getCupMatchPlayers(matchId, match.homeId, match.awayId, scope);
   const slugById = await getFootballSlugsByIds(players.map((p) => p.playerId));
 
   const sortRows = (rows: TslMatchPlayer[]) =>
@@ -78,7 +82,7 @@ export default async function CupMatchDetail({
   const hasPlayerStats = players.some((p) => (p.minutes ?? 0) > 0 || p.rating != null);
 
   const back = returnTo && returnTo.startsWith("/dashboard") ? returnTo : backBase;
-  const vsRows = await getCupMatchBars(matchId, locale === "tr");
+  const vsRows = await getCupMatchBars(matchId, locale === "tr", scope);
 
   const teamBlock = (logo: string | null, name: string, align: "left" | "right") => (
     <div

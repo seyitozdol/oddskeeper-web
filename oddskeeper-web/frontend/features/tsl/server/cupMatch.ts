@@ -9,6 +9,24 @@ import type { ShowcaseVsRow } from "../../../components/showcase/ShowcaseCharts"
 // duser. Grafikler getCupMatchBars ile (eurocup_team_bars_v1, SofaScore -> FlashScore
 // fallback). TSL sablonunu birebir yeniden kullanir.
 
+// Mac detayi veri kapsami: Avrupa kupalari (eurocup_*) ya da milli takim maclari
+// (natl_*). View'lar ayni kolonlara sahip; milli tarafta FlashScore fallback yok.
+export type CupMatchScope = "eurocup" | "national";
+const SCOPE_VIEWS: Record<CupMatchScope, { matches: string; players: string; fsPlayers: string | null; bars: string }> = {
+  eurocup: {
+    matches: "eurocup_stage_matches_v1",
+    players: "eurocup_player_match_log_v1",
+    fsPlayers: "eurocup_fs_player_match_log_v1",
+    bars: "eurocup_team_bars_v1",
+  },
+  national: {
+    matches: "natl_stage_matches_v1",
+    players: "natl_player_match_log_v1",
+    fsPlayers: null,
+    bars: "natl_team_bars_v1",
+  },
+};
+
 const PLAYER_COLS =
   "player_id, player_name, team_id, position_code, lineup_status, minutes, rating, goals, assists, shots, shots_on_target, key_passes, total_passes, tackles, fouls, saves";
 
@@ -66,11 +84,14 @@ function mapPlayer(
   };
 }
 
-export async function getCupMatch(matchId: string): Promise<TslMatchDetail | null> {
+export async function getCupMatch(
+  matchId: string,
+  scope: CupMatchScope = "eurocup"
+): Promise<TslMatchDetail | null> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .schema("analytics")
-    .from("eurocup_stage_matches_v1")
+    .from(SCOPE_VIEWS[scope].matches)
     .select(
       "match_id, competition, season_label, match_datetime, home_team_id, home_team_name, away_team_id, away_team_name, home_score, away_score"
     )
@@ -107,12 +128,14 @@ export async function getCupMatch(matchId: string): Promise<TslMatchDetail | nul
 export async function getCupMatchPlayers(
   matchId: string,
   homeId?: string,
-  awayId?: string
+  awayId?: string,
+  scope: CupMatchScope = "eurocup"
 ): Promise<TslMatchPlayer[]> {
   const supabase = await createClient();
+  const views = SCOPE_VIEWS[scope];
   const { data, error } = await supabase
     .schema("analytics")
-    .from("eurocup_player_match_log_v1")
+    .from(views.players)
     .select(PLAYER_COLS)
     .eq("match_id", matchId)
     .limit(60);
@@ -121,12 +144,12 @@ export async function getCupMatchPlayers(
   const hasReal = rows.some((r) => (toNum(r.minutes) ?? 0) > 0 || r.rating != null);
   // SofaScore gercek stat verdiyse onu kullan. Vermediyse (kadro var stat yok) ve
   // ev/deplasman id'leri elde varsa FlashScore fallback'ini dene.
-  if (hasReal || !homeId || !awayId) {
+  if (hasReal || !homeId || !awayId || !views.fsPlayers) {
     return rows.map((r) => mapPlayer(r, homeId ?? null, awayId ?? null));
   }
   const { data: fs } = await supabase
     .schema("analytics")
-    .from("eurocup_fs_player_match_log_v1")
+    .from(views.fsPlayers)
     .select(`${PLAYER_COLS}, is_home`)
     .eq("match_id", matchId)
     .limit(60);
@@ -142,12 +165,13 @@ export async function getCupMatchPlayers(
 // Veri yoksa (ne SofaScore ne FS) bos dizi -> grafik gizlenir.
 export async function getCupMatchBars(
   matchId: string,
-  tr: boolean
+  tr: boolean,
+  scope: CupMatchScope = "eurocup"
 ): Promise<ShowcaseVsRow[]> {
   const supabase = await createClient();
   const { data } = await supabase
     .schema("analytics")
-    .from("eurocup_team_bars_v1")
+    .from(SCOPE_VIEWS[scope].bars)
     .select(
       "home_shots, away_shots, home_sot, away_sot, home_corners, away_corners, home_saves, away_saves, home_tackles, away_tackles, home_throws, away_throws, home_goal_kicks, away_goal_kicks, home_fouls, away_fouls, home_cards, away_cards, home_offsides, away_offsides"
     )

@@ -271,6 +271,8 @@ export function defaultProfile(
   away: { slug: string; name: string }
 ): string {
   if (league === "tff1") return "1. Lig";
+  // Milli takim maclari: kulup profilleri uymaz, Excel'deki "Avrupa" profili onerilir.
+  if (league === "trnat") return "Avrupa";
   const h4 = isOneOf(BIG4, home.slug, home.name);
   const a4 = isOneOf(BIG4, away.slug, away.name);
   if (h4 && a4) return "Derbi";

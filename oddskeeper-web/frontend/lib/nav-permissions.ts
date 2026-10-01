@@ -17,6 +17,9 @@ export const NAV_KEYS = [
   // Turkiye Kupasi panosu (Mackolik verisi). Temiz yol prefix'i /dashboard/cup
   // (proxy gercekten kilitler). Header'da 1.Lig'den sonra, SofaScore kupa logosu.
   "league-cup",
+  // Turkiye A Milli Futbol Takimi (header "TR", bayrak). Temiz yol prefix'i
+  // /dashboard/national/tr (proxy gercekten kilitler).
+  "league-trnat",
   // Avrupa kupalari (CL/UL/Con). OPT-IN: varsayilanda yalniz admin gorur
   // (bkz. OPT_IN_NAV_KEYS); soft-launch.
   "league-eurocl",
@@ -94,6 +97,13 @@ export const NAV_PERMISSION_ITEMS: NavPermissionItem[] = [
     labelKey: "nav.leagueCup",
     href: "/dashboard/cup",
     pathPrefixes: ["/dashboard/cup"],
+  },
+  {
+    key: "league-trnat",
+    labelKey: "nav.leagueTrnat",
+    href: "/dashboard/national/tr",
+    // Mac detayi da bu prefix'in altinda (/dashboard/national/tr/match/...).
+    pathPrefixes: ["/dashboard/national/tr"],
   },
   {
     key: "league-eurocl",
@@ -232,7 +242,8 @@ const SHARED_ACCESS_PREFIXES: { prefix: string; keys: NavKey[] }[] = [
   // league-1lig da dahil: 1. Lig'den düşen takımların (ör. Kayserispor) 1. Lig
   // sayfası, geçmiş verisi için bu football profiline köprülenir.
   { prefix: "/dashboard/stats-analysis/football/team-stats/detail", keys: ["stats-analysis", "league-tsl", "league-1lig"] },
-  { prefix: "/dashboard/stats-analysis/football/player-stats/detail", keys: ["stats-analysis", "league-tsl", "league-1lig"] },
+  // league-trnat: milli takim sayfasindaki oyuncu linkleri tek football profiline gider.
+  { prefix: "/dashboard/stats-analysis/football/player-stats/detail", keys: ["stats-analysis", "league-tsl", "league-1lig", "league-trnat"] },
   { prefix: "/dashboard/stats-analysis/football/match-stats/detail", keys: ["stats-analysis", "league-tsl", "league-1lig"] },
 ];
 

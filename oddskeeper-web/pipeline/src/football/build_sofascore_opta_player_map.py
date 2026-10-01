@@ -193,6 +193,17 @@ def main():
     rows.extend(cup_syn)
     print(f"kupa-only sentetik eklendi: {len(cup_syn)}")
 
+    # MILLI TAKIM (ref.national_competitions): ne Super Lig'de ne Avrupa kupasinda
+    # verisi olan milli oyuncu (Turkiye + rakipleri) -> ayni sentetik ss id. Kulupte
+    # verisi olan oyuncu yukarida zaten esli/sentetik (SofaScore id'si global tek).
+    sofa_natl = pool("sofascore",
+                     "m.competition in (select competition from ref.national_competitions)")
+    covered_all = {r[0] for r in rows}
+    natl_syn = [(sid, SYNTH_PREFIX + sid, name, "synthetic")
+                for sid, (name, _t) in sofa_natl.items() if sid not in covered_all]
+    rows.extend(natl_syn)
+    print(f"milli-takim-only sentetik eklendi: {len(natl_syn)}")
+
     meth = {}
     for _s, _o, _n, m in rows:
         meth[m] = meth.get(m, 0) + 1

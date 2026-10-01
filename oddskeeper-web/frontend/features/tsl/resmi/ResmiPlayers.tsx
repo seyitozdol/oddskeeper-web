@@ -90,7 +90,9 @@ const PAGE_SIZE = 100;
 
 const POS_SHORT: Record<string, string> = { G: "KL", D: "DF", M: "OS", F: "FV" };
 
-export default function ResmiPlayers({ data }: { data: ResmiPlayersBundle }) {
+// seasonLabel: sezon anahtari kullaniciya gosterilecek bicimde degilse (milli
+// takim: turnuva baskisi anahtari) onun yerine yazilacak etiket.
+export default function ResmiPlayers({ data, seasonLabel }: { data: ResmiPlayersBundle; seasonLabel?: string }) {
   const { t } = useI18n();
   const { rows, season } = data;
 
@@ -227,7 +229,7 @@ export default function ResmiPlayers({ data }: { data: ResmiPlayersBundle }) {
       </div>
 
       <div className="text-[11px] text-ink-3">
-        {t("tsl.season")} {season} · {sorted.length} {t("tsl.sectionPlayers")}
+        {seasonLabel ?? `${t("tsl.season")} ${season}`} · {sorted.length} {t("tsl.sectionPlayers")}
       </div>
 
       {/* Tablo */}

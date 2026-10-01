@@ -8,7 +8,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 // 'eurocl' | 'euel' | 'euecl'); shaping tek yerde yapilir ki client dosyalari
 // ayni kurallari paylassin.
 
-const LEAGUES = new Set(["tsl", "tff1", "eurocl", "euel", "euecl"]);
+const LEAGUES = new Set(["tsl", "tff1", "eurocl", "euel", "euecl", "trnat"]);
 
 type Body = { league?: unknown; action?: unknown; payload?: unknown };
 

@@ -88,6 +88,19 @@ export const EUROCUP_SECTIONS = [
   "playerStatsModel",
 ] as const;
 
+// Turkiye A Milli Takimi sekmeleri (sahip istegi 2026-10-01): TSL'deki tum
+// basliklar, Teams / Referees / Transfers / Team Rankings HARIC. "league"
+// sekmesi burada "Tournaments" adiyla gorunur (ResmiControlBar).
+export const NATIONAL_SECTIONS = [
+  "league",
+  "players",
+  "results",
+  "playerRankings",
+  "matchStatsModel",
+  "playerStatsModel",
+  "extras",
+] as const;
+
 const ALL_SECTIONS = [...RESMI_SECTIONS, "cupStages"] as const;
 export type ResmiSection = (typeof ALL_SECTIONS)[number];
 

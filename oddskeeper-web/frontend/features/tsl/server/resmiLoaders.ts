@@ -4,10 +4,12 @@ import { getAllFootballTeamLogos } from "../../../lib/football-teams";
 import { getTeamDetailHref } from "../../../lib/routes";
 import {
   isEuroCupSource,
+  isNationalSource,
   playerHrefFor,
   teamHrefFor,
   type LeagueConfig,
 } from "../leagues";
+import type { ZoneKey } from "../standingsZones";
 import { getFootballTeamSlugMap } from "./cupProfileRedirect";
 import { slugifyTeamName } from "../../../lib/football-teams";
 import { slugForSofascoreTeam } from "../../../lib/sofascore-team-map";
@@ -74,6 +76,16 @@ import {
   cupUpcoming,
 } from "./cupdata";
 import { makeCupProvider } from "./eurocupData";
+import {
+  TR_TEAM_ID,
+  currentEdition,
+  getNationalEditions,
+  getNationalGroup,
+  getNationalMatchStages,
+  makeNationalProvider,
+  resolveEditionKey,
+  type NationalEdition,
+} from "./nationalData";
 
 // ---- Lig kaynak sağlayıcısı (tsl_ss vs tff1 vs cup) ----
 type Provider = {
@@ -132,6 +144,10 @@ function providerFor(config: LeagueConfig): Provider {
   if (isEuroCupSource(config.source)) {
     // Uc Avrupa kupasi da ayni fabrikayi kullanir; fark competition + view prefix.
     return makeCupProvider(config.competition, config.viewPrefix ?? "ucl");
+  }
+  if (isNationalSource(config.source)) {
+    // Turkiye A Milli: ayni fabrika + turnuva baskisi / grup tablosu farklari.
+    return makeNationalProvider(config.competition, config.viewPrefix ?? "trnat");
   }
   return {
     teamMeta: (s) => getTslTeamMeta(s),
@@ -226,6 +242,11 @@ async function buildTeamHrefs(
   season: string
 ): Promise<Record<string, string | null>> {
   const out: Record<string, string | null> = {};
+  // Milli takimlarin profil sayfasi yok: hepsi duz metin.
+  if (isNationalSource(config.source)) {
+    for (const e of entries) out[e.teamId] = null;
+    return out;
+  }
   const euro = isEuroCupSource(config.source);
   const idBased = config.source === "tff1";
   const euroSlugs = euro ? await getFootballTeamSlugMap() : null;
@@ -282,7 +303,21 @@ export type ResmiLigBundle = {
   lastRound: MatchRound | null;
   upcoming: TslMatch[];
   teamHrefById: Record<string, string | null>;
+  // Milli takim: bolge rengi takimdan (SofaScore notu) + Turkiye satiri vurgusu.
+  zoneByTeamId?: Record<string, ZoneKey | null>;
+  highlightTeamId?: string;
 };
+
+// Milli takim grup tablosu ekleri (diger liglerde bos nesne).
+async function nationalStandingExtras(
+  config: LeagueConfig,
+  season: string,
+  meta: Record<string, TslTeamMeta>
+): Promise<{ zoneByTeamId?: Record<string, ZoneKey | null>; highlightTeamId?: string }> {
+  if (!isNationalSource(config.source)) return {};
+  const group = await getNationalGroup(await resolveEditionKey(season), meta);
+  return { zoneByTeamId: group.zoneByTeamId, highlightTeamId: TR_TEAM_ID };
+}
 
 export async function loadResmiLig(
   config: LeagueConfig,
@@ -327,6 +362,48 @@ export async function loadResmiLig(
   return {
     season, league: config.source, basePath: config.basePath, matchBase: config.matchBase, standings, leaderMetric, leaders,
     lastRound: rounds.length ? rounds[rounds.length - 1] : null, upcoming, teamHrefById,
+    ...(await nationalStandingExtras(config, season, meta)),
+  };
+}
+
+// ── Milli takim Tournaments sekmesi ─────────────────────────────────────────
+// Secili turnuva baskisinin grup tablosu + Turkiye'nin o baskidaki maclari.
+// Sezon secici "all" ise GUNCEL baski gosterilir: en son maci oynanan turnuva;
+// bittiginde, yenisinin ilk maci oynanana kadar o kalir (sahip kurali).
+export type ResmiTournamentBundle = ResmiLigBundle & {
+  edition: NationalEdition | null;
+  isCurrent: boolean;
+  groupName: string | null;
+  matches: TslMatch[]; // baskidaki Turkiye maclari, en yeni ustte
+  stageByMatchId: Record<string, string>;
+};
+
+export async function loadResmiTournament(
+  config: LeagueConfig,
+  season: string,
+  leaderMetric: string
+): Promise<ResmiTournamentBundle> {
+  const editions = await getNationalEditions();
+  const current = currentEdition(editions);
+  const key = (await resolveEditionKey(season)) ?? season;
+  const edition = editions.find((e) => e.key === key) ?? null;
+  const p = providerFor(config);
+  const meta = await p.teamMeta(key);
+  const [lig, matches, group, stageByMatchId] = await Promise.all([
+    loadResmiLig(config, key, leaderMetric),
+    p.matches(key, meta),
+    getNationalGroup(key, meta),
+    getNationalMatchStages(key),
+  ]);
+  return {
+    ...lig,
+    // Linkler kullanicinin sectigi sezon parametresini korusun ("all" dahil).
+    season,
+    edition,
+    isCurrent: !!current && current.key === key,
+    groupName: group.groupName,
+    matches,
+    stageByMatchId,
   };
 }
 
@@ -340,6 +417,8 @@ export type ResmiResultsBundle = {
   teamHrefById: Record<string, string | null>;
   // Kupa: lig tablosu yerine tur bazlı grafik verisi.
   cupRounds?: CupStageRow[];
+  zoneByTeamId?: Record<string, ZoneKey | null>;
+  highlightTeamId?: string;
 };
 
 async function loadCupRounds(season: string): Promise<CupStageRow[]> {
@@ -373,7 +452,10 @@ export async function loadResmiResults(config: LeagueConfig, season: string): Pr
   );
   const rounds = clusterRounds(matches).reverse();
   const cupRounds = config.source === "cup" ? await loadCupRounds(season) : undefined;
-  return { season, league: config.source, basePath: config.basePath, matchBase: config.matchBase, standings, rounds, teamHrefById, cupRounds };
+  return {
+    season, league: config.source, basePath: config.basePath, matchBase: config.matchBase, standings, rounds, teamHrefById, cupRounds,
+    ...(await nationalStandingExtras(config, season, meta)),
+  };
 }
 
 export type ResmiTeamsBundle = {

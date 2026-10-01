@@ -1,15 +1,29 @@
 import { getPlayerDetailHref, getTeamDetailHref } from "@/lib/routes";
 import { currentSeasonLabel, previousSeasonLabel } from "@/lib/season";
-import { RESMI_SECTIONS, CUP_SECTIONS, EUROCUP_SECTIONS, type ResmiSection } from "./constants";
+import { RESMI_SECTIONS, CUP_SECTIONS, EUROCUP_SECTIONS, NATIONAL_SECTIONS, type ResmiSection } from "./constants";
 
 // Resmi deneyimini besleyen lig yapilandirmasi. TSL tsl_ss_* (opta-keyed)
 // kaynaktan; 1. Lig tff1_* (sofascore-keyed); Kupa cup_* (mackolik, uuid=opta);
-// Avrupa kupasi ucl_* (sofascore-keyed, tff1 deseni).
-export type LeagueSource = "tsl" | "tff1" | "cup" | "eurocl" | "euel" | "euecl";
+// Avrupa kupasi ucl_* (sofascore-keyed, tff1 deseni); Turkiye A Milli trnat_*
+// (ayni sofascore-keyed desen, tek takim + turnuva baskilari).
+export type LeagueSource = "tsl" | "tff1" | "cup" | "eurocl" | "euel" | "euecl" | "trnat";
 
 // Avrupa kupasi kaynaklari (ortak Cup League/Teams mantigi + prefix_* view'lar).
 export function isEuroCupSource(source: LeagueSource): boolean {
   return source === "eurocl" || source === "euel" || source === "euecl";
+}
+
+// Turkiye A Milli Takimi (header "TR"). Kupa saglayicisini paylasir; farklar:
+// sezon secici takvim sezonu degil turnuva baskisi, tek takim, grup tablosu
+// SofaScore standings'ten (bkz. server/nationalData.ts).
+export function isNationalSource(source: LeagueSource): boolean {
+  return source === "trnat";
+}
+
+// Kimligi sofascore id olan kaynaklar (kupa + milli): oyuncu linki tek football
+// profiline (slug), takim logosu tff1_team_logos_v1'den.
+export function isSofaIdSource(source: LeagueSource): boolean {
+  return isEuroCupSource(source) || isNationalSource(source);
 }
 
 export type LeagueConfig = {
@@ -130,6 +144,25 @@ export const EUECL_LEAGUE: LeagueConfig = {
   viewPrefix: "uecl",
 };
 
+// Turkiye A Milli Futbol Takimi. seasons BOS: sezon secici turnuva baskilarindan
+// (analytics.trnat_editions_v1) sunucuda kurulur, "all" = 2023'ten beri tumu.
+// competition = trnat_* view'larindaki sayfa duzeyi sabit etiket.
+export const TRNAT_ALL_SEASON = "all";
+export const TRNAT_LEAGUE: LeagueConfig = {
+  source: "trnat",
+  competition: "Milli Takım",
+  seasons: [],
+  defaultSeason: TRNAT_ALL_SEASON,
+  basePath: "/dashboard/national/tr",
+  matchBase: "/dashboard/national/tr/match",
+  logo: "/images/flags/tr.png",
+  nameKey: "tsl.trnatName",
+  transfersLeague: null,
+  sections: NATIONAL_SECTIONS,
+  defaultSection: "league",
+  viewPrefix: "trnat",
+};
+
 // Takım detay linki (lig kaynağına göre).
 export function teamHrefFor(
   config: LeagueConfig,
@@ -137,6 +170,9 @@ export function teamHrefFor(
   teamSlug: string | null,
   season?: string
 ): string | null {
+  // Milli takimlarin profil sayfasi yok (sayfanin kendisi Turkiye'nin sayfasi;
+  // rakip milli takimlar duz metin).
+  if (isNationalSource(config.source)) return null;
   // Avrupa kupasi: TEK profil ilkesi — Super Lig eslesmesi olan (dual) takim
   // football takim profiline; yabanci takim birlesik kupa takim sayfasina
   // (kupa kirilimi o sayfanin icinde, kupa basina ayri sayfa yok).
@@ -167,7 +203,8 @@ export function playerHrefFor(
   // oyuncusunun slug'i var (sofascore_football_player_link_v1 ile cozulur);
   // slug gelmemisse (veri gecikmesi) link duz metne duser, ayri kupa
   // profil sayfasi YOK.
-  if (isEuroCupSource(config.source)) {
+  // Milli takim oyunculari da ayni tek football profiline gider.
+  if (isSofaIdSource(config.source)) {
     return getPlayerDetailHref(playerSlug);
   }
   if (config.source === "tff1") return `/dashboard/tff-1-lig/player/${encodeURIComponent(playerId)}`;

@@ -21,11 +21,14 @@ from dotenv import dotenv_values
 ROOT = Path(__file__).resolve().parents[2]
 ENV = dotenv_values(ROOT / ".env")
 PROXY = (ENV.get("PROXY_URL") or "").strip()
-PROXIES = {"http": PROXY, "https": PROXY}
+# Proxy OPSIYONEL: VPS'te PROXY_URL, lokalde proxysiz (curl_cffi impersonate direkt calisir).
+PROXIES = {"http": PROXY, "https": PROXY} if PROXY else None
 DSN = (ENV.get("DATABASE_URL") or "").strip().strip('"')
 API = "https://www.sofascore.com/api/v1"
 
-COMP = sys.argv[1] if len(sys.argv) > 1 else "Süper Lig"
+# Bir ya da birden cok competition etiketi (or. milli turnuvalarin hepsi tek kosuda).
+COMPS = sys.argv[1:] or ["Süper Lig"]
+COMP = ", ".join(COMPS)
 SLEEP = float(os.environ.get("SS_SLEEP", "0.4"))
 MAX = int(os.environ.get("SS_MAX", "0"))
 
@@ -74,8 +77,6 @@ def upsert(cur, rows):
 
 
 def main():
-    if not PROXY:
-        raise SystemExit("Eksik PROXY_URL (.env)")
     conn = psycopg2.connect(DSN)
     conn.autocommit = True
     cur = conn.cursor()
@@ -84,12 +85,12 @@ def main():
              select distinct d.source_player_id as pid
              from football.match_player_stats_details d
              join football.matches m on m.source = d.source and m.source_match_id = d.source_match_id
-             where d.source = 'sofascore' and m.competition = %s)
+             where d.source = 'sofascore' and m.competition = any(%s))
            select slp.pid from slp
            left join football.sofascore_player_info i on i.sofascore_player_id = slp.pid
            where i.sofascore_player_id is null
            order by slp.pid""",
-        (COMP,),
+        (COMPS,),
     )
     ids = [r[0] for r in cur.fetchall()]
     if MAX:

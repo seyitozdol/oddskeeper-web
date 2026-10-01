@@ -20,14 +20,45 @@ export type { StatusConfig };
 // Kimlikler: takim = sofascore team_id (text), oyuncu = sofascore player_id (text).
 // Slug kavrami yok; TSL arayuzuyle uyum icin player_slug alanina player_id yazilir.
 
-export type EuroCupLeague = "eurocl" | "euel" | "euecl";
+// "trnat" = Turkiye A Milli Takimi (2026-10-01). Ayni bilesen, ayri veri seti:
+// natl_pm_* mat'lari eurocup_pm_* ile BIREBIR ayni kolonlara sahip, competition
+// kolonu sabit "Milli Takım" (Uluslar Ligi + elemeler + final turnuvalari ayni
+// takvim sezonunda birlikte sayilir). Kadro = takimin son 8 resmi macinin kadrosu.
+export type EuroCupLeague = "eurocl" | "euel" | "euecl" | "trnat";
 
-// League -> eurocup_* view'larindaki competition degeri (tek map).
+// League -> eurocup_* / natl_* view'larindaki competition degeri (tek map).
 const COMPETITION: Record<EuroCupLeague, string> = {
   eurocl: "UEFA Şampiyonlar Ligi",
   euel: "UEFA Avrupa Ligi",
   euecl: "UEFA Konferans Ligi",
+  trnat: "Milli Takım",
 };
+
+// League -> veri seti (mat/view adlari). Kolon sekli iki sette ayni.
+type PmDataset = {
+  log: string;
+  season: string;
+  squad: string;
+  shotMatch: string;
+  shotSeason: string;
+};
+const EURO_DATASET: PmDataset = {
+  log: "eurocup_pm_player_match_log_mat",
+  season: "eurocup_pm_player_season_mat",
+  squad: "eurocup_pm_squad_mat",
+  shotMatch: "player_shot_zones_match_v1",
+  shotSeason: "eurocup_shot_zones_season_v1",
+};
+const NATIONAL_DATASET: PmDataset = {
+  log: "natl_pm_player_match_log_mat",
+  season: "natl_pm_player_season_mat",
+  squad: "natl_pm_squad_mat",
+  shotMatch: "natl_shot_zones_match_v1",
+  shotSeason: "natl_shot_zones_season_v1",
+};
+export function datasetOf(league: EuroCupLeague): PmDataset {
+  return league === "trnat" ? NATIONAL_DATASET : EURO_DATASET;
+}
 
 export function competitionOf(league: EuroCupLeague): string {
   return COMPETITION[league];
@@ -38,6 +69,7 @@ const FIXTURES_VIEW: Record<EuroCupLeague, string> = {
   eurocl: "ucl_fixtures_v1",
   euel: "uel_fixtures_v1",
   euecl: "uecl_fixtures_v1",
+  trnat: "trnat_fixtures_v1",
 };
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -150,7 +182,7 @@ export async function fetchLatestMetricSeason(league: EuroCupLeague): Promise<st
   const supabase = createClient();
   const { data, error } = await supabase
     .schema("analytics")
-    .from("eurocup_pm_player_season_mat")
+    .from(datasetOf(league).season)
     .select("season_label")
     .eq("competition", COMPETITION[league])
     .order("season_label", { ascending: false })
@@ -185,7 +217,7 @@ export async function fetchAllCurrentPlayers(league: EuroCupLeague): Promise<Dir
   }>((from, to) =>
     supabase
       .schema("analytics")
-      .from("eurocup_pm_squad_mat")
+      .from(datasetOf(league).squad)
       .select("team_id, team_name, player_id, player_name, position")
       .eq("competition", COMPETITION[league])
       .order("team_name", { ascending: true })
@@ -263,7 +295,7 @@ export async function fetchTeamPlayers(
 
   const { data, error } = await supabase
     .schema("analytics")
-    .from("eurocup_pm_squad_mat") // 1000-cap: takim basina kadro ~25-40 satir
+    .from(datasetOf(league).squad) // 1000-cap: takim basina kadro ~25-40 satir
     .select(
       "player_id, player_name, position, appearances, starts, starter_rate_pct, last_match_datetime"
     )
@@ -304,7 +336,7 @@ export async function fetchPlayerRecentMatches(
 
   const { data, error } = await supabase
     .schema("analytics")
-    .from("eurocup_pm_player_match_log_mat")
+    .from(datasetOf(league).log)
     .select("player_id, match_datetime, lineup_status, minutes")
     .eq("competition", COMPETITION[league])
     .eq("season_label", seasonLabel)
@@ -355,7 +387,7 @@ export async function fetchPlayerLast5Avg(
     const field = logField.slice(6);
     const { data, error } = await supabase
       .schema("analytics")
-      .from("player_shot_zones_match_v1")
+      .from(datasetOf(league).shotMatch)
       .select(`sofascore_player_id, match_datetime, ${field}`)
       .eq("competition", COMPETITION[league])
       .eq("season_label", seasonLabel)
@@ -390,7 +422,7 @@ export async function fetchPlayerLast5Avg(
 
   const { data, error } = await supabase
     .schema("analytics")
-    .from("eurocup_pm_player_match_log_mat")
+    .from(datasetOf(league).log)
     .select(`player_id, match_datetime, ${logField}`)
     .eq("competition", COMPETITION[league])
     .eq("season_label", seasonLabel)
@@ -449,7 +481,7 @@ export async function fetchPlayerMetricStats(
     const field = metricKey.slice(6);
     const { data, error } = await supabase
       .schema("analytics")
-      .from("eurocup_shot_zones_season_v1") // 1000-cap: secili oyuncu id listesi (<=~50)
+      .from(datasetOf(league).shotSeason) // 1000-cap: secili oyuncu id listesi (<=~50)
       .select(`sofascore_player_id, matches, ${field}`)
       .eq("competition", COMPETITION[league])
       .eq("season_label", seasonLabel)
@@ -477,7 +509,7 @@ export async function fetchPlayerMetricStats(
 
   const { data, error } = await supabase
     .schema("analytics")
-    .from("eurocup_pm_player_season_mat") // 1000-cap: secili oyuncu id listesi (<=~50)
+    .from(datasetOf(league).season) // 1000-cap: secili oyuncu id listesi (<=~50)
     .select(`player_id, appearances, ${metricKey}`)
     .eq("competition", COMPETITION[league])
     .eq("season_label", seasonLabel)
@@ -517,7 +549,7 @@ export async function fetchPlayerSeasonAppearances(
 
   const { data, error } = await supabase
     .schema("analytics")
-    .from("eurocup_pm_player_season_mat") // 1000-cap: lig basina kayitli id ~600 (tsl emsali); 1000e yaklasirsa sayfala
+    .from(datasetOf(league).season) // 1000-cap: lig basina kayitli id ~600 (tsl emsali); 1000e yaklasirsa sayfala
     .select("player_id, appearances")
     .eq("competition", COMPETITION[league])
     .eq("season_label", seasonLabel)

@@ -6,7 +6,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 // kontrolunden gecer, tabloya service-role ile yazilir (authenticated yalniz okur).
 // Tablolar: sql/2026-09-30_msm_extra_markets.sql.
 
-const LEAGUES = new Set(["tsl", "tff1", "cup"]);
+const LEAGUES = new Set(["tsl", "tff1", "cup", "trnat"]);
 const MAX_CONFIG_BYTES = 100_000;
 const MAX_FIXTURE_ROWS = 200;
 

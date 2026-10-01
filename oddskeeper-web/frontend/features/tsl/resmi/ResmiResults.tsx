@@ -7,7 +7,7 @@ import CupRoundsChart from "./CupRoundsChart";
 export default async function ResmiResults({ data }: { data: ResmiResultsBundle }) {
   const t = await getT();
   const locale = await getLocale();
-  const { standings, league, rounds, teamHrefById, basePath, matchBase, cupRounds } = data;
+  const { standings, league, rounds, teamHrefById, basePath, matchBase, cupRounds, zoneByTeamId, highlightTeamId } = data;
   const isCup = !!cupRounds;
 
   if (!standings.length && !isCup) {
@@ -59,6 +59,8 @@ export default async function ResmiResults({ data }: { data: ResmiResultsBundle 
               teamHrefById={teamHrefById}
               labels={labels}
               league={league}
+              zoneByTeamId={zoneByTeamId}
+              highlightTeamId={highlightTeamId}
             />
           </>
         )}

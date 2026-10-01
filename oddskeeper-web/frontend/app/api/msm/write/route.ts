@@ -16,7 +16,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 // "cup": Kupa MSM'i manuel fikstürle calisir (fixture id + manuel mac yazimi). Liste
 // 2026-08-19'da route'a tasinirken kupa unutulmustu, kupa yazmalari 400 donuyordu.
-const LEAGUES = new Set(["tsl", "tff1", "cup", "eurocl", "euel", "euecl"]);
+const LEAGUES = new Set(["tsl", "tff1", "cup", "eurocl", "euel", "euecl", "trnat"]);
 
 type Body = { action?: unknown; payload?: unknown };
 

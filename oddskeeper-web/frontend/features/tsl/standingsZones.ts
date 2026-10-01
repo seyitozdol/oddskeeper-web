@@ -11,7 +11,10 @@ export type ZoneKey =
   | "confq"
   | "promotion"
   | "playoff"
-  | "relegation";
+  | "relegation"
+  // Milli takim grup tablolari (SofaScore notundan; bkz. server/nationalData.ts).
+  | "natQualified"
+  | "natRelegationPlayoff";
 
 export type ZoneStyle = { key: ZoneKey; color: string; labelKey: string };
 
@@ -23,6 +26,8 @@ const STYLE: Record<ZoneKey, { color: string; labelKey: string }> = {
   promotion: { color: "#1f9d55", labelKey: "tsl.zonePromotion" },
   playoff: { color: "#4aa3e0", labelKey: "tsl.zonePlayoff" },
   relegation: { color: "#e0483d", labelKey: "tsl.zoneRelegation" },
+  natQualified: { color: "#1f9d55", labelKey: "tsl.zoneNatQualified" },
+  natRelegationPlayoff: { color: "#e58f2a", labelKey: "tsl.zoneNatRelegationPlayoff" },
 };
 
 // Lig kaynagi ("tsl" | "tff1" | "cup") + sira -> bolge anahtari.
@@ -54,6 +59,19 @@ export function zoneColor(key: ZoneKey): string {
 
 export function zoneStyle(key: ZoneKey): ZoneStyle {
   return { key, ...STYLE[key] };
+}
+
+// Takim bazli bolge haritasindan (milli takim grup tablosu) legend listesi.
+export function zoneLegendFromMap(
+  order: string[],
+  zoneByTeamId: Record<string, ZoneKey | null>
+): ZoneStyle[] {
+  const keys: ZoneKey[] = [];
+  for (const id of order) {
+    const k = zoneByTeamId[id];
+    if (k && !keys.includes(k)) keys.push(k);
+  }
+  return keys.map(zoneStyle);
 }
 
 // Tabloda goze gorunen bolgelerin (sirali, tekil) legend listesi.

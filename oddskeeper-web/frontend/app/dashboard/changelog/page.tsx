@@ -21,6 +21,32 @@ const TAG_FIX: L = { en: "Fix", tr: "Düzeltme" };
 
 const ENTRIES: Entry[] = [
   {
+    date: { en: "1 October", tr: "1 Ekim" },
+    title: {
+      en: "New: Türkiye national football team page (TR in the header)",
+      tr: "Yeni: Türkiye A Milli Futbol Takımı sayfası (header'da TR)",
+    },
+    tag: TAG_NEW,
+    items: [
+      {
+        en: "A new TR item with the Turkish flag sits in the header between Cup and CL. It opens the men's senior national team page with every official match since 2023: EURO 2024 and its qualifiers, both Nations League campaigns, the 2026 World Cup and its qualifiers. Friendlies are not included.",
+        tr: "Header'da Cup ile CL arasında Türkiye bayraklı yeni bir TR başlığı var. Erkek A Milli Takım sayfasını açar; 2023'ten bugüne tüm resmi maçlar yüklü: EURO 2024 ve elemeleri, iki Uluslar Ligi dönemi, 2026 Dünya Kupası ve elemeleri. Hazırlık maçları dahil değil.",
+      },
+      {
+        en: "Tournaments tab (the League tab of the club pages): the group table of the current tournament, Türkiye's matches in it, the leaders and the upcoming fixtures. When a tournament ends it stays on screen until the next one kicks off. The selector at the top right switches to any earlier tournament or to All (2023+).",
+        tr: "Turnuvalar sekmesi (kulüp sayfalarındaki Lig sekmesinin karşılığı): güncel turnuvanın grup tablosu, Türkiye'nin o turnuvadaki maçları, liderler ve sıradaki maçlar. Turnuva bittiğinde, yenisi başlayana kadar ekranda kalır. Sağ üstteki seçiciyle eski turnuvalara ya da Tümü (2023+) görünümüne geçilir.",
+      },
+      {
+        en: "Players, Results and Player Rankings work per tournament or over the whole period. Player names open the same single profile used everywhere else, and national team matches now appear in that profile's match log with their own badges.",
+        tr: "Oyuncular, Sonuçlar ve Oyuncu Sıralamaları turnuva bazında ya da tüm dönem için çalışır. Oyuncu adları sitenin her yerindeki tek profile gider; milli maçlar artık o profilin maç logunda kendi rozetleriyle görünür.",
+      },
+      {
+        en: "Match Stats Model, Player Stats Model and Extras are available for national team fixtures. The upcoming opponents' official matches since 2023 are loaded too, so both sides of a fixture have data. Fixture IDs and 1X2 odds from Bets10 are suggested in the Fixture tabs; they are tied to the men's football team only, never to the basketball or volleyball national teams.",
+        tr: "Milli maçlar için Match Stats Model, Player Stats Model ve Extras kullanılabilir. Sıradaki rakiplerin 2023'ten beri resmi maçları da yüklenir; böylece fikstürün iki tarafında da veri olur. Fixture sekmelerinde Bets10 fikstür ID'si ve 1X2 oran önerisi gelir; bunlar yalnızca erkek futbol takımına bağlanır, basketbol ya da voleybol milli takımlarıyla karışmaz.",
+      },
+    ],
+  },
+  {
     date: { en: "30 September", tr: "30 Eylül" },
     title: {
       en: "Basketball: line rules explained in Config > Market Templates",

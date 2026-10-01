@@ -12,8 +12,11 @@ import TeamCrest from "@/features/tsl/shared/TeamCrest";
 
 export default async function ResmiPlayerRankings({
   data,
+  seasonLabel,
 }: {
   data: ResmiPlayerRankingsBundle;
+  // Milli takim: sezon anahtari yerine gosterilecek turnuva etiketi.
+  seasonLabel?: string;
 }) {
   const t = await getT();
   const {
@@ -108,7 +111,7 @@ export default async function ResmiPlayerRankings({
     <section className="space-y-3">
       <div>
         <div className="text-[11px] uppercase tracking-[0.18em] text-ink-3">
-          {t("tsl.sectionPlayerRankings")} · {season}
+          {t("tsl.sectionPlayerRankings")} · {seasonLabel ?? season}
         </div>
         <h1 className="mt-1 text-2xl font-semibold text-ink">{title}</h1>
       </div>

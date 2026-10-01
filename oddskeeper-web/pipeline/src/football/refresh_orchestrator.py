@@ -38,6 +38,7 @@ Kirli kaynak -> mat eslesmesi eski wrapper davranisinin birebir birlesimi:
   sofa  = eski adim 1 loader refresh'i + adim 3b refresh_tsl_mats
   flash = eski adim 2 FS loader refresh'i + adim 3 inline tff1 + adim 3b
   cup   = eski adim 3d refresh_cup_mats
+  natl  = milli takim akisi (run_national.sh): sut bolgeleri + tek-profil kopruleri + natl_pm zinciri
 Tek fark: mukerrerler tekillesti (or. squad_profile sofa turunda 2 kez,
 tff1 player/team flash turunda 3 kez tazeleniyordu; artik 1'er kez).
 
@@ -50,7 +51,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 
-SOFA, FLASH, CUP = "sofa", "flash", "cup"
+SOFA, FLASH, CUP, NATL = "sofa", "flash", "cup", "natl"
 
 # TEK TABLO: (mat adi, concurrently?, tetikleyen kaynaklar). Sira = tazeleme sirasi.
 MATS = [
@@ -60,7 +61,7 @@ MATS = [
     ("tff1_player_match_log_mat", False, {SOFA, FLASH}),
     ("tff1_pm_player_season_mat", False, {SOFA, FLASH}),
     ("tff1_squad_mat", False, {SOFA, FLASH}),
-    ("player_shot_zones_match_mat", True, {SOFA}),
+    ("player_shot_zones_match_mat", True, {SOFA, NATL}),
     # tsl_ss zinciri (detailed_metrics_global ILK, digerleri ondan turer)
     ("tsl_ss_player_detailed_metrics_global_mat", False, {SOFA, FLASH}),
     ("tsl_ss_player_table_mat", False, {SOFA, FLASH}),
@@ -74,9 +75,9 @@ MATS = [
     ("tsl_player_advanced_season_mat", False, {SOFA, FLASH}),
     ("tsl_player_flashscore_season_mat", False, {SOFA, FLASH}),
     # SofaScore profil koprusu: profil ONCE, sonra mac logu + kimlik/bio
-    ("player_profile_bridged_mat", False, {SOFA, FLASH}),
-    ("player_match_log_sofascore_mat", False, {SOFA, FLASH}),
-    ("player_current_info_bridged_mat", False, {SOFA, FLASH}),
+    ("player_profile_bridged_mat", False, {SOFA, FLASH, NATL}),
+    ("player_match_log_sofascore_mat", False, {SOFA, FLASH, NATL}),
+    ("player_current_info_bridged_mat", False, {SOFA, FLASH, NATL}),
     # kadro profili bridged'lerden SONRA; PSM sicak mat'lari ondan SONRA
     ("team_current_squad_profile_mat", True, {SOFA, FLASH}),
     ("player_metric_leaderboard_current_mat", False, {SOFA}),
@@ -95,6 +96,11 @@ MATS = [
     ("eurocup_pm_player_match_log_mat", True, {CUP}),
     ("eurocup_pm_player_season_mat", True, {CUP}),
     ("eurocup_pm_squad_mat", True, {CUP}),
+    # Milli takim PSM zinciri (2026-10-01): log -> season -> squad (ayni sira kurali).
+    # natl kaynagi ayrica sut bolgelerini ve tek-profil koprulerini tazeler (yukarida).
+    ("natl_pm_player_match_log_mat", True, {NATL}),
+    ("natl_pm_player_season_mat", True, {NATL}),
+    ("natl_pm_squad_mat", True, {NATL}),
 ]
 
 _CONC = {name: conc for name, conc, _ in MATS}
@@ -211,10 +217,10 @@ def run(sources):
 def main(argv):
     dry = "--dry-run" in argv
     sources = {a.strip().lower() for a in argv if a.strip() and a != "--dry-run"}
-    unknown = sources - {SOFA, FLASH, CUP}
+    unknown = sources - {SOFA, FLASH, CUP, NATL}
     if not sources or unknown:
         raise SystemExit(
-            f"Kullanim: refresh_orchestrator.py [--dry-run] [sofa] [flash] [cup]"
+            f"Kullanim: refresh_orchestrator.py [--dry-run] [sofa] [flash] [cup] [natl]"
             f"{' (bilinmeyen: ' + str(sorted(unknown)) + ')' if unknown else ''}")
     if dry:
         names = plan(sources)

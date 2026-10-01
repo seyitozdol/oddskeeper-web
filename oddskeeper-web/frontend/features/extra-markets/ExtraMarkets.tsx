@@ -43,9 +43,9 @@ import {
 // Fikstur: mac + profil + No Goal; Profiller: Excel Profiles tablosu (ligler arasi
 // ortak); Input: uretilen Dynamic ve Static dosyalari (Export + Add to MMI).
 
-export type ExtrasLeague = "tsl" | "tff1" | "cup";
+export type ExtrasLeague = "tsl" | "tff1" | "cup" | "trnat";
 
-const LEAGUE_TAG: Record<ExtrasLeague, string> = { tsl: "TSL", tff1: "1Lig", cup: "Cup" };
+const LEAGUE_TAG: Record<ExtrasLeague, string> = { tsl: "TSL", tff1: "1Lig", cup: "Cup", trnat: "TR" };
 const TABS = ["fixtures", "input", "profiles"] as const;
 type Tab = (typeof TABS)[number];
 const TAB_KEY: Record<Tab, string> = {

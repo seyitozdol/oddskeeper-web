@@ -6,7 +6,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { useI18n } from "../../../lib/i18n/LanguageProvider";
 import { type ResmiSection } from "../constants";
-import { isEuroCupSource, type LeagueConfig } from "../leagues";
+import { isEuroCupSource, isNationalSource, type LeagueConfig } from "../leagues";
 import SeasonToggle from "../../../components/SeasonToggle";
 
 const SECTION_KEY: Record<ResmiSection, string> = {
@@ -28,15 +28,22 @@ export default function ResmiControlBar({
   config,
   section,
   season,
+  seasonOptions,
 }: {
   config: LeagueConfig;
   section: ResmiSection;
   season: string;
+  // Milli takim: sezon yerine turnuva baskisi secici (etiketli acilir liste).
+  seasonOptions?: { value: string; label: string }[];
 }) {
   const { t } = useI18n();
   const pathname = usePathname();
   const params = useSearchParams();
   const leagueName = t(config.nameKey);
+  const national = isNationalSource(config.source);
+  // Milli takimda "League" sekmesi "Tournaments" adiyla gorunur.
+  const sectionLabel = (s: ResmiSection) =>
+    national && s === "league" ? t("tsl.sectionTournaments") : t(SECTION_KEY[s]);
 
   const buildQuery = (over: Record<string, string>) => {
     const next = new URLSearchParams(params.toString());
@@ -60,13 +67,17 @@ export default function ResmiControlBar({
               alt={leagueName}
               width={48}
               height={48}
-              className="tsl-league-mark h-11 w-11 shrink-0 object-contain"
+              className={
+                national
+                  ? "h-10 w-10 shrink-0 rounded-full object-cover ring-1 ring-line"
+                  : "tsl-league-mark h-11 w-11 shrink-0 object-contain"
+              }
             />
             <span className="text-2xl font-bold tracking-tight text-ink">
               {leagueName}
             </span>
             {/* TR bayragi yalniz yerel ligler (TSL/1.Lig/Kupa); Avrupa kupalarinda yok. */}
-            {!isEuroCupSource(config.source) ? (
+            {!isEuroCupSource(config.source) && !national ? (
               <Image
                 src="/images/flags/tr.png"
                 alt="TR"
@@ -79,7 +90,12 @@ export default function ResmiControlBar({
         </div>
 
         {/* Sag: sezon (BSL/EL/EC ile ortak SeasonToggle) */}
-        <SeasonToggle seasons={config.seasons} current={season} />
+        <SeasonToggle
+          seasons={config.seasons}
+          current={season}
+          options={seasonOptions}
+          ariaLabel={national ? t("tsl.sectionTournaments") : undefined}
+        />
       </div>
 
       {/* Alt: bolumler. Transfers yalniz TSL'de (1.Lig/kupada transfer verisi yok). */}
@@ -102,7 +118,7 @@ export default function ResmiControlBar({
                 />
               ) : null}
               <span className={`relative ${active ? "text-accent-ink" : "text-ink-3 hover:text-ink-2"}`}>
-                {t(SECTION_KEY[s])}
+                {sectionLabel(s)}
               </span>
             </Link>
           );

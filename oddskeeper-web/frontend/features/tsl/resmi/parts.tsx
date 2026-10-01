@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { getCountryFlagUrl, canonicalNationality } from "@/lib/country-flags";
 import { formatDate, initials } from "@/features/tsl/lib";
-import { zoneColor, zoneForRank, type ZoneStyle } from "@/features/tsl/standingsZones";
+import { zoneColor, zoneForRank, type ZoneKey, type ZoneStyle } from "@/features/tsl/standingsZones";
 import type { Locale } from "@/lib/i18n/config";
 import type { TslMatch, TslStandingRow } from "@/features/tsl/types";
 import TeamCrest from "@/features/tsl/shared/TeamCrest";
@@ -115,6 +115,8 @@ export function standingsLabels(t: (key: string) => string): Record<string, stri
     "tsl.zonePromotion": t("tsl.zonePromotion"),
     "tsl.zonePlayoff": t("tsl.zonePlayoff"),
     "tsl.zoneRelegation": t("tsl.zoneRelegation"),
+    "tsl.zoneNatQualified": t("tsl.zoneNatQualified"),
+    "tsl.zoneNatRelegationPlayoff": t("tsl.zoneNatRelegationPlayoff"),
   };
 }
 
@@ -127,6 +129,8 @@ export function ResmiStandings({
   labels,
   league,
   legend = [],
+  zoneByTeamId,
+  highlightTeamId,
 }: {
   standings: TslStandingRow[];
   teamHrefById: Record<string, string | null>;
@@ -134,6 +138,10 @@ export function ResmiStandings({
   labels: Record<string, string>;
   league: string;
   legend?: ZoneStyle[];
+  // Verilirse bolge siradan degil takimdan okunur (milli takim grup tablosu).
+  zoneByTeamId?: Record<string, ZoneKey | null>;
+  // Vurgulanacak satir (milli takim sayfasinda Turkiye).
+  highlightTeamId?: string;
 }) {
   const total = standings.length;
   return (
@@ -157,11 +165,12 @@ export function ResmiStandings({
             </thead>
             <tbody>
               {standings.map((r, i) => {
-                const zone = zoneForRank(league, r.rank, total);
+                const zone = zoneByTeamId ? zoneByTeamId[r.teamId] ?? null : zoneForRank(league, r.rank, total);
+                const hl = highlightTeamId === r.teamId;
                 return (
                   <tr
                     key={r.teamId}
-                    className={`${i % 2 ? "bg-veil/40" : ""} border-b border-line/50 last:border-0`}
+                    className={`${hl ? "bg-accent-soft" : i % 2 ? "bg-veil/40" : ""} border-b border-line/50 last:border-0`}
                   >
                     <td className="relative py-1.5 pl-3 pr-1 text-left text-[12px] font-bold tabular-nums text-ink-2">
                       {zone ? (
@@ -179,7 +188,7 @@ export function ResmiStandings({
                         <TeamNameLink
                           name={r.teamName}
                           href={teamHrefById[r.teamId]}
-                          className="whitespace-nowrap font-medium text-ink"
+                          className={`whitespace-nowrap text-ink ${hl ? "font-bold" : "font-medium"}`}
                         />
                       </div>
                     </td>
@@ -229,11 +238,15 @@ export function ResmiCompactStandings({
   teamHrefById,
   labels,
   league,
+  zoneByTeamId,
+  highlightTeamId,
 }: {
   standings: TslStandingRow[];
   teamHrefById: Record<string, string | null>;
   labels: Record<string, string>;
   league: string;
+  zoneByTeamId?: Record<string, ZoneKey | null>;
+  highlightTeamId?: string;
 }) {
   const total = standings.length;
   return (
@@ -249,11 +262,11 @@ export function ResmiCompactStandings({
         </thead>
         <tbody>
           {standings.map((r, i) => {
-            const zone = zoneForRank(league, r.rank, total);
+            const zone = zoneByTeamId ? zoneByTeamId[r.teamId] ?? null : zoneForRank(league, r.rank, total);
             return (
               <tr
                 key={r.teamId}
-                className={`${i % 2 ? "bg-veil/40" : ""} border-b border-line/50 last:border-0`}
+                className={`${highlightTeamId === r.teamId ? "bg-accent-soft" : i % 2 ? "bg-veil/40" : ""} border-b border-line/50 last:border-0`}
               >
                 <td className="relative py-1.5 pl-3 pr-1 text-left text-[12px] font-bold tabular-nums text-ink-2">
                   {zone ? (

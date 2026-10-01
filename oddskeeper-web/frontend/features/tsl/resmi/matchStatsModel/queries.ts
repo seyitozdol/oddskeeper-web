@@ -47,6 +47,14 @@ export const EURO_MSM_LEAGUES = ["eurocl", "euel", "euecl"] as const;
 export const isEuroMsmLeague = (league: string) =>
   (EURO_MSM_LEAGUES as readonly string[]).includes(league);
 
+// Türkiye A Milli Takımı MSM'i (league 'trnat'). Kimlik kupa gibi sofascore takım
+// id'si (logolar tff1_team_logos_v1'den), AMA model TSL gibi tam çalışır: 3 geçmiş
+// sezon + güncel sezon + son-x penceresi (geçmiş değerler msm.natl_histdata_v1'den
+// canlı gelir). Bu yüzden isEuroMsmLeague kapılarına GİRMEZ.
+export const NATIONAL_MSM_LEAGUE = "trnat";
+export const isSofaIdMsmLeague = (league: string) =>
+  isEuroMsmLeague(league) || league === NATIONAL_MSM_LEAGUE;
+
 // Supremacy yönü: pozitif = favori daha çok (Shot/SOT/Corner); negatif = favori daha az.
 const SUPREMACY_SIGN: Record<string, "positive" | "negative" | "none"> = {
   Shot: "positive", SOT: "positive", Corner: "positive",
@@ -95,10 +103,12 @@ function sb() {
 const COMPETITION: Record<string, string> = {
   tsl: "Süper Lig", tff1: "1. Lig",
   eurocl: "UEFA Şampiyonlar Ligi", euel: "UEFA Avrupa Ligi", euecl: "UEFA Konferans Ligi",
+  trnat: "Milli Takım",
 };
 const FIXTURE_VIEW: Record<string, string> = {
   tsl: "league_fixtures_v1", tff1: "msm_fixtures_tff1_v1",
   eurocl: "msm_fixtures_eurocl_v1", euel: "msm_fixtures_euel_v1", euecl: "msm_fixtures_euecl_v1",
+  trnat: "msm_fixtures_trnat_v1",
 };
 export const FIXTURE_SEASON = "2026/2027"; // slash formatı (her iki kaynak da)
 
@@ -343,9 +353,9 @@ export async function deleteManualFixture(id: string): Promise<boolean> {
 // tff1 → slug→logo_url (msm_team_logos_tff1_v1); cup → slug→Mackolik CDN URL
 // (cup_msm_team_logos_v1) çünkü amatör takımların yerel logosu yok (404 → kırık).
 export async function fetchTeamLogos(league: string): Promise<Record<string, string> | null> {
-  // Avrupa kupaları: slug = sofascore team_id; logolar id-bazlı ortak view'dan
-  // (tff1_team_logos_v1, eurocup sayfalarının kullandığı kaynak).
-  if (isEuroMsmLeague(league)) {
+  // Avrupa kupaları + milli takım: slug = sofascore team_id; logolar id-bazlı
+  // ortak view'dan (tff1_team_logos_v1, eurocup sayfalarının kullandığı kaynak).
+  if (isSofaIdMsmLeague(league)) {
     const { data, error } = await sb().from("tff1_team_logos_v1").select("team_id, logo_url").limit(1000); // 1000-cap: ~330 satir
     if (error) { console.error("fetchTeamLogos", error); return {}; }
     const out: Record<string, string> = {};

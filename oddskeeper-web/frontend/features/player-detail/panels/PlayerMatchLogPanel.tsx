@@ -40,6 +40,13 @@ const CUP_INFO: Record<string, { short: string; matchBase: string }> = {
   "UEFA Şampiyonlar Ligi": { short: "CL", matchBase: "/dashboard/euro-cups/cl/match" },
   "UEFA Avrupa Ligi": { short: "EL", matchBase: "/dashboard/euro-cups/el/match" },
   "UEFA Konferans Ligi": { short: "Konf", matchBase: "/dashboard/euro-cups/conf/match" },
+  // Milli takim maclari (ref.national_competitions etiketleri). Yeni milli
+  // turnuva eklenince buraya da gir; girilmezse satir rozetsiz ve linksiz kalir.
+  "UEFA Uluslar Ligi": { short: "UNL", matchBase: "/dashboard/national/tr/match" },
+  "FIFA Dünya Kupası": { short: "DK", matchBase: "/dashboard/national/tr/match" },
+  "Dünya Kupası Elemeleri": { short: "DK El.", matchBase: "/dashboard/national/tr/match" },
+  "EURO": { short: "EURO", matchBase: "/dashboard/national/tr/match" },
+  "EURO Elemeleri": { short: "EURO El.", matchBase: "/dashboard/national/tr/match" },
 };
 
 function toNumber(value: number | string | null | undefined) {
@@ -110,6 +117,11 @@ const COMP_ORDER = [
   "UEFA Şampiyonlar Ligi",
   "UEFA Avrupa Ligi",
   "UEFA Konferans Ligi",
+  "UEFA Uluslar Ligi",
+  "FIFA Dünya Kupası",
+  "Dünya Kupası Elemeleri",
+  "EURO",
+  "EURO Elemeleri",
 ];
 
 export function PlayerMatchLogPanel({ rows = [] }: PlayerMatchLogPanelProps) {

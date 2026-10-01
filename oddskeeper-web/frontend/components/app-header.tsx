@@ -110,6 +110,8 @@ const LEAGUE_ITEMS: LeagueItem[] = [
   { key: "tsl", navKey: "league-tsl", label: "TSL", Icon: TslMark, href: TSL_HUB_HREF, group: "football" },
   { key: "1lig", navKey: "league-1lig", label: "1.Lig", Icon: Lig1Mark, href: TFF1_RESMI_HREF, group: "football" },
   { key: "cup", navKey: "league-cup", label: "Cup", Icon: CupMark, href: CUP_HREF, group: "football" },
+  // Turkiye A Milli Futbol Takimi: logo yerine Turkiye bayragi (voleyboldaki ile ayni) + "TR".
+  { key: "trnat", navKey: "league-trnat", label: "TR", logoSrc: "/images/flags/tr.png", href: "/dashboard/national/tr", group: "football" },
   // Avrupa kupasi — Sampiyonlar Ligi. Opt-in (varsayilanda yalniz admin; bkz.
   // OPT_IN_NAV_KEYS). Logo /images/leagues/ucl.png.
   { key: "eurocl", navKey: "league-eurocl", label: "CL", logoSrc: "/images/leagues/ucl.png", invertOnDark: true, href: "/dashboard/euro-cups/cl/resmi?season=2026%2F2027&section=league", group: "football" },
@@ -296,6 +298,9 @@ export default function AppHeader({
     }
     if (item.key === "1lig") {
       return pathname.startsWith("/dashboard/stats-analysis/tff1");
+    }
+    if (item.key === "trnat") {
+      return pathname.startsWith("/dashboard/national/tr");
     }
     if (item.key === "eurocl") {
       return pathname.startsWith("/dashboard/euro-cups/cl");

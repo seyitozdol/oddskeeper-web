@@ -3,7 +3,13 @@ import {
   isResmiSection,
   type ResmiSection,
 } from "../constants";
-import { isEuroCupSource, type LeagueConfig } from "../leagues";
+import {
+  TRNAT_ALL_SEASON,
+  isEuroCupSource,
+  isNationalSource,
+  isSofaIdSource,
+  type LeagueConfig,
+} from "../leagues";
 import {
   loadResmiCupStages,
   loadResmiLig,
@@ -13,14 +19,18 @@ import {
   loadResmiResults,
   loadResmiTeamRankings,
   loadResmiTeamsTable,
+  loadResmiTournament,
   loadResmiTransfers,
 } from "../server/resmiLoaders";
+import { getNationalEditions } from "../server/nationalData";
+import { getLocale, getT } from "@/lib/i18n/server";
 import { loadEurocupLeague } from "../server/eurocupLeague";
 import ResmiControlBar from "./ResmiControlBar";
 import SectionTransition from "../shared/SectionTransition";
 import ResmiCupStages from "./ResmiCupStages";
 import ResmiCupLeague from "./ResmiCupLeague";
 import ResmiLig from "./ResmiLig";
+import ResmiTournament from "./ResmiTournament";
 import ResmiResults from "./ResmiResults";
 import ResmiReferees from "./ResmiReferees";
 import ResmiTeamsTable from "./ResmiTeamsTable";
@@ -65,10 +75,10 @@ async function renderPlayerStatsModel(config: LeagueConfig): Promise<React.React
     const teamLogos = await getAllFootballTeamLogos();
     return <TslPlayerMarket teamLogos={teamLogos} />;
   }
-  // Avrupa kupasi PSM'i: tff1 kopyasinin league-parametrik esi (eurocup_*
-  // view'lari). Logolar tff1_team_logos_v1'den (sofascore logolari; kupa
-  // takimlarini da kapsar).
-  if (isEuroCupSource(config.source)) {
+  // Avrupa kupasi + milli takim PSM'i: tff1 kopyasinin league-parametrik esi
+  // (eurocup_* / natl_* view'lari). Logolar tff1_team_logos_v1'den (sofascore
+  // logolari; kupa takimlarini ve milli takimlari da kapsar).
+  if (isSofaIdSource(config.source)) {
     const logoRows = await getTff1TeamLogos();
     const teamLogos: Record<string, string> = {};
     for (const row of logoRows) {
@@ -76,7 +86,7 @@ async function renderPlayerStatsModel(config: LeagueConfig): Promise<React.React
     }
     return (
       <EuroPlayerMarket
-        league={config.source as "eurocl" | "euel" | "euecl"}
+        league={config.source as "eurocl" | "euel" | "euecl" | "trnat"}
         teamLogos={teamLogos}
       />
     );
@@ -96,8 +106,20 @@ export default async function ResmiExperience({
   config: LeagueConfig;
   sp: Record<string, string | string[] | undefined>;
 }) {
+  // Milli takim: sezon secici = turnuva baskilari (DB'den) + "Tumu".
+  const national = isNationalSource(config.source);
+  let seasonOptions: { value: string; label: string }[] | undefined;
+  if (national) {
+    const [editions, locale, t] = await Promise.all([getNationalEditions(), getLocale(), getT()]);
+    seasonOptions = [
+      { value: TRNAT_ALL_SEASON, label: t("tsl.allTournaments") },
+      ...editions.map((e) => ({ value: e.key, label: locale === "tr" ? e.labelTr : e.labelEn })),
+    ];
+  }
+  const validSeasons = seasonOptions ? seasonOptions.map((o) => o.value) : config.seasons;
   const seasonRaw = first(sp.season);
-  const season = seasonRaw && config.seasons.includes(seasonRaw) ? seasonRaw : config.defaultSeason;
+  const season = seasonRaw && validSeasons.includes(seasonRaw) ? seasonRaw : config.defaultSeason;
+  const seasonLabel = seasonOptions?.find((o) => o.value === season)?.label;
   const rawSection = isResmiSection(first(sp.section)) ? (first(sp.section) as ResmiSection) : config.defaultSection;
   // Sadece bu lig için tanımlı sekmeler geçerli; değilse varsayılana düş.
   const section: ResmiSection = config.sections.includes(rawSection) ? rawSection : config.defaultSection;
@@ -110,6 +132,8 @@ export default async function ResmiExperience({
   let content: React.ReactNode = null;
   if (cupPending) content = <CupComingSoon />;
   else if (section === "cupStages") content = <ResmiCupStages data={await loadResmiCupStages(config, season)} />;
+  else if (section === "league" && national)
+    content = <ResmiTournament data={await loadResmiTournament(config, season, leaderMetric)} />;
   else if (section === "league")
     content =
       isEuroCupSource(config.source) ? (
@@ -122,7 +146,7 @@ export default async function ResmiExperience({
   else if (section === "teams") content = <ResmiTeamsTable data={await loadResmiTeamsTable(config, season)} />;
   else if (section === "transfers") content = <ResmiTransfers data={await loadResmiTransfers(config, season)} />;
   else if (section === "playerRankings")
-    content = <ResmiPlayerRankings data={await loadResmiPlayerRankings(config, season, metric)} />;
+    content = <ResmiPlayerRankings data={await loadResmiPlayerRankings(config, season, metric)} seasonLabel={seasonLabel} />;
   else if (section === "teamRankings")
     content = <ResmiTeamRankings data={await loadResmiTeamRankings(config, season, metric)} />;
   else if (section === "matchStatsModel") {
@@ -136,13 +160,13 @@ export default async function ResmiExperience({
     );
   }
   else if (section === "playerStatsModel") content = await renderPlayerStatsModel(config);
-  // Extras yalniz TSL / 1. Lig / Kupa sekme listelerinde var (constants.ts).
+  // Extras yalniz TSL / 1. Lig / Kupa / Milli Takim sekme listelerinde var (constants.ts).
   else if (section === "extras") content = <ExtraMarkets league={config.source as ExtrasLeague} />;
-  else content = <ResmiPlayers data={await loadResmiPlayers(config, season)} />;
+  else content = <ResmiPlayers data={await loadResmiPlayers(config, season)} seasonLabel={seasonLabel} />;
 
   return (
     <section className="px-4 pb-14 lg:px-8">
-      <ResmiControlBar config={config} section={section} season={season} />
+      <ResmiControlBar config={config} section={section} season={season} seasonOptions={seasonOptions} />
       <SectionTransition transitionKey={`${config.source}-${section}-${season}-${leaderMetric}-${metric ?? ""}`}>
         {content}
       </SectionTransition>
