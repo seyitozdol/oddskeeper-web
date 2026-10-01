@@ -322,8 +322,8 @@ export default function ResmiMatchStatsModel({
   const isEuro = isEuroMsmLeague(LEAGUE);
   // GSheet, Fixture sekmesinin alt sekmesi. İzni olmayan kullanıcıya hiç gösterilmez
   // (o zaman Fixture sekmesi alt sekmesiz, eskisi gibi açılır).
-  // Milli takımda da yok: msm_gsheet_v1 milli maçları dışlar (sızıntı bekçisi).
-  const showGSheet = canGSheet && !isEuro && LEAGUE !== NATIONAL_MSM_LEAGUE;
+  // Milli takımda var: msm_gsheet_v1 milli maçları league='trnat' olarak verir.
+  const showGSheet = canGSheet && !isEuro;
   const [fixtureSub, setFixtureSub] = useState<"ids" | "gsheet">("ids");
   const [configFocus, setConfigFocus] = useState<string | null>(null);
   // Model'deki dişli → Config sekmesine geç + ilgili bölüme kaydır.

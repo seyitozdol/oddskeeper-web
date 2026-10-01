@@ -202,14 +202,19 @@ export interface GsheetRow {
   awaySlug: string;
   vals: Record<string, number | null>;
 }
-export async function fetchGsheetRows(league: string): Promise<GsheetRow[]> {
-  const { data, error } = await sb()
+// matchIds verilirse sezon yerine maç id'siyle süzülür (milli takım: fikstür id'si =
+// SofaScore maç id'si; yaz turnuvası sezon sınırına takılmaz, rakip geçmişi de gelmez).
+export async function fetchGsheetRows(league: string, matchIds?: string[]): Promise<GsheetRow[]> {
+  if (matchIds && matchIds.length === 0) return [];
+  const base = sb()
     .from("msm_gsheet_v1")
     // select-yildiz: bilincli genis okuma (metrik kolonlari Object.keys(r) ile
     // dinamik toplanir; sabit liste yeni metrik kolonunu sessizce dusurur)
     .select("*")
-    .eq("league", league)
-    .eq("season_label", FIXTURE_SEASON);
+    .eq("league", league);
+  const { data, error } = await (matchIds
+    ? base.in("source_match_id", matchIds)
+    : base.eq("season_label", FIXTURE_SEASON));
   if (error) { console.error("fetchGsheetRows", error); return []; }
   return (data ?? []).map((r) => {
     const vals: Record<string, number | null> = {};

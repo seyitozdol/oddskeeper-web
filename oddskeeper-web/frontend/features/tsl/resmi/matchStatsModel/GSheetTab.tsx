@@ -2,7 +2,13 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useI18n } from "../../../../lib/i18n/LanguageProvider";
-import { fetchFixtures, fetchGsheetRows, type FixtureRow, type GsheetRow } from "./queries";
+import {
+  fetchFixtures,
+  fetchGsheetRows,
+  NATIONAL_MSM_LEAGUE,
+  type FixtureRow,
+  type GsheetRow,
+} from "./queries";
 
 type Cell = { sub: string; key: string };
 type Group = { label: string; cells: Cell[] };
@@ -13,10 +19,12 @@ const HA = (base: string): Cell[] => [
 ];
 const ONE = (key: string): Cell[] => [{ sub: "", key }];
 
-// Kolon setleri (dis Google Sheet ile ayni sira). TSL'de Added Time + Possession fazla.
+// Kolon setleri (dis Google Sheet ile ayni sira). TSL'de Added Time + Possession fazla;
+// milli takim TSL duzenini kullanir (SofaScore ikisini de veriyor).
 function buildGroups(league: string): Group[] {
+  const full = league === "tsl" || league === NATIONAL_MSM_LEAGUE;
   const g: Group[] = [{ label: "FT", cells: HA("ft") }];
-  if (league === "tsl") {
+  if (full) {
     g.push({ label: "Added Time", cells: [
       { sub: "1st H", key: "added_time_1h" },
       { sub: "2nd H", key: "added_time_2h" },
@@ -34,7 +42,7 @@ function buildGroups(league: string): Group[] {
     { label: "Tackle", cells: HA("tackle") },
     { label: "Goal Kick", cells: HA("goalkick") },
   );
-  if (league === "tsl") g.push({ label: "Possession", cells: HA("possession") });
+  if (full) g.push({ label: "Possession", cells: HA("possession") });
   g.push(
     { label: "RC", cells: ONE("rc_total") },
     { label: "VAR", cells: ONE("var_total") },
@@ -49,16 +57,29 @@ const norm = (s: string) =>
   (s || "").normalize("NFKD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]/g, "");
 
 export default function GSheetTab({ league }: { league: string }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
+  // Milli takimda hafta yok (fikstür sira numarasiyla gelir, mac basina bir "hafta"):
+  // secici yerine sezonun tum maclari tarihleriyle tek listede.
+  const allMatches = league === NATIONAL_MSM_LEAGUE;
   const [fixtures, setFixtures] = useState<FixtureRow[]>([]);
   const [rows, setRows] = useState<GsheetRow[]>([]);
   const [round, setRound] = useState<number | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
 
   useEffect(() => {
+    let alive = true;
     setRound(null);
-    fetchFixtures(league).then(setFixtures);
-    fetchGsheetRows(league).then(setRows);
+    setFixtures([]);
+    setRows([]);
+    const national = league === NATIONAL_MSM_LEAGUE;
+    fetchFixtures(league).then((fx) => {
+      if (!alive) return;
+      setFixtures(fx);
+      // Milli takim: satirlar fikstür id'siyle cekilir (id = SofaScore mac id'si).
+      if (national) fetchGsheetRows(league, fx.map((f) => f.fixtureId)).then((r) => { if (alive) setRows(r); });
+    });
+    if (!national) fetchGsheetRows(league).then((r) => { if (alive) setRows(r); });
+    return () => { alive = false; };
   }, [league]);
 
   const rounds = useMemo(
@@ -126,22 +147,33 @@ export default function GSheetTab({ league }: { league: string }) {
     setTimeout(() => setCopied(null), 1200);
   }
 
-  const roundFixtures = fixtures.filter((f) => f.round === activeRound);
+  const roundFixtures = allMatches ? fixtures : fixtures.filter((f) => f.round === activeRound);
+  const fmtDate = (iso: string | null) =>
+    iso
+      ? new Date(iso).toLocaleDateString(locale === "tr" ? "tr-TR" : "en-GB", {
+          day: "2-digit", month: "2-digit", year: "numeric",
+        })
+      : "";
+  const lead = allMatches ? 4 : 3;
   const th = "px-1.5 py-1 text-center font-medium whitespace-nowrap";
 
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-3">
-        <label className="text-[11px] uppercase tracking-wide text-ink-3">{t("msm.week")}</label>
-        <select
-          className="rounded-md border border-line bg-field px-2 py-1 text-sm text-ink"
-          value={activeRound}
-          onChange={(e) => setRound(parseInt(e.target.value))}
-        >
-          {rounds.map((r) => (
-            <option key={r} value={r} className="bg-field text-ink">{r}</option>
-          ))}
-        </select>
+        {!allMatches && (
+          <>
+            <label className="text-[11px] uppercase tracking-wide text-ink-3">{t("msm.week")}</label>
+            <select
+              className="rounded-md border border-line bg-field px-2 py-1 text-sm text-ink"
+              value={activeRound}
+              onChange={(e) => setRound(parseInt(e.target.value))}
+            >
+              {rounds.map((r) => (
+                <option key={r} value={r} className="bg-field text-ink">{r}</option>
+              ))}
+            </select>
+          </>
+        )}
         <span className="text-[11px] text-ink-3">{t("msm.gsheetHint")}</span>
       </div>
 
@@ -150,6 +182,7 @@ export default function GSheetTab({ league }: { league: string }) {
           <thead className="bg-card-2 text-ink-3">
             <tr>
               <th className="px-1 py-1"></th>
+              {allMatches && <th className="px-2 py-1 text-left font-medium">{t("msm.gsheetDate")}</th>}
               <th className="px-2 py-1 text-left font-medium">Home</th>
               <th className="px-2 py-1 text-left font-medium">Away</th>
               {groups.map((g) => (
@@ -159,6 +192,7 @@ export default function GSheetTab({ league }: { league: string }) {
             </tr>
             <tr className="text-[10px] text-ink-3">
               <th className="px-1 py-0.5"></th>
+              {allMatches && <th className="px-2 py-0.5"></th>}
               <th className="px-2 py-0.5"></th>
               <th className="px-2 py-0.5"></th>
               {groups.map((g) =>
@@ -189,6 +223,7 @@ export default function GSheetTab({ league }: { league: string }) {
                       {copied === f.fixtureId ? "✓" : "⧉"}
                     </button>
                   </td>
+                  {allMatches && <td className="px-2 py-0.5 text-ink-3 whitespace-nowrap">{fmtDate(f.datetime)}</td>}
                   <td className="px-2 py-0.5 font-medium text-ink whitespace-nowrap">{f.homeName}</td>
                   <td className="px-2 py-0.5 font-medium text-ink whitespace-nowrap">{f.awayName}</td>
                   {groups.map((g) =>
@@ -203,7 +238,7 @@ export default function GSheetTab({ league }: { league: string }) {
               );
             })}
             {roundFixtures.length === 0 && (
-              <tr><td colSpan={3 + flatKeys.length} className="px-3 py-6 text-center text-ink-3">—</td></tr>
+              <tr><td colSpan={lead + flatKeys.length} className="px-3 py-6 text-center text-ink-3">—</td></tr>
             )}
           </tbody>
         </table>
